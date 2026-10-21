@@ -1,0 +1,14 @@
+{
+  "carry": [],
+  "setup": "",
+  "run": "",
+  "land": "",
+  "teardown": "",
+  "defaults": {
+    "model": "",
+    "effort": "",
+    "permission_mode": "",
+    "branch_prefix": "",
+    "base_branch": ""
+  }
+}
