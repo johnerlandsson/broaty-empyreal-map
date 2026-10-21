@@ -1,0 +1,14 @@
+{
+  "name": "empyreal-station-map",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run && npm run test:lua",
+    "test:lua": "lua tests/location_test.lua && lua tests/main_test.lua",
+    "build:data": "node scripts/build-station.mjs"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0"
+  }
+}
