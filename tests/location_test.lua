@@ -1,0 +1,105 @@
+package.path = './src/?.lua;./tests/?.lua;' .. package.path
+
+local t = require('support.t')
+local L = require('station_map.location')
+local test, eq = t.test, t.eq
+
+local s = L.new()
+
+test('room_info sets room', function()
+  eq(L.room_info(s, { id = 'tiss.market', name = 'Market Hall' }), true)
+  local m = L.message(s)
+  eq(m.roomId, 'tiss.market')
+  eq(m.lift, nil)
+end)
+
+test('empyreal_room adds address and gravity', function()
+  L.empyreal_room(s, { id = 'tiss.market', address = 'Rim 12:00, fore', gravity = 0.9, part = 'rim' })
+  local m = L.message(s)
+  eq(m.address, 'Rim 12:00, fore')
+  eq(m.gravity, 0.9)
+  eq(m.name, 'Market Hall')
+end)
+
+test('empyreal_room before room_info', function()
+  local f = L.new()
+  L.empyreal_room(f, { id = 'tiss.gym', address = 'Mid 3:00, fore' })
+  eq(L.message(f).roomId, 'tiss.gym')
+end)
+
+test('entering a lift', function()
+  L.empyreal_room(s, { id = 'tiss.lift-9', part = 'lift', address = 'Lift 9',
+    vehicle = { at = 'tiss.rim-0900', doors = 'open' } })
+  local m = L.message(s)
+  eq(m.roomId, nil)
+  eq(m.lift.id, 'tiss.lift-9')
+  eq(m.lift.at, 'tiss.rim-0900')
+  eq(m.name, 'Lift 9')
+end)
+
+test('vehicle moves the lift', function()
+  local changed = L.vehicle(s, { id = 'tiss.lift-9', at = nil,
+    between = { 'tiss.rim-0900', 'tiss.mid-0900' }, heading = 'hubward', doors = 'closed' })
+  local m = L.message(s)
+  eq(m.lift.between[2], 'tiss.mid-0900')
+  eq(m.lift.at, nil)
+  eq(m.lift.heading, 'hubward')
+  eq(changed, true)
+end)
+
+test('message between is a copy', function()
+  local m = L.message(s)
+  m.lift.between[1] = 'x'
+  eq(L.message(s).lift.between[1], 'tiss.rim-0900')
+end)
+
+test('vehicle for another lift is ignored', function()
+  eq(L.vehicle(s, { id = 'tiss.lift-3', at = 'tiss.rim-0300' }), false)
+end)
+
+test('non-string/non-table sentinels are treated as absent', function()
+  local f = L.new()
+  local null = setmetatable({}, { __tostring = function() return 'null' end })
+  L.empyreal_room(f, { id = 'tiss.lift-1', part = 'lift', vehicle = { at = null, heading = null, doors = 5, between = 'x' } })
+  local m = L.message(f)
+  eq(m.lift.at, nil)
+  eq(m.lift.heading, nil)
+  eq(m.lift.doors, nil)
+  eq(m.lift.between, nil)
+  L.vehicle(f, { id = 'tiss.lift-1', at = null, between = null })
+  eq(L.message(f).lift.between, nil)
+end)
+
+test('leaving the lift', function()
+  L.room_info(s, { id = 'tiss.mid-0900', name = 'Mid 9:00' })
+  eq(L.message(s).lift, nil)
+  eq(L.message(s).roomId, 'tiss.mid-0900')
+end)
+
+test('unknown area passes through', function()
+  L.room_info(s, { id = 'ship.41', name = 'Cockpit of the Magpie' })
+  eq(L.message(s).roomId, 'ship.41')
+end)
+
+test("missing fields don't error", function()
+  eq(L.empyreal_room(s, {}), false)
+  eq(L.vehicle(s, {}), false)
+  eq(L.room_info(s, {}), false)
+  eq(L.room_info(s, nil), false)
+  eq(L.empyreal_room(s, nil), false)
+  eq(L.vehicle(s, nil), false)
+  eq(L.message(s).roomId, 'ship.41')
+end)
+
+test('identical frame reports no change', function()
+  eq(L.room_info(s, { id = 'tiss.market', name = 'Market Hall' }), true)
+  eq(L.room_info(s, { id = 'tiss.market', name = 'Market Hall' }), false)
+end)
+
+test('reset clears', function()
+  eq(L.reset(s), true)
+  eq(L.message(s).roomId, nil)
+  eq(L.reset(s), false)
+end)
+
+t.done()

@@ -1,0 +1,149 @@
+-- Location reducer: folds three GMCP packages (mudstd.room.info,
+-- Empyreal.Room, Empyreal.Vehicle) into one small location message.
+-- Pure and cheap; never errors on missing or odd-typed fields.
+-- Uses no io/os/debug/coroutine (removed in Mallard's sandbox).
+
+local L = {}
+
+local function str(v)
+  if type(v) == 'string' then return v end
+  return nil
+end
+
+local function num(v)
+  if type(v) == 'number' then return v end
+  return nil
+end
+
+-- A two-element string array copy, or nil if `v` is not a usable table.
+local function pair(v)
+  if type(v) ~= 'table' then return nil end
+  local a, b = str(v[1]), str(v[2])
+  if not a and not b then return nil end
+  return { a, b }
+end
+
+-- Deterministic serialiser (sorted keys) used for change detection.
+local function serialise(v)
+  local tv = type(v)
+  if tv == 'table' then
+    local keys = {}
+    for k in pairs(v) do keys[#keys + 1] = k end
+    table.sort(keys, function(x, y)
+      local tx, ty = type(x), type(y)
+      if tx ~= ty then return tx < ty end
+      return x < y
+    end)
+    local out = {}
+    for i, k in ipairs(keys) do
+      out[i] = serialise(k) .. '=' .. serialise(v[k])
+    end
+    return '{' .. table.concat(out, ',') .. '}'
+  elseif tv == 'string' then
+    return string.format('%q', v)
+  end
+  return tostring(v)
+end
+
+function L.new()
+  return {}
+end
+
+function L.message(state)
+  local lift = nil
+  if state.lift then
+    lift = {
+      id = state.lift.id,
+      at = state.lift.at,
+      between = state.lift.between and { state.lift.between[1], state.lift.between[2] } or nil,
+      heading = state.lift.heading,
+      doors = state.lift.doors,
+    }
+  end
+  return {
+    roomId = state.roomId,
+    name = state.name,
+    address = state.address,
+    gravity = state.gravity,
+    lift = lift,
+  }
+end
+
+-- Runs `fn`, returning true if the outgoing message changed because of it.
+local function track(state, fn)
+  local before = serialise(L.message(state))
+  fn()
+  return serialise(L.message(state)) ~= before
+end
+
+function L.room_info(state, data)
+  local id = type(data) == 'table' and str(data.id) or nil
+  if not id then return false end
+  return track(state, function()
+    if state.roomId ~= id then
+      -- Address and gravity belong to the previous room.
+      state.address = nil
+      state.gravity = nil
+    end
+    state.roomId = id
+    state.name = str(data.name)
+    state.lift = nil
+  end)
+end
+
+function L.empyreal_room(state, data)
+  if type(data) ~= 'table' then return false end
+  local vehicle = type(data.vehicle) == 'table' and data.vehicle or nil
+
+  if data.part == 'lift' or vehicle then
+    local id = str(data.id) or (vehicle and str(vehicle.id))
+    if not id then return false end
+    return track(state, function()
+      vehicle = vehicle or {}
+      state.lift = {
+        id = id,
+        at = str(vehicle.at),
+        between = pair(vehicle.between),
+        heading = str(vehicle.heading),
+        doors = str(vehicle.doors),
+      }
+      state.roomId = nil
+      state.name = str(data.address)
+      state.address = nil
+      state.gravity = num(data.gravity)
+    end)
+  end
+
+  local id = str(data.id)
+  if not id then return false end
+  return track(state, function()
+    if state.roomId ~= id then state.name = nil end
+    state.roomId = id
+    state.address = str(data.address)
+    state.gravity = num(data.gravity)
+    state.lift = nil
+  end)
+end
+
+function L.vehicle(state, data)
+  if type(data) ~= 'table' or not state.lift then return false end
+  if str(data.id) ~= state.lift.id then return false end
+  return track(state, function()
+    state.lift.at = str(data.at)
+    state.lift.between = pair(data.between)
+    state.lift.heading = str(data.heading)
+    state.lift.doors = str(data.doors)
+  end)
+end
+
+function L.reset(state)
+  return track(state, function()
+    state.roomId = nil
+    state.name = nil
+    state.address = nil
+    state.gravity = nil
+    state.lift = nil
+  end)
+end
+
+return L
