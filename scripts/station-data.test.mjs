@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
+import station from "../ui/data/station.js";
 import { collectRooms, completeStation, parseGmcpLines } from "./station-data.mjs";
 
 const lines = readFileSync(
@@ -190,5 +191,12 @@ describe("completeStation", () => {
     expect(res.find((r) => r.id === "tiss.nowhere")).toBeUndefined();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("tiss.nowhere"));
     warn.mockRestore();
+  });
+});
+
+describe("generated station data", () => {
+  it("gives every room a real name, never its id", () => {
+    const bad = station.rooms.filter((r) => !r.name || r.name === r.id);
+    expect(bad.map((r) => r.id)).toEqual([]);
   });
 });

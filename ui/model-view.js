@@ -12,7 +12,7 @@ import { attachPanZoom, el, glowFilter, stars, zoomButtons } from "./lib/svg.js"
 const HL = "#ffb347";
 const HL_STROKE = "#fff3df";
 const EDGE = "#0d1218";
-const DIM = "#7d8a9a";
+const LABEL_FG = "#dfe7f1"; // ring names: light, so they read over the grey faces
 const TONES = ["#3a4556", "#58667b", "#7e8da3"];
 const SHIP_TONES = ["#6b7a90", "#8a99ae", "#b7c4d4"];
 const GLASS = "#cfe3ff";
@@ -23,6 +23,10 @@ const LIGHT = (() => {
 })();
 const EPS = 1e-6;
 const PAD = 30;
+const LABEL_BG = "#04060c";
+const LABEL_SIZE = 22;
+const LABEL_GAP = 26; // leader run from the wheel's right edge to the label column
+const LABEL_W = 84; // room for the longest label ("INNER") at LABEL_SIZE
 
 let instances = 0;
 
@@ -92,6 +96,7 @@ export class ModelView {
 
     // the union of the silhouettes over a full turn, so turning never moves the framing
     this.bounds = this.computeBounds();
+    this.labels = this.layoutLabels();
     this.vb = this.bounds.slice();
     const svg = el("svg", { viewBox: this.vb.join(" ") });
     Object.assign(svg.style, { display: "block", width: "100%", height: "100%" });
@@ -144,28 +149,64 @@ export class ModelView {
     return [x0 - PAD, y0 - PAD, x1 - x0 + 2 * PAD, y1 - y0 + 2 * PAD];
   }
 
+  /**
+   * Where the ring names sit: a label column in the right margin, outside the silhouette of the
+   * wheel, each tied to the outer edge of its ring by a leader line. The ring edge points are
+   * the rightmost points of the turning rings, so they do not move as the wheel turns. Widens
+   * this.bounds to take in the column.
+   */
+  layoutLabels() {
+    const right = this.bounds[0] + this.bounds[2] - PAD; // right edge of the union silhouette
+    const colX = right + LABEL_GAP;
+    const rings = ["RIM", "MID", "INNER"].map((text, z) => {
+      let best = [-Infinity, 0];
+      for (let h = 0; h < 12; h += 0.05) {
+        for (const dz of [-RWZ[z], RWZ[z]]) {
+          const p = project(P3(RR[z] + RT[z], h, dz));
+          if (p[0] > best[0]) best = p;
+        }
+      }
+      return { text, from: [best[0], best[1]] };
+    });
+    // stack the labels top to bottom, centred on the rim's edge point, so they never overlap
+    const step = LABEL_SIZE + 14;
+    const mid = rings[0].from[1] + step;
+    rings.forEach((r, i) => (r.y = mid + (i - 1) * step));
+    const [dx, dy] = project([0, 0, BLZ + 18]);
+    const docks = { text: "DOCKS", x: dx + 14, y: dy + 24 };
+    this.bounds[2] = colX + LABEL_W + PAD / 2 - this.bounds[0];
+    return { colX, rings, docks };
+  }
+
   /** Ring names and DOCKS at fixed screen positions; they do not turn with the wheel. */
   drawLabels(g) {
-    const lab = (p3, text, dy) => {
-      const [x, y] = project(p3);
+    const halo = { stroke: LABEL_BG, "stroke-width": 5, "paint-order": "stroke", "stroke-linejoin": "round" };
+    const { colX, rings, docks } = this.labels;
+    for (const r of rings) {
+      const d = `M${num(r.from[0])},${num(r.from[1])}L${num(colX - 4)},${num(r.y)}`;
+      el("path", { d, fill: "none", stroke: LABEL_BG, "stroke-width": 4.5, "stroke-linecap": "round" }, g);
+      el("path", { d, fill: "none", stroke: LABEL_FG, "stroke-width": 1.4, "stroke-linecap": "round" }, g);
+      el("circle", { cx: r.from[0], cy: r.from[1], r: 3, fill: LABEL_FG, stroke: LABEL_BG, "stroke-width": 1.5 }, g);
+    }
+    const text = (x, y, t) =>
       el(
         "text",
         {
-          x: x + 14,
-          y: y + dy,
-          "font-size": 22,
+          x,
+          y,
+          "font-size": LABEL_SIZE,
           "font-weight": 600,
           "letter-spacing": 1.5,
-          fill: DIM,
+          fill: LABEL_FG,
           "dominant-baseline": "middle",
           "font-family": "Inter, system-ui, sans-serif",
+          ...halo,
         },
         g,
-        text,
+        t,
       );
-    };
-    ["RIM", "MID", "INNER"].forEach((t, z) => lab(P3(RR[z] + RT[z], FRONT + 2.6, RWZ[z]), t, 0));
-    lab([0, 0, BLZ + 18], "DOCKS", 22);
+    for (const r of rings) text(colX, r.y, r.text);
+    text(docks.x, docks.y, docks.text);
   }
 
   setView(v) {
@@ -252,12 +293,21 @@ export class ModelView {
     const key = keyOf(where);
     const hour = hourOf(where);
     if (this.started && key === this.key && hour === this.hour) return;
+    const first = !this.started;
     this.started = true;
     const keyChanged = key !== this.key;
     const hourChanged = hour !== this.hour;
     this.key = key;
     this.hour = hour;
     if (keyChanged) this.restartPulse();
+
+    if (first) {
+      // a fresh mount (open, reload, reconnect) starts already facing the player: nothing spins
+      this.stop();
+      if (hour != null && this.turning) this.phi = shortestTurn(this.phi, hour);
+      this.draw();
+      return;
+    }
 
     if (hour != null && hourChanged && this.turning) {
       const target = shortestTurn(this.phi, hour);

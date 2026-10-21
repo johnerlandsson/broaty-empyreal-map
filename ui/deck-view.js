@@ -60,7 +60,7 @@ function hover(node, room) {
   node.addEventListener("mouseenter", () => {
     window.panel?.tooltip?.show(node.getBoundingClientRect(), {
       title: room.name,
-      body: room.address,
+      body: room.address && room.address.toLowerCase() !== String(room.name).toLowerCase() ? room.address : "",
       rows: room.closed ? [{ label: "Closed", value: room.closedReason, valueColor: "muted" }] : [],
     });
   });

@@ -107,6 +107,13 @@ describe("locate", () => {
     expect(infoLine(locate(index, msg, null), msg, index)).toBe("LAUNDRY · Rim 2:00, aft · 0.9 g");
   });
 
+  it("info line omits an address that repeats the name", () => {
+    const msg = { roomId: "tiss.rim-0300", name: "Rim 3:00", address: "Rim 3:00", gravity: 0.9 };
+    expect(infoLine(locate(index, msg, null), msg, index)).toBe("RIM 3:00 \u00b7 0.9 g");
+    const loud = { ...msg, address: "RIM 3:00" };
+    expect(infoLine(locate(index, loud, null), loud, index)).toBe("RIM 3:00 \u00b7 0.9 g");
+  });
+
   it("info line falls back to station data and omits missing parts", () => {
     const msg = { roomId: "tiss.laundry" };
     const line = infoLine(locate(index, msg, null), msg, index);

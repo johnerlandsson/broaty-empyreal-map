@@ -47,6 +47,25 @@ test('vehicle moves the lift', function()
   eq(changed, true)
 end)
 
+test('a repeated identical Empyreal.Room frame is not a change', function()
+  local f = L.new()
+  local frame = { id = 'tiss.market', address = 'Rim 12:00, fore', gravity = 0.9, part = 'rim' }
+  eq(L.empyreal_room(f, frame), true)
+  eq(L.empyreal_room(f, { id = 'tiss.market', address = 'Rim 12:00, fore', gravity = 0.9, part = 'rim' }), false)
+end)
+
+test('a repeated identical Empyreal.Vehicle frame is not a change', function()
+  local f = L.new()
+  L.empyreal_room(f, { id = 'tiss.lift-9', part = 'lift', address = 'Lift 9',
+    vehicle = { at = 'tiss.rim-0900', doors = 'open' } })
+  local function frame()
+    return { id = 'tiss.lift-9', at = nil, between = { 'tiss.rim-0900', 'tiss.mid-0900' },
+      heading = 'hubward', doors = 'closed' }
+  end
+  eq(L.vehicle(f, frame()), true)
+  eq(L.vehicle(f, frame()), false)
+end)
+
 test('message between is a copy', function()
   local m = L.message(s)
   m.lift.between[1] = 'x'

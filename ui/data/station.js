@@ -1621,7 +1621,7 @@ export default {
   },
   {
    "id": "tiss.transfer",
-   "name": "tiss.transfer",
+   "name": "Freight Transfer",
    "x": 0,
    "y": -1,
    "z": 3,

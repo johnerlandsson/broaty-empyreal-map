@@ -1,5 +1,5 @@
 {
-  "name": "empyreal-station-map",
+  "name": "empyreal-map",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
     "test": "vitest run && npm run test:lua",
     "test:lua": "lua tests/location_test.lua && lua tests/main_test.lua",
     "build:data": "node scripts/build-station.mjs",
-    "pack": "rm -f empyreal-station-map-$npm_package_version.mallardx && zip -r empyreal-station-map-$npm_package_version.mallardx plugin.toml README.md src ui -x 'ui/**/*.test.js'"
+    "pack": "rm -f empyreal-map-$npm_package_version.mallardx && zip -r empyreal-map-$npm_package_version.mallardx plugin.toml README.md src ui -x 'ui/**/*.test.js'"
   },
   "devDependencies": {
     "vitest": "^2.0.0"

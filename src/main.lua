@@ -1,4 +1,4 @@
--- Empyreal station map: folds GMCP location frames into one small message
+-- Empyreal map (T.I.S.S. so far): folds GMCP location frames into one small message
 -- and pushes it to the "map" panel. All state lives here; the panel is a
 -- pure presentation layer that asks for a replay with "ready".
 --
@@ -22,23 +22,26 @@ local function post_settings()
   panel:post('settings', { turn_model = settings.get('turn_model') ~= false })
 end
 
--- gmcp.on matches by prefix, so dispatch on the exact package name.
+-- gmcp.on matches by prefix and case-insensitively, and passes the server's
+-- original casing: key the reducers by lowercase name and dispatch on the
+-- exact (lowercased) package, so sub-packages never reach a reducer.
 local reducers = {
   ['mudstd.room.info'] = L.room_info,
-  ['Empyreal.Room'] = L.empyreal_room,
-  ['Empyreal.Vehicle'] = L.vehicle,
+  ['empyreal.room'] = L.empyreal_room,
+  ['empyreal.vehicle'] = L.vehicle,
 }
 
 local function on_gmcp(package, data)
-  local reduce = reducers[package]
+  local reduce = reducers[string.lower(tostring(package))]
   if not reduce then
-    log.debug('station map: ignoring GMCP package ' .. tostring(package))
+    log.debug('empyreal map: ignoring GMCP package ' .. tostring(package))
     return
   end
   if reduce(state, data) then post_location() end
 end
 
-for prefix in pairs(reducers) do
+-- Subscribe with the names Mallard advertises (original casing).
+for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle' }) do
   gmcp.on(prefix, on_gmcp)
 end
 

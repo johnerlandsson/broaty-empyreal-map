@@ -7,5 +7,5 @@
                         "closedReason": "The flats are sealed off while they are refitted for housing." },
   "tiss.machineshop": { "name": "Machine Shop", "x": 9, "y": -1, "z": 2, "address": "Inner 4:30, aft", "closed": true,
                         "closedReason": "The machine shop is shuttered until someone takes it on." },
-  "tiss.transfer":    { "x": 0, "y": -1, "z": 3, "address": "Hub, freight" }
+  "tiss.transfer":    { "name": "Freight Transfer", "x": 0, "y": -1, "z": 3, "address": "Hub, freight" }
 } }

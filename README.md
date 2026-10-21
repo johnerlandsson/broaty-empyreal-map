@@ -1,14 +1,14 @@
-# Empyreal Station Map
+# Empyreal Map
 
-A [Mallard](https://mallard.vnsf.xyz) plugin for the MUD Empyreal: a map of
-the station T.I.S.S. that follows you as you walk, ride the lifts and visit
-the docks.
+A [Mallard](https://mallard.vnsf.xyz) plugin for the MUD Empyreal: maps
+that follow you as you play. It starts with the station T.I.S.S., which it
+follows as you walk, ride the lifts and visit the docks.
 
 ---
 
 ## The panel
 
-The **Station Map** panel opens on the right side of the window. It has two
+The **Map** panel opens on the right side of the window. It has two
 parts.
 
 **The station model (top).** A flat-shaded model of the whole station: the
@@ -58,8 +58,9 @@ at the front, and your place still glows.
 
 ## Installation
 
-Install from the Mallard marketplace, or install the packaged
-`empyreal-station-map-<version>.mallardx` file by hand.
+Empyreal Map will be published to the Mallard marketplace. Until then, build
+the package (see Packaging below) and install the `empyreal-map-<version>.mallardx`
+file with Mallard's **Install from file…**, or use the dev install.
 
 ### Dev install
 
@@ -67,7 +68,7 @@ Link the repository into Mallard's development plugin folder, then reload
 plugins in Mallard:
 
 ```bash
-ln -s "$PWD" ~/.local/share/net.mallard.app/plugins-dev/broaty.empyreal-station-map
+ln -s "$PWD" ~/.local/share/net.mallard.app/plugins-dev/broaty.empyreal-map
 ```
 
 ### Packaging
@@ -76,7 +77,7 @@ ln -s "$PWD" ~/.local/share/net.mallard.app/plugins-dev/broaty.empyreal-station-
 npm run pack
 ```
 
-This writes `empyreal-station-map-<version>.mallardx` with `plugin.toml`,
+This writes `empyreal-map-<version>.mallardx` with `plugin.toml`,
 this README, `src/` and `ui/` (without the tests).
 
 ---

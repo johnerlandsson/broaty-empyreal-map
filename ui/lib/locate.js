@@ -104,7 +104,7 @@ export function infoLine(where, msg, index) {
     const address = str(m.address) ?? str(room?.address);
     const g = m.gravity ?? room?.gravity;
     const parts = [name.toUpperCase()];
-    if (address) parts.push(address);
+    if (address && address.toLowerCase() !== name.toLowerCase()) parts.push(address);
     if (g !== undefined && g !== null) parts.push(`${String(g)} g`);
     return parts.join(" · ");
   } catch {

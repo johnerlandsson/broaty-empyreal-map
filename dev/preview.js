@@ -1,7 +1,7 @@
 // Preview driver: replays a walk round T.I.S.S. through the fake panel, using the same
 // `location` message shapes the Lua side posts (src/station_map/location.lua).
 //
-//   ?step=N   jump to route step N on load (steps 0..N-1 are replayed first, instantly)
+//   ?step=N   open on route step N, as a panel re-mounting mid-walk would (only step N is replayed)
 //   ?walk     start the walk on load; ?until=N stops it after step N
 //   ?repeat   with ?step: after it settles, re-send step N twice and report what changed
 //   ?debug    count model turns / redraws and deck highlights / re-centres, shown bottom-right
@@ -132,7 +132,6 @@ function start() {
     show(1); // Main Concourse
     return;
   }
-  for (let i = 0; i < n; i++) fp.emit("location", ROUTE[i].msg);
   show(n);
   if (q.has("repeat")) {
     setTimeout(() => {

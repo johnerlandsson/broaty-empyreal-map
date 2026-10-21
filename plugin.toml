@@ -1,7 +1,7 @@
-id = "broaty.empyreal-station-map"
-name = "Empyreal Station Map"
+id = "broaty.empyreal-map"
+name = "Empyreal Map"
 version = "0.1.0"
-description = "Map of T.I.S.S. for Empyreal: a turning station model over a deck plan of your floor."
+description = "Maps for Empyreal. Starts with T.I.S.S.: a turning station model over a deck plan of your floor."
 language = "lua"
 entry = "src/main.lua"
 mallard_api_version = "1.0"
@@ -19,7 +19,7 @@ gmcp_access = ["mudstd.room.info", "Empyreal.Room", "Empyreal.Vehicle"]
 advertise = ["mudstd.room", "Empyreal.Room", "Empyreal.Vehicle"]
 
 [panels.map]
-title = "Station Map"
+title = "Map"
 entry = "ui/map.html"
 default_dock = "right"
 default_size = { width = 380, height = 600 }
