@@ -19,6 +19,14 @@ travelling, or the dock room you're in. As you move, the wheel turns by
 itself until your part of the station faces you. Only the wheel turns; the
 spine and the docks hold still beyond the Bearing, as on the real station.
 
+**Out in your ship.** Once you undock, the station model fades into a view
+looking ahead from your ship: a still starfield while you're parked, the
+stars streaming past while you travel, and low-poly asteroids tumbling past
+while you're at a belt. It's scenery only, with no controls; docking brings
+the station back. This follows your own ship. Aboard someone else's, the
+station model stays, because the game doesn't yet tell the plugin where
+that ship is.
+
 **The deck plan (bottom).** A floor plan of the floor you're on:
 
 - **Rings:** the corridor runs across the panel with its stops labelled by
@@ -98,7 +106,8 @@ python3 -m http.server 8765
 # http://localhost:8765/dev/preview.html
 ```
 
-`?step=N` jumps to step N of the walk, and `?debug` shows how often the model
+`?step=N` jumps to step N of the walk, `?scene=belt` (or `parked`, `travelling`) opens on a
+space scene, and the menu in the bar switches it. `?debug` shows how often the model
 turned and redrew.
 
 ### Rebuilding the station data

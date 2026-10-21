@@ -94,6 +94,8 @@ end
 function L.empyreal_room(state, data)
   if type(data) ~= 'table' then return false end
   local vehicle = type(data.vehicle) == 'table' and data.vehicle or nil
+  -- Only a lift car is a lift; any other vehicle (a ship) is a plain room.
+  if vehicle and vehicle.kind ~= nil and vehicle.kind ~= 'lift' then vehicle = nil end
 
   if data.part == 'lift' or vehicle then
     local id = str(data.id) or (vehicle and str(vehicle.id))

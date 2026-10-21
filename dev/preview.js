@@ -6,6 +6,7 @@
 //   ?repeat   with ?step: after it settles, re-send step N twice and report what changed
 //   ?debug    count model turns / redraws and deck highlights / re-centres, shown bottom-right
 //   ?still    send settings { turn_model: false }
+//   ?scene=S  open on overview scene S (station, parked, travelling or belt); the bar's menu switches it
 
 import station from "../ui/data/station.js";
 import { DeckView } from "../ui/deck-view.js";
@@ -120,8 +121,15 @@ function walk(from = 0, until = ROUTE.length - 1) {
 }
 document.getElementById("walk").addEventListener("click", () => walk());
 
+const sceneMenu = document.getElementById("scene");
+sceneMenu.addEventListener("change", () => fp.emit("scene", { scene: sceneMenu.value }));
+
 function start() {
   fp.emit("settings", { turn_model: !q.has("still") });
+  if (q.has("scene")) {
+    sceneMenu.value = q.get("scene");
+    fp.emit("scene", { scene: sceneMenu.value });
+  }
   const n = q.has("step") ? Math.max(0, Math.min(ROUTE.length - 1, Number(q.get("step")) || 0)) : null;
   if (q.has("walk")) {
     const until = q.has("until") ? Number(q.get("until")) : ROUTE.length - 1;

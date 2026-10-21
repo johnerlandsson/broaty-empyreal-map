@@ -13,10 +13,10 @@ license = "MIT"
 match = ["empyreal.fly.dev:*"]
 
 [permissions]
-gmcp_access = ["mudstd.room.info", "Empyreal.Room", "Empyreal.Vehicle"]
+gmcp_access = ["mudstd.room.info", "Empyreal.Room", "Empyreal.Vehicle", "Ship.Status", "Space.Charts"]
 
 [gmcp]
-advertise = ["mudstd.room 1", "Empyreal.Room 1", "Empyreal.Vehicle 1"]
+advertise = ["mudstd.room 1", "Empyreal.Room 1", "Empyreal.Vehicle 1", "Ship 1", "Space 1"]
 
 [panels.map]
 title = "Map"

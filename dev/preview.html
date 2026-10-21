@@ -9,6 +9,7 @@
     body { display: flex; flex-direction: column; }
     .bar { flex: 0 0 auto; display: flex; gap: 8px; align-items: center; height: 30px; padding: 0 8px; background: #0b0f16; }
     .bar button { font: 600 12px system-ui, sans-serif; padding: 3px 10px; border-radius: 5px; border: 1px solid #c98a2e; background: #ffb347; color: #3a2200; cursor: pointer; }
+    .bar select { font: 11px system-ui, sans-serif; background: #1b2330; color: #e3eaf2; border: 1px solid #3b4a5c; border-radius: 4px; }
     .bar span { font: 11px "DejaVu Sans Mono", monospace; color: #8a96a6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .station { flex: 1 1 auto; height: auto; min-height: 0; }
     #debug { position: fixed; right: 4px; bottom: 30px; max-width: 70%; margin: 0; font: 9px monospace; color: #9fe39f; background: #000a; pointer-events: none; white-space: pre-wrap; }
@@ -16,7 +17,7 @@
   </style>
 </head>
 <body>
-  <div class="bar"><button id="walk" type="button">▶ Walk</button><span id="status"></span></div>
+  <div class="bar"><button id="walk" type="button">▶ Walk</button><select id="scene" title="Overview scene"><option>station</option><option>parked</option><option>travelling</option><option>belt</option></select><span id="status"></span></div>
   <main class="station">
     <div id="model" class="band"></div>
     <div class="separator" aria-hidden="true"></div>

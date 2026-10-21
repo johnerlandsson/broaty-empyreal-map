@@ -115,6 +115,15 @@ test('identical frame reports no change', function()
   eq(L.room_info(s, { id = 'tiss.market', name = 'Market Hall' }), false)
 end)
 
+test('a ship vehicle is a room, not a lift', function()
+  local f = L.new()
+  L.empyreal_room(f, { id = 'ship.42', address = nil, part = nil, gravity = 0,
+    vehicle = { kind = 'ship', id = 'ship.42', name = 'Mule' } })
+  local m = L.message(f)
+  eq(m.lift, nil)
+  eq(m.roomId, 'ship.42')
+end)
+
 test('reset clears', function()
   eq(L.reset(s), true)
   eq(L.message(s).roomId, nil)

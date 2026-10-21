@@ -27,9 +27,10 @@ local function boot(opts)
 
   -- Mallard's require has no cache: count loads of our module.
   package.loaded['station_map.location'] = nil
+  package.loaded['station_map.scene'] = nil
   local real_require = require
   _G.require = function(name)
-    if name == 'station_map.location' then
+    if name == 'station_map.location' or name == 'station_map.scene' then
       env.requires[#env.requires + 1] = name
       package.loaded[name] = nil
     end
@@ -46,13 +47,15 @@ local function names(env)
   return out
 end
 
-test('wires panel and requires the module once', function()
+test('wires panel and requires each module once', function()
   local env = boot()
   eq(env.panel_id, 'map')
-  eq(#env.requires, 1)
+  eq(env.requires, { 'station_map.location', 'station_map.scene' })
   eq(type(env.gmcp_handlers['mudstd.room.info']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Room']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Vehicle']), 'function')
+  eq(type(env.gmcp_handlers['Ship.Status']), 'function')
+  eq(type(env.gmcp_handlers['Space.Charts']), 'function')
   eq(type(env.world_handlers.disconnect), 'function')
   eq(type(env.panel_handlers.ready), 'function')
   eq(type(env.settings_handlers.change), 'function')
@@ -151,6 +154,49 @@ test('a sub-package in another case is still ignored', function()
   env.gmcp_handlers['Empyreal.Room']('empyreal.room.extra', { id = 'x' })
   eq(#env.posts, 0)
   eq(#env.debug, 1)
+end)
+
+local CHARTS = { places = { { id = 'belt.7', name = 'Dusty Reach', kind = 'belt' } } }
+
+test('setting off posts the travelling scene', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = false, destination = 'belt.7', progress = 0 })
+  eq(names(env), { 'scene' })
+  eq(env.posts[1].data, { scene = 'travelling' })
+end)
+
+test('transit progress posts nothing more', function()
+  local env = boot()
+  local h = env.gmcp_handlers['Ship.Status']
+  h('Ship.Status', { name = 'Mule', docked = false, destination = 'belt.7', progress = 0.1 })
+  h('Ship.Status', { name = 'Mule', docked = false, destination = 'belt.7', progress = 0.2 })
+  eq(#env.posts, 1)
+end)
+
+test('arriving at a charted belt posts the belt scene', function()
+  local env = boot()
+  env.gmcp_handlers['Space.Charts']('Space.Charts', CHARTS)
+  eq(#env.posts, 0)
+  env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = false, location = 'belt.7' })
+  eq(env.posts[1].data, { scene = 'belt' })
+end)
+
+test('ready replays the scene when away from the station', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = false, location = 'tiss' })
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings', 'scene' })
+  eq(env.posts[2].data, { scene = 'parked' })
+end)
+
+test('disconnect in space posts the station scene', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = false, destination = 'belt.7' })
+  env.posts = {}
+  env.world_handlers.disconnect()
+  eq(names(env), { 'location', 'scene' })
+  eq(env.posts[2].data, { scene = 'station' })
 end)
 
 t.done()
