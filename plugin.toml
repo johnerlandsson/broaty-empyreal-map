@@ -1,0 +1,31 @@
+id = "broaty.empyreal-station-map"
+name = "Empyreal Station Map"
+version = "0.1.0"
+description = "Map of T.I.S.S. for Empyreal: a turning station model over a deck plan of your floor."
+language = "lua"
+entry = "src/main.lua"
+mallard_api_version = "1.0"
+minimum_app_version = "0.28.0"
+authors = ["John Erlandsson"]
+license = "MIT"
+
+[worlds]
+match = ["empyreal.fly.dev:*"]
+
+[permissions]
+gmcp_access = ["mudstd.room.info", "Empyreal.Room", "Empyreal.Vehicle"]
+
+[gmcp]
+advertise = ["mudstd.room", "Empyreal.Room", "Empyreal.Vehicle"]
+
+[panels.map]
+title = "Station Map"
+entry = "ui/map.html"
+default_dock = "right"
+default_size = { width = 380, height = 600 }
+
+[settings.turn_model]
+type = "bool"
+default = true
+label = "Turn the station to face you"
+description = "Rotate the station model so your location faces the camera."
