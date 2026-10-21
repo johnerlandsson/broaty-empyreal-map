@@ -1,0 +1,355 @@
+<h2>Stylized model that turns to face you</h2>
+<p class="subtitle">The camera looks down at the fore face, with the spine and docks hanging below the hub. As you move, <b>the wheel turns by itself</b> until your part of the station faces the camera. <b>Only the wheel turns</b>: the hub, rings and spokes rotate, while the spine and docks hold still beyond the Bearing, as on the real station. Zoom with scroll or <b>+ −</b>; you can't rotate it yourself. Press <b>▶ Walk demo</b>.</p>
+
+<style>
+  .duo { display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; align-items:start; }
+  .pnl { position:relative; overflow:hidden; background:#04060c; border-radius:6px; touch-action:none; aspect-ratio: 400/640; }
+  .pnl svg { display:block; width:100%; height:100%; }
+  .deck, .iso { position:absolute; left:0; right:0; cursor:grab; }
+  .zoom { position:absolute; right:8px; display:flex; flex-direction:column; gap:3px; z-index:2; }
+  .zoom button { width:24px; height:24px; border-radius:5px; border:1px solid rgba(255,255,255,.35); background:rgba(10,20,40,.6); color:#fff; font-size:14px; line-height:1; cursor:pointer; }
+  .info { position:absolute; left:10px; bottom:8px; font:11px 'DejaVu Sans Mono', monospace; color:#dfe7f1; letter-spacing:.5px; pointer-events:none; text-shadow:0 0 4px #000; }
+  .bar { display:flex; gap:.6rem; align-items:center; margin:.6rem 0 1rem; }
+  .bar button { font:600 13px system-ui; padding:6px 14px; border-radius:6px; border:1px solid #c98a2e; background:#ffb347; color:#3a2200; cursor:pointer; }
+  .bar span { font:12px 'DejaVu Sans Mono', monospace; color:#666; }
+  .card-body { cursor:pointer; }
+  @keyframes glowpulse { 0%,100% { opacity: 1 } 50% { opacity: .55 } }
+  .hl { animation: glowpulse 1.8s ease-in-out infinite; }
+</style>
+
+<div class="bar"><button id="demo">▶ Walk demo</button><span id="status"></span></div>
+
+<div class="duo cards" data-multiselect>
+  <div class="card" data-choice="iso-flat">
+    <div class="pnl" id="p1"></div>
+    <div class="card-body" onclick="toggleSelect(this.parentNode)"><h3>1 · Flat-shaded model</h3>
+      <p>Solid faces in three flat tones with district colour on the fore faces. The wheel turns to bring your stop round to the front, and the glow shows through anything in its way.</p></div>
+  </div>
+  <div class="card" data-choice="iso-line">
+    <div class="pnl" id="p2"></div>
+    <div class="card-body" onclick="toggleSelect(this.parentNode)"><h3>2 · Line-art model</h3>
+      <p>Outlines in district colours on black, and the same turning wheel. The only filled shape is where you are.</p></div>
+  </div>
+</div>
+
+<script>
+(() => {
+const STATION = __DATA__;
+const BY = Object.fromEntries(STATION.map(r => [r.id, r]));
+const NS = "http://www.w3.org/2000/svg";
+const DC = { concourse:"#d9a441", residential:"#5b8def", hydro:"#4caf7a", commons:"#a57be0",
+             offices:"#3fb6b2", midring:"#8796a8", industrial:"#d0703c", docks:"#cfe3ff", ladder:"#9fb0c3" };
+const HL = "#ffb347", TXT = "#e3eaf2", DIM = "#7d8a9a", PLATE = "#18202b", EDGE = "#3b4a5c", CORR = "#262f3b";
+const RING = ["Rim","Mid","Inner","Hub"], G = ["0.9 g","0.6 g","0.3 g","0 g"], STEP = [2,3,3], SPOKES = [0,3,6,9];
+function districtOf(z, x) { const h = x/2; if (z === 3) return "docks";
+  if (z === 2) return "industrial"; if (z === 1) return (h >= 10.5 || h <= 1.5) ? "offices" : "midring";
+  return (h >= 11 || h <= 1) ? "concourse" : h <= 4 ? "residential" : h <= 7 ? "hydro" : "commons"; }
+const hl = h => `${Math.floor(h)||12}:${h%1?"30":"00"}`;
+const ang = h => h/12*2*Math.PI;
+function el(tag, a, parent, text) { const e = document.createElementNS(NS, tag);
+  for (const k in a) e.setAttribute(k, a[k]); if (text != null) e.textContent = text; if (parent) parent.appendChild(e); return e; }
+const T = (p, x, y, s, size, a) => el("text", Object.assign({ x, y, "font-size":size, fill:TXT, "text-anchor":"middle",
+  "dominant-baseline":"middle", "font-family":"Inter, system-ui, sans-serif" }, a||{}), p, s);
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function stars(p, x0, y0, w, h, n, seed) { const r = rng(seed);
+  for (let i=0;i<n;i++) el("circle", { cx:x0+r()*w, cy:y0+r()*h, r:r()*1.3+.3, fill:"#fff", opacity:r()*.6+.12 }, p); }
+function glowFilter(defs, id) { const f = el("filter", { id, x:"-30%", y:"-30%", width:"160%", height:"160%" }, defs);
+  el("feGaussianBlur", { stdDeviation:4, result:"b" }, f); const m = el("feMerge", {}, f);
+  el("feMergeNode", { in:"b" }, m); el("feMergeNode", { in:"SourceGraphic" }, m); }
+function roomBox(s, cx, cy, r, col, w, h) {
+  const ok = r.visited; w = w || 116; h = h || 58;
+  el("rect", { x:cx-w/2, y:cy-h/2, width:w, height:h, rx:5, fill:col, "fill-opacity":ok ? .22 : .07, stroke:col,
+    "stroke-opacity":ok ? .85 : .5, "stroke-width":1.6, "stroke-dasharray":ok ? "none" : "5 4" }, s);
+  const name = r.name && r.name !== "?" ? r.name : "?", words = name.split(" ");
+  const lines = name.length > 14 && words.length > 1 ? [words.slice(0, Math.ceil(words.length/2)).join(" "), words.slice(Math.ceil(words.length/2)).join(" ")] : [name];
+  lines.forEach((t,i) => T(s, cx, cy + (i - (lines.length-1)/2)*14, t, 12, { opacity:ok ? 1 : .6 }));
+  if (!ok && r.closed) T(s, cx, cy + h/2 - 8, "closed", 9, { fill:DIM });
+}
+function zoomButtons(container, top, onZoom) {
+  const z = document.createElement("div"); z.className = "zoom"; z.style.top = top;
+  [["+",1/1.5],["−",1.5],["⌂",0]].forEach(([t,f]) => { const b = document.createElement("button"); b.textContent = t;
+    b.title = f ? (f < 1 ? "Zoom in" : "Zoom out") : "Reset view"; b.onclick = e => { e.stopPropagation(); onZoom(f); }; z.appendChild(b); });
+  container.appendChild(z);
+}
+function panZoom(div, getVB, setVB, minW, maxW) {
+  const scale = () => { const r = div.getBoundingClientRect(), v = getVB(); return Math.max(v[2]/r.width, v[3]/r.height); };
+  const toView = (cx, cy) => { const r = div.getBoundingClientRect(), v = getVB(), s = scale();
+    return [v[0] + v[2]/2 + (cx - r.left - r.width/2)*s, v[1] + v[3]/2 + (cy - r.top - r.height/2)*s]; };
+  const zoom = (f, ax, ay) => { const v = getVB(); if (ax == null) { ax = v[0]+v[2]/2; ay = v[1]+v[3]/2; }
+    const k = Math.max(minW, Math.min(maxW, v[2]*f))/v[2]; setVB([ax-(ax-v[0])*k, ay-(ay-v[1])*k, v[2]*k, v[3]*k]); };
+  div.addEventListener("wheel", e => { e.preventDefault(); zoom(Math.exp(e.deltaY*0.0015), ...toView(e.clientX, e.clientY)); }, { passive:false });
+  let drag = null;
+  div.addEventListener("pointerdown", e => { if (e.target.closest(".zoom")) return; drag = [e.clientX, e.clientY]; div.setPointerCapture(e.pointerId); });
+  div.addEventListener("pointermove", e => { if (!drag) return; const s = scale(), v = getVB();
+    setVB([v[0]-(e.clientX-drag[0])*s, v[1]-(e.clientY-drag[1])*s, v[2], v[3]]); drag = [e.clientX, e.clientY]; });
+  div.addEventListener("pointerup", () => drag = null);
+  return zoom;
+}
+
+/* ======================= deck plans ======================= */
+const NODE = 150, CH = 15, RW = 116, RH = 58, GAP = 9, HULLY = 175;
+const deckY = y => y === 0 ? 0 : Math.sign(-y) * (CH + GAP + (Math.abs(y)-1)*(RH+GAP) + RH/2);
+function buildRingDeck(svg, z) {
+  const g = el("g", {}, svg), corr = STATION.filter(r => r.z === z && r.y === 0 && r.part !== "ladderway").sort((a,b) => a.x-b.x);
+  const L = corr.length * NODE, X = x => x/STEP[z]*NODE;
+  for (const off of [-L, 0, L]) {
+    const s = el("g", { transform:`translate(${off} 0)` }, g);
+    el("rect", { x:-NODE/2, y:-HULLY, width:L, height:2*HULLY, fill:PLATE }, s);
+    for (let i=0;i<corr.length;i++) el("line", { x1:i*NODE-NODE/2, y1:-HULLY, x2:i*NODE-NODE/2, y2:HULLY, stroke:"#202a36", "stroke-width":1 }, s);
+    [-HULLY, HULLY].forEach(y => el("line", { x1:-NODE/2, y1:y, x2:L-NODE/2, y2:y, stroke:EDGE, "stroke-width":3 }, s));
+    const r = rng(z*31+5); for (let i=0;i<corr.length*8;i++) { if (r()<.4) continue; const x = -NODE/2 + i*NODE/8 + 9;
+      [-1,1].forEach(sg => el("circle", { cx:x, cy:sg*(HULLY-7), r:1.6, fill:"#ffd98a", opacity:.25+r()*.6 }, s)); }
+    el("rect", { x:-NODE/2, y:-CH, width:L, height:2*CH, fill:CORR }, s);
+    corr.forEach(c => el("rect", { x:X(c.x)-NODE/2+2, y:CH-3, width:NODE-4, height:3, fill:DC[districtOf(z, c.x)], opacity:.8 }, s));
+    STATION.filter(r => r.z === z && r.y !== 0 && r.part !== "ladderway").forEach(r => {
+      const cx = X(r.x), cy = deckY(r.y), sg = Math.sign(-r.y);
+      const near = sg*(Math.abs(cy) - RH/2), from = sg*(Math.abs(r.y) === 1 ? CH : Math.abs(cy) - RH/2 - GAP);
+      el("rect", { x:cx-8, y:Math.min(from, near), width:16, height:Math.abs(near-from), fill:"#56657a" }, s);
+      roomBox(s, cx, cy, r, DC[districtOf(z, r.x)]);
+    });
+    corr.forEach(c => { const cx = X(c.x), h = c.x/2;
+      if (SPOKES.includes(h)) {
+        el("circle", { cx, cy:0, r:12, fill:"#0e131a", stroke:"#cfd8e3", "stroke-width":2 }, s); T(s, cx, 1, "⇅", 13, { fill:"#cfd8e3" });
+        el("rect", { x:cx+20, y:-7, width:14, height:14, rx:2, fill:"none", stroke:DC.ladder, "stroke-width":1.4 }, s);
+        el("path", { d:`M${cx+23},-3h8M${cx+23},0h8M${cx+23},3h8`, stroke:DC.ladder, "stroke-width":1 }, s);
+      } else el("circle", { cx, cy:0, r:4, fill:c.visited ? "#aab8c8" : "none", stroke:"#aab8c8", "stroke-width":1.5 }, s);
+      T(s, cx - 44, 1, hl(h), 10, { fill:DIM });
+    });
+  }
+  const hlG = el("g", { class:"hl", filter:"url(#glow-deck)", "pointer-events":"none" }, g);
+  return { g, L,
+    centre: w => [X(w.x), w.lift ? 0 : deckY(w.y)],
+    highlight: w => { hlG.replaceChildren(); const cx = X(w.x);
+      for (const off of [-L, 0, L]) {
+        if (w.lift) el("circle", { cx:cx+off, cy:0, r:15, fill:HL, "fill-opacity":.35, stroke:HL, "stroke-width":3 }, hlG);
+        else if (w.y === 0) el("rect", { x:cx+off-NODE/2+3, y:-CH, width:NODE-6, height:2*CH, rx:4, fill:HL, "fill-opacity":.3, stroke:HL, "stroke-width":2.5 }, hlG);
+        else el("rect", { x:cx+off-RW/2, y:deckY(w.y)-RH/2, width:RW, height:RH, rx:5, fill:HL, "fill-opacity":.28, stroke:HL, "stroke-width":3 }, hlG);
+      } } };
+}
+const SN = 120, SX = 92;
+function buildDocksDeck(svg) {
+  const g = el("g", {}, svg), Y = y => -y*SN;
+  el("rect", { x:-SX-70, y:Y(6)-30, width:2*(SX+70), height:Y(-1)-Y(6)+90, rx:24, fill:PLATE }, g);
+  el("rect", { x:-CH, y:Y(5), width:2*CH, height:Y(1)-Y(5), fill:CORR }, g);
+  el("rect", { x:-34, y:Y(1)-14, width:68, height:28, rx:6, fill:"#1d2a38", stroke:"#cfe3ff", "stroke-width":1.4 }, g);
+  for (let i=0;i<7;i++) { el("circle", { cx:-27+i*9, cy:Y(1)-14, r:2.5, fill:"#cfe3ff" }, g); el("circle", { cx:-27+i*9, cy:Y(1)+14, r:2.5, fill:"#cfe3ff" }, g); }
+  T(g, 0, Y(1), "The Bearing", 11);
+  el("rect", { x:-CH, y:Y(1)+14, width:2*CH, height:Y(0)-Y(1)-14-58, fill:CORR }, g);
+  el("circle", { cx:0, cy:Y(0), r:58, fill:"#141b24", stroke:"#cfe3ff", "stroke-width":1.6 }, g);
+  T(g, 0, Y(0)-6, "The Hub", 13); T(g, 0, Y(0)+10, "0 g", 10, { fill:DIM });
+  SPOKES.forEach(h => { const x = 58*Math.sin(ang(h)), y = Y(0) - 58*Math.cos(ang(h));
+    el("circle", { cx:x, cy:y, r:11, fill:"#0e131a", stroke:"#cfd8e3", "stroke-width":1.8 }, g);
+    T(g, x, y+1, "⇅", 11, { fill:"#cfd8e3" }); T(g, x*1.38, y + (y - Y(0))*0.38, `${h||12}`, 9, { fill:DIM }); });
+  roomBox(g, 0, Y(-1)+12, BY["tiss.transfer"], DC.docks, 140, 46);
+  el("rect", { x:-8, y:Y(0)+58, width:16, height:Y(-1)+12-23-(Y(0)+58), fill:"#56657a" }, g);
+  STATION.filter(r => r.z === 3 && r.x !== 0).forEach(r => {
+    const sg = Math.sign(r.x), cx = sg*SX, cy = Y(r.y);
+    el("rect", { x:Math.min(sg*CH, cx - sg*RW/2), y:cy-8, width:Math.abs(cx - sg*RW/2 - sg*CH), height:16, fill:"#56657a" }, g);
+    roomBox(g, cx, cy, r, DC.docks, RW, 54);
+  });
+  [2,3,4,5].forEach(y => { el("circle", { cx:0, cy:Y(y), r:4, fill:"#aab8c8" }, g); T(g, -2, Y(y)+SN/2, `Spine ${y-1}`, 9, { fill:DIM, transform:`rotate(-90 -2 ${Y(y)+SN/2})` }); });
+  el("path", { d:`M-46,${Y(5)-36} A46,46 0 0 1 46,${Y(5)-36} Z`, fill:"#cfe3ff", "fill-opacity":.18, stroke:"#cfe3ff", "stroke-width":1.6 }, g);
+  el("rect", { x:-CH, y:Y(5)-36, width:2*CH, height:36, fill:CORR }, g);
+  T(g, 0, Y(5)-52, "Observation Blister", 11);
+  const by = Y(4); [-16, 16].forEach((dy, i) => { const x = SX + RW/2 + 18, y = by + dy;
+    el("path", { d:`M${x},${y} l22,-9 h30 l12,9 l-12,9 h-30 z`, fill:"#2a3340", stroke:"#9fb0c3", "stroke-width":1.2 }, g);
+    T(g, x + 80, y, ["Magpie","Halfpenny"][i], 9, { fill:DIM, "text-anchor":"start" }); });
+  T(g, -SX-60, Y(6)-4, "FORE ▲", 10, { fill:DIM, "text-anchor":"start", "letter-spacing":1 });
+  const hlG = el("g", { class:"hl", filter:"url(#glow-deck)", "pointer-events":"none" }, g);
+  const shape = w => {
+    const st = { fill:HL, "fill-opacity":.3, stroke:HL, "stroke-width":3 };
+    if (w.lift) { const h = w.x/2; return ["circle", { cx:58*Math.sin(ang(h)), cy:Y(0) - 58*Math.cos(ang(h)), r:14, ...st }]; }
+    const r = BY[w.id];
+    if (r.id === "tiss.hub") return ["circle", { cx:0, cy:Y(0), r:58, ...st }];
+    if (r.id === "tiss.transfer") return ["rect", { x:-70, y:Y(-1)+12-23, width:140, height:46, rx:5, ...st }];
+    if (r.id === "tiss.bearing") return ["rect", { x:-34, y:Y(1)-14, width:68, height:28, rx:6, ...st }];
+    if (r.id === "tiss.blister") return ["path", { d:`M-46,${Y(5)-36} A46,46 0 0 1 46,${Y(5)-36} Z`, ...st }];
+    if (r.x === 0) return ["rect", { x:-CH, y:Y(r.y)-SN/2, width:2*CH, height:SN, rx:4, ...st }];
+    return ["rect", { x:Math.sign(r.x)*SX-RW/2, y:Y(r.y)-27, width:RW, height:54, rx:5, ...st }];
+  };
+  return { g,
+    centre: w => { const [k, a] = shape(w); return k === "circle" ? [a.cx, a.cy] : k === "path" ? [0, Y(5)-50] : [a.x + a.width/2, a.y + a.height/2]; },
+    highlight: w => { hlG.replaceChildren(); const [k, a] = shape(w); el(k, a, hlG); } };
+}
+function DeckView(container, top, height, vbW, vbH) {
+  const div = document.createElement("div"); div.className = "deck"; div.style.top = top; div.style.height = height; container.appendChild(div);
+  const svg = el("svg", { viewBox:`0 0 ${vbW} ${vbH}`, preserveAspectRatio:"xMidYMid slice" }); div.appendChild(svg);
+  glowFilter(el("defs", {}, svg), "glow-deck");
+  stars(el("g", {}, svg), -4000, -3000, 8000, 6000, 1600, 9);
+  const plans = [0,1,2].map(z => buildRingDeck(svg, z)); plans.push(buildDocksDeck(svg));
+  plans.forEach(p => p.g.setAttribute("display", "none"));
+  let cur = [0, -vbH/2, vbW, vbH], lvl = -1;
+  const apply = () => svg.setAttribute("viewBox", cur.join(" "));
+  this.set = w => {
+    plans.forEach((p,i) => p.g.setAttribute("display", i === w.ring ? "" : "none"));
+    const p = plans[w.ring]; p.highlight(w);
+    const [px, py] = p.centre(w), cx = cur[0] + cur[2]/2, cy = cur[1] + cur[3]/2;
+    if (w.ring !== lvl || Math.abs(px - cx) > cur[2]*.35 || Math.abs(py - cy) > cur[3]*.35)
+      cur = [px - cur[2]/2, (w.ring === 3 ? py : py*0.5) - cur[3]/2, cur[2], cur[3]];
+    lvl = w.ring; apply();
+  };
+  const zoom = panZoom(div, () => cur, v => { cur = v; apply(); }, 280, 1600);
+  zoomButtons(container, `calc(${top} + 8px)`, f => f ? zoom(f) : (cur = [cur[0] + cur[2]/2 - vbW/2, cur[1] + cur[3]/2 - vbH/2, vbW, vbH], apply()));
+}
+
+/* ======================= stylized isometric model ======================= */
+// station frame: X = 3 o'clock, Y = 12 o'clock (hubward at 12), Z = fore along the axis
+const RR = [300, 205, 115], RT = [22, 18, 16], RWZ = [46, 34, 32];
+const HUBR = 32, HUBZ = 34, SPR = 18, SPZ = n => 58 + n*72, BLZ = SPZ(4) + 40;
+const SLICE = [-1, -.6, -.2, .2, .6, 1];           // aft2 | aft1 | corridor | fore1 | fore2, as fractions of the deck width
+const P3 = (r, h, z) => [r*Math.sin(ang(h)), r*Math.cos(ang(h)), z];
+function buildModel() {
+  const F = [], quad = (pts, kind, key, tint, edges) => F.push({ pts, kind, key, tint, edges: edges || pts.map(() => true), turns: !/^(spine|bearing|blister|dock|ship)/.test(kind) || key === "tiss.transfer" });
+  [0,1,2].forEach(z => {
+    const corr = STATION.filter(r => r.z === z && r.y === 0 && r.part !== "ladderway"), n = corr.length, span = 12/n;
+    const R0 = RR[z]-RT[z], R1 = RR[z]+RT[z], w = RWZ[z];
+    corr.forEach(c => { const h = c.x/2, h0 = h - span/2, h1 = h + span/2, tint = DC[districtOf(z, c.x)];
+      for (let s=0;s<5;s++) { const z0 = SLICE[s]*w, z1 = SLICE[s+1]*w, key = `r${z}:${c.x}:${s-2}`;
+        quad([P3(R1,h0,z0), P3(R1,h1,z0), P3(R1,h1,z1), P3(R1,h0,z1)], "outer", key, tint, [s === 0, true, s === 4, true]);
+        quad([P3(R0,h0,z1), P3(R0,h1,z1), P3(R0,h1,z0), P3(R0,h0,z0)], "inner", key, tint, [s === 4, true, s === 0, true]);
+        if (s === 4) quad([P3(R0,h0,z1), P3(R1,h0,z1), P3(R1,h1,z1), P3(R0,h1,z1)], "fore", key, tint);
+        if (s === 0) quad([P3(R1,h0,z0), P3(R0,h0,z0), P3(R0,h1,z0), P3(R1,h1,z0)], "aft", key, tint);
+      } });
+  });
+  const box = (c, hx, hy, hz, kind, key, rot) => {
+    const R = p => { if (!rot) return p; const a = ang(rot), [x,y,zz] = p; return [x*Math.cos(a)+y*Math.sin(a), -x*Math.sin(a)+y*Math.cos(a), zz]; };
+    const v = (sx, sy, sz) => R([c[0]+sx*hx, c[1]+sy*hy, c[2]+sz*hz]);
+    [[v(-1,-1,1),v(1,-1,1),v(1,1,1),v(-1,1,1)], [v(-1,1,-1),v(1,1,-1),v(1,-1,-1),v(-1,-1,-1)], [v(-1,-1,-1),v(1,-1,-1),v(1,-1,1),v(-1,-1,1)],
+     [v(-1,1,1),v(1,1,1),v(1,1,-1),v(-1,1,-1)], [v(1,-1,-1),v(1,1,-1),v(1,1,1),v(1,-1,1)], [v(-1,-1,1),v(-1,1,1),v(-1,1,-1),v(-1,-1,-1)]]
+      .forEach(p => quad(p, kind, key));
+  };
+  // spokes, one key per stretch between floors so a lift ride lights the stretch it's on
+  const LV = [RR[0]-RT[0], RR[1]+RT[1], RR[1]-RT[1], RR[2]+RT[2], RR[2]-RT[2], HUBR];
+  SPOKES.forEach(h => [[0,1],[2,3],[4,5]].forEach(([a,b], leg) => { const n = 4, seg = (LV[a]-LV[b])/n;
+    for (let i=0;i<n;i++) box([0, LV[b] + seg*(i+.5), 0], 8, seg/2, 8, "spoke", `spoke:${h}:${leg}`, h); }));
+  const prism = (r, z0, z1, n, kind, key, rot0) => { const a = i => (i + (rot0||0))/n*12;
+    for (let i=0;i<n;i++) quad([P3(r,a(i),z0), P3(r,a(i+1),z0), P3(r,a(i+1),z1), P3(r,a(i),z1)], kind, key);
+    const turns = kind === "hub";
+    F.push({ pts:Array.from({length:n}, (_,i) => P3(r, a(i), z1)), kind:kind+"-cap", key, turns });
+    F.push({ pts:Array.from({length:n}, (_,i) => P3(r, a(n-i), z0)), kind:kind+"-cap", key, turns }); };
+  prism(HUBR, -HUBZ, HUBZ, 8, "hub", "tiss.hub", .5);
+  prism(23, HUBZ, HUBZ+16, 8, "bearing", "tiss.bearing", .5);
+  [1,2,3,4].forEach(n => prism(SPR, SPZ(n)-36, SPZ(n)+36, 4, "spine", `tiss.spine-${n}`, .5));
+  prism(SPR, HUBZ+16, SPZ(1)-36, 4, "spine", "spine-root", .5);
+  prism(26, BLZ-12, BLZ+4, 8, "blister", "tiss.blister", .5); prism(16, BLZ+4, BLZ+18, 8, "blister", "tiss.blister", .5);
+  box([0, 0, -HUBZ-14], 18, 14, 14, "dock", "tiss.transfer");
+  STATION.filter(r => r.z === 3 && r.x !== 0).forEach(r => box([Math.sign(r.x)*(SPR+26), 0, SPZ(r.y-1)], 26, 16, 28, "dock", r.id));
+  box([SPR+52+40, 8, SPZ(3)-14], 34, 9, 10, "ship", null); box([SPR+52+40, -8, SPZ(3)+16], 34, 9, 10, "ship", null);
+  return F;
+}
+const MODEL = buildModel();
+const CAM = [16, 38];                              // the earlier camera: yaw, pitch (degrees)
+const VIEW = (() => { const a = CAM[0]*Math.PI/180, b = CAM[1]*Math.PI/180;
+  return ([x,y,z]) => { const x1 = x*Math.cos(a) + z*Math.sin(a), z1 = -x*Math.sin(a) + z*Math.cos(a);
+    return [x1, -(y*Math.cos(b) - z1*Math.sin(b)), y*Math.sin(b) + z1*Math.cos(b)]; }; })();
+// the hour on the wheel that sits nearest the camera: whatever is there faces you
+const FRONT = (() => { const a = CAM[0]*Math.PI/180, b = CAM[1]*Math.PI/180;
+  return Math.atan2(-Math.sin(a)*Math.cos(b), Math.sin(b)) / (2*Math.PI) * 12; })();
+const roll = (p, phi) => { const c = Math.cos(ang(phi)), s = Math.sin(ang(phi)); return [p[0]*c + p[1]*s, -p[0]*s + p[1]*c, p[2]]; };
+const NORMALS = MODEL.map(f => { const [a,b,c] = f.pts, u = [b[0]-a[0], b[1]-a[1], b[2]-a[2]], v = [c[0]-a[0], c[1]-a[1], c[2]-a[2]];
+  const n = [u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]], m = Math.hypot(...n) || 1; return n.map(c => c/m); });
+function projectAll(phi) {
+  return MODEL.map((f, i) => { const P = f.pts.map(p => VIEW(f.turns ? roll(p, phi) : p));
+    const n = f.turns ? roll(NORMALS[i], phi) : NORMALS[i];
+    return { f, P, n, depth: P.reduce((s,p) => s + p[2], 0) / P.length,
+             d:"M" + P.map(p => p[0].toFixed(1)+","+p[1].toFixed(1)).join("L") + "Z" }; }).sort((a,b) => a.depth - b.depth);
+}
+const BOUNDS = (() => { let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for (let k=0;k<12;k++) projectAll(k).forEach(q => q.P.forEach(([x,y]) => { x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); }));
+  return [x0-30, y0-30, x1-x0+60, y1-y0+60]; })();
+
+const mix = (a, b, t) => { const p = s => [1,3,5].map(i => parseInt(s.slice(i,i+2),16)); const A = p(a), B = p(b);
+  return "#" + A.map((c,i) => Math.round(c + (B[i]-c)*t).toString(16).padStart(2,"0")).join(""); };
+const LIGHT = (() => { const v = [-.5, .75, .45], m = Math.hypot(...v); return v.map(c => c/m); })();
+function keyOf(w) {
+  if (w.lift) return `spoke:${w.x/2}:${Math.min(w.from, w.to)}`;   // each ride is one leg between adjacent floors
+  const r = BY[w.id]; return r.z < 3 ? `r${r.z}:${r.x}:${Math.max(-2, Math.min(2, r.y))}` : r.id;
+}
+function IsoView(container, height, style) {
+  const div = document.createElement("div"); div.className = "iso"; Object.assign(div.style, { top:0, height }); container.appendChild(div);
+  const svg = el("svg", { viewBox:BOUNDS.join(" ") }); div.appendChild(svg);
+  const defs = el("defs", {}, svg); glowFilter(defs, "glow-iso-"+style);
+  el("rect", { x:-4000, y:-4000, width:8000, height:8000, fill:"#04060c" }, svg);
+  stars(svg, -1500, -1500, 3000, 3000, 900, 21);
+  const geo = el("g", {}, svg), hot = el("g", { class:"hl", filter:`url(#glow-iso-${style})`, "pointer-events":"none" }, svg), labels = el("g", {}, svg);
+  const lab = (p3, t, dx, dy, a) => { const [x,y] = VIEW(p3); T(labels, x+dx, y+dy, t, 22, Object.assign({ fill:DIM, "letter-spacing":1.5, "font-weight":600 }, a||{})); };
+  lab(P3(RR[0]+RT[0], FRONT+2.6, RWZ[0]), "RIM", 14, 0, { "text-anchor":"start" });
+  lab(P3(RR[1]+RT[1], FRONT+2.6, RWZ[1]), "MID", 14, 0, { "text-anchor":"start" });
+  lab(P3(RR[2]+RT[2], FRONT+2.6, RWZ[2]), "INNER", 14, 0, { "text-anchor":"start" });
+  lab([0, 0, BLZ+18], "DOCKS", 14, 22, { "text-anchor":"start" });
+  let phi = 0, target = 0, key = null, anim = null;
+  function draw() {
+    geo.replaceChildren(); hot.replaceChildren();
+    for (const q of projectAll(phi)) { const f = q.f;
+      let fill, stroke, sw;
+      if (style === "flat") {
+        const lit = Math.abs(q.n[0]*LIGHT[0] + q.n[1]*LIGHT[1] + q.n[2]*LIGHT[2]), tone = lit > .66 ? 2 : lit > .33 ? 1 : 0;
+        fill = ["#3a4556", "#58667b", "#7e8da3"][tone];
+        if (f.kind === "fore" && f.tint) fill = mix(fill, f.tint, .7);
+        else if (f.kind === "outer" && f.tint) fill = mix(fill, f.tint, .25);
+        if (f.kind === "ship") fill = ["#6b7a90","#8a99ae","#b7c4d4"][tone];
+        if (f.kind.startsWith("blister")) fill = mix(fill, "#cfe3ff", .45);
+        stroke = "#0d1218"; sw = 1.3;
+      } else { fill = "#070a10"; stroke = f.tint ? f.tint : (f.kind === "ship" ? "#7d8a9a" : "#b9c7d8"); sw = 1.6; }
+      el("path", { d:q.d, fill, stroke: style === "flat" ? fill : "none", "stroke-width": style === "flat" ? .8 : 0, "stroke-linejoin":"round" }, geo);
+      const e = q.P.map((p, i) => (!f.edges || f.edges[i]) ? `M${p[0].toFixed(1)},${p[1].toFixed(1)}L${q.P[(i+1)%q.P.length][0].toFixed(1)},${q.P[(i+1)%q.P.length][1].toFixed(1)}` : "").join("");
+      if (e) el("path", { d:e, fill:"none", stroke, "stroke-width":sw, "stroke-linecap":"round", opacity: style === "line" && f.tint ? .9 : 1 }, geo);
+      if (f.key === key) el("path", { d:q.d, fill:HL, "fill-opacity":style === "flat" ? .55 : .7, stroke:"#fff3df", "stroke-width":1.4, "stroke-linejoin":"round" }, hot);
+    }
+  }
+  // turn the wheel so your hour comes round to the front, the short way
+  function turnTo(h) {
+    let d = ((FRONT - h) - phi) % 12; if (d > 6) d -= 12; if (d < -6) d += 12;
+    target = phi + d; if (anim) cancelAnimationFrame(anim);
+    const from = phi, t0 = performance.now(), dur = 350 + Math.abs(d)*120;
+    const step = now => { const t = Math.min(1, (now - t0)/dur), e = t < .5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
+      phi = from + (target - from)*e; draw(); if (t < 1) anim = requestAnimationFrame(step); else anim = null; };
+    anim = requestAnimationFrame(step);
+    setTimeout(() => { if (anim) { cancelAnimationFrame(anim); anim = null; phi = target; draw(); } }, dur + 400);   // never leave it half-turned
+  }
+  this.set = w => { key = keyOf(w);
+    const h = w.lift ? w.x/2 : (w.ring < 3 ? w.x/2 : null);
+    if (h != null && Math.abs(((FRONT - h - phi) % 12 + 18) % 12 - 6) > 1e-6) turnTo(h); else draw(); };
+  let vb = BOUNDS.slice();
+  const apply = () => svg.setAttribute("viewBox", vb.join(" "));
+  const zoom = panZoom(div, () => vb, v => { vb = v; apply(); }, BOUNDS[2]*.25, BOUNDS[2]*1.2);
+  zoomButtons(container, "8px", f => f ? zoom(f) : (vb = BOUNDS.slice(), apply()));
+  window.__phi = window.__phi || []; window.__phi.push(() => [phi, target, FRONT]);
+}
+
+/* ======================= route + panels ======================= */
+const ROUTE = (() => {
+  const R = [], add = id => R.push({ id, label:BY[id].name });
+  const ride = (h, from, to, n) => { for (let i=0;i<=n;i++) R.push({ lift:true, x:h*2, from, to, t:i/n, label:`Lift ${h||12}, climbing hubward` }); };
+  add("tiss.concourse"); add("tiss.market"); add("tiss.concourse"); add("tiss.rim-0100"); add("tiss.residential"); add("tiss.laundry"); add("tiss.residential"); add("tiss.rim-0300");
+  ride(3, 0, 1, 3); add("tiss.mid-0300"); add("tiss.gym"); add("tiss.mid-0300");
+  ride(3, 1, 2, 2); add("tiss.inner-0300"); add("tiss.fabricator"); add("tiss.inner-0300");
+  ride(3, 2, 3, 2); add("tiss.hub"); add("tiss.bearing"); add("tiss.spine-1"); add("tiss.spine-2"); add("tiss.spine-3"); add("tiss.berth");
+  return R;
+})();
+function resolve(s) {
+  if (s.lift) return { ...s, ring: s.t < .5 ? s.from : s.to };
+  const r = BY[s.id]; return { id:r.id, x:r.x, y:r.y, ring:r.z };
+}
+const views = [];
+[["p1","flat"],["p2","line"]].forEach(([id, style]) => {
+  const p = document.getElementById(id);
+  views.push(new IsoView(p, "42%", style), new DeckView(p, "42%", "58%", 600, 520));
+  const sep = document.createElement("div"); Object.assign(sep.style, { position:"absolute", left:0, right:0, top:"42%", height:"1px", background:"#2b3646" }); p.appendChild(sep);
+  p.appendChild(Object.assign(document.createElement("div"), { className:"info" }));
+});
+const infos = [...document.querySelectorAll(".info")];
+function show(step) {
+  const w = resolve(step); views.forEach(v => v.set(w));
+  const r = step.id && BY[step.id];
+  infos.forEach(d => d.textContent = `${step.label.toUpperCase()} · ${step.lift ? "between floors" : `${r.address || ""} · ${G[r.z]}`}`);
+  document.getElementById("status").textContent = "▶ " + step.label;
+}
+show(ROUTE[0]);
+let timer = null;
+document.getElementById("demo").onclick = () => { clearInterval(timer); let i = 0;
+  const tick = () => { show(ROUTE[i]); if (++i >= ROUTE.length) clearInterval(timer); }; tick(); timer = setInterval(tick, 750); };
+window.__show = i => show(ROUTE[Math.min(i, ROUTE.length-1)]); window.__n = ROUTE.length;
+})();
+</script>
