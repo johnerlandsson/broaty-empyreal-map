@@ -1,8 +1,10 @@
 # Empyreal Map
 
 A [Mallard](https://mallard.vnsf.xyz) plugin for the MUD Empyreal: maps
-that follow you as you play. It starts with the station T.I.S.S., which it
-follows as you walk, ride the lifts and visit the docks.
+that follow you as you play. It maps two stations: T.I.S.S., which it
+follows as you walk, ride the lifts and visit the docks, and the small
+outpost Orrin Station. The panel shows whichever station you're on, or the
+one your ship is docked at.
 
 ---
 
@@ -18,6 +20,12 @@ the slice of the ring you're standing in, the spoke leg your lift is
 travelling, or the dock room you're in. As you move, the wheel turns by
 itself until your part of the station faces you. Only the wheel turns; the
 spine and the docks hold still beyond the Bearing, as on the real station.
+
+At **Orrin Station** the model is its one drum, spun to half a g. The
+Concourse, the Exchange fore of it, the Freight Office aft, the Berths with
+their cradles outside, and the Chart Office sit on the drum, and the Gallery's
+ring of windows sits at the fore end of the axis. The drum turns your room to
+face you, as the wheel does.
 
 **Out in your ship.** Once you undock, the station model fades into a view
 looking ahead from your ship: a still starfield while you're parked, the
@@ -36,6 +44,11 @@ that ship is.
 - **Docks:** the Hub at the bottom with its four lift doors, the Bearing,
   the spine running up to the Observation Blister, and the dock rooms either
   side of it.
+- **Orrin Station:** one plan for the whole outpost, laid out as its exits
+  go. The Concourse runs across the middle, with the Exchange north of it,
+  the Freight Office south, the Chart Office west and the Berths east, their
+  airlock hatches down the outer wall. The spiral stair in the Concourse
+  leads up to the Gallery, at 0.1 g.
 
 Your place is lit with the same glow as in the model, not marked with a dot:
 a room box, a stretch of corridor, a lift or the ladderway hatch. The plan
@@ -99,7 +112,8 @@ npm test            # vitest for the UI and data code, then the Lua tests
 
 **Preview.** Serve the repository root and open the preview, which runs the
 panel in a browser with a stand-in for Mallard and a **▶ Walk** button that
-replays a walk round the station:
+replays a walk round T.I.S.S., then a flight to Orrin Station and a walk round
+that:
 
 ```bash
 python3 -m http.server 8765
@@ -112,7 +126,7 @@ turned and redrew.
 
 ### Rebuilding the station data
 
-The station map (`ui/data/station.js`) is built from the GMCP room frames in
+The T.I.S.S. map (`ui/data/station.js`) is built from the GMCP room frames in
 your Mallard session logs, plus the hand-written corrections in
 `data/overrides.json`:
 
@@ -123,6 +137,10 @@ npm run build:data -- --logs /path/to/logs   # another log folder
 
 By default it reads `~/.local/share/net.mallard.app/logs/empyreal-7`. Commit
 the regenerated `ui/data/station.js`.
+
+Orrin Station's six rooms (`ui/data/orrin.js`) are written by hand from
+`content/areas/orrin.yaml` in the Empyreal source. The game gives that area
+no layout, so the rooms are placed from their exits and descriptions.
 
 ---
 

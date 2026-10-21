@@ -1,6 +1,7 @@
 // The deck plan: the floor the player is on, drawn as a true floor plan on a dark starfield.
-// Four plans (Rim, Mid, Inner, Docks) are built once; set() only toggles visibility, moves the
-// highlight and adjusts the viewBox. Layout maths lives in lib/deck-layout.js.
+// T.I.S.S.'s four plans (Rim, Mid, Inner, Docks), or another station's, are built once; set() only
+// toggles visibility, moves the highlight and adjusts the viewBox. Layout maths lives in
+// lib/deck-layout.js; the room boxes and labels here are shared with orrin-deck.js.
 
 import { DISTRICT_COLOURS as DC, SPOKE_HOURS, ang, districtOf } from "./lib/geometry.js";
 import {
@@ -19,13 +20,13 @@ import {
 import { attachPanZoom, el, glowFilter, rng, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
-const TXT = "#e3eaf2";
-const DIM = "#7d8a9a";
-const PLATE = "#18202b";
+export const TXT = "#e3eaf2";
+export const DIM = "#7d8a9a";
+export const PLATE = "#18202b";
 const EDGE = "#3b4a5c";
 const CORR = "#262f3b";
 const LADDER = "#9fb0c3";
-const PASSAGE = "#56657a";
+export const PASSAGE = "#56657a";
 const BASE_W = 600;
 const BASE_H = 520;
 const MIN_W = 280;
@@ -35,7 +36,7 @@ let instances = 0;
 
 const hourLabel = (h) => `${Math.floor(h) || 12}:${h % 1 ? "30" : "00"}`;
 
-function label(parent, x, y, s, size, attrs) {
+export function label(parent, x, y, s, size, attrs) {
   return el(
     "text",
     {
@@ -55,7 +56,7 @@ function label(parent, x, y, s, size, attrs) {
 }
 
 /** Show a tooltip while the pointer is over node. */
-function hover(node, room) {
+export function hover(node, room) {
   if (!room) return;
   node.addEventListener("mouseenter", () => {
     window.panel?.tooltip?.show(node.getBoundingClientRect(), {
@@ -68,7 +69,7 @@ function hover(node, room) {
 }
 
 /** A room box tinted by district, labelled; closed rooms are dashed and dimmed. */
-function roomBox(parent, room, cx, cy, col, w, h) {
+export function roomBox(parent, room, cx, cy, col, w, h) {
   const g = el("g", {}, parent);
   const open = !room.closed;
   el(
@@ -218,12 +219,19 @@ function buildDocksPlan(svg, index) {
   return { z: 3, g, hl, layout, ring: false, length: 0, home: [0, hub.cy - 120], offsets: [0] };
 }
 
+/** T.I.S.S.'s plans, one per level: the three rings, then the Docks. */
+function tissPlans(svg, index) {
+  return [...[0, 1, 2].map((z) => buildRingPlan(svg, index, z)), buildDocksPlan(svg, index)];
+}
+
 export class DeckView {
   /**
    * @param {HTMLElement} containerEl element the deck fills
    * @param {ReturnType<typeof import("./lib/locate.js").indexStation>} index
+   * @param {(svg: SVGElement, index: object) => object[]} [build] another station's plans, one per
+   *   level; a plan may carry shape(where) for its highlight
    */
-  constructor(containerEl, index) {
+  constructor(containerEl, index, build = tissPlans) {
     const id = `glow-deck-${++instances}`;
     const div = document.createElement("div");
     div.className = "deck";
@@ -249,8 +257,7 @@ export class DeckView {
     this.glow = `url(#${id})`;
     stars(el("g", {}, svg), -4000, -3000, 8000, 6000, 1600, 9);
 
-    this.plans = [0, 1, 2].map((z) => buildRingPlan(svg, index, z));
-    this.plans.push(buildDocksPlan(svg, index));
+    this.plans = build(svg, index);
     this.level = -1;
     this.key = null; // shapeKey of what is drawn now, so repeated frames change nothing
     this.focus = null; // [x, y] of the highlight, or of the plan's home when there is none
@@ -337,11 +344,11 @@ export class DeckView {
       this.key = "off";
       return;
     }
-    const level = Number.isInteger(where.level) && where.level >= 0 && where.level <= 3 ? where.level : this.level;
+    const level = Number.isInteger(where.level) && where.level >= 0 && where.level < this.plans.length ? where.level : this.level;
     const changed = level !== this.level;
     if (changed) this.show(level);
     const plan = this.plans[level];
-    const shape = highlightShape(plan.layout, where);
+    const shape = plan.shape ? plan.shape(where) : highlightShape(plan.layout, where);
     const key = shapeKey(level, shape);
     if (key === this.key) return; // same place as last time: keep the pulse running and the view where the user left it
     this.key = key;
@@ -364,7 +371,8 @@ export class DeckView {
     }
     this.focus = [px, py];
     const vyFocus = plan.ring ? py * 0.5 : py;
-    if (changed || Math.abs(px - cx) > vw * 0.35 || Math.abs(vyFocus - cy) > vh * 0.35) {
+    const m = plan.margin ?? 0.35; // how far off centre the highlight may sit before the view follows
+    if (changed || Math.abs(px - cx) > vw * m || Math.abs(vyFocus - cy) > vh * m) {
       this.setView([px - vw / 2, vyFocus - vh / 2, vw, vh]);
     }
   }

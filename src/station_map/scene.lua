@@ -1,5 +1,6 @@
 -- Scene reducer: folds Ship.Status and Space.Charts into which picture the
--- overview shows: 'station', 'parked', 'travelling' or 'belt'.
+-- overview shows: 'station', 'parked', 'travelling' or 'belt', and which
+-- station your ship is docked at, if she is.
 -- Ship.Status only comes for a ship of your own you're aboard (null off
 -- her), so aboard anyone else's ship this stays 'station'.
 -- Pure and cheap; never errors on missing or odd-typed fields.
@@ -23,11 +24,22 @@ function S.scene(state)
   return 'parked'
 end
 
--- Runs `fn`, returning true if the scene changed because of it.
+-- The station your ship is docked at ('tiss', 'orrin_station', ...), or nil.
+function S.station(state)
+  local ship = state.ship
+  if ship and ship.docked then return ship.location end
+  return nil
+end
+
+local function key(state)
+  return S.scene(state) .. '|' .. (S.station(state) or '')
+end
+
+-- Runs `fn`, returning true if the scene or the docked station changed because of it.
 local function track(state, fn)
-  local before = S.scene(state)
+  local before = key(state)
   fn()
-  return S.scene(state) ~= before
+  return key(state) ~= before
 end
 
 function S.ship_status(state, data)

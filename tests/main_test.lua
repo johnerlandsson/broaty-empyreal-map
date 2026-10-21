@@ -199,4 +199,23 @@ test('disconnect in space posts the station scene', function()
   eq(env.posts[2].data, { scene = 'station' })
 end)
 
+test('docking posts the station scene with the station she is docked at', function()
+  local env = boot()
+  local h = env.gmcp_handlers['Ship.Status']
+  h('Ship.Status', { name = 'Mule', docked = false, destination = 'orrin_station' })
+  env.posts = {}
+  h('Ship.Status', { name = 'Mule', docked = true, location = 'orrin_station' })
+  eq(names(env), { 'scene' })
+  eq(env.posts[1].data, { scene = 'station', station = 'orrin_station' })
+end)
+
+test('ready replays the scene when docked', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = true, location = 'orrin_station' })
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings', 'scene' })
+  eq(env.posts[2].data, { scene = 'station', station = 'orrin_station' })
+end)
+
 t.done()

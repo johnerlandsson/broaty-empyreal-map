@@ -1,4 +1,4 @@
--- Empyreal map (T.I.S.S. so far): folds GMCP location frames into one small message
+-- Empyreal map (T.I.S.S. and Orrin Station so far): folds GMCP location frames into one small message
 -- and pushes it to the "map" panel, and your ship's frames into the overview's scene. All state lives here; the panel is a
 -- pure presentation layer that asks for a replay with "ready".
 --
@@ -21,7 +21,7 @@ local function post_location()
 end
 
 local function post_scene()
-  panel:post('scene', { scene = S.scene(scene) })
+  panel:post('scene', { scene = S.scene(scene), station = S.station(scene) })
 end
 
 local function post_settings()
@@ -71,8 +71,8 @@ end)
 panel:on_message('ready', function()
   post_settings()
   if has_location(state) then post_location() end
-  -- The panel starts on the station, so only another scene needs replaying.
-  if S.scene(scene) ~= 'station' then post_scene() end
+  -- The panel starts on the station with none docked at, so only anything else needs replaying.
+  if S.scene(scene) ~= 'station' or S.station(scene) then post_scene() end
 end)
 
 settings.on('change', function(key)

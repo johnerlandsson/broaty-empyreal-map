@@ -1,7 +1,8 @@
-// The station model: a flat-shaded, painter's-algorithm drawing of T.I.S.S. as SVG polygons.
-// The wheel turns by itself so the player's clock position comes round to the camera; the player's
-// place is shown by lighting the faces that share their key. The user can zoom and pan, not rotate.
-// Geometry lives in lib/geometry.js and lib/model.js, turn maths in lib/turn.js.
+// The station model: a flat-shaded, painter's-algorithm drawing of a station as SVG polygons,
+// T.I.S.S. unless given another's faces. The wheel (or drum) turns by itself so the player's clock
+// position comes round to the camera; the player's place is shown by lighting the faces that share
+// their key. The user can zoom and pan, not rotate.
+// Geometry lives in lib/geometry.js, lib/model.js and lib/orrin.js, turn maths in lib/turn.js.
 
 import { BLZ, FRONT, P3, RR, RT, RWZ, project, roll } from "./lib/geometry.js";
 import { keyOf } from "./lib/locate.js";
@@ -73,9 +74,14 @@ export class ModelView {
   /**
    * @param {HTMLElement} containerEl element the model fills
    * @param {ReturnType<typeof import("./lib/locate.js").indexStation>} index
+   * @param {{faces?: object[], keyOf?: (where: object) => string|null,
+   *   hourOf?: (where: object) => number|null, labels?: boolean}} [opts] another station's model:
+   *   its faces, the face key and hour for a place, and whether to draw T.I.S.S.'s ring names
    */
-  constructor(containerEl, index) {
-    this.faces = buildModel(index);
+  constructor(containerEl, index, opts = {}) {
+    this.faces = opts.faces ?? buildModel(index);
+    this.keyOf = opts.keyOf ?? keyOf;
+    this.hourOf = opts.hourOf ?? hourOf;
     this.normals = this.faces.map((f) => normalOf(f.pts));
 
     const div = document.createElement("div");
@@ -94,7 +100,7 @@ export class ModelView {
 
     // the union of the silhouettes over a full turn, so turning never moves the framing
     this.bounds = this.computeBounds();
-    this.labels = this.layoutLabels();
+    this.labels = opts.labels === false ? null : this.layoutLabels();
     this.vb = this.bounds.slice();
     const svg = el("svg", { viewBox: this.vb.join(" ") });
     Object.assign(svg.style, { display: "block", width: "100%", height: "100%" });
@@ -108,7 +114,7 @@ export class ModelView {
     this.hot = el("g", { filter: `url(#${id})`, "pointer-events": "none" }, svg);
     this.pulse = el("g", {}, this.hot);
     this.shapes = el("g", {}, this.pulse);
-    this.drawLabels(el("g", { "pointer-events": "none" }, svg));
+    if (this.labels) this.drawLabels(el("g", { "pointer-events": "none" }, svg));
 
     this.phi = FRONT; // 12:00 faces the camera
     this.turning = true;
@@ -212,15 +218,22 @@ export class ModelView {
     this.svg.setAttribute("viewBox", v.map((n) => +n.toFixed(2)).join(" "));
   }
 
-  /** Redraw every face at the current roll, far to near, then the lit faces on top. */
+  /**
+   * Redraw every face at the current roll, far to near (lowest layer first), then the lit faces
+   * on top. A face marked `cull` is left out while it faces away, or while its `anchor` does.
+   */
   draw() {
     const { phi, key } = this;
-    const quads = this.faces.map((f, i) => {
-      const P = f.pts.map((p) => project(f.turns ? roll(p, phi) : p));
-      const n = f.turns ? roll(this.normals[i], phi) : this.normals[i];
-      return { f, P, n, depth: P.reduce((s, p) => s + p[2], 0) / P.length };
+    const turned = (f, v) => (f.turns ? roll(v, phi) : v);
+    const away = (v) => project(v)[2] < 0;
+    const quads = [];
+    this.faces.forEach((f, i) => {
+      const n = turned(f, this.normals[i]);
+      if (f.cull && (away(n) || (f.anchor && away(turned(f, f.anchor))))) return;
+      const P = f.pts.map((p) => project(turned(f, p)));
+      quads.push({ f, P, n, layer: f.layer ?? 0, depth: P.reduce((s, p) => s + p[2], 0) / P.length });
     });
-    quads.sort((a, b) => a.depth - b.depth);
+    quads.sort((a, b) => a.layer - b.layer || a.depth - b.depth);
 
     const geo = document.createDocumentFragment();
     const hot = document.createDocumentFragment();
@@ -288,8 +301,8 @@ export class ModelView {
 
   /** Light the player's place and turn the wheel to bring their hour to the front. */
   set(where) {
-    const key = keyOf(where);
-    const hour = hourOf(where);
+    const key = this.keyOf(where);
+    const hour = this.hourOf(where);
     if (this.started && key === this.key && hour === this.hour) return;
     const first = !this.started;
     this.started = true;

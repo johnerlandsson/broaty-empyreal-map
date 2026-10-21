@@ -1,5 +1,6 @@
-// Preview driver: replays a walk round T.I.S.S. through the fake panel, using the same
-// `location` message shapes the Lua side posts (src/station_map/location.lua).
+// Preview driver: replays a walk round T.I.S.S., a flight to Orrin Station and a walk round that,
+// through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
+// (src/station_map/location.lua, src/station_map/scene.lua).
 //
 //   ?step=N   open on route step N, as a panel re-mounting mid-walk would (only step N is replayed)
 //   ?walk     start the walk on load; ?until=N stops it after step N
@@ -8,13 +9,14 @@
 //   ?still    send settings { turn_model: false }
 //   ?scene=S  open on overview scene S (station, parked, travelling or belt); the bar's menu switches it
 
+import orrin from "../ui/data/orrin.js";
 import station from "../ui/data/station.js";
 import { DeckView } from "../ui/deck-view.js";
 import { ModelView } from "../ui/model-view.js";
 
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
-const byId = new Map(station.rooms.map((r) => [r.id, r]));
+const byId = new Map([...station.rooms, ...orrin.rooms].map((r) => [r.id, r]));
 
 // --- the route -------------------------------------------------------------------------------
 
@@ -36,6 +38,8 @@ function ride(hour, fromId, toId) {
     { label: `${name} at ${to}`, msg: { name, gravity, lift: { id, at: toId, heading, doors: "open" } } },
   ];
 }
+
+const COCKPIT = { roomId: "ship.41", name: "Cockpit of the Magpie" };
 
 const ROUTE = [
   room("tiss.rim-1100"), // Rim 11:00 -> Main Concourse: the wheel should turn one hour, not eleven
@@ -63,6 +67,17 @@ const ROUTE = [
   room("tiss.spine-3"),
   room("tiss.berth"),
   { label: "Cockpit of the Magpie (ship.41)", msg: { roomId: "ship.41", name: "Cockpit of the Magpie" } },
+  { label: "Flying to Orrin Station", msg: COCKPIT, scene: { scene: "travelling" } },
+  { label: "Docked at Orrin Station", msg: COCKPIT, scene: { scene: "station", station: "orrin_station" } },
+  room("orrin.berth"),
+  room("orrin.concourse"),
+  room("orrin.market"),
+  room("orrin.concourse"),
+  room("orrin.freight"),
+  room("orrin.concourse"),
+  room("orrin.charts"),
+  room("orrin.concourse"),
+  room("orrin.gallery"),
 ];
 window.ROUTE = ROUTE;
 
@@ -105,6 +120,7 @@ function show(i) {
   const s = ROUTE[i];
   status.textContent = `${i} · ${s.label}`;
   log(`step ${i}: ${s.label}`);
+  if (s.scene) fp.emit("scene", s.scene);
   fp.emit("location", s.msg);
 }
 
