@@ -114,14 +114,15 @@ export function zoomButtons(container, top, onZoom) {
       width: "24px",
       height: "24px",
       borderRadius: "5px",
-      border: "1px solid rgba(255,255,255,.35)",
-      background: "rgba(10,20,40,.6)",
-      color: "#fff",
+      border: "1px solid var(--fg-muted, #7d8a9a)",
+      background: "var(--bg, #04060c)", // solid fallback; the translucent form below needs color-mix
+      color: "var(--fg, #dfe7f1)",
       fontSize: "14px",
       lineHeight: "1",
       cursor: "pointer",
       padding: "0",
     });
+    b.style.background = "color-mix(in srgb, var(--bg, #04060c) 70%, transparent)"; // ignored where unsupported
     b.addEventListener("click", (e) => {
       e.stopPropagation();
       onZoom(f);

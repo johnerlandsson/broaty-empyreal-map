@@ -150,3 +150,8 @@ export function highlightShape(layout, where) {
   return layout.hub ? docksShape(layout, where) : ringShape(layout, where);
 }
 
+
+/** A stable key for "this level, this highlight", so repeated frames can be told apart from real moves. */
+export function shapeKey(level, shape) {
+  return shape ? `${level}:${JSON.stringify(shape)}` : `${level}:none`;
+}

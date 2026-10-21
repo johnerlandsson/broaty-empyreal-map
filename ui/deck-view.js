@@ -13,6 +13,7 @@ import {
   SX,
   docksLayout,
   highlightShape,
+  shapeKey,
   ringLayout,
 } from "./lib/deck-layout.js";
 import { attachPanZoom, el, glowFilter, rng, stars, zoomButtons } from "./lib/svg.js";
@@ -260,6 +261,7 @@ export class DeckView {
     this.plans = [0, 1, 2].map((z) => buildRingPlan(svg, index, z));
     this.plans.push(buildDocksPlan(svg, index));
     this.level = -1;
+    this.key = null; // shapeKey of what is drawn now, so repeated frames change nothing
     this.focus = null; // [x, y] of the highlight, or of the plan's home when there is none
     this.cur = [0, 0, BASE_W, BASE_H];
     this.fit();
@@ -338,8 +340,10 @@ export class DeckView {
   /** Show the plan for where.level and light the player's place; "off" just clears the light. */
   set(where) {
     if (!where || where.kind === "off") {
+      if (this.key === "off") return;
       for (const p of this.plans) p.hl.replaceChildren();
       this.focus = null;
+      this.key = "off";
       return;
     }
     const level = Number.isInteger(where.level) && where.level >= 0 && where.level <= 3 ? where.level : this.level;
@@ -347,6 +351,9 @@ export class DeckView {
     if (changed) this.show(level);
     const plan = this.plans[level];
     const shape = highlightShape(plan.layout, where);
+    const key = shapeKey(level, shape);
+    if (key === this.key) return; // same place as last time: keep the pulse running and the view where the user left it
+    this.key = key;
     for (const p of this.plans) if (p !== plan) p.hl.replaceChildren();
     this.drawHighlight(plan, shape);
     if (!shape) {

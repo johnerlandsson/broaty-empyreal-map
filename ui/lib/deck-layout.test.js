@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import station from "../data/station.js";
-import { NODE, docksLayout, highlightShape, ringLayout } from "./deck-layout.js";
+import { NODE, docksLayout, highlightShape, ringLayout, shapeKey } from "./deck-layout.js";
 import { indexStation } from "./locate.js";
 
 let index;
@@ -111,5 +111,16 @@ describe("highlightShape", () => {
     expect(highlightShape(rim, { kind: "off", name: "x" })).toBeNull();
     expect(highlightShape(rim, { kind: "room", id: "nope", level: 0, x: 1, y: 1 })).toBeNull();
     expect(highlightShape(rim, null)).toBeNull();
+  });
+});
+
+describe("shapeKey", () => {
+  it("is equal for the same place and differs when it moves", () => {
+    const at = (id, x, y) => highlightShape(rim, { kind: "room", id, level: 0, x, y });
+    const a = at("tiss.laundry", 4, -1);
+    expect(shapeKey(0, a)).toBe(shapeKey(0, at("tiss.laundry", 4, -1)));
+    expect(shapeKey(0, a)).not.toBe(shapeKey(0, at("tiss.market", 0, 1)));
+    expect(shapeKey(0, a)).not.toBe(shapeKey(1, a));
+    expect(shapeKey(0, null)).toBe("0:none");
   });
 });
