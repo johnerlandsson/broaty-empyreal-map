@@ -164,3 +164,93 @@ export function collectRooms(frames) {
   }
   return rooms;
 }
+
+const RING_NAMES = ["Rim", "Mid", "Inner"];
+const RING_SLUGS = ["rim", "mid", "inner"];
+const GRAVITY_BY_RING = [0.9, 0.6, 0.3, 0];
+
+function inferTerrain(r) {
+  if (r.id.includes("ladderway")) return "ladderway";
+  if (r.id === "tiss.hub" || r.id === "tiss.bearing") return "hub";
+  if (r.y === 0 && r.z < 3) return r.x % 6 === 0 ? "lobby" : "corridor";
+  return "room";
+}
+
+function inferRegion(r) {
+  if (r.id.includes("ladderway")) return "ladderways";
+  if (r.z === 2) return "industrial";
+  if (r.z === 1) return r.x >= 21 || r.x <= 3 ? "offices" : "midring";
+  if (r.z === 3) return r.y <= 1 ? "hub" : "docks";
+  if (r.z === 0) {
+    const hour = Math.floor(r.x / 2) % 12; // 0 is 12 o'clock
+    if (hour === 11 || hour === 0 || hour === 1) return "concourse";
+    if (hour >= 2 && hour <= 4) return "residential";
+    if (hour >= 5 && hour <= 7) return "hydroponics";
+    return "commons";
+  }
+  return null;
+}
+
+/**
+ * Turn the walked rooms into the full station: merge hand-written overrides,
+ * add the twelve ladderways, infer missing region/terrain/gravity, apply
+ * closed defaults, and drop anything without coordinates (warning on stderr).
+ * Rooms created here rather than read from logs have walked:false.
+ * @param {Map<string, object>} rooms output of collectRooms
+ * @param {{rooms?: Record<string, object>}} overrides
+ * @returns {object[]} StationRoom[], sorted by id
+ */
+export function completeStation(rooms, overrides) {
+  const all = new Map();
+  for (const [id, room] of rooms) all.set(id, { ...room });
+
+  for (const [id, patch] of Object.entries(overrides?.rooms ?? {})) {
+    const base = all.get(id) ?? { id, walked: false };
+    all.set(id, { ...base, ...patch, id });
+  }
+
+  for (const h of [12, 3, 6, 9]) {
+    RING_SLUGS.forEach((slug, z) => {
+      const id = `tiss.ladderway-${h}-${slug}`;
+      if (all.has(id)) return;
+      all.set(id, {
+        id,
+        name: `Ladderway ${h}, ${RING_NAMES[z]}`,
+        x: (h % 12) * 2 + 1,
+        y: 0,
+        z,
+        address: `${RING_NAMES[z]} ${h}:00, ladderway`,
+        terrain: "ladderway",
+        walked: false,
+      });
+    });
+  }
+
+  const out = [];
+  const dropped = [];
+  for (const [id, r] of all) {
+    if (![r.x, r.y, r.z].every(Number.isFinite)) {
+      dropped.push(id);
+      continue;
+    }
+    out.push({
+      id,
+      name: r.name ?? id,
+      x: r.x,
+      y: r.y,
+      z: r.z,
+      region: r.region ?? inferRegion(r),
+      terrain: r.terrain ?? inferTerrain(r),
+      address: r.address ?? null,
+      gravity: r.gravity ?? GRAVITY_BY_RING[r.z] ?? null,
+      exits: r.exits ?? {},
+      closed: r.closed ?? false,
+      closedReason: r.closedReason ?? null,
+      walked: r.walked ?? false,
+    });
+  }
+  if (dropped.length > 0) {
+    console.error(`completeStation: dropped rooms without coordinates: ${dropped.join(", ")}`);
+  }
+  return out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}

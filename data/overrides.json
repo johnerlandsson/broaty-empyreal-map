@@ -1,0 +1,11 @@
+{ "rooms": {
+  "tiss.clinic":      { "name": "Clinic", "x": 16, "y": 1, "z": 0, "address": "Rim 8:00, fore", "closed": true,
+                        "closedReason": "The clinic's shutters are down until the station finds a doctor." },
+  "tiss.schoolroom":  { "name": "Schoolroom", "x": 20, "y": 1, "z": 0, "address": "Rim 10:00, fore", "closed": true,
+                        "closedReason": "The schoolroom is locked; the station has no teacher yet." },
+  "tiss.flats":       { "name": "Mid-Ring Flats", "x": 9, "y": -1, "z": 1, "address": "Mid 4:30, aft", "closed": true,
+                        "closedReason": "The flats are sealed off while they are refitted for housing." },
+  "tiss.machineshop": { "name": "Machine Shop", "x": 9, "y": -1, "z": 2, "address": "Inner 4:30, aft", "closed": true,
+                        "closedReason": "The machine shop is shuttered until someone takes it on." },
+  "tiss.transfer":    { "x": 0, "y": -1, "z": 3, "address": "Hub, freight" }
+} }

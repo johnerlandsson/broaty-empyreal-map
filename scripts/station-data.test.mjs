@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
-import { collectRooms, parseGmcpLines } from "./station-data.mjs";
+import { describe, expect, it, vi } from "vitest";
+import { collectRooms, completeStation, parseGmcpLines } from "./station-data.mjs";
 
 const lines = readFileSync(
   new URL("../tests/fixtures/sample.mallardlog", import.meta.url),
@@ -115,5 +115,80 @@ describe("collectRooms", () => {
       { pkg: "Room.Info", data: { num: "tiss.a", name: "Old", coords: [9, 9, 9], exits: { north: "tiss.zzz" } }, t: 2 },
     ]);
     expect(out.get("tiss.a")).toMatchObject({ name: "New", x: 0, exits: { N: "tiss.n" } });
+  });
+});
+
+describe("completeStation", () => {
+  const overrides = JSON.parse(
+    readFileSync(new URL("../data/overrides.json", import.meta.url), "utf8"),
+  );
+  const logged = collectRooms(parseGmcpLines(lines));
+  const out = completeStation(logged, overrides);
+  const byId = new Map(out.map((r) => [r.id, r]));
+
+  it("adds 12 ladderways", () => {
+    expect(byId.get("tiss.ladderway-12-mid")).toMatchObject({
+      x: 1,
+      z: 1,
+      terrain: "ladderway",
+      walked: false,
+    });
+    expect(byId.get("tiss.ladderway-9-rim").walked).toBe(true);
+    expect(out.filter((r) => r.id.startsWith("tiss.ladderway-")).length).toBe(12);
+  });
+
+  it("applies overrides", () => {
+    const clinic = byId.get("tiss.clinic");
+    expect(clinic).toMatchObject({ closed: true, walked: false });
+    expect(clinic.closedReason.length).toBeGreaterThan(0);
+    expect(byId.get("tiss.transfer")).toMatchObject({ z: 3, y: -1 });
+  });
+
+  it("keeps walked:true when an override merges onto a logged room", () => {
+    const rooms = new Map([
+      ["tiss.a", { id: "tiss.a", name: "A", x: 1, y: 0, z: 0, walked: true }],
+    ]);
+    const [a] = completeStation(rooms, { rooms: { "tiss.a": { closed: true } } }).filter(
+      (r) => r.id === "tiss.a",
+    );
+    expect(a).toMatchObject({ walked: true, closed: true, name: "A" });
+  });
+
+  it("defaults closed to false", () => {
+    expect(byId.get("tiss.concourse")).toMatchObject({ closed: false, closedReason: null });
+  });
+
+  it("infers region and terrain", () => {
+    const bare = (room) =>
+      completeStation(new Map([[room.id, room]]), { rooms: {} }).find((r) => r.id === room.id);
+    expect(bare({ id: "tiss.inner-0430", x: 9, y: 0, z: 2 })).toMatchObject({
+      region: "industrial",
+      terrain: "corridor",
+      gravity: 0.3,
+    });
+    expect(bare({ id: "tiss.x", x: 18, y: 0, z: 0 })).toMatchObject({
+      terrain: "lobby",
+      region: "commons",
+    });
+    expect(bare({ id: "tiss.y", x: 22, y: 2, z: 1 })).toMatchObject({
+      terrain: "room",
+      region: "offices",
+    });
+    expect(bare({ id: "tiss.hub", x: 0, y: 0, z: 3 })).toMatchObject({
+      terrain: "hub",
+      region: "hub",
+      gravity: 0,
+    });
+    expect(bare({ id: "tiss.dock", x: 4, y: 3, z: 3 })).toMatchObject({ region: "docks" });
+  });
+
+  it("is sorted and drops coordless rooms", () => {
+    const ids = out.map((r) => r.id);
+    expect(ids).toEqual([...ids].sort());
+    const warn = vi.spyOn(console, "error").mockImplementation(() => {});
+    const res = completeStation(new Map(), { rooms: { "tiss.nowhere": { name: "Nowhere" } } });
+    expect(res.find((r) => r.id === "tiss.nowhere")).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("tiss.nowhere"));
+    warn.mockRestore();
   });
 });
