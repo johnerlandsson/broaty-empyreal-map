@@ -212,15 +212,6 @@ function buildDocksPlan(svg, index) {
   el("rect", { x: -CH, y: blister.cy, width: 2 * CH, height: spineTop - blister.cy, fill: CORR }, g);
   label(g, 0, blister.cy - blister.r - 16, blister.room?.name ?? "Observation Blister", 11);
   hover(dm, blister.room);
-  // two unlabelled skiffs off the Berths
-  const berth = layout.rooms.find((b) => b.room.id === "tiss.berth") ?? layout.rooms.find((b) => b.cx > 0);
-  if (berth) {
-    [-16, 16].forEach((dy) => {
-      const x = berth.cx + berth.w / 2 + 18;
-      const y = berth.cy + dy;
-      el("path", { d: `M${x},${y} l22,-9 h30 l12,9 l-12,9 h-30 z`, fill: "#2a3340", stroke: "#9fb0c3", "stroke-width": 1.2 }, g);
-    });
-  }
   label(g, -SX - 60, topY + 14, "FORE ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
 
   const hl = el("g", { "pointer-events": "none" }, g);

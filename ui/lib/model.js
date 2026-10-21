@@ -111,9 +111,5 @@ export function buildModel(index) {
     box([Math.sign(room.x) * (SPR + 26), 0, SPZ(room.y - 1)], 26, 16, 28, "dock", room.id, false);
   }
 
-  // Two skiffs beside Spine 3 starboard.
-  box([SPR + 52 + 40, 8, SPZ(3) - 14], 34, 9, 10, "ship", null, false);
-  box([SPR + 52 + 40, -8, SPZ(3) + 16], 34, 9, 10, "ship", null, false);
-
   return faces;
 }

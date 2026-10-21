@@ -14,7 +14,6 @@ const HL_STROKE = "#fff3df";
 const EDGE = "#0d1218";
 const LABEL_FG = "#dfe7f1"; // ring names: light, so they read over the grey faces
 const TONES = ["#3a4556", "#58667b", "#7e8da3"];
-const SHIP_TONES = ["#6b7a90", "#8a99ae", "#b7c4d4"];
 const GLASS = "#cfe3ff";
 const LIGHT = (() => {
   const v = [-0.5, 0.75, 0.45];
@@ -53,7 +52,6 @@ function fillOf(f, lit) {
   let fill = TONES[tone];
   if (f.kind === "fore" && f.tint) fill = mix(fill, f.tint, 0.7);
   else if (f.kind === "outer" && f.tint) fill = mix(fill, f.tint, 0.25);
-  if (f.kind === "ship") fill = SHIP_TONES[tone];
   if (f.kind.startsWith("blister")) fill = mix(fill, GLASS, 0.45);
   return fill;
 }
