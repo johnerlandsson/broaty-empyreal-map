@@ -16,7 +16,7 @@ match = ["empyreal.fly.dev:*"]
 gmcp_access = ["mudstd.room.info", "Empyreal.Room", "Empyreal.Vehicle"]
 
 [gmcp]
-advertise = ["mudstd.room", "Empyreal.Room", "Empyreal.Vehicle"]
+advertise = ["mudstd.room 1", "Empyreal.Room 1", "Empyreal.Vehicle 1"]
 
 [panels.map]
 title = "Map"
