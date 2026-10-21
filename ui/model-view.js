@@ -58,7 +58,10 @@ function fillOf(f, lit) {
 function hourOf(where) {
   if (!where) return null;
   if (where.kind === "lift") return Number.isFinite(where.hour) ? where.hour : null;
-  if (where.kind === "room" && where.level >= 0 && where.level <= 2 && Number.isFinite(where.x)) return where.x / 2;
+  if (where.kind === "room" && where.level >= 0 && where.level <= 2 && Number.isFinite(where.x)) {
+    // a ladderway sits at x = 2h + 1, beside the lift lobby at hour h (same rule as keyOf)
+    return where.id?.includes("ladderway") ? (where.x - 1) / 2 : where.x / 2;
+  }
   return null;
 }
 
@@ -227,8 +230,13 @@ export class ModelView {
       const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
       this.phi = from + (target - from) * e;
       this.draw();
-      if (t < 1) this.raf = requestAnimationFrame(step);
-      else this.raf = 0;
+      if (t < 1) {
+        this.raf = requestAnimationFrame(step);
+      } else {
+        this.raf = 0;
+        clearTimeout(this.timer); // finished normally: no second snap draw
+        this.timer = 0;
+      }
     };
     this.raf = requestAnimationFrame(step);
     this.timer = setTimeout(() => {
@@ -258,6 +266,7 @@ export class ModelView {
         this.draw();
         return;
       }
+      this.stop(); // already facing: drop any animation still heading for an older hour
     }
     // no turn: redraw only if the lit faces changed (a running animation redraws every frame anyway)
     if (keyChanged) this.draw();
