@@ -1,0 +1,45 @@
+/* Panel shell: the turning model on top, a 1px rule, the deck plan below, and the info line.
+ * Mallard pushes its theme (--bg, --fg, --fg-muted, --font-family, ...) onto :root; the
+ * space scene itself stays dark whatever the theme, so only the chrome uses those vars. */
+
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  background: var(--bg, #04060c);
+  color: var(--fg, #dfe7f1);
+  overflow: hidden;
+}
+
+.station {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 42fr 1px 58fr;
+  background: #04060c;
+}
+
+/* min-height: 0 lets the SVGs shrink to the band instead of sizing it */
+.band { position: relative; min-height: 0; overflow: hidden; }
+
+.separator { background: #2b3646; }
+
+#info {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  max-width: calc(100% - 16px);
+  box-sizing: border-box;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-family, "DejaVu Sans Mono", monospace);
+  font-size: 11px;
+  letter-spacing: .5px;
+  line-height: 1.4;
+  color: var(--fg, #dfe7f1);
+  background: var(--bg, #04060c);
+  background: color-mix(in srgb, var(--bg, #04060c) 70%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+#info:empty { display: none; }

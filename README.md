@@ -1,0 +1,121 @@
+# Empyreal Station Map
+
+A [Mallard](https://mallard.vnsf.xyz) plugin for the MUD Empyreal: a map of
+the station T.I.S.S. that follows you as you walk, ride the lifts and visit
+the docks.
+
+---
+
+## The panel
+
+The **Station Map** panel opens on the right side of the window. It has two
+parts.
+
+**The station model (top).** A flat-shaded model of the whole station: the
+wheel with its three rings (Rim, Mid and Inner), the four spokes and the hub,
+with the spine and the docks hanging below. Your place on the station glows:
+the slice of the ring you're standing in, the spoke leg your lift is
+travelling, or the dock room you're in. As you move, the wheel turns by
+itself until your part of the station faces you. Only the wheel turns; the
+spine and the docks hold still beyond the Bearing, as on the real station.
+
+**The deck plan (bottom).** A floor plan of the floor you're on:
+
+- **Rings:** the corridor runs across the panel with its stops labelled by
+  hour, rooms fore and aft of it, and lift lobbies marked with the lift
+  symbol and the ladderway hatch beside it. The plan wraps, so 12:00 follows
+  11:00 and you can pan round forever.
+- **Docks:** the Hub at the bottom with its four lift doors, the Bearing,
+  the spine running up to the Observation Blister, and the dock rooms either
+  side of it.
+
+Your place is lit with the same glow as in the model, not marked with a dot:
+a room box, a stretch of corridor, a lift or the ladderway hatch. The plan
+switches to your floor when you arrive there and re-centres only when you
+walk out of the middle of the view. Closed rooms are drawn dashed and dimmed.
+Hover over a room or a corridor stop to see its name, its address and, for a
+closed room, why it's closed.
+
+The line at the bottom left says where you are, for example
+`LAUNDRY · Rim 2:00, aft · 0.9 g` or `LIFT 3 · climbing hubward`. When you
+leave the station (boarding a ship, say), the deck plan dims, nothing is lit,
+and the line shows the room you're in.
+
+Both parts zoom with the scroll wheel or the **+** and **−** buttons and pan
+by dragging. **⌂** resets the view.
+
+---
+
+## Settings
+
+Settings are in the Mallard plugin settings panel.
+
+**Turn the station to face you** — When on (the default), the wheel turns so
+your location faces the camera. When off, the model holds still with 12:00
+at the front, and your place still glows.
+
+---
+
+## Installation
+
+Install from the Mallard marketplace, or install the packaged
+`empyreal-station-map-<version>.mallardx` file by hand.
+
+### Dev install
+
+Link the repository into Mallard's development plugin folder, then reload
+plugins in Mallard:
+
+```bash
+ln -s "$PWD" ~/.local/share/net.mallard.app/plugins-dev/broaty.empyreal-station-map
+```
+
+### Packaging
+
+```bash
+npm run pack
+```
+
+This writes `empyreal-station-map-<version>.mallardx` with `plugin.toml`,
+this README, `src/` and `ui/` (without the tests).
+
+---
+
+## Development
+
+```bash
+npm install
+npm test            # vitest for the UI and data code, then the Lua tests
+```
+
+**Preview.** Serve the repository root and open the preview, which runs the
+panel in a browser with a stand-in for Mallard and a **▶ Walk** button that
+replays a walk round the station:
+
+```bash
+python3 -m http.server 8765
+# http://localhost:8765/dev/preview.html
+```
+
+`?step=N` jumps to step N of the walk, and `?debug` shows how often the model
+turned and redrew.
+
+### Rebuilding the station data
+
+The station map (`ui/data/station.js`) is built from the GMCP room frames in
+your Mallard session logs, plus the hand-written corrections in
+`data/overrides.json`:
+
+```bash
+npm run build:data
+npm run build:data -- --logs /path/to/logs   # another log folder
+```
+
+By default it reads `~/.local/share/net.mallard.app/logs/empyreal-7`. Commit
+the regenerated `ui/data/station.js`.
+
+---
+
+## AI disclosure
+
+Much of this plugin's code was written with the help of an LLM (Claude). Design decisions, testing, and review are the author's own.
