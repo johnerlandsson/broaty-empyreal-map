@@ -9,12 +9,15 @@
 //   ?still    send settings { turn_model: false }
 //   ?scene=S  open on overview scene S (station, parked, travelling or belt); the bar's menu switches it
 //   ?hull=H   aboard a ship, send hull H (skiff, courier or freighter) as the server will; the bar's menu switches it
+//   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
+//             docked-tiss, none, maelor or edge), emitting charts, chart-ship and chart { on: true }; the bar's menu switches it
 
 import orrin from "../ui/data/orrin.js";
 import station from "../ui/data/station.js";
 import wenna from "../ui/data/wenna.js";
 import { DeckView } from "../ui/deck-view.js";
 import { ModelView } from "../ui/model-view.js";
+import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts } from "./charts-fixture.js";
 
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
@@ -232,6 +235,28 @@ hullMenu.addEventListener("change", () => {
   if (lastMsg?.roomId?.startsWith("ship.")) fp.emit("location", structuredClone(withHull(lastMsg, true)));
 });
 
+// --- the system chart: Space.Charts and the ship's chart state, as the Lua side posts them ----
+
+const chartMenu = document.getElementById("chart");
+
+function emitChart(name) {
+  if (!name) {
+    fp.emit("chart", { on: false });
+    return;
+  }
+  const now = Date.now();
+  const stamp = (m) => (m ? { ...m, received: Math.floor(now / 1000) } : null);
+  if (name === "maelor") {
+    fp.emit("charts", maelorCharts(now));
+    fp.emit("chart-ship", stamp(MAELOR_SHIP));
+  } else {
+    fp.emit("charts", senaraCharts(now, name === "edge" ? EDGE(now) : null));
+    fp.emit("chart-ship", stamp(name === "edge" ? SHIPS["parked-gannet"] : SHIPS[name]));
+  }
+  fp.emit("chart", { on: true });
+}
+chartMenu.addEventListener("change", () => emitChart(chartMenu.value));
+
 function start() {
   fp.emit("settings", { turn_model: !q.has("still") });
   if (q.has("scene")) {
@@ -239,6 +264,10 @@ function start() {
     fp.emit("scene", { scene: sceneMenu.value });
   }
   if (q.has("hull")) hullMenu.value = q.get("hull");
+  if (q.has("chart")) {
+    chartMenu.value = q.get("chart");
+    emitChart(chartMenu.value);
+  }
   const n = q.has("step") ? Math.max(0, Math.min(ROUTE.length - 1, Number(q.get("step")) || 0)) : null;
   if (q.has("walk")) {
     const until = q.has("until") ? Number(q.get("until")) : ROUTE.length - 1;
