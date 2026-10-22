@@ -91,3 +91,66 @@ export function frameOf(index, a, b) {
   const up = new Set(above(a));
   return above(b).find((p) => up.has(p)) ?? null;
 }
+
+// How far off a belt body's remembered fit is at wall-clock t (ms), in km. The sent
+// error holds until the fit's `at`, then grows as time^1.5, up to half way round.
+export function errorAt(fit, a, t) {
+  const error = num(fit?.error) ?? 0;
+  const seen = num(fit?.seen) ?? 0;
+  const at = num(fit?.at) ?? seen;
+  if (t <= at || at - seen < 600000) return error;
+  return Math.min(error * ((t - seen) / (at - seen)) ** 1.5, Math.PI * (num(a) ?? 0));
+}
+
+// Lost once the error is nearly half way round the orbit.
+export const isLost = (errorKm, a) => errorKm >= 0.9 * Math.PI * a;
+
+// Her trip as a straight line in the frame's offsets, times in ms; null when unplaceable.
+export function legOf(index, ship) {
+  const { from, destination } = ship ?? {};
+  const received = num(ship?.received);
+  const eta = num(ship?.eta);
+  if (!from || !destination || received === null || eta === null) return null;
+  const frame = frameOf(index, from, destination);
+  if (frame === null) return null;
+  const progress = Math.min(Math.max(num(ship.progress) ?? 0, 0), 1);
+  const arrive = (received + eta) * 1000;
+  const depart = progress >= 1 ? arrive : arrive - (eta / (1 - progress)) * 1000;
+  const at = (id, t) => {
+    const p = positionOf(index, id, t);
+    const f = positionOf(index, frame, t);
+    return p && f && [p[0] - f[0], p[1] - f[1]];
+  };
+  const a = at(from, depart);
+  const b = at(destination, arrive);
+  return a && b ? { frame, from: a, to: b, depart, arrive } : null;
+}
+
+// Where your ship is at wall-clock t (ms): at a place, moving, searching, bound or none.
+export function shipFix(index, ship, t) {
+  if (!ship || typeof ship !== "object") return { kind: "none" };
+  if (ship.searching) {
+    const place = typeof ship.searching === "string" ? ship.searching : (ship.destination ?? ship.location ?? null);
+    return { kind: "searching", place };
+  }
+  if (ship.destination) {
+    const place = ship.destination;
+    const leg = legOf(index, ship);
+    const f = leg && positionOf(index, leg.frame, t);
+    if (!leg || !f) return { kind: "bound", place };
+    const span = leg.arrive - leg.depart;
+    const k = span > 0 ? Math.min(Math.max((t - leg.depart) / span, 0), 1) : 1;
+    const dx = leg.to[0] - leg.from[0];
+    const dy = leg.to[1] - leg.from[1];
+    return {
+      kind: "moving",
+      place,
+      pos: [f[0] + leg.from[0] + dx * k, f[1] + leg.from[1] + dy * k],
+      heading: Math.atan2(dy, dx),
+      leg,
+    };
+  }
+  const here = ship.location || ship.point;
+  if (here) return { kind: "at", place: here, pos: positionOf(index, here, t) };
+  return { kind: "none" };
+}

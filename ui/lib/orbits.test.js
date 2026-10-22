@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EDGE_KM, frameOf, indexCharts, offsetOn, parentOf, parsePoint, positionOf } from "./orbits.js";
+import { EDGE_KM, errorAt, frameOf, indexCharts, isLost, legOf, offsetOn, parentOf, parsePoint, positionOf, shipFix } from "./orbits.js";
 
 const rad = (d) => (d * Math.PI) / 180;
 const orbit = (parent, a, period, extra = {}) => ({ parent, a, e: 0, peri: 0, phase: 0, period, ...extra });
@@ -146,5 +146,86 @@ describe("frameOf", () => {
   it("lets a body be the frame of a trip to what orbits it", () => {
     expect(frameOf(idx, "tamsin", "tiss")).toBe("tamsin");
     expect(frameOf(idx, "pt:tamsin:1:1", "tamsin")).toBe("tamsin");
+  });
+});
+
+describe("belt error", () => {
+  it("holds until at", () => expect(errorAt({ seen: 0, error: 100, at: 3.6e6 }, 2700, 3.6e6)).toBe(100));
+  it("grows as time^1.5", () => expect(errorAt({ seen: 0, error: 100, at: 3.6e6 }, 2700, 4 * 3.6e6)).toBeCloseTo(800, 6));
+  it("holds for a fresh fit", () => {
+    expect(errorAt({ seen: 0, error: 5, at: 300000 }, 2700, 1e12)).toBe(5);
+  });
+  it("caps at half way round", () => {
+    expect(errorAt({ seen: 0, error: 100, at: 3.6e6 }, 2700, 1e12)).toBeCloseTo(Math.PI * 2700, 6);
+  });
+  it("is lost near the cap", () => {
+    expect(isLost(0.9 * Math.PI * 2700, 2700)).toBe(true);
+    expect(isLost(0.9 * Math.PI * 2700 - 1, 2700)).toBe(false);
+  });
+});
+
+describe("legOf and shipFix", () => {
+  const ship = { docked: false, from: "tiss", destination: "gannet", progress: 0.5, eta: 100, received: 1000 };
+  const near = (a, b) => {
+    expect(a[0]).toBeCloseTo(b[0], 6);
+    expect(a[1]).toBeCloseTo(b[1], 6);
+  };
+
+  it("works out the leg", () => {
+    const leg = legOf(idx, ship);
+    expect(leg.arrive).toBe(1100000);
+    expect(leg.depart).toBe(900000);
+    expect(leg.frame).toBe("tamsin");
+    near(leg.from, offsetOn(idx.items.get("tiss").orbit, 0, 900000));
+    near(leg.to, offsetOn(idx.items.get("gannet").orbit, 0, 1100000));
+  });
+
+  it("copes with progress 1", () => {
+    const s = { ...ship, progress: 1 };
+    const leg = legOf(idx, s);
+    expect(leg.depart).toBe(leg.arrive);
+    const fix = shipFix(idx, s, 1100000);
+    const f = positionOf(idx, "tamsin", 1100000);
+    near(fix.pos, [f[0] + leg.to[0], f[1] + leg.to[1]]);
+  });
+
+  it("moves midway", () => {
+    const leg = legOf(idx, ship);
+    const fix = shipFix(idx, ship, 1000000);
+    const f = positionOf(idx, "tamsin", 1000000);
+    near(fix.pos, [f[0] + (leg.from[0] + leg.to[0]) / 2, f[1] + (leg.from[1] + leg.to[1]) / 2]);
+    expect(fix.kind).toBe("moving");
+    expect(fix.place).toBe("gannet");
+    expect(fix.heading).toBeCloseTo(Math.atan2(leg.to[1] - leg.from[1], leg.to[0] - leg.from[0]), 9);
+  });
+
+  it("clamps before and after the leg", () => {
+    const leg = legOf(idx, ship);
+    const f = positionOf(idx, "tamsin", 5e6);
+    near(shipFix(idx, ship, 5e6).pos, [f[0] + leg.to[0], f[1] + leg.to[1]]);
+  });
+
+  it("is at a place when docked or at a point", () => {
+    const d = shipFix(idx, { docked: true, location: "orrin_station" }, T);
+    expect(d).toMatchObject({ kind: "at", place: "orrin_station" });
+    near(d.pos, positionOf(idx, "orrin_station", T));
+    const p = shipFix(idx, { docked: false, point: "pt:tamsin:1500:-2000" }, T);
+    expect(p.kind).toBe("at");
+    near(p.pos, positionOf(idx, "pt:tamsin:1500:-2000", T));
+  });
+
+  it("is bound when she can't be placed", () => {
+    expect(shipFix(idx, { ...ship, from: undefined }, T)).toEqual({ kind: "bound", place: "gannet" });
+    expect(shipFix(idx, { ...ship, destination: "nowhere" }, T).kind).toBe("bound");
+    expect(shipFix(idx, { ...ship, from: "nowhere" }, T).kind).toBe("bound");
+  });
+
+  it("is searching, never moving", () => {
+    expect(shipFix(idx, { ...ship, searching: "gannet" }, T)).toEqual({ kind: "searching", place: "gannet" });
+  });
+
+  it("is none with nothing", () => {
+    expect(shipFix(idx, null, T)).toEqual({ kind: "none" });
+    expect(shipFix(idx, { docked: false }, T)).toEqual({ kind: "none" });
   });
 });
