@@ -6,10 +6,12 @@
 
 local L = require('station_map.location')
 local S = require('station_map.scene')
+local C = require('station_map.charts')
 
 local panel = mud.panel('map')
 local state = L.new()
 local scene = S.new()
+local chart = C.new()
 
 local function has_location(s)
   local m = L.message(s)
@@ -22,6 +24,18 @@ end
 
 local function post_scene()
   panel:post('scene', { scene = S.scene(scene), station = S.station(scene) })
+end
+
+local function post_charts()
+  panel:post('charts', C.charts(chart))
+end
+
+local function post_chart_ship()
+  panel:post('chart-ship', C.ship(chart))
+end
+
+local function post_chart_on()
+  panel:post('chart', { on = C.on(chart) })
 end
 
 local function post_settings()
@@ -37,9 +51,22 @@ local reducers = {
   ['empyreal.vehicle'] = L.vehicle,
 }
 
+-- Each of these folds into the scene first, then the chart.
+local function scene_ship(data)
+  if S.ship_status(scene, data) then post_scene() end
+  C.ship_status(chart, data, os.time())
+  -- Always: the panel times a trip from the fresh `received`.
+  post_chart_ship()
+end
+
+local function scene_charts(data)
+  if S.space_charts(scene, data) then post_scene() end
+  if C.space_charts(chart, data) then post_charts() end
+end
+
 local scene_reducers = {
-  ['ship.status'] = S.ship_status,
-  ['space.charts'] = S.space_charts,
+  ['ship.status'] = scene_ship,
+  ['space.charts'] = scene_charts,
 }
 
 local function on_gmcp(package, data)
@@ -49,9 +76,9 @@ local function on_gmcp(package, data)
     if reduce(state, data) then post_location() end
     return
   end
-  reduce = scene_reducers[name]
-  if reduce then
-    if reduce(scene, data) then post_scene() end
+  local both = scene_reducers[name]
+  if both then
+    both(data)
     return
   end
   log.debug('empyreal map: ignoring GMCP package ' .. tostring(package))
@@ -66,6 +93,11 @@ world.on('disconnect', function()
   L.reset(state)
   post_location()
   if S.reset(scene) then post_scene() end
+  if C.reset(chart) then
+    post_charts()
+    post_chart_ship()
+    post_chart_on()
+  end
 end)
 
 panel:on_message('ready', function()
@@ -73,6 +105,14 @@ panel:on_message('ready', function()
   if has_location(state) then post_location() end
   -- The panel starts on the station with none docked at, so only anything else needs replaying.
   if S.scene(scene) ~= 'station' or S.station(scene) then post_scene() end
+  if C.charts(chart) then post_charts() end
+  if C.ship(chart) then post_chart_ship() end
+  if C.on(chart) then post_chart_on() end
+end)
+
+panel:on_message('chart', function(data)
+  if type(data) ~= 'table' or type(data.on) ~= 'boolean' then return end
+  if C.set_on(chart, data.on) then post_chart_on() end
 end)
 
 settings.on('change', function(key)
