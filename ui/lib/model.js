@@ -108,7 +108,8 @@ export function buildModel(index) {
   // Spine side rooms: docks to port (x<0) and starboard (x>0) of each spine section.
   for (const room of index.byId.values()) {
     if (room.z !== 3 || room.x === 0 || room.y < 2 || room.y > 5) continue;
-    box([Math.sign(room.x) * (SPR + 26), 0, SPZ(room.y - 1)], 26, 16, 28, "dock", room.id, false);
+    // further out (|x| > 1, as the bays beyond the Berths) is one box's width on
+    box([Math.sign(room.x) * (SPR + 26 + (Math.abs(room.x) - 1) * 52), 0, SPZ(room.y - 1)], 26, 16, 28, "dock", room.id, false);
   }
 
   return faces;

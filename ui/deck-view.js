@@ -165,7 +165,9 @@ function buildDocksPlan(svg, index) {
   const topY = blister.cy - blister.r - 40;
   const botY = transfer.cy + transfer.h / 2 + 40;
 
-  el("rect", { x: -SX - 70, y: topY, width: 2 * (SX + 70), height: botY - topY, rx: 24, fill: PLATE }, g);
+  // the plate reaches past the outermost side room each way (T.I.S.S.'s bays run on to starboard)
+  const reach = (sg) => Math.max(SX, ...layout.rooms.filter((b) => Math.sign(b.cx) === sg).map((b) => sg * b.cx)) + 70;
+  el("rect", { x: -reach(-1), y: topY, width: reach(-1) + reach(1), height: botY - topY, rx: 24, fill: PLATE }, g);
   // spine corridor (from the Blister's base, under the dome and stops), Bearing collar, Hub
   el("rect", { x: -CH, y: blister.cy, width: 2 * CH, height: bearing.cy - blister.cy, fill: CORR }, g);
   el("rect", { x: -BEARING.w / 2, y: bearing.cy - BEARING.h / 2, width: BEARING.w, height: BEARING.h, rx: 6, fill: "#1d2a38", stroke: "#cfe3ff", "stroke-width": 1.4 }, g);
@@ -198,7 +200,7 @@ function buildDocksPlan(svg, index) {
   for (const b of layout.rooms) {
     const sg = Math.sign(b.cx);
     const inner = b.cx - sg * (b.w / 2);
-    el("rect", { x: Math.min(sg * CH, inner), y: b.cy - 8, width: Math.abs(inner - sg * CH), height: 16, fill: PASSAGE }, g);
+    el("rect", { x: Math.min(b.from, inner), y: b.cy - 8, width: Math.abs(inner - b.from), height: 16, fill: PASSAGE }, g);
     roomBox(g, b.room, b.cx, b.cy, DC.docks, b.w, b.h);
   }
   // spine stops
@@ -213,7 +215,7 @@ function buildDocksPlan(svg, index) {
   const dm = el("path", { d: dome, fill: "#cfe3ff", "fill-opacity": 0.18, stroke: "#cfe3ff", "stroke-width": 1.6 }, g);
   label(g, 0, blister.cy - blister.r - 16, blister.room?.name ?? "Observation Blister", 11);
   hover(dm, blister.room);
-  label(g, -SX - 60, topY + 14, "FORE ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
+  label(g, -reach(-1) + 10, topY + 14, "FORE ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
 
   const hl = el("g", { "pointer-events": "none" }, g);
   return { z: 3, g, hl, layout, ring: false, length: 0, home: [0, hub.cy - 120], offsets: [0] };

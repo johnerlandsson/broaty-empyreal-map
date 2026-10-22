@@ -86,7 +86,42 @@ export default {
    },
    "closed": false,
    "closedReason": null,
-   "walked": false
+   "walked": true
+  },
+  {
+   "id": "tiss.bay-1",
+   "name": "Bay 1",
+   "x": 2,
+   "y": 4,
+   "z": 3,
+   "region": "docks",
+   "terrain": "room",
+   "address": "Spine 3, starboard",
+   "gravity": 0,
+   "exits": {
+    "E": "tiss.bay-2",
+    "W": "tiss.berth"
+   },
+   "closed": false,
+   "closedReason": null,
+   "walked": true
+  },
+  {
+   "id": "tiss.bay-2",
+   "name": "Bay 2",
+   "x": 3,
+   "y": 4,
+   "z": 3,
+   "region": "docks",
+   "terrain": "room",
+   "address": "Spine 3, starboard",
+   "gravity": 0,
+   "exits": {
+    "W": "tiss.bay-1"
+   },
+   "closed": false,
+   "closedReason": null,
+   "walked": true
   },
   {
    "id": "tiss.bearing",
@@ -117,6 +152,7 @@ export default {
    "address": "Spine 3, starboard",
    "gravity": 0,
    "exits": {
+    "E": "tiss.bay-1",
     "W": "tiss.spine-3"
    },
    "closed": false,

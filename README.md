@@ -49,7 +49,8 @@ because the game doesn't tell the plugin where that ship is.
   11:00 and you can pan round forever.
 - **Docks:** the Hub at the bottom with its four lift doors, the Bearing,
   the spine running up to the Observation Blister, and the dock rooms either
-  side of it.
+  side of it, with Bay 1 and Bay 2, where medium ships dock, carrying on to
+  starboard past the Berths.
 - **Orrin Station:** a plan for each deck, fore up, with every room in the
   cell its address names. Deck 3 has the Berths at the nose, the passage aft
   with the Freight Office to port and the Chart Office to starboard, and a

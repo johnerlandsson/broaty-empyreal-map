@@ -45,6 +45,13 @@ describe("buildModel", () => {
     for (const sid of sideIds) expect(faces.some((f) => f.key === sid)).toBe(true);
   });
 
+  it("the bays' boxes carry on starboard from the Berths' without overlapping", () => {
+    const xs = (key) => faces.filter((f) => f.key === key).flatMap((f) => f.pts.map((p) => p[0]));
+    const [berth, bay1, bay2] = ["tiss.berth", "tiss.bay-1", "tiss.bay-2"].map(xs);
+    expect(Math.min(...bay1)).toBeGreaterThanOrEqual(Math.max(...berth));
+    expect(Math.min(...bay2)).toBeGreaterThanOrEqual(Math.max(...bay1));
+  });
+
   it("every face has well-formed fields", () => {
     for (const f of faces) {
       expect(f.pts.length).toBeGreaterThanOrEqual(3);

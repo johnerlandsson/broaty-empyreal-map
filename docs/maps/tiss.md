@@ -15,7 +15,7 @@ ship is docked there (`pickStation()` in `ui/lib/stations.js`).
 
 ## Where its data comes from
 
-`ui/data/station.js`, 95 rooms, built by `npm run build:data` from the GMCP
+`ui/data/station.js`, 98 rooms, built by `npm run build:data` from the GMCP
 frames in Mallard session logs (`mudstd.room.info`, `Empyreal.Room`) plus
 hand-written corrections in `data/overrides.json`: closed rooms and their
 reasons, Freight Transfer's place, inferred ladderways. The game sends
@@ -29,7 +29,7 @@ fore or aft depth, `z` the level (0 Rim, 1 Mid, 2 Inner, 3 Hub and docks).
   plan's rows. Spokes are square shafts of three legs; the hub an octagonal
   prism with the Bearing as a collar; the spine square sections with box rooms
   either side and a stepped Blister at the tip; Freight Transfer a box aft of
-  the hub.
+  the hub. Bay 1 and Bay 2 are boxes carrying on starboard from the Berths'.
 - The wheel turns to bring your hour to the front. The spine, Bearing, dock
   rooms and Blister hold still, as on the real station. In the docks the
   wheel keeps its last turn.
@@ -50,6 +50,10 @@ Four plans, one per level:
 - **Docks:** the spine up the page, fore up, port rooms left and starboard
   right. The round Hub at the bottom with four lift doors on its clock, the
   Bearing above it, Freight Transfer below, the Blister a dome at the top.
+  A room further out than the first (`|x| > 1`) sits one box and a passage
+  beyond the one before it, so Bay 1 and Bay 2 run on in a row to starboard
+  of the Berths, and the plate widens to take them
+  (`reference/tiss-bays-mockup.html`, option A).
 - Lit: a room box, a corridor stretch, a lift symbol or the ladderway hatch.
 
 ## Rooms, compartments and the highlight

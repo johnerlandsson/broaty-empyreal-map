@@ -85,6 +85,11 @@ const ROUTE = [
   room("tiss.spine-2"),
   room("tiss.spine-3"),
   room("tiss.berth"),
+  // on to the bays and back, to board the Magpie at the Berths
+  room("tiss.bay-1"),
+  room("tiss.bay-2"),
+  room("tiss.bay-1"),
+  room("tiss.berth"),
   { label: "Cockpit of the Magpie (no hull)", msg: COCKPIT },
   {
     label: "Cockpit of the Mule (skiff)",

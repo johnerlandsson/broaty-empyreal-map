@@ -1,0 +1,84 @@
+<!doctype html>
+<!-- T.I.S.S.'s bays, 2026-10-22: three ways to draw Bay 1 and Bay 2 on the docks plan. The game added
+     them east (starboard) of the Berths, coords x 2 and 3 at Spine 3 (Berths is x 1), each taking one
+     medium ship. Today's plan puts every side room at sign(x), so both land on the Berths. Bay 1 lit.
+     A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>T.I.S.S. bays: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; display:flex; gap:22px; justify-content:center; padding:20px; }
+  figure { margin:0; text-align:center; }
+  figcaption { margin-top:6px; color:#e3eaf2; }
+  figcaption small { display:block; color:#7d8a9a; max-width:330px; margin:4px auto 0; }
+  svg { width:340px; height:330px; background:#0b0f16; border-radius:8px; }
+  text { font-family: Inter, system-ui, sans-serif; text-anchor:middle; dominant-baseline:middle; }
+</style></head><body>
+<script>
+const C = "#cfe3ff", PLATE = "#18202b", CORR = "#262f3b", PASSAGE = "#56657a", HL = "#ffb347", DIM = "#7d8a9a";
+const SN = 120, SX = 92, RW = 116, RH = 54, CH = 15;
+const Y = (y) => -y * SN;
+const ns = "http://www.w3.org/2000/svg";
+const el = (t, a, p) => { const e = document.createElementNS(ns, t); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+const label = (p, x, y, s, size, extra = {}) => { const t = el("text", { x, y, "font-size": size, fill: "#e3eaf2", ...extra }, p); t.textContent = s; };
+const box = (p, name, cx, cy, w, h, lit) => {
+  el("rect", { x: cx - w / 2, y: cy - h / 2, width: w, height: h, rx: 5, fill: lit ? HL : C, "fill-opacity": lit ? 0.3 : 0.22,
+    stroke: lit ? HL : C, "stroke-opacity": lit ? 1 : 0.85, "stroke-width": lit ? 3 : 1.6 }, p);
+  // long names wrap onto two lines, as the plan's roomBox does
+  const words = name.split(" "), half = Math.ceil(words.length / 2);
+  const lines = name.length > 14 && words.length > 1 ? [words.slice(0, half).join(" "), words.slice(half).join(" ")] : [name];
+  lines.forEach((t, i) => label(p, cx, cy + (i - (lines.length - 1) / 2) * 14, t, 12));
+};
+const passage = (p, x0, x1, cy) => el("rect", { x: Math.min(x0, x1), y: cy - 8, width: Math.abs(x1 - x0), height: 16, fill: PASSAGE }, p);
+
+// Spine 2..4 with their side rooms, the Blister above; `bays(g)` adds the starboard bays at Spine 3.
+function plan(title, note, right, bays) {
+  const fig = document.body.appendChild(document.createElement("figure"));
+  const svg = el("svg", { viewBox: "-200 -790 " + (right + 230) + " 520" }, fig);
+  fig.appendChild(Object.assign(document.createElement("figcaption"), { innerHTML: title + "<small>" + note + "</small>" }));
+  const g = el("g", {}, svg);
+  el("rect", { x: -SX - 70, y: -770, width: SX + 70 + right, height: 700, rx: 24, fill: PLATE }, g);
+  el("rect", { x: -CH, y: -706, width: 2 * CH, height: 650, fill: CORR }, g);
+  el("path", { d: "M-46,-706 A46,46 0 0 1 46,-706 Z", fill: C, "fill-opacity": 0.18, stroke: C, "stroke-width": 1.6 }, g);
+  label(g, 0, -766, "Observation Blister", 11);
+  const side = [[-1, 5, "Docking Control Room"], [-1, 4, "Fuel Depot"], [-1, 3, "Outfitter's Bay"], [1, 3, "Freight Dock"], [1, 4, "Berths"]];
+  for (const [s, y, n] of side) {
+    passage(g, s * CH, s * (SX - RW / 2), Y(y));
+    box(g, n, s * SX, Y(y), RW, RH, false);
+  }
+  for (const y of [3, 4, 5]) {
+    el("circle", { cx: 0, cy: Y(y), r: 4, fill: "#aab8c8" }, g);
+    label(g, 0, Y(y) + SN / 2, "Spine " + (y - 1), 9, { fill: DIM, transform: `rotate(-90 0 ${Y(y) + SN / 2})` });
+  }
+  bays(g);
+}
+
+// A: in a row. Each bay a box the Berths' size, one more step starboard, joined by a short passage.
+plan("A · In a row", "Bay 1 and Bay 2 carry on starboard from the Berths, the same size and spacing as any side room, as their exits go. The plate grows starboard only.", 450, (g) => {
+  const step = RW + 26;
+  passage(g, SX + RW / 2, SX + step - RW / 2, Y(4));
+  box(g, "Bay 1", SX + step, Y(4), RW, RH, true);
+  passage(g, SX + step + RW / 2, SX + 2 * step - RW / 2, Y(4));
+  box(g, "Bay 2", SX + 2 * step, Y(4), RW, RH, false);
+});
+
+// B: bigger bays. Each takes a medium ship, so each box is taller, with its number stencilled big.
+plan("B · Big bays", "The same row, but each bay is drawn larger than a skiff berth, about a frame tall, with its number big and faint behind the name, as on the cradle.", 470, (g) => {
+  const w = 126, h = 88, x1 = SX + RW / 2 + 26 + w / 2, x2 = x1 + w + 26;
+  passage(g, SX + RW / 2, x1 - w / 2, Y(4));
+  label(g, x1, Y(4) + 4, "1", 64, { fill: C, opacity: 0.12, "font-weight": 700 });
+  box(g, "Bay 1", x1, Y(4), w, h, true);
+  passage(g, x1 + w / 2, x2 - w / 2, Y(4));
+  label(g, x2, Y(4) + 4, "2", 64, { fill: C, opacity: 0.12, "font-weight": 700 });
+  box(g, "Bay 2", x2, Y(4), w, h, false);
+});
+
+// C: one wing. The Berths, Bay 1 and Bay 2 butt together as one long gallery, split by bulkheads.
+plan("C · One wing", "The Berths gallery and its two bays as one long wing off Spine 3, cells sharing walls with a hatch mark between, so it reads as one gallery ending in the bays.", 400, (g) => {
+  const x0 = SX + RW / 2, w = 104;
+  for (const [i, n] of [[0, "Bay 1"], [1, "Bay 2"]]) {
+    const cx = x0 + w / 2 + i * w;
+    box(g, n, cx, Y(4), w, RH, i === 0);
+    el("rect", { x: cx - w / 2 - 3, y: Y(4) - 8, width: 6, height: 16, fill: PASSAGE }, g);
+  }
+});
+</script>
+</body></html>

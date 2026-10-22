@@ -14,6 +14,7 @@ export const HULLY = 175; // hull wall distance from the corridor centre line
 // Docks: the spine runs up the page (fore up), port rooms left, starboard right.
 export const SN = 120; // spacing along the spine
 export const SX = 92; // side room distance from the spine
+export const SXSTEP = 142; // each room further out (|x| > 1, as T.I.S.S.'s bays) is one box and a passage beyond
 export const DOCK_RH = 54; // docks side room height
 export const HUB_R = 58;
 export const BEARING = { w: 68, h: 28 };
@@ -76,7 +77,10 @@ export function docksLayout(index) {
     if (m) spine.push({ n: Number(m[1]), room, cx: 0, cy: Y(room.y), h: SN });
     else if (room.x !== 0 && room.terrain === "room") {
       const sg = Math.sign(room.x);
-      side.push({ room, cx: sg * SX, cy: Y(room.y), w: RW, h: DOCK_RH });
+      const cx = sg * (SX + (Math.abs(room.x) - 1) * SXSTEP);
+      // its passage runs in from the spine, or from the room before it
+      const from = Math.abs(room.x) === 1 ? sg * CH : cx - sg * (SXSTEP - RW / 2);
+      side.push({ room, cx, cy: Y(room.y), w: RW, h: DOCK_RH, from });
     }
   }
   spine.sort((a, b) => a.n - b.n);

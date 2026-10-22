@@ -68,6 +68,17 @@ describe("docksLayout", () => {
     expect(docks.blister.cy).toBeLessThan(docks.spine[3].cy);
     expect(docks.transfer.cy).toBe(120 + 12);
   });
+
+  it("the bays carry on starboard from the Berths, one box apart", () => {
+    const berth = box(docks, "tiss.berth");
+    const bay1 = box(docks, "tiss.bay-1");
+    const bay2 = box(docks, "tiss.bay-2");
+    expect(bay1.cy).toBe(berth.cy);
+    expect(bay2.cy).toBe(berth.cy);
+    expect(bay1.cx - bay1.w / 2).toBeGreaterThan(berth.cx + berth.w / 2);
+    expect(bay2.cx - bay2.w / 2).toBeGreaterThan(bay1.cx + bay1.w / 2);
+    expect(bay2.cx - bay1.cx).toBe(bay1.cx - berth.cx);
+  });
 });
 
 describe("highlightShape", () => {
