@@ -189,8 +189,14 @@ fields, as `scene.lua` does.
   the time since the last status would allow. Searching, she isn't drawn
   as a chevron. Instead the belt's own arc is drawn in the highlight
   colour (amber, pulsing, as §6 lights a place), since she's somewhere
-  along it as far as you know. Her route isn't drawn. Searching ends
-  with the trip.
+  along it as far as you know. Her route isn't drawn. Between legs she
+  stops loose to sweep (`space.ts`, `missed`): `destination` and
+  `location` both go null. A trip to a belt that ends that way is
+  searching too. Searching holds through sweeps and hops, and ends when
+  she's at the belt (`location` is it), docks, or is bound for or at
+  anywhere else. A search the game gives up on leaves her loose with the
+  arc still lit until then; that's accepted, since she's still near
+  that orbit as far as the player knows.
 - **Can't be placed:** under way with no `from` (the panel or client
   started mid-trip, or she left from a loose position), loose in space
   with no `location`, or in a lane (her destination is a mouth in another
