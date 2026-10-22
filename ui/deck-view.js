@@ -175,6 +175,9 @@ function buildDocksPlan(svg, index) {
   }
   label(g, 0, bearing.cy, "The Bearing", 11);
   el("rect", { x: -CH, y: bearing.cy + BEARING.h / 2, width: 2 * CH, height: hub.cy - HUB_R - (bearing.cy + BEARING.h / 2), fill: CORR }, g);
+  // passage down to Freight Transfer, under the Hub and its 6 o'clock lift
+  const tTop = transfer.cy - transfer.h / 2;
+  el("rect", { x: -8, y: hub.cy + HUB_R, width: 16, height: tTop - (hub.cy + HUB_R), fill: PASSAGE }, g);
   el("circle", { cx: hub.cx, cy: hub.cy, r: HUB_R, fill: "#141b24", stroke: "#cfe3ff", "stroke-width": 1.6 }, g);
   label(g, 0, hub.cy - 6, "The Hub", 13);
   label(g, 0, hub.cy + 10, "0 g", 10, { fill: DIM });
@@ -189,8 +192,6 @@ function buildDocksPlan(svg, index) {
   hover(el("rect", { x: -BEARING.w / 2, y: bearing.cy - BEARING.h / 2, width: BEARING.w, height: BEARING.h, fill: "transparent" }, g), bearing.room);
 
   // Freight Transfer below the Hub
-  const tTop = transfer.cy - transfer.h / 2;
-  el("rect", { x: -8, y: hub.cy + HUB_R, width: 16, height: tTop - (hub.cy + HUB_R), fill: PASSAGE }, g);
   if (transfer.room) roomBox(g, transfer.room, transfer.cx, transfer.cy, DC.docks, transfer.w, transfer.h);
 
   // side rooms, port left and starboard right
