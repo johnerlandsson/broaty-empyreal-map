@@ -37,7 +37,9 @@ you, as the wheel does.
 looking ahead from your ship: a still starfield while you're parked, the
 stars streaming past while you travel, and low-poly asteroids tumbling past
 while you're at a belt. It's scenery only, with no controls; docking brings
-the station back. This follows the ship you can fly: your own, or one you
+the station back. Docked at another ship, say a skiff at a freighter's
+collar, you see what the freighter sees: the stars streaming past while she
+travels, the station while she's docked at one. This follows the ship you can fly: your own, or one you
 crew. Aboard someone else's ship as a guest, the station model stays,
 because the game doesn't tell the plugin where that ship is.
 

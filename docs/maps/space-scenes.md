@@ -13,7 +13,7 @@ again when you dock.
 | parked | undocked, not travelling, not at a belt | a starfield, barely drifting |
 | travelling | on the way somewhere | the stars streaming past as streaks |
 | belt | at an asteroid belt | low-poly rocks tumbling past on a faint backdrop |
-| station | docked, or not aboard a ship you own or crew | nothing: the station model shows |
+| station | docked at a station, or not aboard a ship you own or crew | nothing: the station model shows |
 
 ## Where its data comes from
 
@@ -23,6 +23,17 @@ station you're docked at. `Ship.Status` comes for the ship you're aboard and
 can fly, your own or one you crew (crew get `leaseLeft` null, which the
 plugin doesn't read), so only as a guest aboard someone else's ship does the
 scene stay `station`.
+
+**Docked at another ship** (a skiff at a freighter's collar), her own
+`docked` is true with no `location`, since she's at no station, and
+`Ship.Status`'s `host` says where her host is: `docked`, `location` and
+`destination` as the top level has them, but the host's (gmcp.md §8.2 in
+`~/dev/empyreal`, since 2026-10-22). She rides where her host goes, so the
+scene and the station are read from `host` when it's set: a host under way
+is `travelling`, one at rest at a belt `belt`, and one docked at T.I.S.S.
+with the skiff at her collar the T.I.S.S. model. Before `host`, the plugin
+read `docked` as "at a station" and kept showing the last station while the
+freighter travelled.
 
 ## Top band
 

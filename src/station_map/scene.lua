@@ -4,6 +4,9 @@
 -- Ship.Status comes for the ship you're aboard and can fly, your own or one
 -- you crew (crew get leaseLeft null, which this ignores), and is null off
 -- her, so only as a guest aboard someone else's ship does this stay 'station'.
+-- Docked at another ship, her own `docked` is true with no `location`, and
+-- `host` says where her host is (gmcp.md §8.2): she rides with her host, so
+-- the picture is the host's.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 
 local S = {}
@@ -19,16 +22,21 @@ end
 
 function S.scene(state)
   local ship = state.ship
-  if not ship or ship.docked then return 'station' end
-  if ship.destination then return 'travelling' end
-  if ship.location and state.belts[ship.location] then return 'belt' end
+  if not ship then return 'station' end
+  local at = ship.host or ship -- riding a host: she's where her host is
+  if at.docked then return 'station' end
+  if at.destination then return 'travelling' end
+  if at.location and state.belts[at.location] then return 'belt' end
   return 'parked'
 end
 
--- The station your ship is docked at ('tiss', 'orrin_station', 'wenna_halt', ...), or nil.
+-- The station your ship is docked at ('tiss', 'orrin_station', 'wenna_halt', ...), or her
+-- host's if she's docked at a ship docked at one, or nil.
 function S.station(state)
   local ship = state.ship
-  if ship and ship.docked then return ship.location end
+  if not ship then return nil end
+  local at = ship.host or ship
+  if at.docked then return at.location end
   return nil
 end
 
@@ -49,10 +57,16 @@ function S.ship_status(state, data)
       state.ship = nil
       return
     end
+    local host = type(data.host) == 'table' and data.host or nil
     state.ship = {
       docked = data.docked == true,
       location = str(data.location),
       destination = str(data.destination),
+      host = host and {
+        docked = host.docked == true,
+        location = str(host.location),
+        destination = str(host.destination),
+      } or nil,
     }
   end)
 end

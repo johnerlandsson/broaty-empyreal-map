@@ -167,4 +167,67 @@ test("a crew member's Ship.Status, leaseLeft null, drives the scene as an owner'
   eq(S.station(crew), 'orrin_station')
 end)
 
+-- Docked at another ship (gmcp.md §8.2, 2026-10-22): her own `docked` is true and `location` null,
+-- and `host` is where her host is, which is where she is.
+local function riding(host)
+  local h = { id = 'ship.98', name = 'Old Reliable', docked = false, location = nil, destination = nil, progress = nil, eta = nil }
+  for k, v in pairs(host) do h[k] = v end
+  return status({ name = 'Halfpenny', docked = true, location = nil, host = h })
+end
+
+test('riding a host under way is travelling, not the station', function()
+  local s = S.new()
+  S.ship_status(s, status({ docked = true, location = 'tiss' }))
+  eq(S.ship_status(s, riding({ destination = 'tiss', progress = 0.64, eta = 79 })), true)
+  eq(S.scene(s), 'travelling')
+  eq(S.station(s), nil)
+end)
+
+test('riding a host at rest at a belt is the belt', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, riding({ location = 'belt.7' }))
+  eq(S.scene(s), 'belt')
+end)
+
+test('riding a host at rest off a station is parked', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, riding({ location = 'tiss' }))
+  eq(S.scene(s), 'parked')
+  eq(S.station(s), nil)
+end)
+
+test('riding a host docked at a station is that station', function()
+  local s = S.new()
+  S.ship_status(s, riding({ docked = true, location = 'tiss' }))
+  eq(S.scene(s), 'station')
+  eq(S.station(s), 'tiss')
+end)
+
+test('the host arriving is a change; her progress ticking is not', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, riding({ destination = 'belt.7', progress = 0.2, eta = 90 }))
+  eq(S.ship_status(s, riding({ destination = 'belt.7', progress = 0.3, eta = 80 })), false)
+  eq(S.ship_status(s, riding({ location = 'belt.7' })), true)
+  eq(S.scene(s), 'belt')
+end)
+
+test('a null or odd-typed host is no host', function()
+  local s = S.new()
+  S.ship_status(s, status({ docked = true, location = 'tiss', host = 'ship.98' }))
+  eq(S.scene(s), 'station')
+  eq(S.station(s), 'tiss')
+  S.ship_status(s, status({ location = 'tiss', host = nil }))
+  eq(S.scene(s), 'parked')
+  local odd = riding({})
+  odd.host.docked = 'yes'
+  odd.host.location = 7
+  odd.host.destination = {}
+  S.ship_status(s, odd)
+  eq(S.scene(s), 'parked')
+  eq(S.station(s), nil)
+end)
+
 t.done()
