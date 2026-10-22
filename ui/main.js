@@ -7,12 +7,13 @@
 
 import orrin from "./data/orrin.js";
 import station from "./data/station.js";
+import wenna from "./data/wenna.js";
 import { DeckView } from "./deck-view.js";
+import { drumPlans } from "./drum-deck.js";
+import { DRUMS, buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
 import { indexStation, infoLine, locate } from "./lib/locate.js";
-import { buildOrrinModel, orrinHour, orrinKey } from "./lib/orrin.js";
 import { pickStation, stationOfDock } from "./lib/stations.js";
 import { ModelView } from "./model-view.js";
-import { buildOrrinPlans } from "./orrin-deck.js";
 import { SpaceView } from "./space-view.js";
 
 const modelEl = document.getElementById("model");
@@ -23,18 +24,19 @@ function tiss() {
   return { index, model: new ModelView(modelEl, index), deck: new DeckView(deckEl, index), lastLevel: null };
 }
 
-function orrinStation() {
-  const index = indexStation(orrin);
+/** Orrin Station or Wenna Halt: one drum, one plan. */
+function drum(data, spec) {
+  const index = indexStation(data);
   const model = new ModelView(modelEl, index, {
-    faces: buildOrrinModel(index),
-    keyOf: orrinKey,
-    hourOf: (where) => orrinHour(index, where),
+    faces: buildDrumModel(index, spec),
+    keyOf: drumKey,
+    hourOf: (where) => drumHour(index, where),
     labels: false,
   });
-  return { index, model, deck: new DeckView(deckEl, index, buildOrrinPlans), lastLevel: null };
+  return { index, model, deck: new DeckView(deckEl, index, drumPlans(spec)), lastLevel: null };
 }
 
-const stations = { tiss: tiss(), orrin: orrinStation() };
+const stations = { tiss: tiss(), orrin: drum(orrin, DRUMS.orrin), wenna: drum(wenna, DRUMS.wenna) };
 const space = new SpaceView(modelEl);
 const info = document.getElementById("info");
 const panel = window.panel;

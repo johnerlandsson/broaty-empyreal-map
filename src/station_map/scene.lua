@@ -24,7 +24,7 @@ function S.scene(state)
   return 'parked'
 end
 
--- The station your ship is docked at ('tiss', 'orrin_station', ...), or nil.
+-- The station your ship is docked at ('tiss', 'orrin_station', 'wenna_halt', ...), or nil.
 function S.station(state)
   local ship = state.ship
   if ship and ship.docked then return ship.location end

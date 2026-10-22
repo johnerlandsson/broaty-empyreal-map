@@ -1,5 +1,5 @@
-// Preview driver: replays a walk round T.I.S.S., a flight to Orrin Station and a walk round that,
-// through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
+// Preview driver: replays a walk round T.I.S.S., then flights to Orrin Station and Wenna Halt and a
+// walk round each, through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
 // (src/station_map/location.lua, src/station_map/scene.lua).
 //
 //   ?step=N   open on route step N, as a panel re-mounting mid-walk would (only step N is replayed)
@@ -11,12 +11,13 @@
 
 import orrin from "../ui/data/orrin.js";
 import station from "../ui/data/station.js";
+import wenna from "../ui/data/wenna.js";
 import { DeckView } from "../ui/deck-view.js";
 import { ModelView } from "../ui/model-view.js";
 
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
-const byId = new Map([...station.rooms, ...orrin.rooms].map((r) => [r.id, r]));
+const byId = new Map([...station.rooms, ...orrin.rooms, ...wenna.rooms].map((r) => [r.id, r]));
 
 // --- the route -------------------------------------------------------------------------------
 
@@ -78,6 +79,19 @@ const ROUTE = [
   room("orrin.charts"),
   room("orrin.concourse"),
   room("orrin.gallery"),
+  room("orrin.concourse"),
+  room("orrin.berth"),
+  { label: "Flying to Wenna Halt", msg: COCKPIT, scene: { scene: "travelling" } },
+  { label: "Docked at Wenna Halt", msg: COCKPIT, scene: { scene: "station", station: "wenna_halt" } },
+  room("wenna.berth"),
+  room("wenna.concourse"),
+  room("wenna.market"),
+  room("wenna.concourse"),
+  room("wenna.freight"),
+  room("wenna.concourse"),
+  room("wenna.charts"),
+  room("wenna.concourse"),
+  room("wenna.lounge"),
 ];
 window.ROUTE = ROUTE;
 

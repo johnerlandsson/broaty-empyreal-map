@@ -7,13 +7,15 @@ describe("stations", () => {
     expect(stationOfRoom("tiss.lift-3")).toBe("tiss");
     expect(stationOfRoom("orrin.berth")).toBe("orrin");
     expect(stationOfRoom("ship.41")).toBe(null);
-    expect(stationOfRoom("wenna.berth")).toBe(null);
+    expect(stationOfRoom("wenna.berth")).toBe("wenna");
+    expect(stationOfRoom("senara.dock")).toBe(null);
     expect(stationOfRoom(undefined)).toBe(null);
   });
 
   it("knows a docked ship's station by its place id", () => {
     expect(stationOfDock("tiss")).toBe("tiss");
     expect(stationOfDock("orrin_station")).toBe("orrin");
+    expect(stationOfDock("wenna_halt")).toBe("wenna");
     expect(stationOfDock("belt.7")).toBe(null);
     expect(stationOfDock(null)).toBe(null);
   });

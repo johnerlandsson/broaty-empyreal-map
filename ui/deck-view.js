@@ -1,7 +1,7 @@
 // The deck plan: the floor the player is on, drawn as a true floor plan on a dark starfield.
 // T.I.S.S.'s four plans (Rim, Mid, Inner, Docks), or another station's, are built once; set() only
 // toggles visibility, moves the highlight and adjusts the viewBox. Layout maths lives in
-// lib/deck-layout.js; the room boxes and labels here are shared with orrin-deck.js.
+// lib/deck-layout.js; the room boxes and labels here are shared with drum-deck.js.
 
 import { DISTRICT_COLOURS as DC, SPOKE_HOURS, ang, districtOf } from "./lib/geometry.js";
 import {

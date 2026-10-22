@@ -2,7 +2,7 @@
 // T.I.S.S. unless given another's faces. The wheel (or drum) turns by itself so the player's clock
 // position comes round to the camera; the player's place is shown by lighting the faces that share
 // their key. The user can zoom and pan, not rotate.
-// Geometry lives in lib/geometry.js, lib/model.js and lib/orrin.js, turn maths in lib/turn.js.
+// Geometry lives in lib/geometry.js, lib/model.js and lib/drum.js, turn maths in lib/turn.js.
 
 import { BLZ, FRONT, P3, RR, RT, RWZ, project, roll } from "./lib/geometry.js";
 import { keyOf } from "./lib/locate.js";

@@ -1,4 +1,4 @@
--- Empyreal map (T.I.S.S. and Orrin Station so far): folds GMCP location frames into one small message
+-- Empyreal map (T.I.S.S., Orrin Station and Wenna Halt so far): folds GMCP location frames into one small message
 -- and pushes it to the "map" panel, and your ship's frames into the overview's scene. All state lives here; the panel is a
 -- pure presentation layer that asks for a replay with "ready".
 --

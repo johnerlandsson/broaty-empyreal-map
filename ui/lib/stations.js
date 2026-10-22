@@ -1,9 +1,9 @@
 // Which station's maps to show: the one whose room you're in, else the one your ship is docked
 // at, else whichever was showing. Pure; no DOM.
 
-const ROOM_PREFIX = { tiss: "tiss", orrin: "orrin" };
+const ROOM_PREFIX = { tiss: "tiss", orrin: "orrin", wenna: "wenna" };
 // Ship.Status `location` (a Space.Charts place id) while docked
-const DOCK = { tiss: "tiss", orrin_station: "orrin" };
+const DOCK = { tiss: "tiss", orrin_station: "orrin", wenna_halt: "wenna" };
 
 /** The station a room or lift id belongs to ("tiss.market" -> "tiss"), or null. */
 export function stationOfRoom(id) {
