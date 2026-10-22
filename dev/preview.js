@@ -41,7 +41,8 @@ function ride(hour, fromId, toId) {
   ];
 }
 
-const COCKPIT = { roomId: "ship.41", name: "Cockpit of the Magpie", area: "ship.41", areaName: "Magpie" };
+// a ship's rooms are ship.<n>.<room>, in the ship's own area, as the game names them now
+const COCKPIT = { roomId: "ship.41.cockpit", name: "Cockpit of the Magpie", area: "ship.41", areaName: "Magpie" };
 
 const ROUTE = [
   room("tiss.rim-1100"), // Rim 11:00 -> Main Concourse: the wheel should turn one hour, not eleven
@@ -68,14 +69,14 @@ const ROUTE = [
   room("tiss.spine-2"),
   room("tiss.spine-3"),
   room("tiss.berth"),
-  { label: "Cockpit of the Magpie (ship.41)", msg: COCKPIT },
+  { label: "Cockpit of the Magpie (no hull)", msg: COCKPIT },
   {
     label: "Cockpit of the Mule (skiff)",
-    msg: { roomId: "ship.12", name: "Cockpit of the Mule", area: "ship.12", areaName: "Mule", hull: "skiff", hullName: "prospecting skiff" },
+    msg: { roomId: "ship.12.cockpit", name: "Cockpit of the Mule", area: "ship.12", areaName: "Mule", hull: "skiff", hullName: "prospecting skiff" },
   },
   {
-    label: "Cockpit of the Kittiwake (courier)",
-    msg: { roomId: "ship.13", name: "Cockpit of the Kittiwake", area: "ship.13", areaName: "Kittiwake", hull: "courier", hullName: "courier" },
+    label: "Cockpit of the Fair Copy (courier)",
+    msg: { roomId: "ship.72.cockpit", name: "Cockpit of the Fair Copy", area: "ship.72", areaName: "Fair Copy", hull: "courier", hullName: "courier" },
   },
   { label: "Cockpit of the Magpie", msg: COCKPIT },
   { label: "Flying to Orrin Station", msg: COCKPIT, scene: { scene: "travelling" } },
