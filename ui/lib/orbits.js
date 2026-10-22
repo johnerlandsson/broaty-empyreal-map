@@ -154,3 +154,123 @@ export function shipFix(index, ship, t) {
   if (here) return { kind: "at", place: here, pos: positionOf(index, here, t) };
   return { kind: "none" };
 }
+
+const apo = (orbit) => (num(orbit?.a) ?? 0) * (1 + Math.min(Math.max(num(orbit?.e) ?? 0, 0), 0.95));
+
+// Km from the star to the edge of what is charted: the lane mouths' distance, else the
+// furthest apoapsis from the star, summed through the parents.
+export function systemRadius(index) {
+  const items = [...index.items.values()];
+  if (items.some((it) => it.kind === "mouth" || it.edge)) {
+    const rs = items.map((it) => num(it.edge?.r)).filter((r) => r !== null && r > 0);
+    return rs.length ? Math.max(...rs) : EDGE_KM;
+  }
+  let far = 0;
+  for (const it of items) {
+    let sum = 0;
+    let cur = it;
+    for (let i = 0; cur?.orbit && i < DEPTH; i++) {
+      sum += apo(cur.orbit);
+      cur = index.items.get(cur.orbit.parent);
+    }
+    far = Math.max(far, sum);
+  }
+  return far > 0 ? far : 1000;
+}
+
+// The km box [minX, minY, maxX, maxY] to open the chart on.
+export function homeBox(index, ship, t) {
+  const whole = () => {
+    const r = 1.08 * systemRadius(index);
+    return [-r, -r, r, r];
+  };
+  const fix = shipFix(index, ship, t);
+  if (fix.kind === "moving") {
+    const f = positionOf(index, fix.leg.frame, t);
+    if (!f || !fix.pos) return whole();
+    const pts = [fix.pos, [f[0] + fix.leg.from[0], f[1] + fix.leg.from[1]], [f[0] + fix.leg.to[0], f[1] + fix.leg.to[1]]];
+    const xs = pts.map((p) => p[0]);
+    const ys = pts.map((p) => p[1]);
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    const pad = 0.15 * Math.max(x1 - x0, y1 - y0);
+    return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
+  }
+  if (fix.kind === "at" || fix.kind === "searching") {
+    const parent = fix.place ? parentOf(index, fix.place) : null;
+    const body = parent && index.items.get(parent);
+    const c = body && body.kind !== "star" ? positionOf(index, parent, t) : null;
+    if (!c || !positionOf(index, fix.place, t)) return whole();
+    let far = 0;
+    for (const it of index.items.values()) if (it.orbit?.parent === parent) far = Math.max(far, apo(it.orbit));
+    const r = (far > 0 ? far : 500) * 1.15;
+    return [c[0] - r, c[1] - r, c[0] + r, c[1] + r];
+  }
+  return whole();
+}
+
+// An SVG viewBox [x, y, w, h] in km (svg y = -km y) around the box, matching w:h.
+export function fitBox(box, w, h) {
+  const [x0, y0, x1, y1] = box;
+  const aspect = w > 0 && h > 0 ? w / h : 1;
+  let vw = Math.max(x1 - x0, 0);
+  let vh = Math.max(y1 - y0, 0);
+  if (vw / aspect < vh) vw = vh * aspect;
+  else vh = vw / aspect;
+  if (vw < 1000) {
+    vw = 1000;
+    vh = vw / aspect;
+  }
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+  return [cx - vw / 2, -cy - vh / 2, vw, vh];
+}
+
+// Where to draw an arrow for a point p outside the viewBox vb, on vb shrunk by inset.
+export function edgeMarker(vb, p, inset) {
+  const [x, y, w, h] = vb;
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  if (p[0] >= x && p[0] <= x + w && p[1] >= y && p[1] <= y + h) return null;
+  const dx = p[0] - cx;
+  const dy = p[1] - cy;
+  const hw = Math.max(w / 2 - inset, 0);
+  const hh = Math.max(h / 2 - inset, 0);
+  const k = Math.min(dx ? hw / Math.abs(dx) : Infinity, dy ? hh / Math.abs(dy) : Infinity);
+  return { x: cx + dx * k, y: cy + dy * k, angle: Math.atan2(dy, dx) };
+}
+
+// True when p has strayed from the centre of the viewBox, so the view should follow.
+export function follows(vb, p, margin = 0.35) {
+  const [x, y, w, h] = vb;
+  return Math.abs(p[0] - (x + w / 2)) > margin * (w / 2) || Math.abs(p[1] - (y + h / 2)) > margin * (h / 2);
+}
+
+// An orbit under 8 px across is drawn folded into its parent.
+export function folded(index, id, kmPerPx) {
+  const a = num(index.items.get(id)?.orbit?.a);
+  return a !== null && (2 * a) / kmPerPx < 8;
+}
+
+// The largest of 1, 2 or 5 x 10^n km that fits in maxPx.
+export function scaleKm(kmPerPx, maxPx) {
+  const km = kmPerPx * maxPx;
+  if (!(km >= 1)) return 1;
+  const mag = 10 ** Math.floor(Math.log10(km));
+  return [5, 2, 1].map((m) => m * mag).find((v) => v <= km) ?? mag;
+}
+
+// A span in ms as the game's `charts` shows it: "2d 4h", "3h 2m", "12m".
+export function ago(ms) {
+  const mins = Math.floor(Math.max(num(ms) ?? 0, 0) / 60000);
+  const d = Math.floor(mins / 1440);
+  const h = Math.floor((mins % 1440) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${mins % 60}m`;
+  return `${mins}m`;
+}
+
+// "the Maelor lane mouth" -> "Maelor"; anything else stays as it is.
+export function mouthStar(name) {
+  const s = String(name ?? "");
+  return s.replace(/^the\s+/i, "").replace(/\s+lane mouth$/i, "").trim() || s;
+}

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { EDGE_KM, errorAt, frameOf, indexCharts, isLost, legOf, offsetOn, parentOf, parsePoint, positionOf, shipFix } from "./orbits.js";
+import {
+  EDGE_KM, ago, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
+  offsetOn, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
+} from "./orbits.js";
 
 const rad = (d) => (d * Math.PI) / 180;
 const orbit = (parent, a, period, extra = {}) => ({ parent, a, e: 0, peri: 0, phase: 0, period, ...extra });
@@ -227,5 +230,134 @@ describe("legOf and shipFix", () => {
   it("is none with nothing", () => {
     expect(shipFix(idx, null, T)).toEqual({ kind: "none" });
     expect(shipFix(idx, { docked: false }, T)).toEqual({ kind: "none" });
+  });
+});
+
+describe("systemRadius", () => {
+  it("is the edge when there is a mouth", () => expect(systemRadius(idx)).toBe(15000));
+  it("is EDGE_KM for a mouth with no edge", () => {
+    expect(systemRadius(indexCharts(charts()))).toBe(EDGE_KM);
+  });
+  it("sums apoapsis through parents without a mouth", () => {
+    const i = indexCharts({ ...charts(), places: [{ id: "gannet", kind: "belt", orbit: orbit("tamsin", 2700, 1) }] });
+    expect(systemRadius(i)).toBeCloseTo(13200, 6); // orrin: 12000 * 1.1
+    const j = indexCharts({ bodies: [{ id: "s", kind: "star" }] });
+    expect(Number.isFinite(systemRadius(j))).toBe(true);
+  });
+});
+
+describe("homeBox", () => {
+  it("frames the parent of a place out to its furthest satellite", () => {
+    const [x0, y0, x1, y1] = homeBox(idx, { docked: true, location: "gannet" }, T);
+    const c = positionOf(idx, "tamsin", T);
+    expect((x0 + x1) / 2).toBeCloseTo(c[0], 6);
+    expect((y0 + y1) / 2).toBeCloseTo(c[1], 6);
+    expect((x1 - x0) / 2).toBeCloseTo(2700 * 1.15, 6);
+    expect((y1 - y0) / 2).toBeCloseTo(2700 * 1.15, 6);
+  });
+  it("does the same while searching", () => {
+    const b = homeBox(idx, { searching: "gannet" }, T);
+    expect((b[2] - b[0]) / 2).toBeCloseTo(2700 * 1.15, 6);
+  });
+  it("is the whole system with no ship, or under the star", () => {
+    for (const s of [null, { docked: true, location: "mouth" }, { docked: true, location: "nowhere" }]) {
+      const b = homeBox(idx, s, T);
+      expect(b[0]).toBeCloseTo(-1.08 * 15000, 6);
+      expect(b[3]).toBeCloseTo(1.08 * 15000, 6);
+    }
+  });
+  it("frames a trip with padding", () => {
+    const ship = { docked: false, from: "tiss", destination: "gannet", progress: 0.5, eta: 100, received: 1000 };
+    const t = 1000000;
+    const [x0, y0, x1, y1] = homeBox(idx, ship, t);
+    const leg = legOf(idx, ship);
+    const f = positionOf(idx, "tamsin", t);
+    const xs = [f[0] + leg.from[0], f[0] + leg.to[0]];
+    const span = Math.max(Math.abs(xs[0] - xs[1]), Math.abs(f[1] + leg.from[1] - (f[1] + leg.to[1])));
+    expect(x0).toBeLessThan(Math.min(...xs));
+    expect(x1).toBeGreaterThan(Math.max(...xs));
+    expect(Math.min(...xs) - x0).toBeGreaterThanOrEqual(0.15 * span - 1e-6);
+    expect(y1).toBeGreaterThan(y0);
+  });
+  it("never throws or returns NaN on junk", () => {
+    const b = homeBox(indexCharts(null), { docked: true, location: "x" }, T);
+    expect(b.every(Number.isFinite)).toBe(true);
+  });
+});
+
+describe("fitBox", () => {
+  it("matches the aspect, flips y and stays centred", () => {
+    const [x, y, vw, vh] = fitBox([-100, 0, 100, 200], 800, 400);
+    expect(vw / vh).toBeCloseTo(2, 9);
+    expect(vw).toBeGreaterThanOrEqual(1000);
+    expect(x + vw / 2).toBeCloseTo(0, 9);
+    expect(y + vh / 2).toBeCloseTo(-100, 9);
+  });
+  it("grows the narrower dimension", () => {
+    const [, , vw, vh] = fitBox([-5000, -1000, 5000, 1000], 100, 100);
+    expect(vw).toBe(10000);
+    expect(vh).toBe(10000);
+  });
+  it("enforces 1000 km width", () => expect(fitBox([0, 0, 10, 10], 100, 50)[2]).toBe(1000));
+});
+
+describe("edgeMarker", () => {
+  it("is null inside", () => expect(edgeMarker([0, 0, 100, 100], [50, 50], 5)).toBeNull());
+  it("sits on the inset edge", () => {
+    expect(edgeMarker([0, 0, 100, 100], [150, 50], 5)).toEqual({ x: 95, y: 50, angle: 0 });
+  });
+  it("follows the ray to a corner side", () => {
+    const m = edgeMarker([0, 0, 100, 100], [150, 150], 0);
+    expect(m.x).toBeCloseTo(100, 9);
+    expect(m.y).toBeCloseTo(100, 9);
+    expect(m.angle).toBeCloseTo(Math.PI / 4, 9);
+  });
+});
+
+describe("follows", () => {
+  it("is true past the margin", () => {
+    const vb = [0, 0, 100, 100];
+    expect(follows(vb, [50, 50])).toBe(false);
+    expect(follows(vb, [50 + 17, 50])).toBe(false);
+    expect(follows(vb, [50 + 18, 50])).toBe(true);
+    expect(follows(vb, [50, 50 - 18])).toBe(true);
+    expect(follows(vb, [60, 50], 0.1)).toBe(true);
+  });
+});
+
+describe("folded", () => {
+  it("is true when the orbit is under 8 px across", () => {
+    expect(folded(idx, "tiss", 1000)).toBe(true); // 1800 / 1000 < 8
+    expect(folded(idx, "tiss", 100)).toBe(false);
+    expect(folded(idx, "nowhere", 1)).toBe(false);
+  });
+});
+
+describe("scaleKm", () => {
+  it("picks 1, 2 or 5 x 10^n", () => {
+    expect(scaleKm(10, 120)).toBe(1000);
+    expect(scaleKm(37, 120)).toBe(2000);
+    expect(scaleKm(50, 120)).toBe(5000);
+    expect(scaleKm(0.01, 120)).toBe(1);
+  });
+});
+
+describe("ago", () => {
+  it("formats two units", () => {
+    expect(ago(187200000)).toBe("2d 4h");
+    expect(ago(3 * 3600000 + 2 * 60000)).toBe("3h 2m");
+    expect(ago(12 * 60000)).toBe("12m");
+    expect(ago(5000)).toBe("0m");
+    expect(ago(-1)).toBe("0m");
+    expect(ago(NaN)).toBe("0m");
+  });
+});
+
+describe("mouthStar", () => {
+  it("strips the dressing", () => {
+    expect(mouthStar("the Maelor lane mouth")).toBe("Maelor");
+    expect(mouthStar("The Maelor Lane Mouth")).toBe("Maelor");
+    expect(mouthStar("Somewhere")).toBe("Somewhere");
+    expect(mouthStar(null)).toBe("");
   });
 });
