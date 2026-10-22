@@ -66,8 +66,8 @@ closed room, why it's closed.
 **Aboard a ship.** The bottom band shows the ship's plan in place of the
 station's: the whole hull from above, fore up, with the room you're in lit
 and the ship's name and class under it. Each class has its own drawing (the
-prospecting skiff and the courier); until the game tells the plugin a ship's
-class, every ship shows a plain generic hull. Hover over a room for its name.
+prospecting skiff and the courier); a class without a drawing yet shows a
+plain generic hull. Hover over a room for its name.
 
 The line at the bottom left says where you are, for example
 `LAUNDRY · Rim 2:00, aft · 0.9 g` or `LIFT 3 · climbing hubward`. Aboard a

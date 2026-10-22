@@ -1,7 +1,6 @@
 # Ship plans
 
-*Status: built; the live panel shows the generic ship until the server sends the hull. Last
-updated 2026-10-22.*
+*Status: built. Last updated 2026-10-22.*
 
 The approved mockup is `docs/maps/reference/ship-plans-mockup.html` (open it
 in a browser). It's a throwaway: take its look, not its code.
@@ -61,28 +60,24 @@ is the ship's. `mudstd.room.info` gives every ship room `terrain: "ship"`,
 `area: "ship.<n>"` and `areaName`, the ship's name ("Mule"). The plan treats
 any room whose id starts `ship.` as being aboard a ship.
 
-### The class: waiting on the server
+### The class
 
-The server doesn't send the hull class yet. The maintainer is adding it
-(2026-10-21). The proposal was to have `Empyreal.Room` describe the ship for
-any ship room, the way it describes lift cars:
+Since the server update of 2026-10-22, `Empyreal.Room` describes the ship for
+a ship room, in a `ship` object (read off the session logs; the source wasn't
+pushed yet):
 
 ```
-vehicle: { kind: "ship", id: "ship.42", name: "Mule", hull: "skiff", hullName: "prospecting skiff" }
+ship: { class: "skiff", id: "ship.41", kind: "prospecting skiff", name: "Magpie" }
+ship: { class: "courier", id: "ship.72", kind: "courier", name: "Fair Copy" }
 ```
 
-The final shape is the maintainer's call; check `~/dev/empyreal`
-(`packages/game/src/world/gmcp.ts`, `gmcp-schema.ts`, `docs/gmcp.md`) when it
-lands. What the plan needs from it: a stable hull id (`skiff`, `courier`, as
-in `content/game/hulls.yaml`), and, once ships have more rooms, which part of
-the ship each room is.
+`class` is the hull's stable id, as in `content/game/hulls.yaml`, and picks
+the drawing; `kind` is its name, used in the caption and the info line. The
+Lua location message carries them as `hull` and `hullName`. Nothing says yet
+which part of the ship a room is; once ships have more rooms the server will
+need to, and it gets carried as `shipRoom`.
 
-**Until it lands:** the plan code takes a hull id, and the preview lets you
-pick one, so both drawings can be built and checked now. In the live panel
-every ship shows the generic drawing. When the field lands, it gets wired
-through the Lua location message to pick the drawing.
-
-**The user's decision:** no stopgap guessing from `Ship.List`'s `kind` (a
+**The user's decision:** no guessing the class from `Ship.List`'s `kind` (a
 display name, sent only for ships you own).
 
 ## Bottom band: the plan
@@ -105,10 +100,9 @@ Style A from the mockup, "blueprint line":
 - **Compartments** are line drawings in Dim (style guide §7), with no labels
   and no hover.
 - **Under the hull**, in Dim at 9 to 10: the ship's name and class,
-  `Mule · prospecting skiff`. The name from `areaName`, the class from the
-  new field's display name (`hullName` in the proposal; *my call:* the game's
-  own word, as on the info line, rather than the id); with no class, the name
-  alone.
+  `Mule · prospecting skiff`. The name from `areaName`, the class from
+  `ship.kind` (*my call:* the game's own word, as on the info line, rather
+  than the id); with no class, the name alone.
 
 ### The skiff
 
@@ -148,7 +142,7 @@ not much else..."*
 
 ### The generic ship
 
-For a ship whose class isn't known (until the server sends it) or has no
+For a ship whose class isn't known (no `ship` in the frame) or has no
 drawing (a hull added to the game before its drawing): *my call:* a plain
 rounded hull with a lit cockpit at the nose, no compartments, and the ship's
 name under it. It shouldn't look like either real class.
@@ -196,11 +190,11 @@ Following the drum stations' pattern:
   room with that hull.
 
 The Lua location message (`src/station_map/location.lua`) carries `area` and
-`areaName`; the caption takes the ship's name from `areaName`.
-
-When the server's field lands: carry the hull id (and later the room's part)
-in the Lua location message (`src/station_map/location.lua`), and pick the
-drawing from it.
+`areaName` from `mudstd.room.info`, and `hull` and `hullName` from
+`Empyreal.Room`'s `ship`; the caption takes the ship's name from `areaName`,
+and `main.js` picks the drawing by `hull`. When the server says which part of
+the ship a room is, carry it as `shipRoom`: `main.js` already passes it to the
+highlight.
 
 ## Where it differs from the style guide
 

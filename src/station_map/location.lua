@@ -1,5 +1,6 @@
 -- Location reducer: folds three GMCP packages (mudstd.room.info,
--- Empyreal.Room, Empyreal.Vehicle) into one small location message.
+-- Empyreal.Room, Empyreal.Vehicle) into one small location message, with the
+-- ship's hull when you're aboard one.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 -- Uses no io/os/debug/coroutine (removed in Mallard's sandbox).
 
@@ -67,6 +68,8 @@ function L.message(state)
     gravity = state.gravity,
     area = state.area,
     areaName = state.areaName,
+    hull = state.hull,
+    hullName = state.hullName,
     lift = lift,
   }
 end
@@ -83,9 +86,11 @@ function L.room_info(state, data)
   if not id then return false end
   return track(state, function()
     if state.roomId ~= id then
-      -- Address and gravity belong to the previous room.
+      -- Address, gravity and the ship's hull belong to the previous room.
       state.address = nil
       state.gravity = nil
+      state.hull = nil
+      state.hullName = nil
     end
     state.roomId = id
     state.name = str(data.name)
@@ -116,6 +121,8 @@ function L.empyreal_room(state, data)
       state.roomId = nil
       state.area = nil
       state.areaName = nil
+      state.hull = nil
+      state.hullName = nil
       state.name = str(data.address)
       state.address = nil
       state.gravity = num(data.gravity)
@@ -133,6 +140,11 @@ function L.empyreal_room(state, data)
     state.roomId = id
     state.address = str(data.address)
     state.gravity = num(data.gravity)
+    -- Aboard a ship, `ship` says which: `class` is the hull's id ("skiff"), `kind` its name
+    -- ("prospecting skiff").
+    local ship = type(data.ship) == 'table' and data.ship or {}
+    state.hull = str(ship.class)
+    state.hullName = str(ship.kind)
     state.lift = nil
   end)
 end
@@ -156,6 +168,8 @@ function L.reset(state)
     state.gravity = nil
     state.area = nil
     state.areaName = nil
+    state.hull = nil
+    state.hullName = nil
     state.lift = nil
   end)
 end
