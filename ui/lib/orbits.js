@@ -115,7 +115,10 @@ export function legOf(index, ship) {
   if (frame === null) return null;
   const progress = Math.min(Math.max(num(ship.progress) ?? 0, 0), 1);
   const arrive = (received + eta) * 1000;
-  const depart = progress >= 1 ? arrive : arrive - (eta / (1 - progress)) * 1000;
+  // the departure the Lua side kept from the trip's first status: worked out again from a late
+  // one, progress (rounded to 2 places) would swing it by minutes
+  const kept = num(ship.depart);
+  const depart = kept !== null ? kept * 1000 : progress >= 1 ? arrive : arrive - (eta / (1 - progress)) * 1000;
   const at = (id, t) => {
     const p = positionOf(index, id, t);
     const f = positionOf(index, frame, t);

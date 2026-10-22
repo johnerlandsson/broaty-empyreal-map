@@ -192,6 +192,25 @@ describe("legOf and shipFix", () => {
     near(fix.pos, [f[0] + leg.to[0], f[1] + leg.to[1]]);
   });
 
+  it("prefers the depart the Lua side kept", () => {
+    // a 300 s trip that left at 1000: late on, progress rounds to 0.99 and then 1.00
+    const late = { ...ship, depart: 1000, progress: 0.99, eta: 2, received: 1298 };
+    expect(legOf(idx, late)).toMatchObject({ depart: 1000000, arrive: 1300000 });
+    near(legOf(idx, late).from, offsetOn(idx.items.get("tiss").orbit, 0, 1000000));
+    const done = { ...late, progress: 1, eta: 1, received: 1299 };
+    expect(legOf(idx, done)).toMatchObject({ depart: 1000000, arrive: 1300000 });
+    // not drawn at the destination before she gets there
+    const f = positionOf(idx, "tamsin", 1299000);
+    const leg = legOf(idx, done);
+    const k = 299 / 300;
+    near(shipFix(idx, done, 1299000).pos, [f[0] + leg.from[0] + (leg.to[0] - leg.from[0]) * k, f[1] + leg.from[1] + (leg.to[1] - leg.from[1]) * k]);
+  });
+
+  it("falls back to an estimate without a depart", () => {
+    expect(legOf(idx, { ...ship, depart: null }).depart).toBe(900000);
+    expect(legOf(idx, { ...ship, depart: "x", progress: 1 }).depart).toBe(1100000);
+  });
+
   it("moves midway", () => {
     const leg = legOf(idx, ship);
     const fix = shipFix(idx, ship, 1000000);
