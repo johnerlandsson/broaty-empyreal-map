@@ -29,8 +29,8 @@ address as the game's coords do: x the side (starboard positive), y the frame
 checks the data against the YAML whenever `~/dev/empyreal` is there.
 
 What the addresses don't say is in `DECKS` in `ui/lib/decks.js`: the room id
-prefix, a district tint per room, which rooms are blisters, the cradles at the
-nose and the thrusters aft.
+prefix, a district tint per room, which rooms are blisters, and the cradles at
+the nose.
 
 From the addresses and the exits:
 
@@ -80,13 +80,11 @@ left, and the frames are labelled down the port side.
   deck above it shows its outline, dashed in Glass, under the hatch down.
 - **The Berths** have airlock hatches with status lights on every wall that
   no exit goes through.
-- **Thruster bells** flare aft of the hull wall behind the cells the spec
-  names.
 
 ## Rooms, compartments and the highlight
 
 All nine of Orrin's rooms are rooms, the passages and the Gallery included.
-Cradles, thruster bells, airlock hatches and status lights are compartments:
+Cradles, airlock hatches and status lights are compartments:
 on the plan they're never lit and have no hover. A passage lights its stretch
 of band, a room its box, the blister its circle.
 
@@ -129,3 +127,7 @@ the game yet, and nothing here draws them.
   of its own.
 - **Changing deck doesn't re-centre the plan** (§8.3), because every deck
   shares one frame.
+- **No thruster bells**, though Orrin's description has stationkeeping
+  thrusters aft of Deck 3 (§7 suggests flared bells). Under the plan's aft
+  wall they looked like a ship's stern, as on the ship plans, so they're
+  left out.

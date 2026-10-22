@@ -41,20 +41,6 @@ function buildDeckPlan(svg, index, spec, deck, level) {
   }
   for (const c of cells) if (c.kind === "blister") el("circle", { cx: c.cx, cy: c.cy, r: c.r + 14, fill: PLATE, stroke: EDGE, "stroke-width": 2 }, g);
 
-  // thruster bells aft of a cell's wall: compartments, line drawings
-  if (fp && onHull) {
-    for (const [side, d] of spec.thrusters ?? []) {
-      if (d !== deck) continue;
-      const [x] = layout.centre({ x: side, y: 0 });
-      thrusters(g, x, fp.y + fp.h);
-    }
-  }
-
-  // a blister on the next deck, outlined where it hangs under (or sits on) this one
-  for (const b of layout.nearby) {
-    el("circle", { cx: b.cx, cy: b.cy, r: b.r, fill: "none", stroke: GLASS, "stroke-opacity": 0.35, "stroke-width": 1.2, "stroke-dasharray": "4 4", ...none }, g);
-  }
-
   for (const l of links) el("rect", { x: l.x, y: l.y, width: l.w, height: l.h, fill: PASSAGE }, g);
 
   for (const c of cells) {
@@ -124,12 +110,4 @@ function blister(g, c) {
   }
   label(gl, c.cx, c.cy + 10, c.room.name, 12);
   hover(gl, c.room);
-}
-
-/** Two stationkeeping thruster bells, flaring aft from the hull wall at y. */
-function thrusters(g, cx, y) {
-  for (const dx of [-16, 16]) {
-    const x = cx + dx;
-    el("path", { d: `M${x - 4},${y}L${x - 4},${y + 5}L${x - 9},${y + 16}L${x + 9},${y + 16}L${x + 4},${y + 5}L${x + 4},${y}`, stroke: DIM, "stroke-width": 1.2, fill: "none", ...none }, g);
-  }
 }

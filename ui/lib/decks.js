@@ -13,13 +13,13 @@ import { DISTRICT_COLOURS } from "./geometry.js";
 /**
  * What the addresses don't say. `prefix` is the rooms' id prefix; `tints` a district colour per
  * room; `blisters` the rooms that are glass blisters outside the hull, not cells of it; `cradles`
- * the blocks fore of the nose, each [side, deck, half-width, half-height, length] in cells;
- * `thrusters` the cells whose aft wall has thruster bells behind it, each [side, deck].
+ * the blocks fore of the nose, each [side, deck, half-width, half-height, length] in cells.
  */
 export const DECKS = {
   // A foundry port: orange paint inside, a docking well at the nose with big cradles for ore tugs
-  // and drop cans and small ones for skiffs wedged in at the corners, the stationkeeping thrusters
-  // aft of Deck 3's bulkhead, and the Gallery a glass blister under Deck 2 looking down at Orrin.
+  // and drop cans and small ones for skiffs wedged in at the corners, and the Gallery a glass
+  // blister under Deck 2 looking down at Orrin. (No thruster bells aft: on the plan they read as
+  // a ship's stern under the station.)
   orrin: {
     prefix: "orrin",
     tints: {
@@ -42,7 +42,6 @@ export const DECKS = {
       [-1, 2, 0.18, 0.16, 0.36], // skiffs, at the corners
       [1, 2, 0.18, 0.16, 0.36],
     ],
-    thrusters: [[0, 3]],
   },
 };
 

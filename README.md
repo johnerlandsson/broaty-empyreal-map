@@ -164,7 +164,7 @@ Orrin Station's nine rooms (`ui/data/orrin.js`) are copied from
 exits. Nothing is placed by hand: each room's cell comes from its address
 (`Deck 3, frame 2, port 1`), and a test checks the file against the YAML
 when `~/dev/empyreal` is there. What the addresses don't say (colours, the
-blister, cradles, thrusters) is in `DECKS` in `ui/lib/decks.js`.
+blister, cradles) is in `DECKS` in `ui/lib/decks.js`.
 
 Wenna Halt's six rooms (`ui/data/wenna.js`) are written by hand from
 `content/areas/wenna.yaml`. The game gives that area no layout, so the rooms
