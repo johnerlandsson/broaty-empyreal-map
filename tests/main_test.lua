@@ -212,7 +212,7 @@ test('disconnect in space posts the station scene', function()
   env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = false, destination = 'belt.7' })
   env.posts = {}
   env.world_handlers.disconnect()
-  eq(names(env), { 'location', 'scene', 'charts', 'chart-ship', 'chart' })
+  eq(names(env), { 'location', 'scene', 'charts', 'chart-ship' })
   eq(env.posts[2].data, { scene = 'station' })
 end)
 
@@ -297,16 +297,26 @@ test('ready replays chart only when on', function()
   eq(names(env), { 'settings' })
 end)
 
-test('disconnect posts charts nil and chart off', function()
+test('disconnect posts charts nil and keeps the chart on', function()
   local env = boot()
   env.gmcp_handlers['Space.Charts']('Space.Charts', { system = 'sol' })
   env.panel_handlers.chart({ on = true })
   env.posts = {}
   env.world_handlers.disconnect()
-  eq(names(env), { 'location', 'charts', 'chart-ship', 'chart' })
+  eq(names(env), { 'location', 'charts', 'chart-ship' })
   eq(post_named(env, 'charts').data, nil)
   eq(post_named(env, 'chart-ship').data, nil)
-  eq(post_named(env, 'chart').data, { on = false })
+  -- a panel remounted while disconnected is told it's still on
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings', 'chart' })
+  eq(post_named(env, 'chart').data, { on = true })
+end)
+
+test('chart-ship carries her name', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = true, location = 'tiss' })
+  eq(post_named(env, 'chart-ship').data.name, 'Mule')
 end)
 
 t.done()

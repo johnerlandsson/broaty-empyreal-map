@@ -2,7 +2,8 @@
 -- chart (the orrery) draws from: the cleaned charts, and her ship with what the
 -- payload leaves out and this remembers: where she `from` left, the `point` she
 -- holds at once her trip there ends, whether she is `searching` for a belt, and
--- when the status `received` (whole seconds), which fixes the trip's timing.
+-- when the status `received` and when her trip began, `depart` (whole seconds), which fix
+-- the trip's timing; and her `name`.
 -- She reads from `host` when set, as scene.lua does.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 
@@ -84,7 +85,7 @@ end
 
 local function drop_memory(ship)
   if ship then
-    ship.from, ship.point, ship.searching = nil, nil, nil
+    ship.from, ship.point, ship.searching, ship.depart = nil, nil, nil, nil
   end
 end
 
@@ -117,6 +118,22 @@ local function snapshot(ship)
   return c
 end
 
+-- True once the leg the previous status timed has come due by now: a new leg (the game's
+-- `missed`) or a trip's end only comes then. Before it, a growing eta is a delay (debris) and
+-- a loose status is a stop or hold mid-trip, wherever she happened to be.
+local function leg_due(prev, now)
+  if not (prev and prev.eta and prev.received) then return false end
+  return prev.eta - (now - prev.received) <= SLACK
+end
+
+-- When the trip began, whole seconds, from a status's progress and eta (the game's progress
+-- is (tick - depart) / (arrive - depart)); nil when it can't be worked out.
+local function depart_of(cur)
+  local p, eta = cur.progress, cur.eta
+  if not (p and eta and p >= 0 and p < 1) then return nil end
+  return math.floor(cur.received - p * eta / (1 - p) + 0.5)
+end
+
 function C.ship_status(state, data, now)
   local before = snapshot(state.ship)
   if type(data) ~= 'table' then
@@ -137,24 +154,33 @@ function C.ship_status(state, data, now)
   local prev, old = state.prev, state.ship
   if prev and prev.hosted ~= cur.hosted then prev, old = nil, nil end -- not the same ship
 
-  local from, point, searching
+  local from, point, searching, depart, depart_progress
   if cur.destination then
-    if prev and prev.destination == cur.destination then
+    local same_trip = prev and prev.destination == cur.destination
+    if same_trip then
       from = old and old.from
     elseif prev and not prev.destination then
       from = prev.location or (old and old.point)
     end
+    local new_leg = false
     if is_belt(state, cur.destination) then
-      if old and old.searching == cur.destination then
-        searching = cur.destination
-      elseif prev and prev.destination == cur.destination and prev.progress and prev.eta
-          and ((cur.progress and cur.progress < prev.progress)
-            or (cur.eta and cur.eta > prev.eta - (cur.received - prev.received) + SLACK)) then
+      new_leg = same_trip and prev.progress and prev.eta and leg_due(prev, cur.received)
+        and ((cur.progress and cur.progress < prev.progress)
+          or (cur.eta and cur.eta > prev.eta - (cur.received - prev.received) + SLACK)) or false
+      if (old and old.searching == cur.destination) or new_leg then
         searching = cur.destination
       end
     end
+    -- the trip's departure, from its lowest-progress status: the rounding of progress costs
+    -- least there, and late in a trip it would swing by minutes
+    depart, depart_progress = depart_of(cur), cur.progress
+    if same_trip and not new_leg and old and old.depart and prev.depart_progress
+        and not (depart and cur.progress < prev.depart_progress) then
+      depart, depart_progress = old.depart, prev.depart_progress
+    end
+    if not depart then depart_progress = nil end
   elseif not cur.docked and not cur.location then -- loose
-    if prev and prev.destination then
+    if prev and prev.destination and leg_due(prev, cur.received) then
       if prev.destination:sub(1, 3) == 'pt:' then point = prev.destination end
       if is_belt(state, prev.destination) then searching = prev.destination end
     end
@@ -165,10 +191,12 @@ function C.ship_status(state, data, now)
   state.prev = {
     destination = cur.destination, location = cur.location, docked = cur.docked,
     progress = cur.progress, eta = cur.eta, received = cur.received, hosted = cur.hosted,
+    depart_progress = depart_progress,
   }
   state.ship = {
+    name = str(data.name),
     docked = cur.docked, location = cur.location, destination = cur.destination,
-    progress = cur.progress, eta = cur.eta, received = cur.received,
+    progress = cur.progress, eta = cur.eta, received = cur.received, depart = depart,
     from = from, point = point, searching = searching,
   }
   return not same(before, snapshot(state.ship))
@@ -181,9 +209,11 @@ function C.set_on(state, on)
   return true
 end
 
+-- A disconnect: the charts and the ship go, but the chart stays on (the client outlives a
+-- dropped connection); with no charts the panel hides it and its ◎ anyway.
 function C.reset(state)
-  local changed = state.charts ~= nil or state.ship ~= nil or state.on
-  state.charts, state.ship, state.prev, state.on = nil, nil, nil, false
+  local changed = state.charts ~= nil or state.ship ~= nil
+  state.charts, state.ship, state.prev = nil, nil, nil
   return changed
 end
 

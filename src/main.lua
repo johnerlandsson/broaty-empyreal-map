@@ -93,10 +93,10 @@ world.on('disconnect', function()
   L.reset(state)
   post_location()
   if S.reset(scene) then post_scene() end
+  -- The chart stays on: the panel hides it, and its ◎, with no charts.
   if C.reset(chart) then
     post_charts()
     post_chart_ship()
-    post_chart_on()
   end
 end)
 
