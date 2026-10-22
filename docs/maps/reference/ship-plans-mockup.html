@@ -1,0 +1,85 @@
+<!doctype html>
+<!-- The approved ship plan mockup (style A, blueprint line), 2026-10-22: the skiff and the courier,
+     fore up, the cockpit lit. A throwaway: take its look, not its code. See docs/maps/ship-plans.md. -->
+<html><head><meta charset="utf-8"><title>Ship plans: approved mockup</title>
+<style>
+  body { margin:0; background:#04060c; display:flex; gap:24px; justify-content:center; padding:24px; }
+  svg { width:240px; height:400px; }
+  text { font-family: Inter, system-ui, sans-serif; }
+  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.55 } }
+  .here { animation: pulse 1.8s ease-in-out infinite; }
+</style></head><body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- Compartment glyphs, drawn in currentColor so each style tints them -->
+    <!-- skiff: laser boom with lens and beam ticks -->
+    <g id="skiff-boom" fill="none" stroke="currentColor" stroke-width="1.4">
+      <line x1="100" y1="60" x2="100" y2="24"/>
+      <line x1="94" y1="44" x2="106" y2="44"/>
+      <path d="M100,10 L106,18 L100,26 L94,18 Z"/>
+      <line x1="100" y1="2" x2="100" y2="6"/><line x1="94" y1="5" x2="96" y2="8"/><line x1="106" y1="5" x2="104" y2="8"/>
+    </g>
+    <!-- skiff: hold of crates, 3 x 2 -->
+    <g id="skiff-hold" fill="none" stroke="currentColor" stroke-width="1.2">
+      <rect x="64" y="145" width="21" height="25" rx="1.5"/><path d="M64,145 L85,170"/>
+      <rect x="89.5" y="145" width="21" height="25" rx="1.5"/><path d="M89.5,145 L110.5,170"/>
+      <rect x="115" y="145" width="21" height="25" rx="1.5"/><path d="M115,145 L136,170"/>
+      <rect x="64" y="176" width="21" height="25" rx="1.5"/><path d="M64,176 L85,201"/>
+      <rect x="89.5" y="176" width="21" height="25" rx="1.5"/><path d="M89.5,176 L110.5,201"/>
+      <rect x="115" y="176" width="21" height="25" rx="1.5"/><path d="M115,176 L136,201"/>
+    </g>
+    <!-- skiff: three flared bells clustered at the stern -->
+    <g id="skiff-bells" stroke="currentColor" stroke-width="1.3">
+      <path d="M74,231 Q74,240 67,253 L85,253 Q78,240 78,231 Z"/>
+      <path d="M98,231 Q98,242 90,257 L110,257 Q102,242 102,231 Z"/>
+      <path d="M122,231 Q122,240 115,253 L133,253 Q126,240 126,231 Z"/>
+    </g>
+    <!-- courier: two seats in line -->
+    <g id="courier-seats" fill="none" stroke="currentColor" stroke-width="1.2">
+      <path d="M94,52 h12 v8 h-12 z M94,60 l2,4 h8 l2,-4"/>
+      <path d="M94,74 h12 v8 h-12 z M94,82 l2,4 h8 l2,-4"/>
+    </g>
+    <!-- courier: small hold, two crates -->
+    <g id="courier-hold" fill="none" stroke="currentColor" stroke-width="1.2">
+      <rect x="87" y="110" width="12" height="22" rx="1.5"/><path d="M87,110 L99,132"/>
+      <rect x="101" y="110" width="12" height="22" rx="1.5"/><path d="M101,110 L113,132"/>
+    </g>
+    <!-- courier: empty slot under a bolted cover plate -->
+    <g id="courier-slot" stroke="currentColor" stroke-width="1.1">
+      <rect x="88" y="141" width="24" height="18" rx="2" fill="none"/>
+      <circle cx="91.5" cy="144.5" r="1.2" fill="currentColor"/><circle cx="108.5" cy="144.5" r="1.2" fill="currentColor"/>
+      <circle cx="91.5" cy="155.5" r="1.2" fill="currentColor"/><circle cx="108.5" cy="155.5" r="1.2" fill="currentColor"/>
+    </g>
+    <!-- courier: the long drive, a core with coil ribs -->
+    <g id="courier-drive" fill="none" stroke="currentColor" stroke-width="1.2">
+      <rect x="95" y="168" width="10" height="82" rx="3"/>
+      <path d="M86,176 h28 M86,186 h28 M86,196 h28 M86,206 h28 M86,216 h28 M86,226 h28 M86,236 h28"/>
+    </g>
+    <!-- courier: two long bells -->
+    <g id="courier-bells" stroke="currentColor" stroke-width="1.3">
+      <path d="M91,267 Q91,276 85,286 L99,286 Q94,276 94,267 Z"/>
+      <path d="M106,267 Q106,276 101,286 L115,286 Q109,276 109,267 Z"/>
+    </g>
+  </defs>
+</svg>
+<svg viewBox="0 0 200 300">
+        <use href="#skiff-boom" style="color:#7d8a9a"/>
+        <path d="M60,60 Q100,50 140,60 L160,110 L160,215 L140,230 L60,230 L40,215 L40,110 Z" fill="none" stroke="#9fb0c3" stroke-width="1.6"/>
+        <rect class="here" x="58" y="70" width="84" height="58" rx="6" fill="#ffb347" fill-opacity=".22" stroke="#ffb347" stroke-width="2"/>
+        <text x="100" y="103" text-anchor="middle" fill="#e3eaf2" font-size="12">Cockpit</text>
+        <use href="#skiff-hold" style="color:#7d8a9a"/>
+        <use href="#skiff-bells" fill="none" style="color:#7d8a9a"/>
+        <text x="100" y="275" text-anchor="middle" fill="#7d8a9a" font-size="9">Mule · skiff</text>
+      </svg>
+      <svg viewBox="0 0 200 300">
+        <path d="M100,15 Q122,40 122,70 L122,255 L112,266 L88,266 L78,255 L78,70 Q78,40 100,15 Z" fill="none" stroke="#9fb0c3" stroke-width="1.6"/>
+        <rect class="here" x="84" y="40" width="32" height="56" rx="8" fill="#ffb347" fill-opacity=".22" stroke="#ffb347" stroke-width="2"/>
+        <use href="#courier-seats" style="color:#e3eaf2"/>
+        <line x1="80" y1="102" x2="120" y2="102" stroke="#9fb0c3" stroke-width="1.2"/>
+        <use href="#courier-hold" style="color:#7d8a9a"/>
+        <use href="#courier-slot" style="color:#56657a"/>
+        <use href="#courier-drive" style="color:#7d8a9a"/>
+        <use href="#courier-bells" fill="none" style="color:#7d8a9a"/>
+        <text x="100" y="298" text-anchor="middle" fill="#7d8a9a" font-size="9">Kittiwake · courier</text>
+      </svg>
+</body></html>
