@@ -114,6 +114,8 @@ function L.empyreal_room(state, data)
         doors = str(vehicle.doors),
       }
       state.roomId = nil
+      state.area = nil
+      state.areaName = nil
       state.name = str(data.address)
       state.address = nil
       state.gravity = num(data.gravity)
@@ -123,7 +125,11 @@ function L.empyreal_room(state, data)
   local id = str(data.id)
   if not id then return false end
   return track(state, function()
-    if state.roomId ~= id then state.name = nil end
+    if state.roomId ~= id then
+      state.name = nil
+      state.area = nil
+      state.areaName = nil
+    end
     state.roomId = id
     state.address = str(data.address)
     state.gravity = num(data.gravity)
