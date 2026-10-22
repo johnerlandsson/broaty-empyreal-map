@@ -419,7 +419,7 @@ export class ChartView {
         const lost = isLost(err, it.orbit.a);
         const g = el("g", {}, marks);
         beltArc(g, it.orbit, base, here, err, lost, P, s, w, h, { colour: lost ? TONES[1] : TONES[2] });
-        if (it.id === searched) beltArc(el("g", {}, lit), it.orbit, base, here, err, lost, P, s, w, h, { colour: HL, rocks: false });
+        if (it.id === searched) beltArc(el("g", { "pointer-events": "none" }, lit), it.orbit, base, here, err, lost, P, s, w, h, { colour: HL, rocks: false });
         const c = P(here);
         const b = P(base);
         const ox = c[0] - b[0];
