@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import station from "../data/station.js";
-import { NODE, docksLayout, highlightShape, ringLayout, shapeKey } from "./deck-layout.js";
+import { NODE, docksLayout, fitWidth, highlightShape, ringLayout, shapeKey } from "./deck-layout.js";
 import { indexStation } from "./locate.js";
 
 let index;
@@ -122,5 +122,18 @@ describe("shapeKey", () => {
     expect(shapeKey(0, a)).not.toBe(shapeKey(0, at("tiss.market", 0, 1)));
     expect(shapeKey(0, a)).not.toBe(shapeKey(1, a));
     expect(shapeKey(0, null)).toBe("0:none");
+  });
+});
+
+describe("fitWidth", () => {
+  it("fits a tall plan by its height in a wide band", () => {
+    expect(fitWidth({ w: 200, h: 480 }, 0.5)).toBeCloseTo(960 * 1.15);
+  });
+  it("fits a wide plan by its width in a tall band", () => {
+    expect(fitWidth({ w: 400, h: 300 }, 1.5)).toBeCloseTo(400 * 1.15);
+  });
+  it("stays inside the zoom limits", () => {
+    expect(fitWidth({ w: 10, h: 10 }, 1)).toBe(280);
+    expect(fitWidth({ w: 10, h: 5000 }, 0.5)).toBe(1600);
   });
 });

@@ -8,11 +8,14 @@ import {
   BEARING,
   CH,
   HULLY,
+  MAX_W,
+  MIN_W,
   HUB_R,
   NODE,
   SN,
   SX,
   docksLayout,
+  fitWidth,
   highlightShape,
   shapeKey,
   ringLayout,
@@ -29,8 +32,6 @@ const LADDER = "#9fb0c3";
 export const PASSAGE = "#56657a";
 const BASE_W = 600;
 const BASE_H = 520;
-const MIN_W = 280;
-const MAX_W = 1600;
 
 let instances = 0;
 
@@ -273,6 +274,11 @@ export class DeckView {
         this.zoom(f);
         return;
       }
+      const plan = this.plans[this.level];
+      if (plan.extent) {
+        this.setView(this.homeView());
+        return;
+      }
       const [fx, fy] = this.focus ?? this.plans[this.level].home;
       const h = BASE_W * this.aspect;
       this.setView([fx - BASE_W / 2, (this.plans[this.level].ring ? fy * 0.5 : fy) - h / 2, BASE_W, h]);
@@ -296,8 +302,16 @@ export class DeckView {
 
   homeView() {
     const [hx, hy] = this.plans[this.level].home;
-    const h = BASE_W * this.aspect;
-    return [hx - BASE_W / 2, hy - h / 2, BASE_W, h];
+    const { extent } = this.plans[this.level];
+    const w = extent ? fitWidth(extent, this.aspect) : BASE_W;
+    const h = w * this.aspect;
+    return [hx - w / 2, hy - h / 2, w, h];
+  }
+
+  /** Re-frame the plan for a view that has just become visible. */
+  home() {
+    this.fit();
+    this.setView(this.homeView());
   }
 
   /** Set the viewBox; rings are periodic, so keep the centre inside one lap. */

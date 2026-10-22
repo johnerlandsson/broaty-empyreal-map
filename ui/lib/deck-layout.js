@@ -155,3 +155,12 @@ export function highlightShape(layout, where) {
 export function shapeKey(level, shape) {
   return shape ? `${level}:${JSON.stringify(shape)}` : `${level}:none`;
 }
+
+export const MIN_W = 280; // zoom limits, as viewBox widths
+export const MAX_W = 1600;
+
+/** The viewBox width that shows a whole extent, padded, in a band of `aspect` (height / width). */
+export function fitWidth(extent, aspect, pad = 1.15) {
+  const w = Math.max(extent.w, extent.h / aspect) * pad;
+  return Math.min(MAX_W, Math.max(MIN_W, w));
+}
