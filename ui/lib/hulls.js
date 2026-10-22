@@ -96,8 +96,9 @@ export const HULLS = {
 /** Plan units per mockup unit. */
 export const SCALE = 1.6;
 
-/** Room left under the hull for its caption, in plan units. */
-const CAPTION_H = 20;
+/** Room left under the hull for its caption, in plan units: enough that, framed on 0, 0, the
+ * caption clears the info line in the band's bottom corner. */
+const CAPTION_H = 48;
 
 /** Mockup coordinates to plan coordinates, centring the ship's 200 × 300 box on 0, 0. */
 export function toPlan([x, y]) {

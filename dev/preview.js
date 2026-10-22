@@ -8,6 +8,7 @@
 //   ?debug    count model turns / redraws and deck highlights / re-centres, shown bottom-right
 //   ?still    send settings { turn_model: false }
 //   ?scene=S  open on overview scene S (station, parked, travelling or belt); the bar's menu switches it
+//   ?hull=H   aboard a ship, send hull H (skiff or courier) as the server will; the bar's menu switches it
 
 import orrin from "../ui/data/orrin.js";
 import station from "../ui/data/station.js";
@@ -40,7 +41,7 @@ function ride(hour, fromId, toId) {
   ];
 }
 
-const COCKPIT = { roomId: "ship.41", name: "Cockpit of the Magpie" };
+const COCKPIT = { roomId: "ship.41", name: "Cockpit of the Magpie", area: "ship.41", areaName: "Magpie" };
 
 const ROUTE = [
   room("tiss.rim-1100"), // Rim 11:00 -> Main Concourse: the wheel should turn one hour, not eleven
@@ -67,7 +68,16 @@ const ROUTE = [
   room("tiss.spine-2"),
   room("tiss.spine-3"),
   room("tiss.berth"),
-  { label: "Cockpit of the Magpie (ship.41)", msg: { roomId: "ship.41", name: "Cockpit of the Magpie" } },
+  { label: "Cockpit of the Magpie (ship.41)", msg: COCKPIT },
+  {
+    label: "Cockpit of the Mule (skiff)",
+    msg: { roomId: "ship.12", name: "Cockpit of the Mule", area: "ship.12", areaName: "Mule", hull: "skiff", hullName: "prospecting skiff" },
+  },
+  {
+    label: "Cockpit of the Kittiwake (courier)",
+    msg: { roomId: "ship.13", name: "Cockpit of the Kittiwake", area: "ship.13", areaName: "Kittiwake", hull: "courier", hullName: "courier" },
+  },
+  { label: "Cockpit of the Magpie", msg: COCKPIT },
   { label: "Flying to Orrin Station", msg: COCKPIT, scene: { scene: "travelling" } },
   { label: "Docked at Orrin Station", msg: COCKPIT, scene: { scene: "station", station: "orrin_station" } },
   room("orrin.berth"),
@@ -130,12 +140,37 @@ if (debug) {
 const status = document.getElementById("status");
 const fp = window.fakePanel;
 
+const hullMenu = document.getElementById("hull");
+const HULL_NAMES = { skiff: "prospecting skiff", courier: "courier" };
+let lastMsg = null;
+
+/** A ship room's message with the hull menu's choice on it ("(none)" leaves the step's own hull). */
+function withHull(msg, always = false) {
+  if (!msg?.roomId?.startsWith("ship.")) return msg;
+  const h = hullMenu.value;
+  if (!HULL_NAMES[h] && !always) return msg;
+  const m = { ...msg };
+  if (HULL_NAMES[h]) {
+    m.hull = h;
+    m.hullName = HULL_NAMES[h];
+  } else {
+    delete m.hull;
+    delete m.hullName;
+  }
+  return m;
+}
+
+function emitLocation(msg) {
+  lastMsg = msg;
+  fp.emit("location", structuredClone(withHull(msg)));
+}
+
 function show(i) {
   const s = ROUTE[i];
   status.textContent = `${i} · ${s.label}`;
   log(`step ${i}: ${s.label}`);
   if (s.scene) fp.emit("scene", s.scene);
-  fp.emit("location", s.msg);
+  emitLocation(s.msg);
 }
 
 let timer = 0;
@@ -154,12 +189,17 @@ document.getElementById("walk").addEventListener("click", () => walk());
 const sceneMenu = document.getElementById("scene");
 sceneMenu.addEventListener("change", () => fp.emit("scene", { scene: sceneMenu.value }));
 
+hullMenu.addEventListener("change", () => {
+  if (lastMsg?.roomId?.startsWith("ship.")) fp.emit("location", structuredClone(withHull(lastMsg, true)));
+});
+
 function start() {
   fp.emit("settings", { turn_model: !q.has("still") });
   if (q.has("scene")) {
     sceneMenu.value = q.get("scene");
     fp.emit("scene", { scene: sceneMenu.value });
   }
+  if (q.has("hull")) hullMenu.value = q.get("hull");
   const n = q.has("step") ? Math.max(0, Math.min(ROUTE.length - 1, Number(q.get("step")) || 0)) : null;
   if (q.has("walk")) {
     const until = q.has("until") ? Number(q.get("until")) : ROUTE.length - 1;
@@ -175,8 +215,8 @@ function start() {
     setTimeout(() => {
       const before = { ...counts };
       log(`re-sending step ${n} twice`);
-      fp.emit("location", structuredClone(ROUTE[n].msg));
-      fp.emit("location", structuredClone(ROUTE[n].msg));
+      emitLocation(ROUTE[n].msg);
+      emitLocation(ROUTE[n].msg);
       setTimeout(() => {
         const d = Object.keys(counts).map((k) => `${k} +${counts[k] - before[k]}`).join(", ");
         log(`repeat: ${d}`);

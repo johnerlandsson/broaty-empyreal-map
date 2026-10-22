@@ -63,10 +63,18 @@ walk out of the middle of the view. Closed rooms are drawn dashed and dimmed.
 Hover over a room or a corridor stop to see its name, its address and, for a
 closed room, why it's closed.
 
+**Aboard a ship.** The bottom band shows the ship's plan in place of the
+station's: the whole hull from above, fore up, with the room you're in lit
+and the ship's name and class under it. Each class has its own drawing (the
+prospecting skiff and the courier); until the game tells the plugin a ship's
+class, every ship shows a plain generic hull. Hover over a room for its name.
+
 The line at the bottom left says where you are, for example
-`LAUNDRY · Rim 2:00, aft · 0.9 g` or `LIFT 3 · climbing hubward`. When you
-leave the station (boarding a ship, say), the deck plan dims, nothing is lit,
-and the line shows the room you're in.
+`LAUNDRY · Rim 2:00, aft · 0.9 g` or `LIFT 3 · climbing hubward`. Aboard a
+ship it shows the room and the ship's class where it's known:
+`COCKPIT OF THE MULE · prospecting skiff`. Anywhere else off the station
+plans, the deck plan dims, nothing is lit, and the line shows the room
+you're in.
 
 Both parts zoom with the scroll wheel or the **+** and **−** buttons and pan
 by dragging. **⌂** resets the view.

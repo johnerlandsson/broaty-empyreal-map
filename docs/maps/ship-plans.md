@@ -1,6 +1,7 @@
 # Ship plans
 
-*Status: designed, not built. Last updated 2026-10-22.*
+*Status: built; the live panel shows the generic ship until the server sends the hull. Last
+updated 2026-10-22.*
 
 The approved mockup is `docs/maps/reference/ship-plans-mockup.html` (open it
 in a browser). It's a throwaway: take its look, not its code.
@@ -176,17 +177,26 @@ names the ship, and `hullName` is the game's own word for the class.
 
 ## Code
 
-*Left to the builder,* following the drum stations' pattern: hull specs as
-data in `ui/lib/` (one entry per hull id: outline, rooms, compartments, the
-short room names) with pure layout code and vitest tests, a drawing module
-for the plan in `ui/`, wiring in `ui/main.js` so the ship plan takes the
-bottom band whenever you're aboard a ship, and the preview
-(`dev/preview.js`) gaining a boarding step and a way to pick the hull.
-`DeckView`'s highlight, pulse, zoom and follow behaviour should be reused,
-not copied.
+Following the drum stations' pattern:
 
-The Lua location message (`src/station_map/location.lua`) doesn't carry
-`area` or `areaName` yet; the ship's name needs `areaName` now, so add both.
+- `ui/lib/hulls.js`: the hull specs as data (outline, rooms with their short
+  names, compartments, fixtures, bounding box), one per hull id, plus the
+  pure helpers: `hullOf()` (unknown ids get the generic ship),
+  `isShipRoom()`, `shipShape()` (a room's highlight), `hullExtent()` (what
+  the band fits), `shipCaption()` and `shipInfo()`. Tests in
+  `ui/lib/hulls.test.js`.
+- `ui/ship-deck.js`: draws a hull as a `DeckView` plan (`shipPlans(spec)`)
+  and puts the ship's name, class and room name on it (`updateShip()`).
+  `DeckView`'s highlight, pulse, zoom and fit (`plan.extent`, `home()`) are
+  reused.
+- `ui/main.js`: one `DeckView` per hull drawing, built on first use; aboard
+  a ship (any `ship.` room) it takes the bottom band and the info line.
+- `dev/preview.js`, `dev/preview.html`: boarding steps for the generic ship,
+  a skiff and a courier, and a hull menu (`?hull=`) that re-sends the ship
+  room with that hull.
+
+The Lua location message (`src/station_map/location.lua`) carries `area` and
+`areaName`; the caption takes the ship's name from `areaName`.
 
 When the server's field lands: carry the hull id (and later the room's part)
 in the Lua location message (`src/station_map/location.lua`), and pick the

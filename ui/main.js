@@ -1,6 +1,7 @@
 // Panel entry: wires the Lua side's messages to the station model (top), the space scenes that
 // replace it while you're out in your ship, and the deck plan (bottom). Each station has its own
-// model and plan; only the one you're on (or docked at) shows.
+// model and plan; only the one you're on (or docked at) shows. Aboard a ship (any "ship." room)
+// the bottom band shows that ship's plan instead, one view per hull drawing, built on first use.
 // The Lua side holds all state and replays it when we post "ready", so this file keeps only the
 // last location, the docked station, and the level each plan last showed (a lift between floors
 // keeps the plan where it was).
@@ -11,10 +12,12 @@ import wenna from "./data/wenna.js";
 import { DeckView } from "./deck-view.js";
 import { drumPlans } from "./drum-deck.js";
 import { DRUMS, buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
+import { hullOf, isShipRoom, shipInfo } from "./lib/hulls.js";
 import { indexStation, infoLine, locate } from "./lib/locate.js";
 import { pickStation, stationOfDock } from "./lib/stations.js";
 import { ModelView } from "./model-view.js";
 import { SpaceView } from "./space-view.js";
+import { shipPlans, updateShip } from "./ship-deck.js";
 
 const modelEl = document.getElementById("model");
 const deckEl = document.getElementById("deck");
@@ -37,6 +40,7 @@ function drum(data, spec) {
 }
 
 const stations = { tiss: tiss(), orrin: drum(orrin, DRUMS.orrin), wenna: drum(wenna, DRUMS.wenna) };
+const ships = {}; // hull id -> the DeckView drawing that hull, built on first use
 const space = new SpaceView(modelEl);
 const info = document.getElementById("info");
 const panel = window.panel;
@@ -45,13 +49,29 @@ let current = null;
 let docked = null; // the station your ship is docked at, from the scene message
 let last = null; // the last location message
 
+/** Show the station model for key; the bottom band is render()'s, since a ship can take it. */
 function show(key) {
   if (key === current) return;
   current = key;
-  for (const [k, s] of Object.entries(stations)) {
-    s.model.div.style.display = k === key ? "" : "none";
-    s.deck.div.style.display = k === key ? "" : "none";
+  for (const [k, s] of Object.entries(stations)) s.model.div.style.display = k === key ? "" : "none";
+}
+
+/** Show only this deck in the bottom band (a station's or a ship's); true if it was hidden. */
+function showDeck(view) {
+  for (const d of [...Object.values(stations).map((s) => s.deck), ...Object.values(ships)]) {
+    if (d !== view) d.div.style.display = "none";
   }
+  const hidden = view.div.style.display === "none";
+  view.div.style.display = "";
+  return hidden;
+}
+
+function shipView(id) {
+  if (!ships[id]) {
+    ships[id] = new DeckView(deckEl, null, shipPlans(hullOf(id)));
+    ships[id].div.style.display = "none"; // so showDeck() frames it once it's the only deck
+  }
+  return ships[id];
 }
 
 function render() {
@@ -62,6 +82,15 @@ function render() {
   s.model.set(where);
   s.deck.set(where);
   s.deck.dim(where.kind === "off");
+  if (isShipRoom(last?.roomId)) {
+    const view = shipView(hullOf(last.hull).id);
+    if (showDeck(view)) view.home();
+    updateShip(view, last);
+    view.set({ kind: "room", id: last.roomId, level: 0, room: last.shipRoom ?? null });
+    info.textContent = shipInfo(last);
+    return;
+  }
+  showDeck(s.deck);
   info.textContent = infoLine(where, last, s.index);
 }
 
@@ -81,4 +110,5 @@ panel.on("location", (msg) => {
 });
 
 show("tiss");
+showDeck(stations.tiss.deck);
 panel.post("ready", {});
