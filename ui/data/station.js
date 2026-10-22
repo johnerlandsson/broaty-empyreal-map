@@ -72,6 +72,23 @@ export default {
    "walked": true
   },
   {
+   "id": "tiss.barber",
+   "name": "Barber's Chair",
+   "x": 2,
+   "y": -2,
+   "z": 0,
+   "region": "concourse",
+   "terrain": "room",
+   "address": "Rim 1:00, aft",
+   "gravity": 0.9,
+   "exits": {
+    "N": "tiss.washrooms"
+   },
+   "closed": false,
+   "closedReason": null,
+   "walked": false
+  },
+  {
    "id": "tiss.bearing",
    "name": "The Bearing",
    "x": 0,
@@ -1662,7 +1679,8 @@ export default {
    "address": "Rim 1:00, aft",
    "gravity": 0.9,
    "exits": {
-    "N": "tiss.rim-0100"
+    "N": "tiss.rim-0100",
+    "S": "tiss.barber"
    },
    "closed": false,
    "closedReason": null,

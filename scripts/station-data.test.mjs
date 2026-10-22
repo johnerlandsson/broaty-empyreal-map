@@ -155,6 +155,16 @@ describe("completeStation", () => {
     expect(a).toMatchObject({ walked: true, closed: true, name: "A" });
   });
 
+  it("merges override exits into logged exits by direction", () => {
+    const rooms = new Map([
+      ["tiss.a", { id: "tiss.a", name: "A", x: 1, y: 0, z: 0, exits: { N: "tiss.b" } }],
+    ]);
+    const [a] = completeStation(rooms, {
+      rooms: { "tiss.a": { exits: { S: "tiss.c" } } },
+    }).filter((r) => r.id === "tiss.a");
+    expect(a.exits).toEqual({ N: "tiss.b", S: "tiss.c" });
+  });
+
   it("defaults closed to false", () => {
     expect(byId.get("tiss.concourse")).toMatchObject({ closed: false, closedReason: null });
   });
@@ -195,8 +205,22 @@ describe("completeStation", () => {
 });
 
 describe("generated station data", () => {
+  const rooms = new Map(station.rooms.map((r) => [r.id, r]));
+
   it("gives every room a real name, never its id", () => {
     const bad = station.rooms.filter((r) => !r.name || r.name === r.id);
     expect(bad.map((r) => r.id)).toEqual([]);
+  });
+
+  it("adds the barber's chair off the washrooms", () => {
+    expect(rooms.get("tiss.barber")).toMatchObject({
+      x: 2,
+      y: -2,
+      z: 0,
+      region: "concourse",
+      terrain: "room",
+      exits: { N: "tiss.washrooms" },
+    });
+    expect(rooms.get("tiss.washrooms").exits).toMatchObject({ S: "tiss.barber" });
   });
 });

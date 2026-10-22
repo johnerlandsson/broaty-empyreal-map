@@ -192,7 +192,8 @@ function inferRegion(r) {
 }
 
 /**
- * Turn the walked rooms into the full station: merge hand-written overrides,
+ * Turn the walked rooms into the full station: merge hand-written overrides
+ * (field by field, exits direction by direction),
  * add the twelve ladderways, infer missing region/terrain/gravity, apply
  * closed defaults, and drop anything without coordinates (warning on stderr).
  * Rooms created here rather than read from logs have walked:false.
@@ -206,7 +207,10 @@ export function completeStation(rooms, overrides) {
 
   for (const [id, patch] of Object.entries(overrides?.rooms ?? {})) {
     const base = all.get(id) ?? { id, walked: false };
-    all.set(id, { ...base, ...patch, id });
+    const merged = { ...base, ...patch, id };
+    // Exits merge per direction so an override can add one without losing the logged ones.
+    if (isObject(patch.exits)) merged.exits = { ...base.exits, ...patch.exits };
+    all.set(id, merged);
   }
 
   for (const h of [12, 3, 6, 9]) {
