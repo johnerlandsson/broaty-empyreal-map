@@ -162,13 +162,12 @@ function buildDocksPlan(svg, index) {
   const layout = docksLayout(index);
   const { hub, bearing, transfer, blister } = layout;
   const g = el("g", { display: "none" }, svg);
-  const spineTop = layout.spine.length ? layout.spine[layout.spine.length - 1].cy : -5 * SN;
   const topY = blister.cy - blister.r - 40;
   const botY = transfer.cy + transfer.h / 2 + 40;
 
   el("rect", { x: -SX - 70, y: topY, width: 2 * (SX + 70), height: botY - topY, rx: 24, fill: PLATE }, g);
-  // spine corridor, Bearing collar, Hub
-  el("rect", { x: -CH, y: spineTop, width: 2 * CH, height: bearing.cy - spineTop, fill: CORR }, g);
+  // spine corridor (from the Blister's base, under the dome and stops), Bearing collar, Hub
+  el("rect", { x: -CH, y: blister.cy, width: 2 * CH, height: bearing.cy - blister.cy, fill: CORR }, g);
   el("rect", { x: -BEARING.w / 2, y: bearing.cy - BEARING.h / 2, width: BEARING.w, height: BEARING.h, rx: 6, fill: "#1d2a38", stroke: "#cfe3ff", "stroke-width": 1.4 }, g);
   for (let i = 0; i < 7; i++) {
     el("circle", { cx: -27 + i * 9, cy: bearing.cy - BEARING.h / 2, r: 2.5, fill: "#cfe3ff" }, g);
@@ -211,7 +210,6 @@ function buildDocksPlan(svg, index) {
   const bx = blister.cx;
   const dome = `M${bx - blister.r},${blister.cy} A${blister.r},${blister.r} 0 0 1 ${bx + blister.r},${blister.cy} Z`;
   const dm = el("path", { d: dome, fill: "#cfe3ff", "fill-opacity": 0.18, stroke: "#cfe3ff", "stroke-width": 1.6 }, g);
-  el("rect", { x: -CH, y: blister.cy, width: 2 * CH, height: spineTop - blister.cy, fill: CORR }, g);
   label(g, 0, blister.cy - blister.r - 16, blister.room?.name ?? "Observation Blister", 11);
   hover(dm, blister.room);
   label(g, -SX - 60, topY + 14, "FORE ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
