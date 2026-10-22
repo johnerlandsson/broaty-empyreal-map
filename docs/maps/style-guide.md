@@ -345,14 +345,19 @@ what it draws and how.
 - **Folding:** a satellite whose orbit is under 8 px across on screen is
   folded into its parent: no ring, no mark, no label, unless it's your ship's
   place or destination.
+- **Naming satellites:** a planet's satellite (a moon, or a belt round a
+  planet) is named only once its orbit is 80 px across, so it doesn't crowd
+  its parent's name. Before that it's still drawn and still hoverable. The
+  same goes for your ship's place or destination, which is always named.
 
 ### 13.3 Off view and scale
 
-- **Edge markers:** a body, belt or mouth with a bearing that's off the view
-  is a small Dim chevron just inside the band's edge, pointing at it, named
+- **Edge markers:** a body, a belt or a mouth with a bearing that's off the
+  view is a small Dim chevron just inside the band's edge, pointing at it, named
   with its distance in thousands of km, 9: "Orrin 16k". The distance is from
   your ship, or from the view's centre when she can't be placed. Stations and
-  folded satellites get none.
+  folded satellites get none. Neither does a lost belt, which is its whole
+  ring and so has no one place to point at.
 - **Scale bar:** top left, Dim, a 1, 2 or 5 × 10ⁿ km bar with end ticks and
   its length above it, 9.
 
@@ -367,11 +372,16 @@ what it draws and how.
   she's bound and when she'll arrive; for the edge ring, its label.
 - **Framing:** ⌂ frames her line and her when she's under way, else the body
   she's nearest and its satellites, else the whole system. The view reframes
-  itself only when the chart is turned on, the system changes, or a trip
-  starts or ends while you haven't zoomed or panned since. It re-centres,
-  keeping the zoom, when your ship leaves the middle of the view (35%, as
-  §8.3).
-- **Zoom** from 1,000 km across to the whole system with a margin.
+  itself only when the chart is turned on, the system changes (and again on
+  the first ship status after it), or a trip starts or ends while you haven't
+  zoomed or panned since. Otherwise it holds still, except that it follows
+  her, keeping the zoom, when she drifts out from where ⌂, a pan, a zoom or a
+  resize left her by more than 35% of the view (as §8.3). A flat 35% from the
+  centre would fight ⌂ when it frames her off the middle, so it's measured
+  from where she was.
+- **Zoom** in to 1,000 km across, out to 2.3 times the system's radius,
+  times the band's width over its height when that's more than 1, so the
+  whole system always fits a wide band.
 - **Live:** redrawn at least once a second while it's shown and the panel
   is visible, never otherwise.
 

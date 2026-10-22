@@ -40,7 +40,9 @@ freighter travelled.
 A canvas over the model: the Background, then stars or rocks. Rocks use the
 models' three Tones and Model edge, so they look of a piece with the
 stations. Stars ease up to speed and down again; stars cross-fade to rocks.
-No controls and no highlight; the model's zoom buttons hide under it.
+No controls and no highlight; the model's zoom buttons hide under it. The
+system chart (the ◎ button, see [orrery.md](orrery.md)) can cover it; the scene
+keeps its state and its loop stops until the chart is turned off.
 
 ## Bottom band
 

@@ -43,6 +43,17 @@ travels, the station while she's docked at one. This follows the ship you can fl
 crew. Aboard someone else's ship as a guest, the station model stays,
 because the game doesn't tell the plugin where that ship is.
 
+**The chart.** Once the game has sent the system's charts, a ◎ button appears
+beside the top band's zoom buttons. It swaps the band for a true-scale chart of
+the star system you're in: the star, planets and stations, each where it is now
+and moving, the belts drawn as arcs as wide as the game's doubt about them
+(wider the longer since they were seen, and a ring once lost), the lane mouths
+at the edge, and your ship in amber with her route when she's under way.
+Zoom and drag as on a plan, ⌂ to frame. It shows only what you know: while she
+searches for a belt the arc lights up instead of her path, and a lane mouth
+gets a mark only if the game says where it faces. Press ◎ again for the
+station or the view ahead.
+
 **The deck plan (bottom).** A floor plan of the floor you're on:
 
 - **Rings:** the corridor runs across the panel with its stops labelled by
