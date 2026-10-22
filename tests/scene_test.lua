@@ -139,4 +139,32 @@ test('reset forgets the docked station', function()
   eq(S.station(s), nil)
 end)
 
+test("a crew member's Ship.Status, leaseLeft null, drives the scene as an owner's", function()
+  -- The host's JSON null may arrive as a missing key or as a sentinel value; try both.
+  local NULL = setmetatable({}, { __tostring = function() return 'null' end })
+  local steps = {
+    { docked = true, location = 'tiss' },
+    { location = 'tiss' },
+    { destination = 'belt.7', progress = 0.5 },
+    { location = 'belt.7' },
+    { docked = true, location = 'orrin_station' },
+  }
+  local owner, crew, crew_sentinel = S.new(), S.new(), S.new()
+  for _, s in ipairs({ owner, crew, crew_sentinel }) do S.space_charts(s, CHARTS) end
+  for _, step in ipairs(steps) do
+    local o = status(step); o.leaseLeft = 3600
+    local c = status(step); c.leaseLeft = nil
+    local cs = status(step); cs.leaseLeft = NULL
+    local changed = S.ship_status(owner, o)
+    eq(S.ship_status(crew, c), changed)
+    eq(S.ship_status(crew_sentinel, cs), changed)
+    eq(S.scene(crew), S.scene(owner))
+    eq(S.scene(crew_sentinel), S.scene(owner))
+    eq(S.station(crew), S.station(owner))
+    eq(S.station(crew_sentinel), S.station(owner))
+  end
+  eq(S.scene(owner), 'station')
+  eq(S.station(crew), 'orrin_station')
+end)
+
 t.done()

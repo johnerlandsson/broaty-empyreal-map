@@ -1,8 +1,9 @@
 -- Scene reducer: folds Ship.Status and Space.Charts into which picture the
 -- overview shows: 'station', 'parked', 'travelling' or 'belt', and which
 -- station your ship is docked at, if she is.
--- Ship.Status only comes for a ship of your own you're aboard (null off
--- her), so aboard anyone else's ship this stays 'station'.
+-- Ship.Status comes for the ship you're aboard and can fly, your own or one
+-- you crew (crew get leaseLeft null, which this ignores), and is null off
+-- her, so only as a guest aboard someone else's ship does this stay 'station'.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 
 local S = {}
