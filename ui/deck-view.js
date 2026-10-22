@@ -285,19 +285,23 @@ export class DeckView {
     });
     if (typeof ResizeObserver !== "undefined") {
       new ResizeObserver(() => {
-        this.fit();
-        this.setView(this.cur);
+        const measured = this.fit();
+        if (measured && this.homePending) {
+          this.homePending = false;
+          this.setView(this.homeView());
+        } else this.setView(this.cur);
       }).observe(div);
     }
   }
 
-  /** Match the viewBox aspect to the container, keeping the centre. */
+  /** Match the viewBox aspect to the container, keeping the centre. Returns whether it measured. */
   fit() {
     const r = this.div.getBoundingClientRect?.();
-    if (!r || r.width <= 0 || r.height <= 0) return;
+    if (!r || r.width <= 0 || r.height <= 0) return false;
     this.aspect = r.height / r.width;
     const h = this.cur[2] * this.aspect;
     this.cur = [this.cur[0], this.cur[1] + this.cur[3] / 2 - h / 2, this.cur[2], h];
+    return true;
   }
 
   homeView() {
@@ -310,7 +314,8 @@ export class DeckView {
 
   /** Re-frame the plan for a view that has just become visible. */
   home() {
-    this.fit();
+    // Not measurable yet (hidden panel): re-home once the first real size arrives.
+    this.homePending = !this.fit();
     this.setView(this.homeView());
   }
 

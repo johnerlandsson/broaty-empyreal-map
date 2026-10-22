@@ -24,7 +24,7 @@ const bolt = (cx, cy) => part("circle", { cx, cy, r: 1.2, fill: SLOT, stroke: SL
  * rooms (the courier's seats); `box` the bounding box [x0, y0, x1, y1] of everything drawn.
  */
 export const HULLS = {
-  // The prospecting skiff: a squat hull with a sensor boom, six hold crates and three engine bells.
+  // The prospecting skiff: a squat hull with a mining laser boom, six hold crates and three engine bells.
   skiff: {
     id: "skiff",
     outline: "M60,60 Q100,50 140,60 L160,110 L160,215 L140,230 L60,230 L40,215 L40,110 Z",
