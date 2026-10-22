@@ -21,15 +21,17 @@ travelling, or the dock room you're in. As you move, the wheel turns by
 itself until your part of the station faces you. Only the wheel turns; the
 spine and the docks hold still beyond the Bearing, as on the real station.
 
-At **Orrin Station** the model is its one drum, spun to half a g. The
-Concourse, the Exchange fore of it, the Freight Office aft, the Berths with
-their cradles outside, and the Chart Office sit on the drum, and the Gallery's
-ring of windows sits at the fore end of the axis. The drum turns your room to
-face you, as the wheel does.
+**Orrin Station** doesn't spin: it's a weightless box, three frames long and
+two decks deep, with cradles at its nose for ore tugs and drop cans and the
+Gallery in a glass blister underneath. Your room's cell glows. When you're
+on Deck 2, Deck 3 is lifted off and drawn only as a dashed outline, so your
+deck is the top of the model. In the Gallery, both decks are outlined and
+the blister hangs below them.
 
-**Wenna Halt** is a drum too, laid out the same way and spun to 0.6 g, with
-the kelp-green Concourse, a clean row of courier cradles outside the Berths,
-and the Lounge's wide window collar at the fore end of the axis.
+**Wenna Halt** is a drum, spun to 0.6 g, with the kelp-green Concourse round
+it, a clean row of courier cradles outside the Berths, and the Lounge's wide
+window collar at the fore end of the axis. The drum turns your room to face
+you, as the wheel does.
 
 **Out in your ship.** Once you undock, the station model fades into a view
 looking ahead from your ship: a still starfield while you're parked, the
@@ -48,13 +50,18 @@ because the game doesn't tell the plugin where that ship is.
 - **Docks:** the Hub at the bottom with its four lift doors, the Bearing,
   the spine running up to the Observation Blister, and the dock rooms either
   side of it.
-- **Orrin Station:** one plan for the whole outpost, laid out as its exits
-  go. The Concourse runs across the middle, with the Exchange north of it,
-  the Freight Office south, the Chart Office west and the Berths east, their
-  airlock hatches down the outer wall. The spiral stair in the Concourse
-  leads up to the Gallery, at 0.1 g.
-- **Wenna Halt:** the same plan, with a ramp up from the Concourse to the
-  Lounge, at 0.2 g, its deep chairs facing one wide window on the sea.
+- **Orrin Station:** a plan for each deck, fore up, with every room in the
+  cell its address names. Deck 3 has the Berths at the nose, the passage aft
+  with the Freight Office to port and the Chart Office to starboard, and a
+  hatch down. Deck 2 has the Concourse, the Exchange and the hatch down to
+  the Gallery, whose blister is outlined beneath it. Deck 1 is the Gallery
+  alone, under the hull's outline. Each plan says its deck and 0 g, and the
+  frames are numbered down the side.
+- **Wenna Halt:** one plan for the whole outpost, laid out as its exits go:
+  the Concourse across the middle, the Exchange north, the Freight Office
+  south, the Chart Office west and the Berths east with their airlock
+  hatches, and a ramp up to the Lounge, at 0.2 g, its deep chairs facing
+  one wide window on the sea.
 
 Your place is lit with the same glow as in the model, not marked with a dot:
 a room box, a stretch of corridor, a lift or the ladderway hatch. The plan
@@ -152,12 +159,17 @@ npm run build:data -- --logs /path/to/logs   # another log folder
 By default it reads `~/.local/share/net.mallard.app/logs/empyreal-7`. Commit
 the regenerated `ui/data/station.js`.
 
-Orrin Station's and Wenna Halt's six rooms each (`ui/data/orrin.js`,
-`ui/data/wenna.js`) are written by hand from `content/areas/orrin.yaml` and
-`content/areas/wenna.yaml` in the Empyreal source. The game gives those areas
-no layout, so the rooms are placed from their exits and descriptions. What
-differs between the two drums (colours, cradles, the stair or ramp) is in
-`DRUMS` in `ui/lib/drum.js`.
+Orrin Station's nine rooms (`ui/data/orrin.js`) are copied from
+`content/areas/orrin.yaml` in the Empyreal source: ids, names, addresses and
+exits. Nothing is placed by hand: each room's cell comes from its address
+(`Deck 3, frame 2, port 1`), and a test checks the file against the YAML
+when `~/dev/empyreal` is there. What the addresses don't say (colours, the
+blister, cradles, thrusters) is in `DECKS` in `ui/lib/decks.js`.
+
+Wenna Halt's six rooms (`ui/data/wenna.js`) are written by hand from
+`content/areas/wenna.yaml`. The game gives that area no layout, so the rooms
+are placed from their exits and descriptions. What's particular to the drum
+(colours, cradles, the ramp) is in `DRUMS` in `ui/lib/drum.js`.
 
 ---
 

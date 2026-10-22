@@ -2,7 +2,8 @@
 // T.I.S.S. unless given another's faces. The wheel (or drum) turns by itself so the player's clock
 // position comes round to the camera; the player's place is shown by lighting the faces that share
 // their key. The user can zoom and pan, not rotate.
-// Geometry lives in lib/geometry.js, lib/model.js and lib/drum.js, turn maths in lib/turn.js.
+// Geometry lives in lib/geometry.js, lib/model.js, lib/drum.js and lib/decks.js, turn maths in
+// lib/turn.js.
 
 import { BLZ, FRONT, P3, RR, RT, RWZ, project, roll } from "./lib/geometry.js";
 import { keyOf } from "./lib/locate.js";
@@ -16,6 +17,7 @@ const EDGE = "#0d1218";
 const LABEL_FG = "#dfe7f1"; // ring names: light, so they read over the grey faces
 const TONES = ["#3a4556", "#58667b", "#7e8da3"];
 const GLASS = "#cfe3ff";
+const DIM = "#7d8a9a"; // a cut-away deck's outline
 const LIGHT = (() => {
   const v = [-0.5, 0.75, 0.45];
   const m = Math.hypot(...v);
@@ -70,18 +72,32 @@ function hourOf(where) {
 
 const num = (n) => n.toFixed(1);
 
+/** A path along a projected face's edges, leaving out those `edges` marks false. */
+function edgePath(P, edges) {
+  return P.map((p, i) => {
+    if (edges && !edges[i]) return "";
+    const q = P[(i + 1) % P.length];
+    return `M${num(p[0])},${num(p[1])}L${num(q[0])},${num(q[1])}`;
+  }).join("");
+}
+
 export class ModelView {
   /**
    * @param {HTMLElement} containerEl element the model fills
    * @param {ReturnType<typeof import("./lib/locate.js").indexStation>} index
    * @param {{faces?: object[], keyOf?: (where: object) => string|null,
-   *   hourOf?: (where: object) => number|null, labels?: boolean}} [opts] another station's model:
-   *   its faces, the face key and hour for a place, and whether to draw T.I.S.S.'s ring names
+   *   hourOf?: (where: object) => number|null, cutOf?: (where: object) => number|null,
+   *   labels?: boolean}} [opts] another station's model: its faces, the face key and hour for a
+   *   place, the deck to cut the model away above (faces with a higher `deck` are drawn as a
+   *   dashed outline, and those with that `lid` as its top), and whether to draw T.I.S.S.'s ring
+   *   names
    */
   constructor(containerEl, index, opts = {}) {
     this.faces = opts.faces ?? buildModel(index);
     this.keyOf = opts.keyOf ?? keyOf;
     this.hourOf = opts.hourOf ?? hourOf;
+    this.cutOf = opts.cutOf ?? (() => null);
+    this.cut = null;
     this.normals = this.faces.map((f) => normalOf(f.pts));
 
     const div = document.createElement("div");
@@ -221,13 +237,22 @@ export class ModelView {
   /**
    * Redraw every face at the current roll, far to near (lowest layer first), then the lit faces
    * on top. A face marked `cull` is left out while it faces away, or while its `anchor` does.
+   * Cut away above a deck, a face on a deck over it is left out, or only its edges drawn dashed if
+   * it's an `outline` face; a `lid` face is drawn only when its deck is the one cut to.
    */
   draw() {
-    const { phi, key } = this;
+    const { phi, key, cut } = this;
     const turned = (f, v) => (f.turns ? roll(v, phi) : v);
     const away = (v) => project(v)[2] < 0;
     const quads = [];
+    const wire = [];
     this.faces.forEach((f, i) => {
+      // cut away above the player's deck: those decks are an outline, the cut deck gets its lid
+      if (f.lid != null && f.lid !== cut) return;
+      if (cut != null && f.deck != null && f.deck > cut) {
+        if (f.outline) wire.push(edgePath(f.pts.map((p) => project(turned(f, p))), f.edges));
+        return;
+      }
       const n = turned(f, this.normals[i]);
       if (f.cull && (away(n) || (f.anchor && away(turned(f, f.anchor))))) return;
       const P = f.pts.map((p) => project(turned(f, p)));
@@ -239,18 +264,19 @@ export class ModelView {
     const hot = document.createDocumentFragment();
     for (const { f, P, n } of quads) {
       const d = `M${P.map((p) => `${num(p[0])},${num(p[1])}`).join("L")}Z`;
-      const fill = fillOf(f, Math.abs(n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]));
-      el("path", { d, fill, stroke: fill, "stroke-width": 0.8, "stroke-linejoin": "round" }, geo);
-      const e = P.map((p, i) => {
-        if (f.edges && !f.edges[i]) return "";
-        const q = P[(i + 1) % P.length];
-        return `M${num(p[0])},${num(p[1])}L${num(q[0])},${num(q[1])}`;
-      }).join("");
-      if (e) el("path", { d: e, fill: "none", stroke: EDGE, "stroke-width": 1.3, "stroke-linecap": "round" }, geo);
+      // a ghost face is drawn only when lit (a room's cell inside a hull, seen through it)
+      if (!f.ghost) {
+        const fill = fillOf(f, Math.abs(n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]));
+        el("path", { d, fill, stroke: fill, "stroke-width": 0.8, "stroke-linejoin": "round" }, geo);
+        const e = edgePath(P, f.edges);
+        if (e) el("path", { d: e, fill: "none", stroke: EDGE, "stroke-width": 1.3, "stroke-linecap": "round" }, geo);
+      }
       if (key != null && f.key === key) {
         el("path", { d, fill: HL, "fill-opacity": 0.55, stroke: HL_STROKE, "stroke-width": 1.4, "stroke-linejoin": "round" }, hot);
       }
     }
+    const w = wire.join("");
+    if (w) el("path", { d: w, fill: "none", stroke: DIM, "stroke-opacity": 0.7, "stroke-width": 1, "stroke-dasharray": "4 4" }, geo);
     this.geo.replaceChildren(geo);
     this.shapes.replaceChildren(hot);
   }
@@ -303,7 +329,10 @@ export class ModelView {
   set(where) {
     const key = this.keyOf(where);
     const hour = this.hourOf(where);
-    if (this.started && key === this.key && hour === this.hour) return;
+    const cut = this.cutOf(where);
+    const cutChanged = cut !== this.cut;
+    this.cut = cut;
+    if (this.started && key === this.key && hour === this.hour && !cutChanged) return;
     const first = !this.started;
     this.started = true;
     const keyChanged = key !== this.key;
@@ -330,7 +359,7 @@ export class ModelView {
       this.stop(); // already facing: drop any animation still heading for an older hour
     }
     // no turn: redraw only if the lit faces changed (a running animation redraws every frame anyway)
-    if (keyChanged) this.draw();
+    if (keyChanged || cutChanged) this.draw();
   }
 
   /** With turning off the wheel rests at FRONT; turning it on again brings the last hour round. */

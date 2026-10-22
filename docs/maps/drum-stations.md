@@ -1,26 +1,27 @@
 # Drum stations
 
-*Status: built for Orrin Station and Wenna Halt. Last updated 2026-10-22.*
+*Status: built for Wenna Halt. Last updated 2026-10-22.*
 
 ## What it is and when it shows
 
-A small outpost of one spinning drum. Both drums so far have the same six
-rooms: the Concourse, a hall round the drum; the Exchange fore of it; the
-Freight Office aft; the Berths and the Chart Office either side; and a room
-up near the axis at low gravity, reached by a stair or a ramp. A drum shows
-while you're in one of its rooms or your ship is docked there.
+A small outpost of one spinning drum. Wenna Halt is the only one now; Orrin
+Station was one until the game rebuilt it on decks (see
+[decks-stations.md](decks-stations.md)), and the drum code still takes a
+stair as well as a ramp up to the axis room. A drum has six rooms: the
+Concourse, a hall round the drum; the Exchange fore of it; the Freight
+Office aft; the Berths and the Chart Office either side; and a room up near
+the axis at low gravity, reached by a stair or a ramp. A drum shows while
+you're in one of its rooms or your ship is docked there.
 
 | Station | Gravity | Concourse | Axis room | Way up | Cradles |
 |---|---|---|---|---|---|
-| Orrin Station | 0.5 g | foundry orange (`industrial`) | the Gallery, a ring of windows, 0.1 g | spiral stair | two big ones for ore tugs and drop cans, a small one for skiffs |
 | Wenna Halt | 0.6 g | kelp green (`hydroponics`) | the Lounge, one wide window and deep chairs, 0.2 g | ramp | a row of four sized for couriers |
 
 ## Where its data comes from
 
-Hand-written: `ui/data/orrin.js` and `ui/data/wenna.js`, from
-`content/areas/orrin.yaml` and `content/areas/wenna.yaml` in the Empyreal
-source. The game gives these areas no layout, so rooms are placed from their
-exits and descriptions: `x` west to east, `y` south to north, `hour` round
+Hand-written: `ui/data/wenna.js`, from `content/areas/wenna.yaml` in the
+Empyreal source. The game gives the area no layout, so rooms are placed from
+their exits and descriptions: `x` west to east, `y` south to north, `hour` round
 the drum for the model, `band` along the axis (-1 aft, 0, 1 fore).
 Everything that differs between drums is in `DRUMS` in `ui/lib/drum.js`:
 room id prefix, tints, the axis room's collar, the way up, the cradles.
@@ -64,7 +65,7 @@ Add its room data file from the area's YAML, add a spec to `DRUMS` choosing
 tints from the district colours, add its prefix and dock id to
 `ui/lib/stations.js`, and add it to the drum tests and the preview's walk.
 A station that isn't laid out like these six rooms needs its own map type
-and its own doc.
+and its own doc, as Orrin Station's decks have.
 
 ## Where it differs from the style guide
 

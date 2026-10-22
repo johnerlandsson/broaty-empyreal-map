@@ -17,7 +17,8 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | Map | Band | Shown when | Doc |
 |---|---|---|---|
 | T.I.S.S. model and deck plans | top, bottom | you're on T.I.S.S., or your ship is docked there | [tiss.md](tiss.md) |
-| Drum station models and plans (Orrin Station, Wenna Halt) | top, bottom | you're on that station, or your ship is docked there | [drum-stations.md](drum-stations.md) |
+| Drum station models and plans (Wenna Halt) | top, bottom | you're on that station, or your ship is docked there | [drum-stations.md](drum-stations.md) |
+| Decks station models and plans (Orrin Station) | top, bottom | you're on that station, or your ship is docked there | [decks-stations.md](decks-stations.md) |
 | Space scenes | top | you're out in a ship you own or crew, undocked | [space-scenes.md](space-scenes.md) |
 | Ship plans | bottom | you're aboard any ship, docked or not | [ship-plans.md](ship-plans.md) |
 
@@ -144,7 +145,8 @@ Your place is lit, never marked with a dot:
   filter (`glowFilter()` in `ui/lib/svg.js`).
 - **On a model:** the faces that share your place's key, in amber at fill
   opacity .55 with a light stroke (`#fff3df`, 1.4), drawn on top of the whole
-  model so it shows through whatever is in front.
+  model so it shows through whatever is in front. A model may give a room a
+  box that's drawn only when lit (a decks station lights your room's cell).
 - **Pulse:** opacity 1 → .55 → 1 over 1.8 s, forever. A repeated frame for the
   same place doesn't restart it.
 - **One place.** Only your place is lit: never other players, never where
@@ -183,7 +185,8 @@ follow these rules.
 
 - **Fore up.** On a ring, fore is up and spinward right, matching the game's
   compass (fore = n, spinward = e). On a station drum the plan is laid out as
-  the exits go, north up.
+  the exits go, north up. On a station on decks there's one plan a deck, fore
+  up and starboard right, each room in the cell its address names.
 - **Plate on stars.** A station's rooms sit on a Plate floor with rounded
   corners, over the starfield. A ship sits in its own hull outline instead
   (see ship-plans.md).
@@ -191,7 +194,8 @@ follow these rules.
   hall it opens off.
 - **Fixtures** (lifts, ladders, stairs, ramps, hatches) are small line symbols
   on Fixture fill: `⇅` in a circle for a lift, a hatch with rungs for a
-  ladderway, a spiral for a stair, chevrons for a ramp.
+  ladderway, a spiral for a stair, chevrons for a ramp, and for a weightless
+  hatchway a round hatch with a ring in Ladder and a small "up" or "down".
 - **Up and down** to a room on another level of the same plan is a dashed dim
   line with a small "up".
 
@@ -253,6 +257,10 @@ A new map type says in its doc what its line shows.
   with 12:00 at the front.
 - **Framing** is the union of the silhouette over a full turn, so turning
   never moves the frame.
+- **Cut away:** a station on decks is cut away above your deck, so a room
+  under another deck isn't lit where the deck above's would be. The decks
+  above are only their outline, dashed in Dim (1, .7, `4 4`), and your deck's
+  top shows its cells tinted. Off the station it's whole.
 - **Tints** follow the district colours (§4.4). Windows and domes take Glass.
 
 ## 12. Space scenes (the top band)

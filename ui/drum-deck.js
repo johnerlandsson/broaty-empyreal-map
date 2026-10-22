@@ -1,4 +1,4 @@
-// A drum station's deck plan (Orrin Station, Wenna Halt): one floor, the Concourse across the
+// A drum station's deck plan (Wenna Halt): one floor, the Concourse across the
 // middle with the Exchange north, the Freight Office south, the Chart Office west and the Berths
 // east, and the axis room drawn up the stair or ramp from the hall, since it sits on the drum's
 // axis. Layout maths lives in lib/drum.js.
@@ -13,7 +13,7 @@ const STEPS = "#cfd8e3";
 const LIGHTS = ["#59d18a", "#59d18a", "#e8b04a", "#59d18a", "#3a4556"]; // clamped, cycling, empty
 
 /**
- * @param {typeof import("./lib/drum.js").DRUMS.orrin} spec
+ * @param {typeof import("./lib/drum.js").DRUMS.wenna} spec
  * @returns {(svg: SVGElement, index: object) => object[]} the plans builder DeckView takes: the one
  *   plan, which fits the panel, so the view follows only a highlight near its edge
  */
@@ -96,7 +96,7 @@ function buildDrumPlan(svg, index, spec) {
   return [{ z: 0, g, hl, layout, ring: false, length: 0, home, offsets: [0], margin: 0.42, shape: (where) => drumShape(layout, where) }];
 }
 
-/** Orrin's spiral stair: a two-turn spiral of radius r about (cx, cy). */
+/** A spiral stair (`way: "stair"`): a two-turn spiral of radius r about (cx, cy). */
 function stair(g, cx, cy, r) {
   el("circle", { cx, cy, r, fill: "#0e131a", stroke: STEPS, "stroke-width": 1.6, "pointer-events": "none" }, g);
   const pts = [];
@@ -120,7 +120,7 @@ function ramp(g, cx, cy, r) {
   }
 }
 
-/** Orrin's Gallery: a ring of windows looking down the well. */
+/** The axis room up a stair: a ring of windows all round. */
 function gallery(g, { cx, cy, r }) {
   for (let i = 0; i < 12; i++) {
     const a0 = ((i + 0.12) / 12) * 2 * Math.PI;

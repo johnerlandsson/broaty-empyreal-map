@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import orrin from "../data/orrin.js";
 import wenna from "../data/wenna.js";
 import { DRUMS, buildDrumModel, drumHour, drumKey, drumLayout, drumShape } from "./drum.js";
 import { indexStation, locate } from "./locate.js";
@@ -11,10 +10,8 @@ const centroid = (pts) => pts.reduce((s, p) => s.map((c, i) => c + p[i] / pts.le
 // the renderer's normal: from the first three points
 const normal = ([a, b, c]) => cross(sub(b, a), sub(c, a));
 
-describe.each([
-  ["Orrin Station", "orrin", orrin, "gallery", 0.5],
-  ["Wenna Halt", "wenna", wenna, "lounge", 0.6],
-])("%s", (_, p, data, up, g) => {
+// Orrin Station was a drum until it was rebuilt on decks (decks.test.js).
+describe.each([["Wenna Halt", "wenna", wenna, "lounge", 0.6]])("%s", (_, p, data, up, g) => {
   const spec = DRUMS[p];
   const index = indexStation(data);
   const faces = buildDrumModel(index, spec);

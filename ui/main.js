@@ -10,7 +10,9 @@ import orrin from "./data/orrin.js";
 import station from "./data/station.js";
 import wenna from "./data/wenna.js";
 import { DeckView } from "./deck-view.js";
+import { decksPlans } from "./decks-deck.js";
 import { drumPlans } from "./drum-deck.js";
+import { DECKS, buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "./lib/decks.js";
 import { DRUMS, buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
 import { hullOf, isShipRoom, shipInfo } from "./lib/hulls.js";
 import { indexStation, infoLine, locate } from "./lib/locate.js";
@@ -27,7 +29,7 @@ function tiss() {
   return { index, model: new ModelView(modelEl, index), deck: new DeckView(deckEl, index), lastLevel: null };
 }
 
-/** Orrin Station or Wenna Halt: one drum, one plan. */
+/** Wenna Halt: one drum, one plan. */
 function drum(data, spec) {
   const index = indexStation(data);
   const model = new ModelView(modelEl, index, {
@@ -39,7 +41,20 @@ function drum(data, spec) {
   return { index, model, deck: new DeckView(deckEl, index, drumPlans(spec)), lastLevel: null };
 }
 
-const stations = { tiss: tiss(), orrin: drum(orrin, DRUMS.orrin), wenna: drum(wenna, DRUMS.wenna) };
+/** Orrin Station: a box on decks, cut away above your deck; a plan a deck, rooms placed by address. */
+function decks(data, spec) {
+  const index = indexDecks(data, spec);
+  const model = new ModelView(modelEl, index, {
+    faces: buildDecksModel(index, spec),
+    keyOf: decksKey,
+    hourOf: () => null,
+    cutOf: (where) => decksCut(index, where),
+    labels: false,
+  });
+  return { index, model, deck: new DeckView(deckEl, index, decksPlans(spec)), lastLevel: null, locate: locateDecks };
+}
+
+const stations = { tiss: tiss(), orrin: decks(orrin, DECKS.orrin), wenna: drum(wenna, DRUMS.wenna) };
 const ships = {}; // hull id -> the DeckView drawing that hull, built on first use
 const space = new SpaceView(modelEl);
 const info = document.getElementById("info");
@@ -77,7 +92,7 @@ function shipView(id) {
 function render() {
   show(pickStation(last, docked, current ?? "tiss"));
   const s = stations[current];
-  const where = locate(s.index, last, s.lastLevel);
+  const where = (s.locate ?? locate)(s.index, last, s.lastLevel);
   if (where.kind !== "off") s.lastLevel = where.level;
   s.model.set(where);
   s.deck.set(where);

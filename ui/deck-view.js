@@ -390,7 +390,8 @@ export class DeckView {
     this.focus = [px, py];
     const vyFocus = plan.ring ? py * 0.5 : py;
     const m = plan.margin ?? 0.35; // how far off centre the highlight may sit before the view follows
-    if (changed || Math.abs(px - cx) > vw * m || Math.abs(vyFocus - cy) > vh * m) {
+    // a new level re-centres, unless the plans share one frame (an extent), as a decks station's do
+    if ((changed && !plan.extent) || Math.abs(px - cx) > vw * m || Math.abs(vyFocus - cy) > vh * m) {
       this.setView([px - vw / 2, vyFocus - vh / 2, vw, vh]);
     }
   }

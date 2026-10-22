@@ -1,38 +1,19 @@
-// The drum stations, Orrin Station and Wenna Halt: the model's faces and the deck plan's layout,
-// for a small outpost of one drum. Both have the same six rooms off a hall round the drum, so one
-// spec per station says what differs. Same station frame as T.I.S.S.'s (X = 3 o'clock, Y = 12
-// o'clock, Z = fore along the axis), so the one camera and renderer draw them all. Pure; no DOM.
+// The drum stations, Wenna Halt so far: the model's faces and the deck plan's layout, for a small
+// outpost of one drum with six rooms off a hall round it, so one spec per station says what
+// differs. (Orrin Station was one until it was rebuilt on decks: see decks.js.) Same station
+// frame as T.I.S.S.'s (X = 3 o'clock, Y = 12 o'clock, Z = fore along the axis), so the one camera
+// and renderer draw them all. Pure; no DOM.
 
 import { DISTRICT_COLOURS, P3, roll } from "./geometry.js";
 
 // --- the stations ----------------------------------------------------------------------------
 
 /**
- * What differs between the drums. `prefix` is the rooms' id prefix ("orrin.berth"); `axis` the
+ * What differs between the drums. `prefix` is the rooms' id prefix ("wenna.berth"); `axis` the
  * room up at the axis and the size of its window collar; `cradles` the blocks outside the Berths,
  * each [hour offset, z, half-width, height, half-length]; `way` how you go up to the axis room.
  */
 export const DRUMS = {
-  // A foundry port: everything painted the same orange, big cradles for ore tugs and drop cans and
-  // a small one for skiffs, and a spiral stair up to a gallery of windows all round.
-  orrin: {
-    prefix: "orrin",
-    axis: { id: "orrin.gallery", r: 48, len: 26 },
-    way: "stair",
-    tints: {
-      "orrin.concourse": DISTRICT_COLOURS.industrial, // foundry orange
-      "orrin.market": DISTRICT_COLOURS.concourse,
-      "orrin.freight": DISTRICT_COLOURS.industrial,
-      "orrin.berth": DISTRICT_COLOURS.docks,
-      "orrin.charts": DISTRICT_COLOURS.docks,
-      "orrin.gallery": DISTRICT_COLOURS.docks,
-    },
-    cradles: [
-      [-0.22, -14, 16, 30, 15],
-      [0.12, -14, 16, 30, 15],
-      [0.36, 16, 8, 16, 9],
-    ],
-  },
   // An older, better-kept halt: kelp planters in a carpeted hall, a neat office for freight, a
   // clean row of cradles sized for couriers, and a ramp up to a lounge with one wide window.
   wenna: {
@@ -72,7 +53,7 @@ const AXLE = { r: 30, len: 22 };
  * (`cull`); a cradle is also hidden while its foot is on the far side (`anchor`). `layer` draws
  * the axle under the drum and the cradles and the collar over it.
  * @param {ReturnType<typeof import("./locate.js").indexStation>} index
- * @param {typeof DRUMS.orrin} spec
+ * @param {typeof DRUMS.wenna} spec
  */
 export function buildDrumModel(index, spec) {
   const faces = [];
@@ -176,7 +157,7 @@ export const WAY = { x: 96, r: 13 }; // the foot of the stair or ramp up to the 
 export const AXIS_R = 40;
 
 /**
- * @param {typeof DRUMS.orrin} spec
+ * @param {typeof DRUMS.wenna} spec
  * @returns {{boxes: {room: object, cx: number, cy: number, w: number, h: number}[],
  *   hall: object|null, axis: {room: object|undefined, cx: number, cy: number, r: number},
  *   way: {cx: number, cy: number, r: number}}}
