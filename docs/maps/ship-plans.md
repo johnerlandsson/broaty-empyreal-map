@@ -54,9 +54,12 @@ nothing lit. Your ship is a place too, and soon one with several rooms.
 
 ### The rooms
 
-A ship's room ids are `ship.<n>`, the ship's entity id (`shipAt()` in
-`packages/game/src/systems/ships.ts` in `~/dev/empyreal`); the cockpit's id
-is the ship's. `mudstd.room.info` gives every ship room `terrain: "ship"`,
+A ship's room ids are `ship.<n>.<key>`: `<n>` is the ship's entity id and
+`<key>` the room's key in her plan, so the cockpit is `ship.72.cockpit`
+(`roomId()` and `shipAt()` in `packages/game/src/systems/ships.ts` in
+`~/dev/empyreal`, since empyreal 2558cef). Before that the cockpit was
+`ship.<n>`, and the game's migration 27 renamed it wherever a room id was
+kept. `mudstd.room.info` gives every ship room `terrain: "ship"`,
 `area: "ship.<n>"` and `areaName`, the ship's name ("Mule"). The plan treats
 any room whose id starts `ship.` as being aboard a ship.
 
@@ -73,9 +76,11 @@ ship: { class: "courier", id: "ship.72", kind: "courier", name: "Fair Copy" }
 
 `class` is the hull's stable id, as in `content/game/hulls.yaml`, and picks
 the drawing; `kind` is its name, used in the caption and the info line. The
-Lua location message carries them as `hull` and `hullName`. Nothing says yet
-which part of the ship a room is; once ships have more rooms the server will
-need to, and it gets carried as `shipRoom`.
+Lua location message carries them as `hull` and `hullName`. `ship.id` is the
+ship's area, `ship.<n>`, not the room's id. Which part of the ship a room is
+can be read off the end of its id (`cockpit`), but the plan doesn't read it
+yet: it lights the cockpit whatever room you're in, and `shipRoom` stays
+unset.
 
 **The user's decision:** no guessing the class from `Ship.List`'s `kind` (a
 display name, sent only for ships you own).
@@ -155,12 +160,13 @@ cover plate stays drawn as its description has it (the user, 2026-10-22).
 
 ## Rooms, compartments and the highlight
 
-- **One room today, the cockpit,** lit whenever you're aboard (any `ship.<n>`
-  room).
+- **One room today, the cockpit,** lit whenever you're aboard (any
+  `ship.<n>.<key>` room). The skiff and the courier have only their cockpit
+  (`ship.<n>.cockpit`).
 - **More rooms later:** each hull's drawing maps a room key to its shape,
   and the highlight moves to the room you're in, as on a station (the user,
-  2026-10-22). How a room is keyed waits on what the server sends for a
-  ship's rooms.
+  2026-10-22). The key would be the end of the room's id
+  (`ship.<n>.hold`).
 - **Hover** a room for its name from the game. Compartments have no hover.
 
 ## Info line
