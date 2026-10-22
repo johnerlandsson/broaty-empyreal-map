@@ -11,9 +11,10 @@ mark is worked out from the clock, so it moves.
 
 It shows while the **◎** button is on. The button sits left of the band's
 + − ⌂ and appears once the game has sent the charts, docked or not, aboard a
-ship or not. It hides again when you disconnect. The chart stays on or off as
-you left it through docking, undocking and walking about, and a reopened panel
-gets the choice back. It doesn't outlive the session.
+ship or not. It hides again when you disconnect, and the chart with it. The
+chart stays on or off as you left it through docking, undocking, walking about
+and a dropped connection, and a reopened panel gets the choice back. It doesn't
+outlive the session.
 
 While it's on, + −, the wheel and drag act on the chart, and the station model
 or space scene underneath keeps its state but doesn't draw. The chart shows the
@@ -40,17 +41,24 @@ stations) and the `places` (stations, belts, mouths), each with an orbit
 `fit` of when it was `seen` and how far off it may be (`error`, km, as of `at`).
 It is resent when places or fits change and every game hour.
 
-`Ship.Status` gives her `docked`, `location`, `destination`, `progress` and
-`eta`, and her host's when she's docked at another ship, which is where she
+`Ship.Status` gives her `name`, `docked`, `location`, `destination`, `progress`
+and `eta`, and her host's when she's docked at another ship, which is where she
 rides. `src/station_map/charts.lua` also remembers what the payload leaves out:
 the place she left (`from`), the point she's holding at once her trip there
-ends, whether she's searching for a belt, and when each status came (whole
-seconds, the game's tick). That is how her route and her place are worked out:
+ends, whether she's searching for a belt, when each status came and when the
+trip began (`depart`; whole seconds, the game's tick). That is how her route and
+her place are worked out:
 
 - docked or at a place: at its position, a belt's being where the fit puts it;
 - under way: a straight line in the frame of the nearest body that holds both
   ends, from where she left to where the destination will be when she arrives,
-  as the game flies her;
+  as the game flies her. Arrival is each status's `eta` on from when it came.
+  Departure is kept from the trip's first status: `progress` comes rounded to
+  two places, so worked out again late in a trip it would swing by minutes;
+- a trip only ends, or a search starts a new leg, once it has come due. Before
+  that a longer `eta` is a delay (debris), not a search, and going loose is a
+  stop or a hold wherever she was: she isn't placed at the point she was bound
+  for, and the belt isn't lit;
 - not drawn when she can't be placed: under way with no remembered start (the
   panel started mid-trip), loose with nowhere known, in a lane, or when no
   `Ship.Status` came (as a guest aboard someone else's ship). The destination's
@@ -89,7 +97,8 @@ Everything the style guide's §13 draws:
 - **Off the view**, a body, a mouth with a bearing or a belt that isn't lost
   gets a small chevron at the band's edge, with its name and its distance from
   your ship in thousands of km ("Orrin 16k"), or from the middle of the view
-  when she can't be placed. A lost belt gets none.
+  when she can't be placed. A lost belt gets none, and nor does a body whose
+  disc (the star's bright glow) still reaches into the band.
 - **A scale bar**, top left.
 - **Hover** any mark for its name; a belt's error and when it was seen; where
   she's bound and when she'll arrive.
@@ -122,8 +131,8 @@ Unchanged: it says where you are aboard.
 ## Code
 
 - `src/station_map/charts.lua`: the reducer. Cleans `Space.Charts`, keeps her
-  state (`from`, the held point, `searching`, `received`) and the chart's
-  on/off. Pure; tests in `tests/charts_test.lua`.
+  state (`name`, `from`, the held point, `searching`, `received`, `depart`)
+  and the chart's on/off, which a disconnect leaves as it was. Pure; tests in `tests/charts_test.lua`.
 - `src/main.lua`: posts `charts`, `chart-ship` and `chart` `{on}` to the panel
   when they change, takes the choice back from the panel, and replays all three
   on `ready`.

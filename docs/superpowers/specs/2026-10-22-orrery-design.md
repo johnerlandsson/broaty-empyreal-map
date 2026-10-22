@@ -67,7 +67,8 @@ The top band. A new button, **◎**, sits to the left of the band's
 model, or the space scene once you're out) and the chart.
 
 - The button shows once a `Space.Charts` has arrived, docked or not,
-  aboard or not, and hides again on disconnect.
+  aboard or not, and hides again on disconnect (the chart's on or off
+  holds through it).
 - It's lit (Dim border, as the mockup has it) while the chart is on.
 - The chart stays on or off as you left it, through docking, undocking
   and walking about. The Lua side keeps the choice so a remounted panel
@@ -172,8 +173,12 @@ fields, as `scene.lua` does.
     T.I.S.S. to Orrin Station).
   - Arrival is when the Lua side received the status plus `eta` seconds.
     The Lua side stamps each `Ship.Status` with `os.time()` (whole seconds,
-    the game's tick) so a remounted panel still has it. Departure is
-    arrival less `eta / (1 - progress)`. Recompute both on each status.
+    the game's tick) so a remounted panel still has it, and recomputes
+    arrival on each status. Departure is arrival less `eta / (1 -
+    progress)`, worked out once, from the trip's first status (its
+    lowest `progress`), and kept with `from` (2026-10-22 review:
+    `progress` is rounded to 2 places, so late in a trip it would swing
+    by minutes).
   - Her line runs from `from`'s offset from the frame body at departure
     to the destination's offset at arrival. Her position at t is the
     frame body's position at t plus the point `(t - depart) / (arrive -
@@ -185,8 +190,11 @@ fields, as `scene.lua` does.
   belt, and `progress` and `eta` start again. Where those legs go isn't
   the player's to know, so the chart doesn't draw them. The Lua side
   marks a trip **searching** when, with the same destination (a belt),
-  `progress` falls, or `eta` grows by more than a few seconds over what
-  the time since the last status would allow. Searching, she isn't drawn
+  the last leg has come due and `progress` falls, or `eta` grows by more
+  than a few seconds over what the time since the last status would
+  allow. Before a leg is due, a longer `eta` is a delay (the game's
+  `debris` call), and going loose is a `stop` or `hold` where she is: she
+  isn't searching and isn't placed at the point she was bound for. Searching, she isn't drawn
   as a chevron. Instead the belt's own arc is drawn in the highlight
   colour (amber, pulsing, as §6 lights a place), since she's somewhere
   along it as far as you know. Her route isn't drawn. Between legs she

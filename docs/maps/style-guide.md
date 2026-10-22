@@ -357,14 +357,17 @@ what it draws and how.
   with its distance in thousands of km, 9: "Orrin 16k". The distance is from
   your ship, or from the view's centre when she can't be placed. Stations and
   folded satellites get none. Neither does a lost belt, which is its whole
-  ring and so has no one place to point at.
+  ring and so has no one place to point at, nor a body whose disc reaches into
+  the band (the star's, out to 1.6 times its radius, where its glow is still
+  half as bright), since you can see it.
 - **Scale bar:** top left, Dim, a 1, 2 or 5 × 10ⁿ km bar with end ticks and
   its length above it, 9.
 
 ### 13.4 Behaviour
 
 - **The toggle:** ◎ sits left of the band's + − ⌂, styled like them, and
-  shows once the game has sent the charts. While the chart is on it has a Dim
+  shows once the game has sent the charts. A disconnect hides it and the
+  chart, but leaves the chart on or off as it was. While the chart is on it has a Dim
   border, the band's + − ⌂, wheel and drag act on the chart, and what's
   under it keeps its state without drawing.
 - **Hover** any mark for a Mallard tooltip: its name; for a belt, its error
@@ -381,7 +384,9 @@ what it draws and how.
   from where she was.
 - **Zoom** in to 1,000 km across, out to 2.3 times the system's radius,
   times the band's width over its height when that's more than 1, so the
-  whole system always fits a wide band.
+  whole system always fits a wide band. When the band narrows and leaves the
+  view wider than that, it still pans; only zooming further out is refused.
+  ⌂ pressed while the band has no size frames again once it has one.
 - **Live:** redrawn at least once a second while it's shown and the panel
   is visible, never otherwise.
 
