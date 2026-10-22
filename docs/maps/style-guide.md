@@ -21,6 +21,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | Decks station models and plans (Orrin Station) | top, bottom | you're on that station, or your ship is docked there | [decks-stations.md](decks-stations.md) |
 | Space scenes | top | you're out in a ship you own or crew, undocked | [space-scenes.md](space-scenes.md) |
 | Ship plans | bottom | you're aboard any ship, docked or not | [ship-plans.md](ship-plans.md) |
+| Orrery (the system chart) | top | the ◎ toggle is on | [orrery.md](orrery.md) |
 
 ## 2. Principles
 
@@ -97,6 +98,9 @@ with these as fallbacks.
 | Tones | `#3a4556`, `#58667b`, `#7e8da3` | the three flat shades of every face, dark to light, by angle to a fixed light |
 | Model edge | `#0d1218` | real edges between faces (1.3) and the rocks' outlines |
 | Glass mix | Glass mixed in at .45 | domes, window collars |
+| Orbit | `#2b3646` | the chart's orbit rings and its dotted edge ring (§13); the same as the panel's rule |
+| Star | `#fffaf0` | the chart's star, and the centre of its radial glow (§13) |
+| Glass | `#cfe3ff` (§4.2) | the chart's station diamonds and lane mouth chevrons (§13) |
 
 ### 4.4 District colours
 
@@ -123,6 +127,16 @@ foundry-orange Concourse is `industrial`, Wenna's kelp-green one
 **Amber `#ffb347` is the highlight and nothing else.** No room tint, fixture
 or label may use it or anything close to it. A new colour goes in this guide
 before it goes in code.
+
+On the chart (§13), amber is where you are, and only that:
+
+- your ship's chevron;
+- her route: the stretch ahead, the stretch behind, and the ring at her
+  destination;
+- a belt's arc while she searches for it (she's somewhere along it, as far as
+  you know).
+
+Nothing else on the chart is amber.
 
 ## 5. Type
 
@@ -275,8 +289,93 @@ A new map type says in its doc what its line shows.
   rocks.
 - The frame loop runs only while something is on screen, and pauses while the
   panel is hidden.
+- The chart (§13) can cover the scene. While it does, the scene keeps its
+  state but doesn't draw, and its loop stops; it wakes when the chart is
+  turned off.
 
-## 13. Adding a map
+## 13. Charts
+
+The orrery: a true-scale chart of the star system you're in, over the top
+band while the **◎** toggle is on (see orrery.md). It's a map of where things
+are now, worked out from the clock, so its marks move; the rules below are
+what it draws and how.
+
+### 13.1 Marks
+
+- **Backdrop:** Background with the seeded stars, as every band.
+- **Orbits:** a 1 px ring or ellipse in Orbit for everything with an orbit,
+  around its parent's position now.
+- **Star:** a Star disc, at least 5 px across the radius, else its true
+  radius, inside a soft radial glow of Star fading out at about 2.6 times it.
+- **Planets:** a disc in the darkest Tone with a Model edge outline, its half
+  toward the star in the lightest Tone; at least 3.5 px radius, else its true
+  radius.
+- **Stations:** a small diamond (about 5 px) in Glass.
+- **Belts:** an arc along the fit's orbit, centred where the fit puts the
+  belt and reaching its error either way: 14 segments, 5 px wide with round
+  caps, in the lightest Tone at opacity `.15 + .6 × (1 − |2f − 1|)` for a
+  segment at `f` along the arc, so it fades toward its ends, with four small
+  rock dots at its centre. A belt that's **lost** (its error is 90% of half
+  way round) is its whole orbit, dashed in the middle Tone, and its label
+  says "· lost". A belt is never drawn as a point.
+- **The edge:** a ring dotted `1 5` in Orbit at the lane mouths' distance,
+  whenever the system has a mouth.
+- **A mouth with a bearing:** a double chevron in Glass on the edge, pointing
+  out along it.
+- **A mouth without one:** no mark and no off-view marker. The edge ring is
+  named in Dim at its top, one line a mouth: "Maelor lane, somewhere on the
+  edge". Nothing on the ring hints at a direction.
+- **Your ship:** an amber chevron pointing the way she's going (up when
+  she's still), with the model highlight's light stroke (`#fff3df`) and the
+  glow, pulsing as the highlight does (§6). Not drawn where the chart can't
+  place her.
+- **Her route** (under way): the stretch ahead dashed `4 4` in amber at .55,
+  the stretch behind solid in amber at .25, and a 5 px amber ring at where
+  the destination will be when she arrives. Bound somewhere she can't be
+  placed from, only the ring.
+- **Searching for a belt:** no chevron and no route. The belt's arc (a lost
+  belt's whole dashed ring) is lit amber and pulses.
+
+### 13.2 Labels
+
+- Names in Dim, 10, beside the star, the planets, the belts (with `±N` km,
+  thousands separated) and the mouths that have a bearing (by the star they
+  face: "Maelor").
+- Stations are named on hover only.
+- **Folding:** a satellite whose orbit is under 8 px across on screen is
+  folded into its parent: no ring, no mark, no label, unless it's your ship's
+  place or destination.
+
+### 13.3 Off view and scale
+
+- **Edge markers:** a body, belt or mouth with a bearing that's off the view
+  is a small Dim chevron just inside the band's edge, pointing at it, named
+  with its distance in thousands of km, 9: "Orrin 16k". The distance is from
+  your ship, or from the view's centre when she can't be placed. Stations and
+  folded satellites get none.
+- **Scale bar:** top left, Dim, a 1, 2 or 5 × 10ⁿ km bar with end ticks and
+  its length above it, 9.
+
+### 13.4 Behaviour
+
+- **The toggle:** ◎ sits left of the band's + − ⌂, styled like them, and
+  shows once the game has sent the charts. While the chart is on it has a Dim
+  border, the band's + − ⌂, wheel and drag act on the chart, and what's
+  under it keeps its state without drawing.
+- **Hover** any mark for a Mallard tooltip: its name; for a belt, its error
+  and when it was seen ("±2,600 km, seen 2d 4h ago"); for your ship, where
+  she's bound and when she'll arrive; for the edge ring, its label.
+- **Framing:** ⌂ frames her line and her when she's under way, else the body
+  she's nearest and its satellites, else the whole system. The view reframes
+  itself only when the chart is turned on, the system changes, or a trip
+  starts or ends while you haven't zoomed or panned since. It re-centres,
+  keeping the zoom, when your ship leaves the middle of the view (35%, as
+  §8.3).
+- **Zoom** from 1,000 km across to the whole system with a margin.
+- **Live:** redrawn at least once a second while it's shown and the panel
+  is visible, never otherwise.
+
+## 14. Adding a map
 
 1. **Write its doc here** from the template below, and add it to §1.
 2. **Draw it from the game:** read the area, hull or room content in
