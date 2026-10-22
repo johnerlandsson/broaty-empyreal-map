@@ -142,4 +142,9 @@ describe("frameOf", () => {
     expect(frameOf(idx, "pt:tamsin:1:1", "tiss")).toBe("tamsin");
     expect(frameOf(idx, "tiss", "nope")).toBeNull();
   });
+
+  it("lets a body be the frame of a trip to what orbits it", () => {
+    expect(frameOf(idx, "tamsin", "tiss")).toBe("tamsin");
+    expect(frameOf(idx, "pt:tamsin:1:1", "tamsin")).toBe("tamsin");
+  });
 });

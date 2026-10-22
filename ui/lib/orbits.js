@@ -78,13 +78,14 @@ export function positionOf(index, id, t, depth = 0) {
   return null;
 }
 
-// The nearest body both orbit, directly or not; null if either is unknown.
+// The nearest body that holds both, as the game's Orbits.common: a chain starts at the
+// item itself (a point's body), so a body is the frame of a trip to its own moon.
 export function frameOf(index, a, b) {
   const known = (id) => parsePoint(id) || index.items.has(id);
   if (!known(a) || !known(b)) return null;
   const above = (id) => {
     const out = [];
-    for (let p = parentOf(index, id); p !== null && out.length < DEPTH; p = parentOf(index, p)) out.push(p);
+    for (let p = parsePoint(id)?.body ?? id; p !== null && out.length < DEPTH; p = parentOf(index, p)) out.push(p);
     return out;
   };
   const up = new Set(above(a));
