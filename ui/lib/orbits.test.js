@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EDGE_KM, ago, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
-  offsetOn, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
+  offCentre, offsetOn, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
 } from "./orbits.js";
 
 const rad = (d) => (d * Math.PI) / 180;
@@ -311,6 +311,20 @@ describe("edgeMarker", () => {
     expect(m.x).toBeCloseTo(100, 9);
     expect(m.y).toBeCloseTo(100, 9);
     expect(m.angle).toBeCloseTo(Math.PI / 4, 9);
+  });
+});
+
+describe("offCentre", () => {
+  it("is how far off the centre p is, as a share of the half width or height, the larger", () => {
+    const vb = [0, 0, 200, 100];
+    expect(offCentre(vb, [100, 50])).toBe(0);
+    expect(offCentre(vb, [150, 50])).toBeCloseTo(0.5, 9);
+    expect(offCentre(vb, [150, 90])).toBeCloseTo(0.8, 9);
+    expect(offCentre(vb, [-100, 50])).toBeCloseTo(2, 9);
+  });
+  it("agrees with follows", () => {
+    const vb = [0, 0, 100, 100];
+    expect(follows(vb, [68, 50])).toBe(offCentre(vb, [68, 50]) > 0.35);
   });
 });
 

@@ -245,6 +245,13 @@ export function follows(vb, p, margin = 0.35) {
   return Math.abs(p[0] - (x + w / 2)) > margin * (w / 2) || Math.abs(p[1] - (y + h / 2)) > margin * (h / 2);
 }
 
+// How far p is from the centre of the viewBox, as a share of its half width or half height,
+// whichever is more: 0 at the centre, 1 on the edge. follows() is offCentre() > margin.
+export function offCentre(vb, p) {
+  const [x, y, w, h] = vb;
+  return Math.max(Math.abs(p[0] - (x + w / 2)) / (w / 2 || 1), Math.abs(p[1] - (y + h / 2)) / (h / 2 || 1));
+}
+
 // An orbit under 8 px across is drawn folded into its parent.
 export function folded(index, id, kmPerPx) {
   const a = num(index.items.get(id)?.orbit?.a);

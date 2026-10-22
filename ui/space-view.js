@@ -1,7 +1,7 @@
 // The overview away from the station: a canvas over the station model showing the starfield or
 // the belt, pure scenery with no controls. It fades in over the model (hiding its zoom buttons),
 // eases the stars' speed and cross-fades stars and rocks; the frame loop runs only while
-// something is on screen, and pauses while the panel is hidden.
+// something is on screen, and pauses while the panel is hidden or the system chart covers it.
 
 import { Belt, Starfield, approach, rockFaces, targets } from "./lib/space.js";
 import { rng } from "./lib/svg.js";
@@ -41,6 +41,7 @@ export class SpaceView {
     this.speed = 0;
     this.raf = 0;
     this.last = 0;
+    this.covered = false; // the chart is over the band: keep the state, draw nothing
 
     new ResizeObserver(() => this.resize()).observe(containerEl);
     document.addEventListener("visibilitychange", () => (document.hidden ? this.pause() : this.wake()));
@@ -50,6 +51,13 @@ export class SpaceView {
   set(scene) {
     this.target = targets(scene);
     this.wake();
+  }
+
+  /** While covered (the system chart is on) nothing draws and the loop stops; uncovering wakes it. */
+  setCovered(covered) {
+    this.covered = !!covered;
+    if (this.covered) this.pause();
+    else this.wake();
   }
 
   resize() {
@@ -64,7 +72,7 @@ export class SpaceView {
   }
 
   wake() {
-    if (this.raf || document.hidden) return;
+    if (this.raf || document.hidden || this.covered) return;
     this.last = performance.now();
     this.raf = requestAnimationFrame((t) => this.frame(t));
   }
@@ -75,6 +83,10 @@ export class SpaceView {
   }
 
   frame(now) {
+    if (this.covered) {
+      this.raf = 0;
+      return;
+    }
     const dt = Math.max(0, Math.min(0.05, (now - this.last) / 1000)); // a first frame can predate wake()
     this.last = now;
     const t = this.target;

@@ -4,8 +4,10 @@
 // the bottom band shows that ship's plan instead, one view per hull drawing, built on first use.
 // The Lua side holds all state and replays it when we post "ready", so this file keeps only the
 // last location, the docked station, and the level each plan last showed (a lift between floors
-// keeps the plan where it was).
+// keeps the plan where it was). The system chart (◎) can cover the top band; while it does, the space
+// scene doesn't draw.
 
+import { ChartView } from "./chart-view.js";
 import orrin from "./data/orrin.js";
 import station from "./data/station.js";
 import wenna from "./data/wenna.js";
@@ -59,6 +61,42 @@ const ships = {}; // hull id -> the DeckView drawing that hull, built on first u
 const space = new SpaceView(modelEl);
 const info = document.getElementById("info");
 const panel = window.panel;
+
+const chart = new ChartView(modelEl, {
+  onToggle(on) {
+    panel.post("chart", { on });
+    runChart();
+  },
+});
+let chartTimer = 0;
+let chartRaf = 0;
+let chartLast = 0;
+const CHART_SMOOTH = 100; // ms between redraws while she's under way
+
+/** Redraw the chart once a second while it's shown and the panel visible, more often while she
+ *  moves, and not at all otherwise; and keep the space scene from drawing under it. */
+function runChart() {
+  space.setCovered(chart.shown);
+  clearInterval(chartTimer);
+  cancelAnimationFrame(chartRaf);
+  chartTimer = 0;
+  chartRaf = 0;
+  if (!chart.shown || document.hidden) return;
+  chart.draw(Date.now());
+  if (chart.moving) {
+    const step = (now) => {
+      if (now - chartLast >= CHART_SMOOTH) {
+        chartLast = now;
+        chart.draw(Date.now());
+      }
+      chartRaf = requestAnimationFrame(step);
+    };
+    chartRaf = requestAnimationFrame(step);
+  } else {
+    chartTimer = setInterval(() => chart.draw(Date.now()), 1000);
+  }
+}
+document.addEventListener("visibilitychange", runChart);
 
 let current = null;
 let docked = null; // the station your ship is docked at, from the scene message
@@ -117,6 +155,21 @@ panel.on("scene", (msg) => {
   space.set(msg?.scene);
   docked = stationOfDock(msg?.station);
   render();
+});
+
+panel.on("charts", (msg) => {
+  chart.setCharts(msg);
+  runChart();
+});
+
+panel.on("chart-ship", (msg) => {
+  chart.setShip(msg);
+  runChart();
+});
+
+panel.on("chart", (msg) => {
+  chart.setOn(msg?.on);
+  runChart();
 });
 
 panel.on("location", (msg) => {
