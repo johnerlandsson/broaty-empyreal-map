@@ -377,11 +377,12 @@ what it draws and how.
   she's nearest and its satellites, else the whole system. The view reframes
   itself only when the chart is turned on, the system changes (and again on
   the first ship status after it), or a trip starts or ends while you haven't
-  zoomed or panned since. Otherwise it holds still, except that it follows
-  her, keeping the zoom, when she drifts out from where ⌂, a pan, a zoom or a
-  resize left her by more than 35% of the view (as §8.3). A flat 35% from the
-  centre would fight ⌂ when it frames her off the middle, so it's measured
-  from where she was.
+  zoomed or panned since. Until you pan or zoom, it also follows her, keeping
+  the zoom, when she drifts out from where ⌂ or a resize left her by more than
+  35% of the view (as §8.3). A flat 35% from the centre would fight ⌂ when it
+  frames her off the middle, so it's measured from where she was. Once you pan
+  or zoom, the view is yours and holds still until ⌂ (§2.6): following her
+  then would pull it back from wherever you'd taken it.
 - **Zoom** in to 1,000 km across, out to 2.3 times the system's radius,
   times the band's width over its height when that's more than 1, so the
   whole system always fits a wide band. When the band narrows and leaves the

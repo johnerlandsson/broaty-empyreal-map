@@ -110,9 +110,9 @@ wide band. ⌂ frames her line and her when she's under way, else the body she's
 nearest with its satellites, else the whole system. The view reframes itself
 only when the chart is turned on, when the system changes (and again on the
 first ship status after it), and when a trip starts or ends while you haven't
-zoomed or panned since. It also follows her, keeping the zoom, when she drifts
-out from where ⌂, a pan, a zoom or a resize left her by more than 35% of the
-view. Otherwise it holds still.
+zoomed or panned since. Until you pan or zoom, it also follows her, keeping the
+zoom, when she drifts out from where ⌂ or a resize left her by more than 35% of
+the view. Once you pan or zoom, it holds still until ⌂.
 
 ## Bottom band
 

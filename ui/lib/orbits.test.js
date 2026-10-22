@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EDGE_KM, ago, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
-  offCentre, offsetOn, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
+  followStep, offCentre, offsetOn, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
 } from "./orbits.js";
 
 const rad = (d) => (d * Math.PI) / 180;
@@ -392,5 +392,29 @@ describe("mouthStar", () => {
     expect(mouthStar("The Maelor Lane Mouth")).toBe("Maelor");
     expect(mouthStar("Somewhere")).toBe("Somewhere");
     expect(mouthStar(null)).toBe("");
+  });
+});
+
+describe("followStep", () => {
+  const vb = [0, 0, 100, 100]; // centre (50, 50)
+
+  it("never moves a view you've panned or zoomed, however far she drifts", () => {
+    expect(followStep(vb, [99, 50], 0.4, true)).toEqual({ vb, margin: 0.4 });
+    expect(followStep(vb, [500, 500], null, true)).toEqual({ vb, margin: null });
+  });
+
+  it("re-centres an untouched view on her once she passes the margin, keeping the zoom", () => {
+    expect(followStep(vb, [90, 50], 0.35, false)).toEqual({ vb: [40, 0, 100, 100], margin: 0.35 });
+  });
+
+  it("holds an untouched view while she's within the margin, tightening it as she comes back", () => {
+    expect(followStep(vb, [70, 50], 0.6, false)).toEqual({ vb, margin: 0.4 });
+    expect(followStep(vb, [55, 50], 0.6, false)).toEqual({ vb, margin: 0.35 });
+  });
+
+  it("takes where ⌂ left her as the margin", () => {
+    const step = followStep(vb, [80, 50], null, false);
+    expect(step.vb).toEqual(vb);
+    expect(step.margin).toBeCloseTo(0.6, 9);
   });
 });

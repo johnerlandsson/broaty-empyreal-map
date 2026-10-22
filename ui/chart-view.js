@@ -11,12 +11,11 @@ import {
   errorAt,
   fitBox,
   folded,
-  follows,
+  followStep,
   homeBox,
   indexCharts,
   isLost,
   mouthStar,
-  offCentre,
   parsePoint,
   positionOf,
   scaleKm,
@@ -41,7 +40,6 @@ const ROCKS = [
   [2, -2],
   [-1, 2],
 ];
-const FOLLOW = 0.35; // the middle of the view, as the plans have it (style guide §8.3)
 const LABEL_PX = 80; // a satellite of a planet is named once its orbit is this many px across
 const BUTTONS_W = 64; // the top right corner the ◎ and + − ⌂ take, px
 const BUTTONS_H = 112;
@@ -90,8 +88,8 @@ export class ChartView {
     this.on = false;
     this.touched = false; // zoomed or panned since the view was last framed
     this.vb = [-EDGE_KM, -EDGE_KM, 2 * EDGE_KM, 2 * EDGE_KM];
-    // how far off the centre she may be before the view follows her: 35%, or wherever ⌂ or your
-    // hand left her if that's further (null: measure at the next draw)
+    // how far off the centre she may be before the view follows her: 35%, or wherever ⌂ left her
+    // if that's further (null: measure at the next draw); a view you've touched doesn't follow
     this.margin = null;
     this.shipAt = null; // her last drawn position, km in viewBox units (y flipped)
     this.tips = new Map();
@@ -294,8 +292,7 @@ export class ChartView {
     // a pan (or a zoom in) is taken as it is, even while the band's new shape leaves the view
     // wider than the limit
     this.vb = v;
-    this.touched = true;
-    // her leaving the middle by your hand isn't her leaving it: don't pull the view back
+    this.touched = true; // the view is yours now: it stops following her until ⌂
     this.margin = null;
     this.draw(Date.now());
   }
@@ -325,17 +322,14 @@ export class ChartView {
     safe(() => (fix = shipFix(index, this.ship, t)));
     const herPos = (fix.kind === "at" || fix.kind === "moving") && fix.pos?.every(Number.isFinite) ? fix.pos : null;
 
-    // follow her when she leaves the middle of the view, keeping the zoom (style guide §8.3)
+    // follow her when she leaves the middle of the view, keeping the zoom (style guide §8.3), but
+    // only until you pan or zoom: from then the view is yours until ⌂
     this.shipAt = herPos && [herPos[0], -herPos[1]];
     if (this.shipAt) {
-      const off = offCentre(this.visible(), this.shipAt);
-      if (this.margin !== null && follows(this.visible(), this.shipAt, this.margin)) {
-        this.vb = [this.shipAt[0] - this.vb[2] / 2, this.shipAt[1] - this.vb[3] / 2, this.vb[2], this.vb[3]];
-        this.margin = FOLLOW;
-      } else {
-        // the tolerance only tightens as she comes back toward the middle
-        this.margin = Math.max(FOLLOW, Math.min(this.margin ?? Infinity, off));
-      }
+      const seen = this.visible();
+      const step = followStep(seen, this.shipAt, this.margin, this.touched);
+      this.margin = step.margin;
+      if (step.vb !== seen) this.vb = [this.shipAt[0] - this.vb[2] / 2, this.shipAt[1] - this.vb[3] / 2, this.vb[2], this.vb[3]];
     }
 
     const s = this.scale();

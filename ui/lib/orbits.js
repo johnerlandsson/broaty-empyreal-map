@@ -255,6 +255,16 @@ export function offCentre(vb, p) {
   return Math.max(Math.abs(p[0] - (x + w / 2)) / (w / 2 || 1), Math.abs(p[1] - (y + h / 2)) / (h / 2 || 1));
 }
 
+// One redraw's following, for the view vb and her at p: a view you've panned or zoomed (touched)
+// never moves on its own; an untouched one re-centres on her, keeping its size, once she's further
+// off the middle than margin, a tolerance that starts wherever ⌂ left her (margin null) and only
+// tightens, to 0.35 at the least, as she comes back toward the middle.
+export function followStep(vb, p, margin, touched) {
+  if (touched) return { vb, margin };
+  if (margin !== null && follows(vb, p, margin)) return { vb: [p[0] - vb[2] / 2, p[1] - vb[3] / 2, vb[2], vb[3]], margin: 0.35 };
+  return { vb, margin: Math.max(0.35, Math.min(margin ?? Infinity, offCentre(vb, p))) };
+}
+
 // An orbit under 8 px across is drawn folded into its parent.
 export function folded(index, id, kmPerPx) {
   const a = num(index.items.get(id)?.orbit?.a);
