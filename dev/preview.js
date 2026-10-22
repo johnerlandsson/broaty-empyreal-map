@@ -245,7 +245,13 @@ function emitChart(name) {
     return;
   }
   const now = Date.now();
-  const stamp = (m) => (m ? { ...m, received: Math.floor(now / 1000) } : null);
+  const stamp = (m) => {
+    if (!m) return null;
+    const received = Math.floor(now / 1000);
+    // the Lua side keeps the trip's depart from its first status
+    const depart = m.destination && m.progress < 1 ? received - Math.round((m.progress * m.eta) / (1 - m.progress)) : undefined;
+    return { ...m, received, ...(depart !== undefined ? { depart } : {}) };
+  };
   if (name === "maelor") {
     fp.emit("charts", maelorCharts(now));
     fp.emit("chart-ship", stamp(MAELOR_SHIP));

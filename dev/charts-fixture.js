@@ -88,14 +88,14 @@ export function maelorCharts(now, edge = null) {
  *  the chart draws a marker when it has one. */
 export const EDGE = (now) => ({ r: 15000, bearing: 76, at: now });
 
-/** chart-ship messages by scenario (Senara); `received` is stamped when emitted. */
+/** chart-ship messages by scenario (Senara); `received` and `depart` are stamped when emitted. */
 export const SHIPS = {
-  "parked-gannet": { docked: false, location: "gannet" },
-  "under-way-orrin": { docked: false, destination: "orrin_station", progress: 0.4, eta: 250, from: "tiss" },
-  "searching-cinders": { docked: false, destination: "cinders", progress: 0.3, eta: 120, from: "tiss", searching: "cinders" },
-  "at-point": { docked: false, point: "pt:tamsin:1500:-2000" },
-  "docked-tiss": { docked: true, location: "tiss" },
+  "parked-gannet": { name: "Mule", docked: false, location: "gannet" },
+  "under-way-orrin": { name: "Mule", docked: false, destination: "orrin_station", progress: 0.4, eta: 250, from: "tiss" },
+  "searching-cinders": { name: "Mule", docked: false, destination: "cinders", progress: 0.3, eta: 120, from: "tiss", searching: "cinders" },
+  "at-point": { name: "Mule", docked: false, point: "pt:tamsin:1500:-2000" },
+  "docked-tiss": { name: "Mule", docked: true, location: "tiss" },
   none: null,
 };
 
-export const MAELOR_SHIP = { docked: true, location: "wenna_halt" };
+export const MAELOR_SHIP = { name: "Mule", docked: true, location: "wenna_halt" };

@@ -98,6 +98,7 @@ export class ChartView {
     this.tipKey = null;
     this.tipShown = null; // what the tooltip last showed, so a redraw doesn't re-show the same
     this.fresh = false; // the system just changed and her status for it hasn't come yet
+    this.homeLater = false; // ⌂ ran while the band had no size: frame again once it has one
 
     const div = document.createElement("div");
     div.className = "chart";
@@ -184,7 +185,8 @@ export class ChartView {
     div.addEventListener("pointerleave", () => this.hideTip());
     new ResizeObserver(() => {
       this.margin = null; // the band changing shape isn't her leaving the middle
-      this.draw(Date.now());
+      if (this.homeLater && !this.touched && this.sized()) this.home();
+      else this.draw(Date.now());
     }).observe(bandEl);
   }
 
@@ -244,11 +246,17 @@ export class ChartView {
     return [this.band.clientWidth || 1, this.band.clientHeight || 1];
   }
 
+  /** True once the band has a real size to frame a view in. */
+  sized() {
+    return this.band.clientWidth > 1 && this.band.clientHeight > 1;
+  }
+
   /** Frame the view as ⌂ does: her trip, the body she's nearest, or the whole system. */
   home() {
     this.touched = false;
     this.margin = null; // ⌂ may frame her off the middle (with her body's satellites): that isn't her leaving it
     if (!this.index) return;
+    this.homeLater = !this.sized();
     const t = Date.now();
     const [w, h] = this.size();
     safe(() => {
@@ -276,10 +284,16 @@ export class ChartView {
 
   /** The user zoomed or panned. */
   userView(v) {
-    // already zoomed right out: a further zoom out is ignored rather than clamped about the
-    // middle, which would pan the view
-    if (this.index && v[2] > this.maxW() && this.vb[2] >= this.maxW() * 0.999) return;
-    this.vb = this.clamp(v);
+    const max = this.index ? this.maxW() : Infinity;
+    if (v[2] > max && v[2] > this.vb[2]) {
+      // already zoomed right out: a further zoom out is ignored rather than clamped about the
+      // middle, which would pan the view
+      if (this.vb[2] >= max * 0.999) return;
+      v = this.clamp(v);
+    }
+    // a pan (or a zoom in) is taken as it is, even while the band's new shape leaves the view
+    // wider than the limit
+    this.vb = v;
     this.touched = true;
     // her leaving the middle by your hand isn't her leaving it: don't pull the view back
     this.margin = null;
@@ -375,7 +389,7 @@ export class ChartView {
       const p = index.items.get(it.orbit.parent);
       return p?.kind !== "star" && (2 * (Number(it.orbit.a) || 0)) / s < LABEL_PX;
     };
-    const offView = []; // [name, km position] for the edge markers
+    const offView = []; // [name, km position, drawn radius px] for the edge markers
 
     // the star's position, for lighting the planets
     const star = items.find((it) => it.kind === "star");
@@ -447,7 +461,7 @@ export class ChartView {
           el("circle", { cx: x, cy: y, r, fill: STAR }, g);
           label(x, y + r * 2.2 + 8, it.name); // below the brightest of the glow, so it reads
           tip(g, `body:${it.id}`, it.name);
-          offView.push([it.name, p]);
+          offView.push([it.name, p, r * 1.6]); // its glow is still half as bright out there: it reads as the star
         } else if (it.kind === "planet") {
           const p = pos(it.id);
           if (!p) return;
@@ -465,7 +479,7 @@ export class ChartView {
           }
           if (!crowded(it)) label(x, y + r + 12, it.name);
           tip(g, `body:${it.id}`, it.name);
-          offView.push([it.name, p]);
+          offView.push([it.name, p, r]);
         } else if (it.kind === "station") {
           const p = pos(it.id);
           if (!p) return;
@@ -533,10 +547,13 @@ export class ChartView {
     const view = this.visible();
     const inner = [view[0], view[1] + TOP_CLEAR * s, view[2], view[3] - TOP_CLEAR * s];
     const from = herPos ?? [cx, -cy];
-    for (const [name, p] of offView) {
+    for (const [name, p, r = 0] of offView) {
       safe(() => {
         // off the band, it's marked just inside it, below the scale bar and the buttons
         if (!edgeMarker(view, [p[0], -p[1]], 0)) return;
+        // a body whose disc still reaches into the band is seen: no marker
+        const [px, py] = P(p);
+        if (Math.hypot(Math.max(0, -px, px - w), Math.max(0, -py, py - h)) < r) return;
         const m = edgeMarker(inner, [p[0], -p[1]], MARKER_INSET * s);
         if (!m) return;
         const [x, y] = P([m.x, -m.y]);
