@@ -2,8 +2,12 @@
 
 *Status: built. Last updated 2026-10-22.*
 
-The approved mockup is `docs/maps/reference/ship-plans-mockup.html` (open it
-in a browser). It's a throwaway: take its look, not its code.
+The approved mockups are `docs/maps/reference/ship-plans-mockup.html` (the
+skiff and the courier) and `docs/maps/reference/freighter-mockup.html`
+(option A, the user's pick, 2026-10-22), with its exits from
+`docs/maps/reference/freighter-exits-mockup.html` (option A, Passage bars,
+the user's pick). Open them in a browser. They're
+throwaways: take their look, not their code.
 
 ## What it is and when it shows
 
@@ -13,9 +17,9 @@ docked or out in space, your own or someone else's. Each hull class has its
 own drawing, so a skiff and a courier never look alike, and each is drawn
 from that hull's description in the game.
 
-Today every ship has one room, its cockpit. Ships with more rooms are coming,
-and the plan works as a station plan does: rooms are lit as you walk between
-them.
+The skiff and the courier have one room, the cockpit. The medium freighter
+has six, and the plan works as a station plan does: the room you're in is
+lit as you walk between them.
 
 The top band doesn't change: the station model while docked (where you're
 docked), a space scene while out in your own ship. Aboard someone else's
@@ -36,8 +40,8 @@ nothing lit. Your ship is a place too, and soon one with several rooms.
 
 ### Non-goals
 
-- Hulls other than the skiff and the courier. New hulls get drawings when
-  they're added to the game.
+- Hulls other than the skiff, the courier and the freighter. New hulls get
+  drawings when they're added to the game.
 - Showing fittings, attachments, cargo, fuel, damage or anything that
   changes. The plan is the hull as built.
 - Other ships nearby, docked alongside, or in a hangar.
@@ -77,10 +81,10 @@ ship: { class: "courier", id: "ship.72", kind: "courier", name: "Fair Copy" }
 `class` is the hull's stable id, as in `content/game/hulls.yaml`, and picks
 the drawing; `kind` is its name, used in the caption and the info line. The
 Lua location message carries them as `hull` and `hullName`. `ship.id` is the
-ship's area, `ship.<n>`, not the room's id. Which part of the ship a room is
-can be read off the end of its id (`cockpit`), but the plan doesn't read it
-yet: it lights the cockpit whatever room you're in, and `shipRoom` stays
-unset.
+ship's area, `ship.<n>`, not the room's id. Which of her rooms you're in is the end of
+the room's id (`ship.98.hold` is `hold`): the Lua location message carries it
+as `shipRoom`, and the plan lights that room. A cockpit id from before
+migration 27 (`ship.<n>`) has none, and the first room, the cockpit, is lit.
 
 **The user's decision:** no guessing the class from `Ship.List`'s `kind` (a
 display name, sent only for ships you own).
@@ -145,6 +149,43 @@ not much else..."*
   middle with coil ribs across it.
 - **Drive bells** (compartment): two long bells at the stern.
 
+### The medium freighter
+
+From `content/game/hulls.yaml`: *"A working ship you can walk around in: a
+cockpit forward, a passage with an airlock to port and a docking collar to
+starboard, a hold behind it, and the engine room aft."* Exterior: *"A boxy
+hull three times a skiff's girth, mostly hold, with the cockpit a blunt
+blister on her nose and a docking collar ringed in yellow chevrons on her
+starboard flank."* Her rooms are in `content/plans/freighter.yaml`, one deck,
+frames 4 to 1 fore to aft; the game sends them `coords`, but the drawing
+sizes each room by what it is rather than drawing equal cells (option C in
+the mockup, turned down because the hold looked no bigger than the airlock).
+
+- **Hull:** boxy and wide, with the cockpit's blister on the nose and cut
+  corners at the stern.
+- **Rooms**, all six inside the hull:
+  - **Cockpit** (`cockpit`): in the blister, with two seats side by side as
+    fixtures and its name above them. *(The user: the box sits well inside
+    the blister, not filling it.)*
+  - **Airlock** (`airlock`), **Passage** (`passage`) and **Collar**
+    (`collar`, the game's Docking Collar): one row across her, port to
+    starboard.
+  - **Hold** (`hold`): most of the hull, with tie-down rails along its port
+    and starboard walls as fixtures, quieter than the seats.
+  - **Engine Room** (`engine`): aft, full width.
+- **Exits:** a Passage bar (`#56657a`) across each way the game's exits go,
+  as the station plans join rooms (the user's pick): cockpit to passage,
+  passage to airlock and to collar, passage to hold (wider: "the hold's wide
+  hatch"), hold to engine room, and the airlock and collar out to the hull.
+  Each bar spans the gap from the outside of one room's outline to the
+  outside of the other's and never overlaps a room (the user, 2026-10-22;
+  `doorway()` works them out from the rooms, and a test holds them to it).
+  The rooms are 8 apart to leave the bars room to show.
+- **Compartments:** the airlock's outer hatch on the port flank, in Glass; the
+  collar's ring on the starboard flank, its chevrons in the status lights'
+  yellow (`#e8b04a`, the user's call: the game says yellow); two drive
+  bells at the stern.
+
 ### The generic ship
 
 For a ship whose class isn't known (no `ship` in the frame) or has no
@@ -160,14 +201,18 @@ cover plate stays drawn as its description has it (the user, 2026-10-22).
 
 ## Rooms, compartments and the highlight
 
-- **One room today, the cockpit,** lit whenever you're aboard (any
-  `ship.<n>.<key>` room). The skiff and the courier have only their cockpit
-  (`ship.<n>.cockpit`).
-- **More rooms later:** each hull's drawing maps a room key to its shape,
-  and the highlight moves to the room you're in, as on a station (the user,
-  2026-10-22). The key would be the end of the room's id
-  (`ship.<n>.hold`).
-- **Hover** a room for its name from the game. Compartments have no hover.
+- **The room you're in is lit:** each hull's drawing maps a room key to its
+  shape, and the highlight moves to the room whose key ends your room's id
+  (`ship.<n>.hold`), as on a station (the user, 2026-10-22). A key the
+  drawing doesn't have lights the first room, the cockpit. The skiff and the
+  courier have only their cockpit (`ship.<n>.cockpit`).
+- **Walking between her rooms** keeps the hull: `mudstd.room.info` comes
+  before `Empyreal.Room`, so the location reducer keeps the hull when the new
+  room is in the same ship's area, rather than drawing the generic ship for a
+  moment.
+- **Hover** the room you're in for its name from the game; the other rooms
+  show the drawing's short name, since the game hasn't sent theirs.
+  Compartments have no hover.
 
 ## Info line
 
@@ -179,8 +224,8 @@ names the ship, and `hullName` is the game's own word for the class.
 
 Following the drum stations' pattern:
 
-- `ui/lib/hulls.js`: the hull specs as data (outline, rooms with their short
-  names, compartments, fixtures, bounding box), one per hull id, plus the
+- `ui/lib/hulls.js`: the hull specs as data (outline, rooms with their keys,
+  short names and label placement, passages, compartments, fixtures, bounding box), one per hull id, plus the
   pure helpers: `hullOf()` (unknown ids get the generic ship),
   `isShipRoom()`, `shipShape()` (a room's highlight), `hullExtent()` (what
   the band fits), `shipCaption()` and `shipInfo()`. Tests in
@@ -192,15 +237,14 @@ Following the drum stations' pattern:
 - `ui/main.js`: one `DeckView` per hull drawing, built on first use; aboard
   a ship (any `ship.` room) it takes the bottom band and the info line.
 - `dev/preview.js`, `dev/preview.html`: boarding steps for the generic ship,
-  a skiff and a courier, and a hull menu (`?hull=`) that re-sends the ship
-  room with that hull.
+  a skiff and a courier, a walk through the freighter's six rooms, and a hull
+  menu (`?hull=`) that re-sends the ship room with that hull.
 
 The Lua location message (`src/station_map/location.lua`) carries `area` and
-`areaName` from `mudstd.room.info`, and `hull` and `hullName` from
-`Empyreal.Room`'s `ship`; the caption takes the ship's name from `areaName`,
-and `main.js` picks the drawing by `hull`. When the server says which part of
-the ship a room is, carry it as `shipRoom`: `main.js` already passes it to the
-highlight.
+`areaName` from `mudstd.room.info`, `hull` and `hullName` from
+`Empyreal.Room`'s `ship`, and `shipRoom` from the room's id; the caption takes
+the ship's name from `areaName`, `main.js` picks the drawing by `hull` and
+passes `shipRoom` to the highlight.
 
 ## Where it differs from the style guide
 

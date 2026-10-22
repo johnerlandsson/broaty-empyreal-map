@@ -1,6 +1,7 @@
 // The ship plan: a top-down drawing of the ship you're aboard, fore up, in the bottom band in place
 // of the station's deck plan. The hull outline, its compartments (Dim line drawings: no text, no
-// hover, never lit), its rooms as room boxes, and fixtures inside rooms (the courier's seats).
+// hover, never lit), the Passage bars of the ways between rooms, its rooms as room boxes, and
+// fixtures inside rooms (seats, the hold's rails).
 // The drawings are data in lib/hulls.js, in the mockup's 200 × 300 box; they're drawn here in a
 // group scaled to plan units, with the labels outside it so the text isn't scaled.
 
@@ -22,12 +23,16 @@ export function shipPlans(spec) {
   return (svg) => [buildShipPlan(svg, spec)];
 }
 
-/** Put the game's room name on the hover and the ship's name and class under the hull. */
+/**
+ * Put the game's name for the room you're in on its hover (the others keep the drawing's), and the
+ * ship's name and class under the hull. The room is `msg.shipRoom`'s, else the first, as lit.
+ */
 export function updateShip(view, msg) {
   const plan = view.plans[0];
   plan.caption.textContent = shipCaption(msg);
-  const room = plan.rooms[0];
-  room.name = typeof msg?.name === "string" && msg.name !== "" ? msg.name : room.short;
+  const here = plan.rooms.find((r) => r.key === msg?.shipRoom) ?? plan.rooms[0];
+  const name = typeof msg?.name === "string" && msg.name !== "" ? msg.name : null;
+  for (const room of plan.rooms) room.name = (room === here && name) || room.short;
 }
 
 /** One drawn part, with the drawing's defaults where the part doesn't set its own. */
@@ -41,6 +46,7 @@ function buildShipPlan(svg, spec) {
 
   el("path", { d: spec.outline, fill: BG, stroke: HULL, "stroke-width": 1.6, "pointer-events": "none" }, s);
   for (const p of spec.compartments) drawPart(s, p, DIM);
+  for (const p of spec.passages ?? []) drawPart(s, p, "none");
 
   // the rooms: Dim room boxes, their names drawn below in plan units; hover on the box only
   const rooms = spec.rooms.map((r) => {
@@ -57,7 +63,7 @@ function buildShipPlan(svg, spec) {
   for (const p of spec.fixtures) drawPart(s, p, TXT);
 
   for (const r of spec.rooms) {
-    const [x, y] = labelAt(spec, r);
+    const [x, y] = labelAt(r);
     label(g, x, y, r.name, ROOM_FONT);
   }
 
@@ -83,16 +89,17 @@ function buildShipPlan(svg, spec) {
 }
 
 /**
- * Where a room's name goes, in plan coordinates: the room's centre, or, when the hull has fixtures
- * drawn inside its rooms (the courier's seats), the room's top quarter, or just above the room if
- * the name doesn't fit there.
+ * Where a room's name goes, in plan coordinates: at the drawing's `labelY` if it has one; else the
+ * room's centre, or, for a `labelTop` room (fixtures drawn under its name, as the courier's seats),
+ * the room's top quarter, or just above the room if the name doesn't fit there.
  */
-function labelAt(spec, r) {
+function labelAt(r) {
   const { x, y, width, height } = r.shape;
   const [px, py] = toPlan([x + width / 2, y]);
   const w = width * SCALE;
   const h = height * SCALE;
-  if (!spec.fixtures.length) return [px, py + h / 2];
+  if (r.labelY !== undefined) return [px, toPlan([0, r.labelY])[1]];
+  if (!r.labelTop) return [px, py + h / 2];
   const quarter = h / 4;
   const textW = r.name.length * ROOM_FONT * 0.55;
   if (quarter >= ROOM_FONT + 2 && textW <= w - 4) return [px, py + quarter / 2 + 1];

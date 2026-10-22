@@ -1,6 +1,7 @@
 // The ship hulls: the top-down drawings of the ship you're aboard, as data. Sources are
-// content/game/hulls.yaml in ~/dev/empyreal (which hull a ship has) and the approved mockup
-// docs/maps/reference/ship-plans-mockup.html (the coordinates). Each hull is drawn in the mockup's
+// content/game/hulls.yaml and content/plans/*.yaml in ~/dev/empyreal (which hull a ship has, and
+// her rooms) and the approved mockups docs/maps/reference/ship-plans-mockup.html and
+// freighter-mockup.html (option A) (the coordinates). Each hull is drawn in the mockup's
 // 200 × 300 box, fore up, centre x 100; toPlan() turns that into plan coordinates centred on 0, 0.
 // Compartments and fixtures are drawings only: no text, no hover, never lit. Pure; no DOM.
 
@@ -15,12 +16,60 @@ const rect = (x, y, width, height, rx, sw) => part("rect", { x, y, width, height
 /** A hold crate: a box with its diagonal. */
 const crate = (x, y, w, h, rx, sw) => [rect(x, y, w, h, rx, sw), path(`M${x},${y} L${x + w},${y + h}`, sw)];
 
-const SLOT = "#56657a";
+const PASSAGE = "#56657a";
+const SLOT = PASSAGE;
+const GLASS = "#cfe3ff";
+const FIXTURE_FILL = "#0e131a";
+const CHEVRON = "#e8b04a"; // the status lights' yellow: the freighter's collar is "ringed in yellow chevrons"
 const bolt = (cx, cy) => part("circle", { cx, cy, r: 1.2, fill: SLOT, stroke: SLOT, "stroke-width": 1.1 });
+
+/** Line widths in drawing units: the hull's, and a room box's (1.6 plan units over SCALE, as
+ * ship-deck.js strokes them). */
+const HULL_LINE = 1.6;
+const ROOM_LINE = 1;
+
+/** A way between rooms, or out through the hull: a Passage bar, unstroked. */
+const passageBar = (x, y, width, height) => part("rect", { x, y, width, height, fill: PASSAGE, stroke: "none" });
+
+/**
+ * A doorway between rooms a and b, one fore of the other or a to port of b: a Passage bar `w` wide,
+ * centred on the span they share, across the gap from the outside of one outline to the outside of
+ * the other, so it never overlaps either room.
+ */
+function doorway(a, b, w) {
+  const half = ROOM_LINE / 2;
+  if (a.y + a.height <= b.y) {
+    const cx = (Math.max(a.x, b.x) + Math.min(a.x + a.width, b.x + b.width)) / 2;
+    const y0 = a.y + a.height + half;
+    return passageBar(cx - w / 2, y0, w, b.y - half - y0);
+  }
+  const cy = (Math.max(a.y, b.y) + Math.min(a.y + a.height, b.y + b.height)) / 2;
+  const x0 = a.x + a.width + half;
+  return passageBar(x0, cy - w / 2, b.x - half - x0, w);
+}
+
+/** The medium freighter's hull and rooms, apart so her doorways can be worked out from them; gaps
+ * of 8 between rooms leave each doorway room to show. */
+const FREIGHTER_HULL =
+  "M64,58 Q64,8 100,8 Q136,8 136,58 L160,58 Q168,58 168,66 L168,256 L158,268 L42,268 L32,256 L32,66 Q32,58 40,58 Z";
+const box = (x, y, width, height, rx) => ({ kind: "rect", x, y, width, height, rx });
+const FR = {
+  cockpit: box(75, 25, 50, 29, 7),
+  airlock: box(36, 62, 34, 36, 4),
+  passage: box(78, 62, 44, 36, 4),
+  collar: box(130, 62, 34, 36, 4),
+  hold: box(36, 106, 128, 98, 4),
+  engine: box(36, 212, 128, 48, 4),
+};
+
+/** A seat seen from above: its cushion and the curve of its back. */
+const seat = (x, y) => `M${x},${y} h10 v6 h-10 z M${x},${y + 6} l2,3 h6 l2,-3`;
 
 /**
  * The hull specs, keyed by id. `outline` is the hull's SVG path; `rooms` the boxes you can be in
- * (the cockpit first); `compartments` the Dim line drawings; `fixtures` the Text ones drawn inside
+ * (the cockpit first), keyed by the end of the game's room id (`ship.<n>.<key>`), with
+ * `labelTop` to put the name in the room's top quarter (over fixtures) or `labelY` to place it;
+ * `passages` (optional) the Passage bars of the ways between them, never over a room; `compartments` the Dim line drawings; `fixtures` the Text ones drawn inside
  * rooms (the courier's seats); `box` the bounding box [x0, y0, x1, y1] of everything drawn.
  */
 export const HULLS = {
@@ -54,7 +103,7 @@ export const HULLS = {
   courier: {
     id: "courier",
     outline: "M100,15 Q122,40 122,70 L122,255 L112,266 L88,266 L78,255 L78,70 Q78,40 100,15 Z",
-    rooms: [{ key: "cockpit", name: "Cockpit", shape: { kind: "rect", x: 84, y: 40, width: 32, height: 56, rx: 8 } }],
+    rooms: [{ key: "cockpit", name: "Cockpit", labelTop: true, shape: { kind: "rect", x: 84, y: 40, width: 32, height: 56, rx: 8 } }],
     compartments: [
       // bulkhead, in the hull colour
       part("line", { x1: 80, y1: 102, x2: 120, y2: 102, stroke: "#9fb0c3", "stroke-width": 1.2 }),
@@ -79,6 +128,54 @@ export const HULLS = {
       path("M94,74 h12 v8 h-12 z M94,82 l2,4 h8 l2,-4", 1.2),
     ],
     box: [78, 15, 122, 286],
+  },
+  // The medium freighter (content/plans/freighter.yaml): a boxy hull, mostly hold, the cockpit a
+  // blunt blister on her nose, and every room inside her on one deck. Frame 4 the cockpit; frame 3
+  // the passage, the airlock to port and the docking collar to starboard; frame 2 the hold; frame 1
+  // the engine room. A Passage bar across each way through (the hold's hatch wider) and out
+  // through the hull to the airlock's outer hatch and the collar's ring; two seats side by side,
+  // tie-down rails along the hold's walls, and two drive bells.
+  freighter: {
+    id: "freighter",
+    outline: FREIGHTER_HULL,
+    rooms: [
+      { key: "cockpit", name: "Cockpit", labelY: 32, shape: FR.cockpit },
+      { key: "airlock", name: "Airlock", shape: FR.airlock },
+      { key: "passage", name: "Passage", shape: FR.passage },
+      { key: "collar", name: "Collar", shape: FR.collar },
+      { key: "hold", name: "Hold", shape: FR.hold },
+      { key: "engine", name: "Engine Room", shape: FR.engine },
+    ],
+    passages: [
+      doorway(FR.cockpit, FR.passage, 12),
+      doorway(FR.airlock, FR.passage, 12),
+      doorway(FR.passage, FR.collar, 12),
+      doorway(FR.passage, FR.hold, 24),
+      doorway(FR.hold, FR.engine, 12),
+      // out through the hull: the airlock to port, the collar to starboard
+      passageBar(32 + HULL_LINE / 2, 76, FR.airlock.x - ROOM_LINE / 2 - (32 + HULL_LINE / 2), 8),
+      passageBar(FR.collar.x + FR.collar.width + ROOM_LINE / 2, 76, 168 - HULL_LINE / 2 - (FR.collar.x + FR.collar.width + ROOM_LINE / 2), 8),
+    ],
+    compartments: [
+      // the airlock's outer hatch, to port, in Glass
+      part("rect", { x: 26, y: 74, width: 6, height: 12, rx: 1, fill: FIXTURE_FILL, stroke: GLASS, "stroke-width": 1.1 }),
+      // the docking collar's ring, to starboard, with its yellow chevrons
+      rect(168, 68, 7, 24, 2, 1.2),
+      part("path", { d: "M170,73 l3,3 l-3,3 M170,81 l3,3 l-3,3", stroke: CHEVRON, "stroke-width": 1 }),
+      // bells
+      { tag: "path", attrs: { d: "M64,269 Q64,280 56,294 L84,294 Q76,280 76,269 Z", fill: "none", "stroke-width": 1.3 } },
+      { tag: "path", attrs: { d: "M124,269 Q124,280 116,294 L144,294 Q136,280 136,269 Z", fill: "none", "stroke-width": 1.3 } },
+    ],
+    fixtures: [
+      path(`${seat(87, 40)} ${seat(103, 40)}`, 1),
+      // tie-down rails, quieter than the seats
+      part("path", {
+        d: "M43,114 v82 M157,114 v82 M43,128 h4 M43,142 h4 M43,156 h4 M43,170 h4 M43,184 h4 M157,128 h-4 M157,142 h-4 M157,156 h-4 M157,170 h-4 M157,184 h-4",
+        "stroke-width": 1,
+        opacity: 0.6,
+      }),
+    ],
+    box: [26, 8, 175, 294],
   },
   // Any other ship: a plain hull with a cockpit and nothing else drawn.
   generic: {
@@ -105,9 +202,9 @@ export function toPlan([x, y]) {
   return [(x - 100) * SCALE, (y - 150) * SCALE];
 }
 
-/** The hull spec for a hull id; anything but "skiff" or "courier" gets the generic ship. */
+/** The hull spec for a hull id; a hull with no drawing gets the generic ship. */
 export function hullOf(id) {
-  return id === "skiff" || id === "courier" ? HULLS[id] : HULLS.generic;
+  return typeof id === "string" && Object.hasOwn(HULLS, id) ? HULLS[id] : HULLS.generic;
 }
 
 /** Whether a room id is aboard a ship: anything starting "ship.". */

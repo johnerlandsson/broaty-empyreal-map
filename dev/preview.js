@@ -8,7 +8,7 @@
 //   ?debug    count model turns / redraws and deck highlights / re-centres, shown bottom-right
 //   ?still    send settings { turn_model: false }
 //   ?scene=S  open on overview scene S (station, parked, travelling or belt); the bar's menu switches it
-//   ?hull=H   aboard a ship, send hull H (skiff or courier) as the server will; the bar's menu switches it
+//   ?hull=H   aboard a ship, send hull H (skiff, courier or freighter) as the server will; the bar's menu switches it
 
 import orrin from "../ui/data/orrin.js";
 import station from "../ui/data/station.js";
@@ -44,6 +44,22 @@ function ride(hour, fromId, toId) {
 // a ship's rooms are ship.<n>.<room>, in the ship's own area, as the game names them now
 const COCKPIT = { roomId: "ship.41.cockpit", name: "Cockpit of the Magpie", area: "ship.41", areaName: "Magpie" };
 
+/** A room aboard the Old Reliable, a medium freighter (ship.98 in the session log of 2026-10-22). */
+function freighter(key, name) {
+  return {
+    label: `${name} (freighter)`,
+    msg: {
+      roomId: `ship.98.${key}`,
+      name,
+      area: "ship.98",
+      areaName: "Old Reliable",
+      hull: "freighter",
+      hullName: "medium freighter",
+      shipRoom: key,
+    },
+  };
+}
+
 const ROUTE = [
   room("tiss.rim-1100"), // Rim 11:00 -> Main Concourse: the wheel should turn one hour, not eleven
   room("tiss.concourse"),
@@ -78,6 +94,17 @@ const ROUTE = [
     label: "Cockpit of the Fair Copy (courier)",
     msg: { roomId: "ship.72.cockpit", name: "Cockpit of the Fair Copy", area: "ship.72", areaName: "Fair Copy", hull: "courier", hullName: "courier" },
   },
+  freighter("airlock", "Airlock"),
+  freighter("passage", "Passage"),
+  freighter("cockpit", "Cockpit of the Old Reliable"),
+  freighter("passage", "Passage"),
+  freighter("collar", "Docking Collar"),
+  freighter("passage", "Passage"),
+  freighter("hold", "Cargo Hold"),
+  freighter("engine", "Engine Room"),
+  freighter("hold", "Cargo Hold"),
+  freighter("passage", "Passage"),
+  freighter("airlock", "Airlock"),
   { label: "Cockpit of the Magpie", msg: COCKPIT },
   { label: "Flying to Orrin Station", msg: COCKPIT, scene: { scene: "travelling" } },
   { label: "Docked at Orrin Station", msg: COCKPIT, scene: { scene: "station", station: "orrin_station" } },
@@ -148,7 +175,7 @@ const status = document.getElementById("status");
 const fp = window.fakePanel;
 
 const hullMenu = document.getElementById("hull");
-const HULL_NAMES = { skiff: "prospecting skiff", courier: "courier" };
+const HULL_NAMES = { skiff: "prospecting skiff", courier: "courier", freighter: "medium freighter" };
 let lastMsg = null;
 
 /** A ship room's message with the hull menu's choice on it ("(none)" leaves the step's own hull). */

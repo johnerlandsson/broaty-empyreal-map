@@ -73,8 +73,12 @@ closed room, why it's closed.
 **Aboard a ship.** The bottom band shows the ship's plan in place of the
 station's: the whole hull from above, fore up, with the room you're in lit
 and the ship's name and class under it. Each class has its own drawing (the
-prospecting skiff and the courier); a class without a drawing yet shows a
-plain generic hull. Hover over a room for its name.
+prospecting skiff, the courier and the medium freighter); a class without a
+drawing yet shows a plain generic hull. On the freighter the light follows
+you between her six rooms: the cockpit in the blister on her nose, the
+passage with the airlock to port and the docking collar to starboard, the
+hold and the engine room, with a bar across each way through. Hover over a
+room for its name.
 
 The line at the bottom left says where you are, for example
 `LAUNDRY · Rim 2:00, aft · 0.9 g` or `LIFT 3 · climbing hubward`. Aboard a

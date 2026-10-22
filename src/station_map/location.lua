@@ -1,6 +1,6 @@
 -- Location reducer: folds three GMCP packages (mudstd.room.info,
 -- Empyreal.Room, Empyreal.Vehicle) into one small location message, with the
--- ship's hull when you're aboard one.
+-- ship's hull and which of her rooms you're in when you're aboard one.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 -- Uses no io/os/debug/coroutine (removed in Mallard's sandbox).
 
@@ -70,6 +70,7 @@ function L.message(state)
     areaName = state.areaName,
     hull = state.hull,
     hullName = state.hullName,
+    shipRoom = L.ship_room(state.roomId),
     lift = lift,
   }
 end
@@ -81,16 +82,28 @@ local function track(state, fn)
   return serialise(L.message(state)) ~= before
 end
 
+-- Which of a ship's rooms a room id is: the key at the end of `ship.<n>.<key>` ("hold"), or
+-- nil for any other room, or a ship's cockpit as the game named it before 2026-10-22 (`ship.<n>`).
+function L.ship_room(id)
+  if type(id) ~= 'string' then return nil end
+  return id:match('^ship%.[^.]+%.(.+)$')
+end
+
 function L.room_info(state, data)
   local id = type(data) == 'table' and str(data.id) or nil
   if not id then return false end
   return track(state, function()
     if state.roomId ~= id then
-      -- Address, gravity and the ship's hull belong to the previous room.
+      -- Address and gravity belong to the previous room. So does the ship's hull, unless this
+      -- is another room of the same ship: Empyreal.Room says so again just after, and clearing
+      -- it in between would draw the generic ship for a moment.
       state.address = nil
       state.gravity = nil
-      state.hull = nil
-      state.hullName = nil
+      local area = str(data.area)
+      if not (area and area == state.area and L.ship_room(id)) then
+        state.hull = nil
+        state.hullName = nil
+      end
     end
     state.roomId = id
     state.name = str(data.name)

@@ -1,0 +1,100 @@
+<!doctype html>
+<!-- Freighter plan options, 2026-10-22: three ways to draw the medium freighter (content/plans/freighter.yaml
+     in ~/dev/empyreal), fore up, the Passage lit. Fonts at the plan's real size (12 and 10 plan units
+     are 7.5 and 6.25 here). A throwaway: take its look, not its code. See docs/maps/ship-plans.md. -->
+<html><head><meta charset="utf-8"><title>Freighter: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; display:flex; gap:28px; justify-content:center; padding:20px; }
+  figure { margin:0; text-align:center; }
+  figcaption { margin-top:6px; color:#e3eaf2; }
+  figcaption small { display:block; color:#7d8a9a; max-width:260px; margin:4px auto 0; }
+  svg { width:260px; height:403px; }
+  text { font-family: Inter, system-ui, sans-serif; }
+  .hull { fill:#04060c; stroke:#9fb0c3; stroke-width:1.6; }
+  .room { fill:#7d8a9a; fill-opacity:.22; stroke:#7d8a9a; stroke-opacity:.85; stroke-width:1; }
+  .here { fill:#ffb347; fill-opacity:.3; stroke:#ffb347; stroke-opacity:1; stroke-width:1.9; }
+  .lbl { fill:#e3eaf2; font-size:7.5px; text-anchor:middle; dominant-baseline:middle; }
+  .cap { fill:#7d8a9a; font-size:6.25px; text-anchor:middle; }
+  .dim { fill:none; stroke:#7d8a9a; stroke-width:1.2; }
+  .dim[stroke] { stroke:#e8b04a; }
+  .fix { fill:none; stroke:#e3eaf2; stroke-width:1; }
+</style></head><body>
+
+<!-- A: one boxy hull, every room inside it, laid out as the game's grid but sized by what each room is -->
+<figure><svg viewBox="0 0 200 310">
+  <path class="hull" d="M64,58 Q64,8 100,8 Q136,8 136,58 L160,58 Q168,58 168,66 L168,256 L158,268 L42,268 L32,256 L32,66 Q32,58 40,58 Z"/>
+  <!-- airlock outer hatch (port), docking collar ring with chevrons (starboard) -->
+  <rect class="dim" x="27" y="74" width="5" height="16" rx="1"/>
+  <rect class="dim" x="168" y="70" width="7" height="24" rx="2"/>
+  <path class="dim" d="M170,75 l3,3 l-3,3 M170,83 l3,3 l-3,3" stroke="#e8b04a" stroke-width="1"/>
+  <!-- rooms -->
+  <rect class="room" x="75" y="25" width="50" height="29" rx="7"/>
+  <rect class="room" x="38" y="64" width="34" height="36" rx="4"/>
+  <rect class="here" x="76" y="64" width="48" height="36" rx="4"/>
+  <rect class="room" x="128" y="64" width="34" height="36" rx="4"/>
+  <rect class="room" x="38" y="106" width="124" height="100" rx="4"/>
+  <rect class="room" x="38" y="212" width="124" height="48" rx="4"/>
+  <!-- fixtures: two seats side by side; tie-down rails along the hold's walls -->
+  <path class="fix" d="M87,40 h10 v6 h-10 z M87,46 l2,3 h6 l2,-3 M103,40 h10 v6 h-10 z M103,46 l2,3 h6 l2,-3"/>
+  <path class="fix" d="M45,114 v84 M155,114 v84 M45,128 h4 M45,142 h4 M45,156 h4 M45,170 h4 M45,184 h4 M155,128 h-4 M155,142 h-4 M155,156 h-4 M155,170 h-4 M155,184 h-4" opacity=".6"/>
+  <!-- drive bells -->
+  <path class="dim" d="M64,269 Q64,280 56,294 L84,294 Q76,280 76,269 Z M124,269 Q124,280 116,294 L144,294 Q136,280 136,269 Z" stroke-width="1.3"/>
+  <!-- labels -->
+  <text class="lbl" x="100" y="32">Cockpit</text>
+  <text class="lbl" x="55" y="82">Airlock</text>
+  <text class="lbl" x="100" y="82">Passage</text>
+  <text class="lbl" x="145" y="82">Collar</text>
+  <text class="lbl" x="100" y="156">Hold</text>
+  <text class="lbl" x="100" y="236">Engine Room</text>
+  <text class="cap" x="100" y="306">Old Reliable · medium freighter</text>
+</svg><figcaption>A · Boxy hull, all inside<small>Matches "a boxy hull, mostly hold". Airlock and collar are side rooms inside the hull; the collar's ring and the outer hatch are marks on the flanks. Hold dominates.</small></figcaption></figure>
+
+<!-- B: a narrower hull with the airlock and collar as pods out of either flank, a cross you read at a glance -->
+<figure><svg viewBox="0 0 200 310">
+  <path class="hull" d="M68,56 Q68,8 100,8 Q132,8 132,56 L144,56 L144,62 Q150,62 152,64 L178,64 Q184,64 184,70 L184,96 Q184,102 178,102 L152,102 Q150,104 144,104 L144,256 L136,268 L64,268 L56,256 L56,104 Q50,104 48,102 L22,102 Q16,102 16,96 L16,70 Q16,64 22,64 L48,64 Q50,62 56,62 L56,56 Z"/>
+  <!-- collar ring outboard, chevrons; airlock outer hatch -->
+  <circle class="dim" cx="188" cy="83" r="6"/>
+  <path class="dim" d="M185,79 l3,4 l-3,4" stroke="#e8b04a" stroke-width="1"/>
+  <rect class="dim" x="11" y="75" width="5" height="16" rx="1"/>
+  <!-- rooms -->
+  <rect class="room" x="77" y="25" width="46" height="27" rx="7"/>
+  <rect class="room" x="20" y="68" width="32" height="30" rx="4"/>
+  <rect class="here" x="60" y="62" width="80" height="42" rx="4"/>
+  <rect class="room" x="148" y="68" width="32" height="30" rx="4"/>
+  <rect class="room" x="60" y="110" width="80" height="96" rx="4"/>
+  <rect class="room" x="60" y="212" width="80" height="48" rx="4"/>
+  <path class="fix" d="M87,39 h10 v6 h-10 z M87,45 l2,3 h6 l2,-3 M103,39 h10 v6 h-10 z M103,45 l2,3 h6 l2,-3"/>
+  <path class="dim" d="M70,269 Q70,280 63,294 L87,294 Q80,280 80,269 Z M120,269 Q120,280 113,294 L137,294 Q130,280 130,269 Z" stroke-width="1.3"/>
+  <text class="lbl" x="100" y="32">Cockpit</text>
+  <text class="lbl" x="36" y="83">Airlock</text>
+  <text class="lbl" x="100" y="83">Passage</text>
+  <text class="lbl" x="164" y="83">Collar</text>
+  <text class="lbl" x="100" y="158">Hold</text>
+  <text class="lbl" x="100" y="236">Engine Room</text>
+  <text class="cap" x="100" y="306">Old Reliable · medium freighter</text>
+</svg><figcaption>B · Flank pods<small>Airlock and collar bulge out of the flanks, so the cross of the passage reads at a glance. Less "boxy" than the game says, more legible.</small></figcaption></figure>
+
+<!-- C: the game's grid as it sends it (coords), one equal cell per room, like Orrin's decks -->
+<figure><svg viewBox="0 0 200 310">
+  <path class="hull" d="M100,10 Q130,10 130,40 L130,92 L170,92 L170,140 L130,140 L130,250 L120,262 L80,262 L70,250 L70,140 L30,140 L30,92 L70,92 L70,40 Q70,10 100,10 Z"/>
+  <line x1="70" y1="92" x2="130" y2="92" stroke="#3a4556" stroke-dasharray="2 3"/>
+  <line x1="70" y1="140" x2="130" y2="140" stroke="#3a4556" stroke-dasharray="2 3"/>
+  <line x1="70" y1="196" x2="130" y2="196" stroke="#3a4556" stroke-dasharray="2 3"/>
+  <rect class="room" x="76" y="42" width="48" height="44" rx="8"/>
+  <rect class="room" x="34" y="96" width="34" height="40" rx="4"/>
+  <rect class="here" x="76" y="96" width="48" height="40" rx="4"/>
+  <rect class="room" x="132" y="96" width="34" height="40" rx="4"/>
+  <rect class="room" x="76" y="146" width="48" height="44" rx="4"/>
+  <rect class="room" x="76" y="202" width="48" height="44" rx="4"/>
+  <path class="fix" d="M87,60 h11 v7 h-11 z M87,67 l2,3 h7 l2,-3 M102,60 h11 v7 h-11 z M102,67 l2,3 h7 l2,-3"/>
+  <path class="dim" d="M84,263 Q84,272 78,284 L94,284 Q90,272 90,263 Z M110,263 Q110,272 106,284 L122,284 Q116,272 116,263 Z" stroke-width="1.3"/>
+  <text class="lbl" x="100" y="50">Cockpit</text>
+  <text class="lbl" x="51" y="116">Airlock</text>
+  <text class="lbl" x="100" y="116">Passage</text>
+  <text class="lbl" x="149" y="116">Collar</text>
+  <text class="lbl" x="100" y="168">Hold</text>
+  <text class="lbl" x="100" y="224">Engine</text>
+  <text class="cap" x="100" y="300">Old Reliable · medium freighter</text>
+</svg><figcaption>C · The game's grid<small>One equal cell per room at the coords the game sends (frames 1–4), as Orrin's decks are drawn. Exact, but the hold looks no bigger than the airlock.</small></figcaption></figure>
+
+</body></html>
