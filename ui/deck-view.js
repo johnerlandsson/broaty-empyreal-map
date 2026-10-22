@@ -203,7 +203,7 @@ function buildDocksPlan(svg, index) {
   // spine stops
   for (const s of layout.spine) {
     el("circle", { cx: 0, cy: s.cy, r: 4, fill: "#aab8c8" }, g);
-    label(g, -2, s.cy + SN / 2, `Spine ${s.n}`, 9, { fill: DIM, transform: `rotate(-90 -2 ${s.cy + SN / 2})` });
+    label(g, 0, s.cy + SN / 2, `Spine ${s.n}`, 9, { fill: DIM, transform: `rotate(-90 0 ${s.cy + SN / 2})` });
     hitArea(g, -CH, s.cy - s.h / 2, 2 * CH, s.h, s.room);
   }
   // Blister dome on top
