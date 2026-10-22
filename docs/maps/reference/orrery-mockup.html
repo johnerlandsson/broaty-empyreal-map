@@ -1,0 +1,291 @@
+<!doctype html>
+<!-- The orrery, 2026-10-22: three ways to place it and handle its scale. Senara's system from
+     content/game/system.yaml and belts.yaml in ~/dev/empyreal, positions worked out with Kepler at one
+     moment. Two states each: parked at Gannet Belt, and under way from T.I.S.S. to Orrin Station.
+     The mouth's bearing isn't in Space.Charts; it's drawn at 76° (toward Maelor at tick 0) for the look.
+     A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Orrery: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:18px; }
+  .row { display:flex; gap:26px; justify-content:center; align-items:flex-start; }
+  figure { margin:0; text-align:center; }
+  figcaption { margin:8px 0 2px; color:#e3eaf2; font-size:14px; }
+  figcaption small { display:block; color:#7d8a9a; max-width:380px; margin:4px auto 0; font-size:12px; line-height:1.4; }
+  .pair { display:flex; flex-direction:column; gap:10px; }
+  .frame { position:relative; width:380px; background:#04060c; border:1px solid #2b3646; border-radius:6px; overflow:hidden; }
+  .cap { color:#7d8a9a; font-size:11px; text-align:left; margin:2px 0 -6px 2px; }
+  svg { display:block; }
+  text { font-family: Inter, system-ui, sans-serif; }
+  .btns { position:absolute; top:6px; right:6px; display:flex; gap:3px; }
+  .btns span { width:20px; height:20px; border-radius:4px; background:#04060cb0; border:1px solid #2b3646; color:#dfe7f1; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  .btns span.on { border-color:#7d8a9a; }
+  .info { position:absolute; left:8px; bottom:8px; font:11px "DejaVu Sans Mono", monospace; color:#dfe7f1; background:#04060cb3; padding:2px 6px; border-radius:4px; letter-spacing:.5px; }
+  .tabs { display:flex; gap:0; border-bottom:1px solid #2b3646; font-size:11px; }
+  .tabs span { padding:4px 10px; color:#7d8a9a; } .tabs span.on { color:#dfe7f1; border-bottom:2px solid #7d8a9a; }
+</style></head><body>
+<script>
+// --- the system, as system.yaml and belts.yaml have it ---------------------------------------
+const FRAMES = { senara: { a: 6000, period: 259200 }, tamsin: { a: 900, period: 7200 }, orrin: { a: 800, period: 10800 } };
+const BODIES = [
+  { id: "senara", name: "Senara", kind: "star", radius: 800 },
+  { id: "tamsin", name: "Tamsin", kind: "planet", radius: 400, orbit: { parent: "senara", a: 6000 } },
+  { id: "tiss", name: "T.I.S.S.", kind: "station", orbit: { parent: "tamsin", a: 900 } },
+  { id: "orrin", name: "Orrin", kind: "planet", radius: 500, orbit: { parent: "senara", a: 12000, e: 0.1, phase: 150 } },
+  { id: "orrin_station", name: "Orrin Station", kind: "station", orbit: { parent: "orrin", a: 800 } },
+];
+// belts as one character knows them: fit error in km now
+const BELTS = [
+  { id: "cinders", name: "The Cinders", orbit: { parent: "tamsin", a: 1800, phase: 90 }, error: 2600 },
+  { id: "gannet", name: "Gannet Belt", orbit: { parent: "tamsin", a: 2700, phase: 200 }, error: 120 },
+  { id: "anvil", name: "The Anvil", orbit: { parent: "senara", a: 8500, e: 0.05, phase: 40 }, error: 640 },
+];
+const MOUTH = { name: "Maelor lane mouth", r: 15000, bearing: 76 };
+const T = 30000; // seconds since epoch, picked so the planets sit apart
+
+const period = (o) => { const f = FRAMES[o.parent]; return f.period * Math.pow(o.a / f.a, 1.5); };
+const all = Object.fromEntries([...BODIES, ...BELTS].map((b) => [b.id, b]));
+/** Offset from parent (km), solving Kepler for E. */
+function local(o, t = T) {
+  const e = o.e ?? 0, M = ((o.phase ?? 0) + 360 * t / period(o)) * Math.PI / 180;
+  let E = M; for (let i = 0; i < 8; i++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  const nu = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2));
+  const r = o.a * (1 - e * Math.cos(E)), th = nu + (o.peri ?? 0) * Math.PI / 180;
+  return [r * Math.cos(th), r * Math.sin(th)];
+}
+function pos(id) {
+  const b = all[id]; if (!b.orbit) return [0, 0];
+  const p = pos(b.orbit.parent), l = local(b.orbit); return [p[0] + l[0], p[1] + l[1]];
+}
+const angleOf = (id) => { const l = local(all[id].orbit); return Math.atan2(l[1], l[0]); };
+
+// --- drawing ---------------------------------------------------------------------------------
+const ns = "http://www.w3.org/2000/svg", HL = "#ffb347", DIM = "#7d8a9a", ORBIT = "#2b3646", GLASS = "#cfe3ff";
+const TONES = ["#3a4556", "#58667b", "#7e8da3"];
+const el = (t, a, p) => { const e = document.createElementNS(ns, t); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+const txt = (p, x, y, s, a = {}) => { const t = el("text", { x, y, "font-size": 10, fill: DIM, ...a }, p); t.textContent = s; return t; };
+function stars(svg, w, h, n = 60) {
+  let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < n; i++) el("circle", { cx: r() * w, cy: r() * h, r: 0.6 + r() * 0.5, fill: "#fff", "fill-opacity": 0.08 + r() * 0.3 }, svg);
+}
+function defs(svg) {
+  const d = el("defs", {}, svg);
+  const g = el("radialGradient", { id: "sun" }, d);
+  el("stop", { offset: "0", "stop-color": "#fffaf0" }, g); el("stop", { offset: ".35", "stop-color": "#f6f1e6", "stop-opacity": .9 }, g); el("stop", { offset: "1", "stop-color": "#f6f1e6", "stop-opacity": 0 }, g);
+  const f = el("filter", { id: "glow", x: "-1", y: "-1", width: "3", height: "3" }, d);
+  el("feGaussianBlur", { stdDeviation: 2.2, result: "b" }, f);
+  const m = el("feMerge", {}, f); el("feMergeNode", { in: "b" }, m); el("feMergeNode", { in: "SourceGraphic" }, m);
+}
+function frame(parent, w, h, cap, info, buttons = true, extraBtn) {
+  if (cap) parent.appendChild(Object.assign(document.createElement("div"), { className: "cap", textContent: cap }));
+  const div = parent.appendChild(Object.assign(document.createElement("div"), { className: "frame" }));
+  div.style.height = h + "px";
+  const svg = el("svg", { width: w, height: h, viewBox: `0 0 ${w} ${h}` }, div);
+  defs(svg); stars(svg, w, h);
+  if (buttons) div.insertAdjacentHTML("beforeend", `<div class="btns">${extraBtn ?? ""}<span>+</span><span>−</span><span>⌂</span></div>`);
+  if (info) div.insertAdjacentHTML("beforeend", `<div class="info">${info}</div>`);
+  return svg;
+}
+
+/** A view: km -> px with centre c (km) and scale k (px per km); `map` may be swapped for a compressed one. */
+function view(w, h, c, k) { return { map: ([x, y]) => [w / 2 + (x - c[0]) * k, h / 2 - (y - c[1]) * k], k, w, h }; }
+
+function orbitRing(g, v, id, a = {}) {
+  const b = all[id], o = b.orbit, pc = v.map(pos(o.parent));
+  if ((o.e ?? 0) === 0 && v.k) return el("circle", { cx: pc[0], cy: pc[1], r: o.a * v.k, fill: "none", stroke: ORBIT, "stroke-width": 1, ...a }, g);
+  const pts = []; for (let i = 0; i <= 96; i++) { const th = (i / 96) * 2 * Math.PI; const e = o.e ?? 0; const r = o.a * (1 - e * e) / (1 + e * Math.cos(th));
+    const P = pos(o.parent); pts.push(v.map([P[0] + r * Math.cos(th), P[1] + r * Math.sin(th)])); }
+  return el("path", { d: "M" + pts.map((p) => p.join(",")).join("L"), fill: "none", stroke: ORBIT, "stroke-width": 1, ...a }, g);
+}
+function body(g, v, id, label = true, labelAt = "below") {
+  const b = all[id], p = v.map(pos(id));
+  if (b.kind === "star") { const r = Math.max(5, b.radius * v.k); el("circle", { cx: p[0], cy: p[1], r: r * 2.6, fill: "url(#sun)" }, g); el("circle", { cx: p[0], cy: p[1], r, fill: "#fffaf0" }, g); }
+  else if (b.kind === "planet") {
+    const r = Math.max(3.5, b.radius * v.k), sp = pos("senara"), q = pos(id), lit = Math.atan2(-(sp[1] - q[1]), sp[0] - q[0]);
+    el("circle", { cx: p[0], cy: p[1], r, fill: TONES[0], stroke: "#0d1218", "stroke-width": 1 }, g);
+    // day side toward Senara
+    const dx = Math.cos(lit) * r, dy = Math.sin(lit) * r;
+    el("path", { d: `M${p[0] - dy},${p[1] + dx} A${r},${r} 0 0 0 ${p[0] + dy},${p[1] - dx} Z`, fill: TONES[2] }, g);
+  } else el("rect", { x: p[0] - 2.6, y: p[1] - 2.6, width: 5.2, height: 5.2, fill: GLASS, transform: `rotate(45 ${p[0]} ${p[1]})` }, g);
+  if (label) txt(g, p[0], p[1] + (labelAt === "below" ? 14 : -9), b.name, { "text-anchor": "middle" });
+}
+/** A belt as known: an arc along its orbit as wide as its fit's error, fading to its ends. */
+function belt(g, v, id, label = true, ringK) {
+  const b = all[id], a = b.orbit.a, P = pos(b.orbit.parent), th = angleOf(id);
+  const half = Math.min(Math.PI, b.error / a); // radians either side
+  const lost = half >= Math.PI * 0.9;
+  if (lost) { orbitRing(g, v, id, { stroke: TONES[1], "stroke-dasharray": "2 4", "stroke-width": 1.4 }); }
+  const steps = 14;
+  for (let i = 0; i < steps && !lost; i++) {
+    const f = (i + 0.5) / steps, a0 = th - half + (2 * half * i) / steps, a1 = th - half + (2 * half * (i + 1)) / steps;
+    const p0 = v.map([P[0] + a * Math.cos(a0), P[1] + a * Math.sin(a0)]), p1 = v.map([P[0] + a * Math.cos(a1), P[1] + a * Math.sin(a1)]);
+    const op = 0.15 + 0.6 * (1 - Math.abs(f - 0.5) * 2);
+    el("line", { x1: p0[0], y1: p0[1], x2: p1[0], y2: p1[1], stroke: TONES[2], "stroke-opacity": op, "stroke-width": 5, "stroke-linecap": "round" }, g);
+  }
+  const c = v.map([P[0] + a * Math.cos(th), P[1] + a * Math.sin(th)]);
+  if (!lost) for (const [dx, dy] of [[-2, -1], [1.5, 1.5], [2, -2], [-1, 2]]) el("circle", { cx: c[0] + dx, cy: c[1] + dy, r: 1.2, fill: TONES[2] }, g);
+  const pp = v.map(P), ox = c[0] - pp[0], oy = c[1] - pp[1], n = Math.hypot(ox, oy) || 1;
+  if (label) txt(g, c[0] + ox / n * 12, c[1] + oy / n * 12 + 3, b.name + (lost ? " · lost" : ` ±${b.error.toLocaleString("en")}`), { "text-anchor": ox < 0 ? "end" : "start" });
+}
+function mouth(g, v, label = true) {
+  const th = MOUTH.bearing * Math.PI / 180, p = v.map([MOUTH.r * Math.cos(th), MOUTH.r * Math.sin(th)]);
+  const ang = -MOUTH.bearing;
+  el("path", { d: `M-5,-6 L3,0 L-5,6 M-1,-6 L7,0 L-1,6`, fill: "none", stroke: GLASS, "stroke-width": 1.4, transform: `translate(${p[0]} ${p[1]}) rotate(${ang})` }, g);
+  if (label) txt(g, p[0] - 8, p[1] + 4, "Maelor", { "text-anchor": "end" });
+  return p;
+}
+function edgeRing(g, v) { const c = v.map([0, 0]); el("circle", { cx: c[0], cy: c[1], r: MOUTH.r * v.k, fill: "none", stroke: ORBIT, "stroke-dasharray": "1 5" }, g); }
+/** Your ship: an amber chevron, pointing `dir` (radians, screen), glowing. */
+function ship(g, p, dir = -Math.PI / 2) {
+  el("path", { d: "M7,0 L-5,-5 L-2,0 L-5,5 Z", fill: HL, stroke: "#fff3df", "stroke-width": .8, filter: "url(#glow)", transform: `translate(${p[0]} ${p[1]}) rotate(${dir * 180 / Math.PI})` }, g);
+}
+function route(g, a, b) { el("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: HL, "stroke-opacity": .55, "stroke-width": 1.2, "stroke-dasharray": "4 4" }, g);
+  el("circle", { cx: b[0], cy: b[1], r: 5, fill: "none", stroke: HL, "stroke-opacity": .7, "stroke-width": 1.2 }, g); }
+function scaleBar(g, v, km, x, y) { const L = km * v.k; el("line", { x1: x, y1: y, x2: x + L, y2: y, stroke: DIM, "stroke-width": 1 }, g);
+  for (const xx of [x, x + L]) el("line", { x1: xx, y1: y - 3, x2: xx, y2: y + 3, stroke: DIM }, g);
+  txt(g, x + L / 2, y - 6, km.toLocaleString("en") + " km", { "text-anchor": "middle", "font-size": 9 }); }
+
+// trip from T.I.S.S. to Orrin Station: left T.I.S.S. where it was at departure, 40% there
+const TRIP = (() => { const from = pos("tiss"), to = pos("orrin_station"), f = 0.4; return { from, to, at: [from[0] + (to[0] - from[0]) * f, from[1] + (to[1] - from[1]) * f] }; })();
+
+function tamsinView(svg, w, h, k) {
+  const v = view(w, h, pos("tamsin"), k), g = el("g", {}, svg);
+  for (const id of ["tiss", "cinders", "gannet"]) orbitRing(g, v, id);
+  belt(g, v, "cinders"); belt(g, v, "gannet");
+  body(g, v, "tamsin"); body(g, v, "tiss", true, "above");
+  // Senara's direction, off the view
+  const s = pos("senara"), t = pos("tamsin"), d = Math.atan2(-(s[1] - t[1]), s[0] - t[0]);
+  return { v, g, sunDir: d };
+}
+function systemView(svg, w, h, k, c = [0, 0], labels = true) {
+  const v = view(w, h, c, k), g = el("g", {}, svg);
+  edgeRing(g, v);
+  for (const id of ["tamsin", "orrin", "anvil"]) orbitRing(g, v, id);
+  belt(g, v, "anvil", labels);
+  body(g, v, "senara", labels); body(g, v, "tamsin", labels); body(g, v, "orrin", labels);
+  mouth(g, v, labels);
+  return { v, g };
+}
+
+// ============ A: replaces the parked / travelling view; your frame, the system inset ============
+{
+  const fig = document.createElement("figure"), pair = fig.appendChild(document.createElement("div")); pair.className = "pair";
+  // parked at Gannet: Tamsin's frame at true scale
+  let svg = frame(pair, 380, 252, "Parked at Gannet Belt", "GANNET BELT · parked", false);
+  let { v, g } = tamsinView(svg, 380, 252, 0.034);
+  ship(g, v.map(pos("gannet")), 0.4);
+  scaleBar(g, v, 1000, 16, 18);
+  // inset: the whole system, true scale, Tamsin's reach boxed
+  const I = 74, ix = 380 - I - 8, iy = 252 - I - 8;
+  el("circle", { cx: ix + I / 2, cy: iy + I / 2, r: I / 2 + 2, fill: "#04060c", stroke: "#2b3646" }, g);
+  const vi = view(I, I, [0, 0], (I / 2) / 15500); const gi = el("g", { transform: `translate(${ix} ${iy})` }, g);
+  edgeRing(gi, vi); for (const id of ["tamsin", "orrin", "anvil"]) orbitRing(gi, vi, id);
+  const sp = vi.map([0, 0]); el("circle", { cx: sp[0], cy: sp[1], r: 2.4, fill: "#fffaf0" }, gi);
+  for (const id of ["tamsin", "orrin"]) { const p = vi.map(pos(id)); el("circle", { cx: p[0], cy: p[1], r: 1.8, fill: TONES[2] }, gi); }
+  mouth(gi, vi, false);
+  const tp = vi.map(pos("tamsin")); el("circle", { cx: tp[0], cy: tp[1], r: 4000 * vi.k + 1.5, fill: "none", stroke: HL, "stroke-opacity": .8 }, gi);
+  // under way to Orrin Station: the smallest frame holding you and where you're going, so the system
+  svg = frame(pair, 380, 252, "Under way, T.I.S.S. → Orrin Station", "UNDER WAY · Orrin Station, 4m 10s", false);
+  { const xs=[TRIP.from[0],TRIP.to[0],0], ys=[TRIP.from[1],TRIP.to[1],0]; const c=[(Math.min(...xs)+Math.max(...xs))/2,(Math.min(...ys)+Math.max(...ys))/2]; const k=Math.min(330/(Math.max(...xs)-Math.min(...xs)), 190/(Math.max(...ys)-Math.min(...ys))); ({ v, g } = systemView(svg, 380, 252, k, c)); }
+  body(g, v, "tiss", false); body(g, v, "orrin_station", false);
+  route(g, v.map(TRIP.at), v.map(TRIP.to)); el("line", { x1: v.map(TRIP.from)[0], y1: v.map(TRIP.from)[1], x2: v.map(TRIP.at)[0], y2: v.map(TRIP.at)[1], stroke: HL, "stroke-opacity": .25, "stroke-width": 1.2 }, g);
+  const a = v.map(TRIP.at), b = v.map(TRIP.to); ship(g, a, Math.atan2(b[1] - a[1], b[0] - a[0]));
+  scaleBar(g, v, 5000, 16, 18);
+  fig.appendChild(Object.assign(document.createElement("figcaption"), { innerHTML: "A · In place of the view ahead<small>Out in your ship, the top band is the orrery instead of the starfield (belt rocks stay at a belt, or go too: your call). It shows the frame you ride, at true scale, with the whole system as an inset, Tamsin's reach ringed. Under way across frames it frames you and where you're going. It follows you, so it has no controls: like the starfield, scenery.</small>" }));
+  document.body.appendChild(Object.assign(document.createElement("div"), { className: "row" })).appendChild(fig);
+}
+
+// ============ B: a toggle on the top band; one true-scale chart, zoomed ============
+{
+  const row = document.querySelector(".row");
+  const fig = document.createElement("figure"), pair = fig.appendChild(document.createElement("div")); pair.className = "pair";
+  const T_BTN = `<span class="on" title="Chart">◎</span>`;
+  let svg = frame(pair, 380, 252, "Parked at Gannet Belt (⌂ framing)", "GANNET BELT · parked", true, T_BTN);
+  let { v, g, sunDir } = tamsinView(svg, 380, 252, 0.04);
+  ship(g, v.map(pos("gannet")), 0.4);
+  // off-view things as chevrons at the edge, pointing at them
+  const edge = (id, name, pt) => {
+    const c = [190, 126], q = v.map(pt), dx = q[0] - c[0], dy = q[1] - c[1], s = Math.min((190 - 14) / Math.abs(dx || 1e-9), (126 - 34) / Math.abs(dy || 1e-9));
+    const p = [c[0] + dx * s, c[1] + dy * s], ang = Math.atan2(dy, dx) * 180 / Math.PI;
+    el("path", { d: "M-4,-5 L3,0 L-4,5", fill: "none", stroke: DIM, "stroke-width": 1.3, transform: `translate(${p[0]} ${p[1]}) rotate(${ang})` }, g);
+    const km = Math.hypot(pt[0] - pos("gannet")[0], pt[1] - pos("gannet")[1]);
+    txt(g, p[0] - Math.cos(ang * Math.PI / 180) * 10, p[1] - Math.sin(ang * Math.PI / 180) * 10 + 3, `${name} ${Math.round(km / 100) / 10}k`, { "text-anchor": dx > 0 ? "end" : "start", "font-size": 9 });
+  };
+  edge("senara", "Senara", pos("senara")); edge("orrin", "Orrin", pos("orrin")); edge("anvil", "Anvil", pos("anvil"));
+  const th = MOUTH.bearing * Math.PI / 180; edge("m", "Maelor", [MOUTH.r * Math.cos(th), MOUTH.r * Math.sin(th)]);
+  scaleBar(g, v, 1000, 16, 18);
+  svg = frame(pair, 380, 252, "Zoomed out to the whole system", "GANNET BELT · parked", true, T_BTN);
+  ({ v, g } = systemView(svg, 380, 252, 0.0078, [0, 0]));
+  body(g, v, "tiss", false); body(g, v, "orrin_station", false);
+  for (const id of ["cinders", "gannet"]) { orbitRing(g, v, id, { "stroke-opacity": .6 }); }
+  ship(g, v.map(pos("gannet")), 0.4);
+  scaleBar(g, v, 5000, 16, 18);
+  fig.appendChild(Object.assign(document.createElement("figcaption"), { innerHTML: "B · A toggle on the top band<small>A ◎ button beside the zoom buttons swaps the top band between the view ahead (or the station model) and the chart, docked or not, and stays as you left it. One chart at true scale: + − and the wheel zoom, ⌂ frames your frame, and you and your route when under way. Whatever's off the edge is a chevron pointing at it with its distance.</small>" }));
+  row.appendChild(fig);
+}
+
+// ============ C: its own panel; the whole system always, compressed ============
+{
+  const row = document.querySelector(".row");
+  const fig = document.createElement("figure"), pair = fig.appendChild(document.createElement("div")); pair.className = "pair";
+  // radius compressed by a square root out to the edge; each planet's own neighbourhood magnified in a bubble
+  const W = 380, H = 380, R = 172, SQ = (r) => R * Math.sqrt(r / 15000);
+  const MAG = { tamsin: 46 / 3000, orrin: 30 / 1000 }; // bubble px per km
+  const place = (id) => { // screen position
+    const b = all[id]; if (!b.orbit) return [W / 2, H / 2 + 12];
+    const o = b.orbit;
+    if (o.parent === "senara") { const l = local(o), r = Math.hypot(...l), th = Math.atan2(l[1], l[0]); return [W / 2 + SQ(r) * Math.cos(th), H / 2 + 12 - SQ(r) * Math.sin(th)]; }
+    const pc = place(o.parent), l = local(o), k = MAG[o.parent]; return [pc[0] + l[0] * k, pc[1] - l[1] * k];
+  };
+  const draw = (pair, cap, info, travelling) => {
+    pair.appendChild(Object.assign(document.createElement("div"), { className: "cap", textContent: cap }));
+    const div = pair.appendChild(Object.assign(document.createElement("div"), { className: "frame" })); div.style.height = (H + 26) + "px";
+    div.insertAdjacentHTML("beforeend", `<div class="tabs"><span>Map</span><span class="on">Chart</span></div>`);
+    const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}` }, div); defs(svg); stars(svg, W, H);
+    div.insertAdjacentHTML("beforeend", `<div class="info">${info}</div>`);
+    const g = el("g", {}, svg), c = [W / 2, H / 2 + 12];
+    // distance rings, labelled
+    for (const km of [2000, 6000, 10000, 15000]) { el("circle", { cx: c[0], cy: c[1], r: SQ(km), fill: "none", stroke: ORBIT, "stroke-dasharray": km === 15000 ? "1 5" : "none", "stroke-opacity": km === 15000 ? 1 : 0 }, g); }
+    for (const id of ["tamsin", "orrin", "anvil"]) { const l = local(all[id].orbit); el("circle", { cx: c[0], cy: c[1], r: SQ(Math.hypot(...l)), fill: "none", stroke: ORBIT }, g); }
+    // the sun
+    el("circle", { cx: c[0], cy: c[1], r: 16, fill: "url(#sun)" }, g); el("circle", { cx: c[0], cy: c[1], r: 6, fill: "#fffaf0" }, g); txt(g, c[0], c[1] + 18, "Senara", { "text-anchor": "middle" });
+    // bubbles
+    for (const [pid, reach, kids] of [["tamsin", 3000, ["tiss", "cinders", "gannet"]], ["orrin", 1000, ["orrin_station"]]]) {
+      const pc = place(pid), k = MAG[pid];
+      el("circle", { cx: pc[0], cy: pc[1], r: reach * k + 4, fill: "#04060c", stroke: "#3b4a5c", "stroke-width": 1 }, g);
+      for (const id of kids) el("circle", { cx: pc[0], cy: pc[1], r: all[id].orbit.a * k, fill: "none", stroke: ORBIT }, g);
+      el("circle", { cx: pc[0], cy: pc[1], r: Math.max(3.5, all[pid].radius * k), fill: TONES[1], stroke: "#0d1218" }, g);
+      txt(g, pc[0], pc[1] + reach * k + 15, `${all[pid].name}  ×${Math.round(k / (R / (2 * Math.sqrt(15000 * Math.hypot(...local(all[pid].orbit))))))}`, { "text-anchor": "middle" });
+      for (const id of kids) {
+        const p = place(id);
+        if (all[id].kind === "station") el("rect", { x: p[0] - 2.4, y: p[1] - 2.4, width: 4.8, height: 4.8, fill: GLASS, transform: `rotate(45 ${p[0]} ${p[1]})` }, g);
+        else { // belt arc in the bubble
+          const b = all[id], a = b.orbit.a * k, th = angleOf(id), half = Math.min(Math.PI, b.error / b.orbit.a);
+          if (half >= Math.PI * 0.9) el("circle", { cx: pc[0], cy: pc[1], r: a, fill: "none", stroke: TONES[1], "stroke-dasharray": "2 3", "stroke-width": 1.4 }, g);
+          else { const p0 = [pc[0] + a * Math.cos(th - half), pc[1] - a * Math.sin(th - half)], p1 = [pc[0] + a * Math.cos(th + half), pc[1] - a * Math.sin(th + half)];
+            el("path", { d: `M${p0} A${a},${a} 0 ${2 * half > Math.PI ? 1 : 0} 0 ${p1}`, fill: "none", stroke: TONES[2], "stroke-opacity": .55, "stroke-width": 4, "stroke-linecap": "round" }, g); }
+        }
+      }
+    }
+    // Anvil (Senara's), compressed
+    { const b = all.anvil, l = local(b.orbit), r = Math.hypot(...l), th = Math.atan2(l[1], l[0]), d = b.error / r;
+      const p0 = [c[0] + SQ(r) * Math.cos(th - d), c[1] - SQ(r) * Math.sin(th - d)], p1 = [c[0] + SQ(r) * Math.cos(th + d), c[1] - SQ(r) * Math.sin(th + d)];
+      el("path", { d: `M${p0} A${SQ(r)},${SQ(r)} 0 0 0 ${p1}`, fill: "none", stroke: TONES[2], "stroke-opacity": .55, "stroke-width": 5, "stroke-linecap": "round" }, g);
+      txt(g, (p0[0] + p1[0]) / 2 + 8, (p0[1] + p1[1]) / 2, "The Anvil ±640"); }
+    // mouth on the edge
+    { const th = MOUTH.bearing * Math.PI / 180, p = [c[0] + R * Math.cos(th), c[1] - R * Math.sin(th)];
+      el("path", { d: `M-5,-6 L3,0 L-5,6 M-1,-6 L7,0 L-1,6`, fill: "none", stroke: GLASS, "stroke-width": 1.4, transform: `translate(${p[0]} ${p[1]}) rotate(${-MOUTH.bearing})` }, g);
+      txt(g, p[0] - 10, p[1] + 3, "Maelor", { "text-anchor": "end" }); }
+    txt(g, 10, 18, "15,000 km to the edge · distances compressed", { "font-size": 9 });
+    if (!travelling) ship(g, place("gannet"), 0.4);
+    else { // a route across compressed space bends: drawn between the screen points
+      const a0 = place("tiss"), b0 = place("orrin_station"), f = 0.4, at = [a0[0] + (b0[0] - a0[0]) * f, a0[1] + (b0[1] - a0[1]) * f];
+      route(g, at, b0); el("line", { x1: a0[0], y1: a0[1], x2: at[0], y2: at[1], stroke: HL, "stroke-opacity": .25, "stroke-width": 1.2 }, g);
+      ship(g, at, Math.atan2(b0[1] - at[1], b0[0] - at[0]));
+    }
+  };
+  draw(pair, "Parked at Gannet Belt", "GANNET BELT · parked", false);
+  fig.appendChild(Object.assign(document.createElement("figcaption"), { innerHTML: "C · A Chart panel of its own<small>A second panel (or a tab), always the whole system: distance from Senara on a square-root scale so the edge and Tamsin both fit, and each planet's neighbourhood magnified in a bubble, its ×N marked. Everything always on screen, nothing to zoom; but no distance on it is true, and a route across it can't be drawn honestly.</small>" }));
+  row.appendChild(fig);
+}
+</script>
+</body></html>
