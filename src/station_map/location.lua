@@ -65,6 +65,8 @@ function L.message(state)
     name = state.name,
     address = state.address,
     gravity = state.gravity,
+    area = state.area,
+    areaName = state.areaName,
     lift = lift,
   }
 end
@@ -87,6 +89,8 @@ function L.room_info(state, data)
     end
     state.roomId = id
     state.name = str(data.name)
+    state.area = str(data.area)
+    state.areaName = str(data.areaName)
     state.lift = nil
   end)
 end
@@ -144,6 +148,8 @@ function L.reset(state)
     state.name = nil
     state.address = nil
     state.gravity = nil
+    state.area = nil
+    state.areaName = nil
     state.lift = nil
   end)
 end
