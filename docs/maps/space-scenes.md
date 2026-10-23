@@ -1,6 +1,6 @@
 # Space scenes
 
-*Status: built. Last updated 2026-10-23.*
+*Status: built. Last updated 2026-10-24.*
 
 ## What it is and when it shows
 
@@ -12,7 +12,7 @@ again when you dock.
 |---|---|---|
 | parked | undocked, not travelling, not at a belt | a starfield, barely drifting |
 | travelling | on the way somewhere | the stars streaming past as streaks |
-| belt | at an asteroid belt | low-poly rocks tumbling past on a faint backdrop |
+| belt | at an asteroid belt | low-poly rocks tumbling past on a faint backdrop, with the ship's sensors sweeping, an assay held on a rock or the laser cutting one while she's at it |
 | port | parked over a port (Zennor), not landed | the planet's face across the lower band with the town on it, lit or dark, under the still stars |
 | station | docked at a station, or not aboard a ship you own or crew | nothing: the station model shows |
 
@@ -35,6 +35,30 @@ is `travelling`, one at rest at a belt `belt`, and one docked at T.I.S.S.
 with the skiff at her collar the T.I.S.S. model. Before `host`, the plugin
 read `docked` as "at a station" and kept showing the last station while the
 freighter travelled.
+
+**The ship's work at a belt.** `src/station_map/work.lua` folds `Ship.Devices`
+(gmcp.md §8.2 in `~/dev/empyreal`) into what the sensors and the laser are
+doing: each one's `busy` verb, when it began and when it ends, both as local
+times (`os.time()` seconds), posted as the `work` message:
+`{ sensors = { busy = 'scan', since = 1000, ends = 1010 }, laser = { busy = 'mine', since = 990 } }`,
+each only while busy. Since 2026-10-23 (Empyreal 7dc0991) each device has
+`left`, the seconds to its activity's end, re-sent only as that end changes,
+so the client counts down; the end is now + `left`, and a re-send a second
+off by rounding keeps the end it had. At a belt the sensors are `busy` with
+`scan` (a sweep for rocks, par 10 s, paced by the user's skill, or by a
+program at par) or `assay` (one rock, par 20 s), and the laser with `mine`,
+which has no end (`left` is null: it cuts in 30 s cycles until the rock is
+gone, the hold is full or something stops it, `mining.ts`'s `startMine` sets
+no `ends`). The same verb again after the last one ended is a fresh start.
+`Ship.Devices` is only sent aboard a ship you can fly and isn't cleared when
+you leave her, so the last frame stays until the next, but it's only drawn
+in the belt scene. The panel works out how far through and how many seconds
+are left from the wall clock (`work()` in `ui/lib/space.js`).
+
+A scan or assay run by a cartridge program shows the same as one by hand:
+`busy` is the device's, whoever started it. The plugin doesn't ask for or
+show what a scan found or an assay said; the game tells the player that in
+words, and the map stays out of it (no spoilers).
 
 **Over a port.** Arriving above a port, *"You arrive over Zennor. 'land' to
 bring her down."*, she's at rest with `location` the port's id and `docked`
@@ -84,6 +108,29 @@ in the middle of the face, its size by the band's width and the face's height:
 
 The ground fades in and out with the scene, as rocks do.
 
+**At a belt, the ship's work** (style guide §12) is drawn over the rocks, and
+fades with them:
+
+- **Scanning:** a line in the ok status light (`#59d18a` at .8) crosses the
+  band left to right, from where the scan began to its end, with a faint wash
+  (.05) behind it and a 40 px glow trailing it. A scan the game gives no end
+  for sweeps round at its par.
+- **Assaying:** corner brackets round one rock and a ring about it filling
+  clockwise from the top over the assay's time, in the same green.
+- **Mining:** the laser's beam from below the band, where the ship is, onto
+  the rock's near face: a Glass glow, a Glass beam and a white core,
+  flickering, with a white-hot glow and sparks where it bites.
+- **The countdown** is in the bottom-right corner, Dim, 10: `cutting` over
+  `sweeping · 6 s` or `assaying · 8 s`, with the seconds dropped when there
+  are none left (the game is about to say it's done). Mining has no seconds:
+  it has no end.
+
+The rock an assay or the laser works is a near one nearest the middle of the
+band, held still while the work goes on (she's come alongside, and the game
+moves her to the rock to cut it) and let go when it ends. It's not the
+game's rock: the rocks are scenery, and a sweep never adds, counts or places
+any. The work shows only that it's happening and how long is left.
+
 ## Bottom band
 
 Not used. The bottom band shows the ship you're in (see
@@ -91,7 +138,8 @@ Not used. The bottom band shows the ship you're in (see
 
 ## Rooms, compartments and the highlight
 
-None: it's scenery.
+None. The ship's work at a belt isn't a highlight: it's not amber and never
+marks where you are.
 
 ## Info line
 
@@ -100,10 +148,13 @@ Unchanged: it says where you are aboard.
 ## Code
 
 `ui/space-view.js` (the canvas and frame loop, and the ground below a port),
-`ui/lib/space.js` (scene targets, easing, starfield, belt, rocks, the town's
-layout), `ui/lib/orbits.js` (`daylit`), `src/station_map/scene.lua`. The
+`ui/lib/space.js` (scene targets, easing, starfield, belt, rocks, the held
+rock, `work()` and `workLines()`, the town's layout), `ui/lib/orbits.js`
+(`daylit`), `src/station_map/scene.lua`, `src/station_map/work.lua`. The
 preview's `?scene=port-day` and `?scene=port-night` put Zennor's town on the
-day or night side.
+day or night side. `?work=scanning` (or `assaying`, `mining`, `idle`)
+opens on the belt with the ship at that work, a scan or assay starting again
+a second after it ends, as a program at par would.
 
 ## Where it differs from the style guide
 

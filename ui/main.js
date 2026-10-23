@@ -210,6 +210,8 @@ panel.on("scene", (msg) => {
   runSky();
 });
 
+panel.on("work", (msg) => space.setWork(msg));
+
 panel.on("charts", (msg) => {
   chart.setCharts(msg);
   space.setCharts(chart.index);

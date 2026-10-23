@@ -38,10 +38,11 @@ local function boot(opts)
   package.loaded['station_map.scene'] = nil
   package.loaded['station_map.charts'] = nil
   package.loaded['station_map.lanes'] = nil
+  package.loaded['station_map.work'] = nil
   local real_require = require
   _G.require = function(name)
     if name == 'station_map.location' or name == 'station_map.scene'
-        or name == 'station_map.charts' or name == 'station_map.lanes' then
+        or name == 'station_map.charts' or name == 'station_map.lanes' or name == 'station_map.work' then
       env.requires[#env.requires + 1] = name
       package.loaded[name] = nil
     end
@@ -76,11 +77,13 @@ end
 test('wires panel and requires each module once', function()
   local env = boot()
   eq(env.panel_id, 'map')
-  eq(env.requires, { 'station_map.location', 'station_map.scene', 'station_map.charts', 'station_map.lanes' })
+  eq(env.requires, { 'station_map.location', 'station_map.scene', 'station_map.charts', 'station_map.lanes',
+    'station_map.work' })
   eq(type(env.gmcp_handlers['mudstd.room.info']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Room']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Vehicle']), 'function')
   eq(type(env.gmcp_handlers['Ship.Status']), 'function')
+  eq(type(env.gmcp_handlers['Ship.Devices']), 'function')
   eq(type(env.gmcp_handlers['Space.Charts']), 'function')
   eq(type(env.world_handlers.disconnect), 'function')
   eq(type(env.panel_handlers.ready), 'function')
@@ -417,6 +420,52 @@ test('disconnect keeps the sightings, stamped', function()
   eq(m.system, nil)
   eq(m.seen['maelor-petroc'], { open = false, at = 900 })
   eq(env.stored.lanes['maelor-petroc'], { open = false, at = 900 })
+end)
+
+-- Ship.Devices: what the sensors and laser are doing, with local times
+local SCANNING = { devices = {
+  { id = 'sensors', condition = 90, fault = nil, busy = 'scan', left = 10, attachments = {} },
+  { id = 'laser', condition = 80, fault = nil, busy = 'mine', left = nil, attachments = {} },
+} }
+
+test('Ship.Devices posts the work with its local times', function()
+  local real = os.time
+  os.time = function() return 1000 end
+  local env = boot()
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', SCANNING)
+  os.time = real
+  eq(names(env), { 'work' })
+  eq(env.posts[1].data, { sensors = { busy = 'scan', since = 1000, ends = 1010 }, laser = { busy = 'mine', since = 1000 } })
+end)
+
+test('the same Ship.Devices again posts nothing', function()
+  local real = os.time
+  os.time = function() return 1000 end
+  local env = boot()
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', SCANNING)
+  env.posts = {}
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', SCANNING)
+  os.time = real
+  eq(#env.posts, 0)
+end)
+
+test('ready replays the work only while something is under way', function()
+  local env = boot()
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings' })
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', SCANNING)
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings', 'work' })
+end)
+
+test('disconnect posts no work', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', SCANNING)
+  env.posts = {}
+  env.world_handlers.disconnect()
+  local m = post_named(env, 'work')
+  eq(m.data, {})
 end)
 
 t.done()

@@ -1,6 +1,6 @@
 -- Empyreal map (T.I.S.S., Orrin Station and Wenna Halt so far): folds GMCP location frames into one small message
--- and pushes it to the "map" panel, and your ship's frames into the overview's scene, the system chart and the
--- core lanes map. The lanes' states as last seen are kept in Mallard's storage, so they outlive a restart. All state lives here; the panel is a
+-- and pushes it to the "map" panel, and your ship's frames into the overview's scene, the system chart, the
+-- core lanes map and what her sensors and laser are doing. The lanes' states as last seen are kept in Mallard's storage, so they outlive a restart. All state lives here; the panel is a
 -- pure presentation layer that asks for a replay with "ready".
 --
 -- Mallard's require has no cache, so each module is required exactly once.
@@ -9,12 +9,14 @@ local L = require('station_map.location')
 local S = require('station_map.scene')
 local C = require('station_map.charts')
 local N = require('station_map.lanes')
+local W = require('station_map.work')
 
 local panel = mud.panel('map')
 local state = L.new()
 local scene = S.new()
 local chart = C.new()
 local lanes = N.new()
+local work = W.new()
 
 -- storage is per plugin and world; a bad stored value (or none) is no sightings
 if storage then
@@ -59,6 +61,10 @@ local function post_lanes_on()
   panel:post('lanes-view', { on = N.on(lanes) })
 end
 
+local function post_work()
+  panel:post('work', W.message(work))
+end
+
 local function post_settings()
   panel:post('settings', { turn_model = settings.get('turn_model') ~= false })
 end
@@ -88,8 +94,13 @@ local function scene_charts(data)
   save_lanes() -- every time: a lane seen now was seen until now
 end
 
+local function ship_devices(data)
+  if W.ship_devices(work, data, os.time()) then post_work() end
+end
+
 local scene_reducers = {
   ['ship.status'] = scene_ship,
+  ['ship.devices'] = ship_devices,
   ['space.charts'] = scene_charts,
 }
 
@@ -109,7 +120,7 @@ local function on_gmcp(package, data)
 end
 
 -- Subscribe with the names Mallard advertises (original casing).
-for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Space.Charts' }) do
+for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts' }) do
   gmcp.on(prefix, on_gmcp)
 end
 
@@ -124,6 +135,7 @@ world.on('disconnect', function()
   end
   if N.reset(lanes, os.time()) then post_lanes() end
   save_lanes()
+  if W.reset(work) then post_work() end
 end)
 
 panel:on_message('ready', function()
@@ -136,6 +148,7 @@ panel:on_message('ready', function()
   if C.on(chart) then post_chart_on() end
   if N.message(lanes).system or next(N.saved(lanes)) then post_lanes() end
   if N.on(lanes) then post_lanes_on() end
+  if next(W.message(work)) then post_work() end
 end)
 
 -- The chart and the lanes map each cover the top band: switching one on switches the other off.

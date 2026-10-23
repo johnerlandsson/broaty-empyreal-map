@@ -1,11 +1,12 @@
 // The overview away from the station: a canvas over the station model showing the starfield, the
-// belt, or over a port the town on its planet's face below, lit or dark as its star is up or not;
-// pure scenery with no controls. It fades in over the model (hiding its zoom buttons),
+// belt with the ship's work in it (the sensors' sweep, an assay held on a rock, the laser cutting
+// one, and the seconds left), or over a port the town on its planet's face below, lit or dark as
+// its star is up or not; no controls. It fades in over the model (hiding its zoom buttons),
 // eases the stars' speed and cross-fades stars and rocks; the frame loop runs only while
 // something is on screen, and pauses while the panel is hidden or the system chart covers it.
 
 import { daylit } from "./lib/orbits.js";
-import { Belt, Starfield, Town, approach, rockFaces, targets } from "./lib/space.js";
+import { Belt, Starfield, Town, approach, rockFaces, targets, work, workLines } from "./lib/space.js";
 import { rng } from "./lib/svg.js";
 
 const BG = "#04060c";
@@ -24,6 +25,9 @@ const PAD = "#e3d3b8";
 const LAMP = "255,217,138"; // the Porthole colour
 const BEACON = "232,176,74"; // the busy status light
 const RIM = "207,227,255"; // Glass: the thin air at the limb
+const SENSE = "89,209,138"; // the ok status light: the sensors' sweep and assay
+const BEAM = "207,227,255"; // Glass, the laser's beam, round a white core
+const DIM = "#7d8a9a"; // the seconds left, bottom right
 
 export class SpaceView {
   /** @param {HTMLElement} containerEl the overview band, already holding the station model */
@@ -52,7 +56,8 @@ export class SpaceView {
     this.lit = 1; // 1 the day side below, 0 the night side; eases toward litTarget
     this.litTarget = 1;
     this.looked = -Infinity;
-    this.clock = 0; // seconds, for the beacons' blink
+    this.clock = 0; // seconds, for the beacons' blink and the beam's flicker
+    this.work = null; // the work message: what the sensors and laser are doing, with local times
 
     this.target = targets("station");
     this.space = 0;
@@ -76,6 +81,11 @@ export class SpaceView {
       if (this.ground === 0) this.lit = this.litTarget = this.daylight() ?? this.litTarget; // no fade into a known sky
     }
     this.wake();
+  }
+
+  /** What the ship's sensors and laser are doing: the work message (src/station_map/work.lua). */
+  setWork(msg) {
+    this.work = msg && typeof msg === "object" ? msg : null;
   }
 
   /** The system's charts, an indexCharts() result, for where the port and its star are. */
@@ -188,9 +198,105 @@ export class SpaceView {
         }
       }
       g.globalAlpha = 1;
+      this.drawWork();
     }
 
     if (this.ground > 0) this.drawGround();
+  }
+
+  /**
+   * The ship's work at the belt, over the rocks: the sensors' line crossing the band over a scan's
+   * time, brackets and a filling ring on the held rock during an assay, the beam on it while the
+   * laser cuts, and the seconds left in the corner. Nothing here places or counts a rock.
+   */
+  drawWork() {
+    const { g, w, h } = this;
+    const now = Date.now() / 1000;
+    const shown = work(this.work, now);
+    const k = this.belt.hold(!!shown.assay || shown.cut, w, h);
+    const lines = workLines(shown);
+    if (!lines.length) return;
+    g.save();
+    g.globalAlpha = this.rocks;
+    if (shown.sweep) {
+      const x = w * shown.sweep.p;
+      g.fillStyle = `rgba(${SENSE},0.05)`;
+      g.fillRect(0, 0, x, h);
+      const grd = g.createLinearGradient(x - 40, 0, x, 0);
+      grd.addColorStop(0, `rgba(${SENSE},0)`);
+      grd.addColorStop(1, `rgba(${SENSE},0.18)`);
+      g.fillStyle = grd;
+      g.fillRect(x - 40, 0, 40, h);
+      g.strokeStyle = `rgba(${SENSE},0.8)`;
+      g.lineWidth = 1.2;
+      g.beginPath();
+      g.moveTo(x, 0);
+      g.lineTo(x, h);
+      g.stroke();
+    }
+    if (k && shown.cut) this.drawBeam(k);
+    if (k && shown.assay) {
+      const r = k.size * 1.25;
+      const c = Math.min(7, r * 0.5);
+      g.strokeStyle = `rgba(${SENSE},0.75)`;
+      g.lineWidth = 1.2;
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        g.beginPath();
+        g.moveTo(k.x + sx * r, k.y + sy * (r - c));
+        g.lineTo(k.x + sx * r, k.y + sy * r);
+        g.lineTo(k.x + sx * (r - c), k.y + sy * r);
+        g.stroke();
+      }
+      const top = -Math.PI / 2;
+      g.lineWidth = 2;
+      g.strokeStyle = `rgba(${SENSE},0.25)`;
+      g.beginPath();
+      g.arc(k.x, k.y, r * 1.2, 0, Math.PI * 2);
+      g.stroke();
+      g.strokeStyle = `rgba(${SENSE},0.85)`;
+      g.beginPath();
+      g.arc(k.x, k.y, r * 1.2, top, top + Math.PI * 2 * shown.assay.p);
+      g.stroke();
+    }
+    g.font = "10px Inter, system-ui, sans-serif";
+    g.fillStyle = DIM;
+    g.textAlign = "right";
+    lines.forEach((t, i) => g.fillText(t, w - 10, h - 10 - (lines.length - 1 - i) * 14));
+    g.restore();
+  }
+
+  /** The laser's beam from under the view, where the ship is, onto the near face of rock k, flickering. */
+  drawBeam(k) {
+    const { g, w, h } = this;
+    const ox = w / 2 + 40;
+    const oy = h + 10;
+    const ang = Math.atan2(k.y - oy, k.x - ox);
+    const tx = k.x - Math.cos(ang) * k.size * 0.3;
+    const ty = k.y - Math.sin(ang) * k.size * 0.3;
+    const flick = 0.85 + 0.15 * Math.sin(this.clock * 31);
+    g.lineCap = "round";
+    for (const [col, a, lw] of [[BEAM, 0.25, 7], [BEAM, 0.8, 2.2], ["255,255,255", 0.95, 0.9]]) {
+      g.strokeStyle = `rgba(${col},${a * flick})`;
+      g.lineWidth = lw;
+      g.beginPath();
+      g.moveTo(ox, oy);
+      g.lineTo(tx, ty);
+      g.stroke();
+    }
+    const grd = g.createRadialGradient(tx, ty, 0, tx, ty, 14);
+    grd.addColorStop(0, `rgba(255,255,255,${0.95 * flick})`);
+    grd.addColorStop(0.3, `rgba(${BEAM},0.6)`);
+    grd.addColorStop(1, `rgba(${BEAM},0)`);
+    g.fillStyle = grd;
+    g.beginPath();
+    g.arc(tx, ty, 14, 0, Math.PI * 2);
+    g.fill();
+    for (let i = 0; i < 9; i++) {
+      const a = ang + Math.PI + (Math.random() - 0.5) * 2.2;
+      const d = 5 + Math.random() * 14;
+      g.fillStyle = `rgba(255,255,255,${0.3 + Math.random() * 0.6})`;
+      g.fillRect(tx + Math.cos(a) * d, ty + Math.sin(a) * d, 1.4, 1.4);
+    }
   }
 
   /** The planet's face across the lower band, the town on it, by day and by night cross-faded. */

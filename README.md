@@ -57,7 +57,12 @@ for it. Indoors you can't see the sky, so the band is the skyline alone.
 looking ahead from your ship: a still starfield while you're parked, the
 stars streaming past while you travel, low-poly asteroids tumbling past
 while you're at a belt, and over Zennor the town below on Tamsin's face, on
-the day side or the night side as it is in the game. It's scenery only, with no controls; docking brings
+the day side or the night side as it is in the game. At a belt you see the
+ship's work: the sensors' green line crossing the view as she sweeps for
+rocks, brackets and a filling ring round a rock while she assays one, and
+the laser's beam on a rock while she mines, with the seconds left in the
+corner. A program's work shows the same as yours. The rocks themselves stay
+scenery: the map never shows what a scan found. There are no controls; docking brings
 the station back. Docked at another ship, say a skiff at a freighter's
 collar, you see what the freighter sees: the stars streaming past while she
 travels, the station while she's docked at one. This follows the ship you can fly: your own, or one you
@@ -215,7 +220,8 @@ python3 -m http.server 8765
 ```
 
 `?step=N` jumps to step N of the walk, `?scene=belt` (or `parked`, `travelling`, `port-day`, `port-night`) opens on a
-space scene, and the menu in the bar switches it. `?debug` shows how often the model
+space scene, and the menu in the bar switches it. `?work=scanning` (or `assaying`, `mining`, `idle`)
+opens on the belt with the ship at that work. `?debug` shows how often the model
 turned and redrew.
 
 ### Rebuilding the station data

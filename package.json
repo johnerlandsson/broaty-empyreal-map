@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "vitest run && npm run test:lua",
-    "test:lua": "lua tests/location_test.lua && lua tests/scene_test.lua && lua tests/charts_test.lua && lua tests/lanes_test.lua && lua tests/main_test.lua",
+    "test:lua": "lua tests/location_test.lua && lua tests/scene_test.lua && lua tests/charts_test.lua && lua tests/lanes_test.lua && lua tests/work_test.lua && lua tests/main_test.lua",
     "build:data": "node scripts/build-station.mjs",
     "pack": "rm -f empyreal-map-$npm_package_version.mallardx && zip -r empyreal-map-$npm_package_version.mallardx plugin.toml README.md src ui -x 'ui/**/*.test.js'"
   },

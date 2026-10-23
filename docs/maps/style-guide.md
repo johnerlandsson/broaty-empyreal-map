@@ -1,6 +1,6 @@
 # Map style guide
 
-*Last updated 2026-10-23.*
+*Last updated 2026-10-24.*
 
 This guide is the visual language every map in the panel shares: the station
 models, the space scenes, the deck plans and the ship plans. Each kind of map
@@ -116,6 +116,8 @@ On a town's plan (the ground, not a deck; see town.md):
 | Dusk glow | `#e8925a` at .35 | the horizon where the star went down, at dusk |
 | Dawn glow | `#b8c8dc` at .3 | the horizon where the star will come up, at dawn |
 | Dawn sky | `#8fa2bd` at .7 → `#4a5a74` at .3 → none, radius 190 | the sky rising from that horizon at dawn, behind the skyline, so it shows above the ridge |
+| Sensors | `#59d18a`, the ok status light (§4.2), at .05 to .85 | at a belt, the sensors' sweep line and the wash behind it, and an assay's brackets and ring (§12) |
+| Beam | Glass round a `#fff` core | at a belt, the mining laser's beam and the glow where it bites (§12) |
 
 ### 4.4 District colours
 
@@ -305,8 +307,20 @@ A new map type says in its doc what its line shows.
 
 - A canvas over the model that fades in (2.5 per second) when you're out in
   your own ship, and out again when you dock.
-- Scenery only: no controls, no highlight; the model's zoom buttons hide
-  under it.
+- No controls and no highlight; the model's zoom buttons hide under it.
+- **The ship's work at a belt** is the one thing drawn over the scenery: the
+  sensors' line crossing the band left to right over a scan's time, with a
+  faint wash behind it; brackets and a ring filling clockwise round one rock
+  during an assay; the laser's beam from below the band, where the ship is,
+  onto one rock while it cuts. The rock worked holds still (she's come
+  alongside); the rest drift on. What's under way and the seconds left are
+  in the bottom-right corner, Dim, 10, one line each, the laser's first:
+  `cutting`, `sweeping · 6 s`, `assaying · 8 s`. A program's work looks the
+  same as yours: it's the device that's busy.
+- **The rocks stay scenery.** The work never draws, counts, names or places
+  a rock the game hasn't told the player about: a sweep finds nothing on
+  screen, and the rock an assay or the laser holds is any near one in the
+  middle, not the game's.
 - The same Background, Tones and Model edge as the models, so a rock looks
   like it belongs with a station.
 - Eased, never sudden: the stars speed up and slow down, stars cross-fade to

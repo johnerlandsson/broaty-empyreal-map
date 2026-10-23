@@ -16,6 +16,9 @@
 //             chart { on: true }; the bar's menu switches it
 //   ?lanes=L  open the core lanes map on scenario L (senara, in-trunk, in-branch or petroc), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it
+//   ?work=W   at a belt, the ship's work W (scanning, assaying, mining or idle) as the work message has it
+//             (src/station_map/work.lua): a scan or assay starts now and starts again a second after it
+//             ends, as a program at par would; the bar's menu switches it
 //   ?sky=S    stand in Zennor's Square under sky S (night, dusk, dawn, low, overhead or tiss-overhead): the game's
 //             own charts from dev/sky-cases.json, shifted so a recorded moment of that sky is now; the bar's menu switches it
 
@@ -411,6 +414,34 @@ function emitSky(name) {
 }
 skyMenu.addEventListener("change", () => emitSky(skyMenu.value));
 
+// --- the ship's work at a belt: the work message, local times in seconds --------------------
+
+const workMenu = document.getElementById("work");
+const WORK = {
+  idle: () => ({}),
+  scanning: (now) => ({ sensors: { busy: "scan", since: now, ends: now + 10 } }),
+  assaying: (now) => ({ sensors: { busy: "assay", since: now, ends: now + 20 } }),
+  mining: (now) => ({ laser: { busy: "mine", since: now } }),
+};
+let workTimer = 0;
+
+function emitWork(name) {
+  clearTimeout(workTimer);
+  const make = WORK[name];
+  if (!make) return;
+  sceneMenu.value = "belt";
+  emitScene("belt");
+  const m = make(Math.floor(Date.now() / 1000));
+  fp.emit("work", m);
+  const ends = m.sensors?.ends;
+  if (ends === undefined) return;
+  workTimer = setTimeout(() => {
+    fp.emit("work", {}); // done: the game sends the sensors idle
+    workTimer = setTimeout(() => emitWork(name), 1000);
+  }, ends * 1000 - Date.now());
+}
+workMenu.addEventListener("change", () => emitWork(workMenu.value));
+
 function start() {
   fp.emit("settings", { turn_model: !q.has("still") });
   if (q.has("scene")) {
@@ -425,6 +456,10 @@ function start() {
   if (q.has("lanes")) {
     lanesMenu.value = q.get("lanes");
     emitLanes(lanesMenu.value);
+  }
+  if (q.has("work")) {
+    workMenu.value = q.get("work");
+    emitWork(workMenu.value);
   }
   if (q.has("sky")) {
     skyMenu.value = q.get("sky");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Belt, Starfield, Town, approach, rockFaces, makeRock, targets } from "./space.js";
+import { Belt, Starfield, Town, approach, rockFaces, makeRock, targets, work, workLines } from "./space.js";
 import { rng } from "./svg.js";
 
 describe("targets", () => {
@@ -118,6 +118,126 @@ describe("rocks", () => {
     const b = new Belt(12, rng(5));
     b.step(0.1, 360, 220);
     for (let i = 1; i < b.rocks.length; i++) expect(b.rocks[i].d).toBeGreaterThanOrEqual(b.rocks[i - 1].d);
+  });
+});
+
+describe("Belt hold", () => {
+  const w = 360;
+  const h = 220;
+  const belt = () => {
+    const b = new Belt(14, rng(5));
+    b.step(0.1, w, h);
+    return b;
+  };
+
+  it("holds nothing until asked", () => {
+    const b = belt();
+    expect(b.hold(false, w, h)).toBe(null);
+  });
+
+  it("holds a near rock in the middle, and keeps the same one", () => {
+    const b = belt();
+    const k = b.hold(true, w, h);
+    expect(k.d).toBeGreaterThan(0.55);
+    expect(k.x).toBeGreaterThan(w * 0.15);
+    expect(k.x).toBeLessThan(w * 0.85);
+    b.step(0.5, w, h);
+    expect(b.hold(true, w, h).id).toBe(k.id);
+  });
+
+  it("the held rock stays put but tumbles; the others drift on", () => {
+    const b = belt();
+    const k = b.hold(true, w, h);
+    const other = b.rocks.find((r) => r.id !== k.id);
+    for (let i = 0; i < 100; i++) b.step(0.1, w, h);
+    const held = b.rocks.find((r) => r.id === k.id);
+    expect(held.x).toBe(k.x);
+    expect(held.a).not.toBe(k.a);
+    expect(b.rocks.find((r) => r.id === other.id)?.x ?? -Infinity).not.toBe(other.x);
+  });
+
+  it("lets go when the work ends, and the rock drifts again", () => {
+    const b = belt();
+    const k = b.hold(true, w, h);
+    expect(b.hold(false, w, h)).toBe(null);
+    b.step(0.5, w, h);
+    expect(b.rocks.find((r) => r.id === k.id).x).toBeLessThan(k.x);
+  });
+
+  it("holds nothing before the rocks are scattered", () => {
+    expect(new Belt(14, rng(5)).hold(true, w, h)).toBe(null);
+  });
+
+  it("of the near ones, holds the one nearest the middle of the view", () => {
+    const b = belt();
+    b.rocks = b.rocks.map((r, i) => ({ ...r, d: 0.8, x: w / 2, y: i * 15 }));
+    expect(b.hold(true, w, h).y).toBe(105);
+  });
+
+  it("holds the rock nearest the middle when none is near and central", () => {
+    const b = belt();
+    b.rocks = b.rocks.map((r, i) => ({ ...r, d: 0.3, x: i * 2, y: h / 2 }));
+    expect(b.hold(true, w, h).x).toBe(26);
+  });
+});
+
+describe("work", () => {
+  it("is nothing with no message or nothing under way", () => {
+    const idle = { sweep: null, assay: null, cut: false };
+    expect(work(null, 0)).toEqual(idle);
+    expect(work({}, 0)).toEqual(idle);
+    expect(work("x", 0)).toEqual(idle);
+  });
+
+  it("a scan fills from when it began to its end, with the seconds left", () => {
+    const m = { sensors: { busy: "scan", since: 100, ends: 110 } };
+    expect(work(m, 100).sweep).toEqual({ p: 0, left: 10 });
+    expect(work(m, 104.2).sweep).toEqual({ p: expect.closeTo(0.42), left: 6 });
+    expect(work(m, 110).sweep).toEqual({ p: 1, left: 0 });
+    expect(work(m, 113).sweep).toEqual({ p: 1, left: 0 }); // still busy till the game says otherwise
+    expect(work(m, 90).sweep).toEqual({ p: 0, left: 10 }); // a clock behind the stamp
+  });
+
+  it("an assay likewise, and only one of them at a time", () => {
+    const w = work({ sensors: { busy: "assay", since: 0, ends: 20 } }, 5);
+    expect(w.assay).toEqual({ p: 0.25, left: 15 });
+    expect(w.sweep).toBe(null);
+  });
+
+  it("an end at its start is done", () => {
+    expect(work({ sensors: { busy: "scan", since: 5, ends: 5 } }, 5).sweep).toEqual({ p: 1, left: 0 });
+  });
+
+  it("with no end it sweeps round at its par, with no seconds", () => {
+    const m = { sensors: { busy: "scan", since: 0 } };
+    expect(work(m, 2.5).sweep).toEqual({ p: 0.25, left: null });
+    expect(work(m, 12.5).sweep).toEqual({ p: 0.25, left: null });
+    expect(work({ sensors: { busy: "assay", since: 0 } }, 5).assay).toEqual({ p: 0.25, left: null });
+  });
+
+  it("mining is the laser cutting", () => {
+    expect(work({ laser: { busy: "mine", since: 0 } }, 9).cut).toBe(true);
+    expect(work({ laser: { busy: "repair", since: 0, ends: 9 } }, 1).cut).toBe(false);
+  });
+
+  it("any other verb on the sensors shows nothing", () => {
+    expect(work({ sensors: { busy: "repair", since: 0, ends: 30 } }, 1)).toEqual({ sweep: null, assay: null, cut: false });
+  });
+});
+
+describe("workLines", () => {
+  it("says what's under way and the seconds left, the laser first", () => {
+    expect(workLines({ sweep: { p: 0.4, left: 6 }, assay: null, cut: true })).toEqual(["cutting", "sweeping · 6 s"]);
+    expect(workLines({ sweep: null, assay: { p: 0.6, left: 8 }, cut: false })).toEqual(["assaying · 8 s"]);
+  });
+
+  it("drops the seconds when there are none left or none known", () => {
+    expect(workLines({ sweep: { p: 1, left: 0 }, assay: null, cut: false })).toEqual(["sweeping"]);
+    expect(workLines({ sweep: null, assay: { p: 0.2, left: null }, cut: false })).toEqual(["assaying"]);
+  });
+
+  it("is empty when idle", () => {
+    expect(workLines({ sweep: null, assay: null, cut: false })).toEqual([]);
   });
 });
 

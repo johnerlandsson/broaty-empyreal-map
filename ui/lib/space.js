@@ -1,6 +1,6 @@
 // The overview's space scenes, as plain data: a starfield seen looking ahead (still when parked,
-// streaming when travelling), low-poly rocks drifting past at a belt, and over a port the town
-// on its planet's face below. No DOM here; the canvas
+// streaming when travelling), low-poly rocks drifting past at a belt, with what the ship's sensors
+// and laser are doing there, and over a port the town on its planet's face below. No DOM here; the canvas
 // drawing is in space-view.js.
 
 const PARKED = 0.01; // the parked starfield barely drifts
@@ -122,18 +122,24 @@ export function rockFaces(rock, a, b) {
   return faces.sort((f, g) => f.z - g.z);
 }
 
-/** Rocks tumbling right to left; d is nearness (0 far .. 1 near), kept sorted far to near. */
+/**
+ * Rocks tumbling right to left; d is nearness (0 far .. 1 near), kept sorted far to near. One may
+ * be held still (hold()) while the ship works it: she's come alongside, so it stops drifting.
+ */
 export class Belt {
   constructor(n, rnd) {
     this.rnd = rnd;
     this.n = n;
     this.rocks = null;
+    this.ids = 0;
+    this.held = null; // the held rock's id
   }
 
   spawn(x, h) {
     const r = this.rnd;
     const d = 0.2 + r() * 0.8;
     return {
+      id: this.ids++,
       shape: makeRock(r),
       d,
       x,
@@ -150,12 +156,71 @@ export class Belt {
   step(dt, w, h) {
     if (!this.rocks) this.rocks = Array.from({ length: this.n }, () => this.spawn(-40 + this.rnd() * (w + 80), h));
     this.rocks = this.rocks.map((k) => {
-      const x = k.x - (6 + k.d * 22) * dt;
+      const x = k.id === this.held ? k.x : k.x - (6 + k.d * 22) * dt;
       if (x < -k.size * 2) return this.spawn(w + 60, h);
       return { ...k, x, a: k.a + k.wa * dt, b: k.b + k.wb * dt };
     });
     this.rocks.sort((p, q) => p.d - q.d);
   }
+
+  /**
+   * While `want`, the rock held still in a w×h view: the one already held, or a near one nearest
+   * the middle (any nearest it if none is near and central). Not a rock the game told of: the
+   * belt's rocks are scenery, and this is only somewhere for the work to be seen. Null otherwise.
+   */
+  hold(want, w, h) {
+    if (!want || !this.rocks) {
+      this.held = null;
+      return null;
+    }
+    const mid = (k) => Math.hypot(k.x - w / 2, k.y - h / 2);
+    let k = this.rocks.find((r) => r.id === this.held);
+    if (!k) {
+      const near = this.rocks.filter((r) => r.d > 0.55 && r.x > w * 0.15 && r.x < w * 0.85);
+      k = (near.length ? near : this.rocks).reduce((a, b) => (mid(b) < mid(a) ? b : a));
+      this.held = k.id;
+    }
+    return k;
+  }
+}
+
+// --- the ship's work at a belt -------------------------------------------------------------
+
+const PAR = { scan: 10, assay: 20 }; // actions.yaml's, for a sweep with no end given
+
+function timed(a, now) {
+  const since = Number(a.since);
+  const ends = Number(a.ends);
+  if (!Number.isFinite(since)) return null;
+  if (a.ends == null || !Number.isFinite(ends)) return { p: (((now - since) / PAR[a.busy]) % 1 + 1) % 1, left: null };
+  const p = ends > since ? Math.min(1, Math.max(0, (now - since) / (ends - since))) : 1;
+  return { p, left: Math.max(0, Math.ceil(ends - Math.max(now, since))) };
+}
+
+/**
+ * What the belt scene shows of the work message (src/station_map/work.lua) at local time `now`,
+ * in seconds: the sensors' sweep or assay, each { p: 0..1 through, left: whole seconds or null },
+ * and whether the laser is cutting. Only that the work is happening and how long is left.
+ */
+export function work(msg, now) {
+  const s = msg?.sensors;
+  const scanning = s?.busy === "scan" || s?.busy === "assay";
+  const t = scanning ? timed(s, now) : null;
+  return {
+    sweep: s?.busy === "scan" ? t : null,
+    assay: s?.busy === "assay" ? t : null,
+    cut: msg?.laser?.busy === "mine",
+  };
+}
+
+/** The dim lines in the scene's corner, top to bottom: "cutting", "sweeping · 6 s", "assaying · 8 s". */
+export function workLines(w) {
+  const secs = (verb, t) => (t.left ? `${verb} · ${t.left} s` : verb);
+  const out = [];
+  if (w.cut) out.push("cutting");
+  if (w.sweep) out.push(secs("sweeping", w.sweep));
+  if (w.assay) out.push(secs("assaying", w.assay));
+  return out;
 }
 
 // --- a town below --------------------------------------------------------------------------
