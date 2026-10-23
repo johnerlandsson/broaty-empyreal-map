@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import cases from "../../dev/sky-cases.json" with { type: "json" };
 import { daylit, indexCharts } from "./orbits.js";
-import { groundSky, skyAngle, skyScene } from "./sky.js";
+import { groundSky, isDark, isUp, skyAngle, skyScene, sunBand } from "./sky.js";
 
 // The game's own sky over Zennor, recorded by dev/sky-cases.ts from ground.ts (empyreal 7492196):
 // its Space.Charts, and the text either side of every change over a Tamsin year.
@@ -184,5 +184,26 @@ describe("skyScene", () => {
 
   it("hovers the empty sky with the sun's line", () => {
     for (const sky of skies) expect(skyScene(sky).hover).toBe(sky.sun.line);
+  });
+});
+
+describe("the thresholds exactly on their lines, as ground.ts compares them", () => {
+  it("bands Senara by >= 60, >= 30, >= 10, >= 0 and > -10", () => {
+    expect(sunBand(60)).toBe("overhead");
+    expect(sunBand(30)).toBe("well up");
+    expect(sunBand(10)).toBe("low");
+    expect(sunBand(0)).toBe("up");
+    expect(sunBand(-10)).toBe("night");
+    expect(sunBand(-9.999)).toBe("twilight");
+  });
+
+  it("is dark below -5, not at it", () => {
+    expect(isDark(-5)).toBe(false);
+    expect(isDark(-5.001)).toBe(true);
+  });
+
+  it("shows a station or planet above 0, not at it", () => {
+    expect(isUp(0)).toBe(false);
+    expect(isUp(0.001)).toBe(true);
   });
 });

@@ -50,6 +50,22 @@ function bodyAt(index, id, tick, depth = 0) {
   return [base[0] + (x * Math.cos(w) - y * Math.sin(w)), base[1] + (x * Math.sin(w) + y * Math.cos(w))];
 }
 
+/** Senara's band by its altitude, with ground.ts's comparisons: >= 60, >= 30, >= 10, >= 0, > -10. */
+export function sunBand(alt) {
+  if (alt >= OVERHEAD) return "overhead";
+  if (alt >= TWILIGHT * 3) return "well up";
+  if (alt >= TWILIGHT) return "low";
+  if (alt >= 0) return "up";
+  if (alt > -TWILIGHT) return "twilight";
+  return "night";
+}
+
+/** Dark, by the star's altitude: below -5, when stations spark and the planets show. */
+export const isDark = (alt) => alt < -TWILIGHT / 2;
+
+/** Whether a station or planet at an altitude is in the sky at all: above 0, not on the line. */
+export const isUp = (alt) => alt > 0;
+
 /**
  * The sky over a port at wall-clock t (ms), as the game would tell it: Senara's place and
  * sentence, whether it's dark, its band, and each station of the port's planet that's up and,
@@ -85,39 +101,29 @@ export function groundSky(index, port, t, short = SHORT) {
     const s = seen(star.id);
     if (!s) return null;
     const name = star.name;
-    let band;
-    let line;
-    if (s.alt >= OVERHEAD) {
-      band = "overhead";
-      line = `${name} stands high overhead, small and white, and the shadows are short.`;
-    } else if (s.alt >= TWILIGHT * 3) {
-      band = "well up";
-      line = `${name} is well up in the ${side(s.east)} of a pale, dusty sky.`;
-    } else if (s.alt >= TWILIGHT) {
-      band = "low";
-      line = `${name} is low in the ${side(s.east)}, and the shadows reach long to the ${side(!s.east)}.`;
-    } else if (s.alt >= 0) {
-      band = "up";
-      line = s.rising
-        ? `${name} has just come up over the ${side(s.east)}ern horizon, and everything it touches is gold.`
-        : `${name} is going down in the ${side(s.east)}, reddened by the dust.`;
-    } else if (s.alt > -TWILIGHT) {
-      band = "twilight";
-      line = s.rising
-        ? `The sky is paling in the ${side(s.east)}: ${name} will be up soon.`
-        : `Dusk: the ${side(s.east)} still glows where ${name} went down, and the first stars are out.`;
-    } else {
-      band = "night";
-      line = "Night: the sky is black and crowded with stars.";
-    }
-    const dark = s.alt < -TWILIGHT / 2;
+    const band = sunBand(s.alt);
+    const line = {
+      overhead: () => `${name} stands high overhead, small and white, and the shadows are short.`,
+      "well up": () => `${name} is well up in the ${side(s.east)} of a pale, dusty sky.`,
+      low: () => `${name} is low in the ${side(s.east)}, and the shadows reach long to the ${side(!s.east)}.`,
+      up: () =>
+        s.rising
+          ? `${name} has just come up over the ${side(s.east)}ern horizon, and everything it touches is gold.`
+          : `${name} is going down in the ${side(s.east)}, reddened by the dust.`,
+      twilight: () =>
+        s.rising
+          ? `The sky is paling in the ${side(s.east)}: ${name} will be up soon.`
+          : `Dusk: the ${side(s.east)} still glows where ${name} went down, and the first stars are out.`,
+      night: () => "Night: the sky is black and crowded with stars.",
+    }[band]();
+    const dark = isDark(s.alt);
 
     const bodies = [];
     // The stations in orbit of this planet, as they cross.
     for (const it of index.items.values()) {
       if (it.kind !== "station" || it.id === port || it.orbit?.parent !== planet) continue;
       const b = seen(it.id);
-      if (!b || b.alt <= 0) continue;
+      if (!b || !isUp(b.alt)) continue;
       const nm = short[it.id] ?? it.name;
       const look = dark ? "a bright, steady spark" : "a pale fleck against the sky";
       const l =
@@ -133,7 +139,7 @@ export function groundSky(index, port, t, short = SHORT) {
       for (const it of index.items.values()) {
         if (it.kind !== "planet" || it.id === planet) continue;
         const b = seen(it.id);
-        if (!b || b.alt <= 0) continue;
+        if (!b || !isUp(b.alt)) continue;
         const l =
           b.alt >= OVERHEAD
             ? `${it.name} is a steady golden star high overhead.`

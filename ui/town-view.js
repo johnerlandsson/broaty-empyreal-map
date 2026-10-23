@@ -35,6 +35,9 @@ export class SkyView {
     this.port = port;
     this.charts = null;
     this.outdoors = false;
+    this.tips = new Map(); // data-tip key -> { title, body }: the hovered thing's name and the game's sentence
+    this.tipKey = null; // what's hovered
+    this.tipShown = null; // what the tooltip last showed, so a redraw doesn't re-show the same
     const div = document.createElement("div");
     div.className = "model";
     Object.assign(div.style, {
@@ -60,6 +63,8 @@ export class SkyView {
     skyline(el("g", {}, svg));
     this.front = el("g", {}, svg); // the dome, its marks and the glow, over it: nothing up is hidden
     this.zoom = attachPanZoom(div, () => this.vb, (v) => this.setView(v), { minW: VIEW[2] * 0.4, maxW: VIEW[2] * 1.6 });
+    div.addEventListener("pointermove", (e) => this.hoverAt(e.target));
+    div.addEventListener("pointerleave", () => this.hideTip());
     zoomButtons(div, "8px", (f) => (f ? this.zoom(f) : this.setView(VIEW.slice())));
   }
 
@@ -91,8 +96,14 @@ export class SkyView {
   draw(t) {
     this.back.replaceChildren();
     this.front.replaceChildren();
+    this.tips = new Map();
     const sky = this.outdoors && this.charts ? groundSky(this.charts, this.port, t) : null;
-    if (!sky) return;
+    if (sky) this.drawSky(sky);
+    this.refreshTip();
+  }
+
+  /** The tint, stars and glow behind the skyline, and the dome and its marks over it. */
+  drawSky(sky) {
     const scene = skyScene(sky);
     const inside = el("g", { "clip-path": "url(#sky-clip)" }, this.back);
     if (scene.tint) el("path", { d: dome(), fill: scene.tint }, inside);
@@ -103,8 +114,8 @@ export class SkyView {
       const [fill, opacity] = GLOWS[scene.glow.kind];
       el("ellipse", { cx: scene.glow.east ? DOME : -DOME, cy: HORIZON, rx: 70, ry: 26, fill, opacity, filter: "url(#sky-soft)" }, f);
     }
-    const hover = el("path", { d: dome(), fill: "transparent" }, f);
-    el("title", {}, hover, scene.hover);
+    el("path", { d: dome(), fill: "transparent", "data-tip": "sky" }, f);
+    this.tips.set("sky", { title: "The sky", body: scene.hover });
     el("path", { d: dome(true), fill: "none", stroke: ORBIT, "stroke-dasharray": "2 3" }, f);
     const label = { fill: DIM, "font-size": 8, "font-family": "var(--font-family, sans-serif)" };
     el("text", { ...label, x: -DOME, y: HORIZON + 11, "text-anchor": "middle" }, f, "W");
@@ -113,12 +124,47 @@ export class SkyView {
       const a = (m.angle * Math.PI) / 180;
       const x = -DOME * Math.cos(a);
       const y = HORIZON - DOME * Math.sin(a);
-      const g = el("g", {}, f);
-      el("title", {}, g, m.line);
+      const g = el("g", { "data-tip": m.id }, f);
+      this.tips.set(m.id, { title: m.name, body: m.line });
       mark(g, m.look, x, y);
       const east = m.angle > 120;
       el("text", { ...label, x: x + (east ? -9 : 9), y: y + 3, "text-anchor": east ? "end" : "start" }, g, m.name);
     }
+  }
+
+  // The panel's tooltip, keyed by what's hovered as the chart's is (chart-view.js), so a redraw each
+  // second follows the hovered thing as it moves instead of dropping the tooltip.
+  hoverAt(target) {
+    const node = target?.closest?.("[data-tip]");
+    const key = node?.getAttribute("data-tip") ?? null;
+    if (key === this.tipKey) return;
+    if (!key) return this.hideTip();
+    this.tipKey = key;
+    this.showTip(node);
+  }
+
+  showTip(node) {
+    const c = this.tips.get(this.tipKey);
+    if (!c) return this.hideTip();
+    const r = node.getBoundingClientRect();
+    const same = [this.tipKey, c.title, c.body, Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)].join("|");
+    if (same === this.tipShown) return;
+    this.tipShown = same;
+    window.panel?.tooltip?.show(r, { title: c.title, body: c.body });
+  }
+
+  /** After a redraw: follow the hovered thing, or hide if it's gone (set, gone indoors). */
+  refreshTip() {
+    if (!this.tipKey) return;
+    const node = this.svg.querySelector(`[data-tip="${CSS.escape(this.tipKey)}"]`);
+    if (node) this.showTip(node);
+    else this.hideTip();
+  }
+
+  hideTip() {
+    if (this.tipKey) window.panel?.tooltip?.hide?.();
+    this.tipKey = null;
+    this.tipShown = null;
   }
 }
 
