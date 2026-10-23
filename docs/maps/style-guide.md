@@ -24,6 +24,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | Ship plans | bottom | you're aboard any ship, docked or not | [ship-plans.md](ship-plans.md) |
 | Orrery (the system chart) | top | the ◎ toggle is on | [orrery.md](orrery.md) |
 | Core lanes map | top | the ⋈ toggle is on | [lanes.md](lanes.md) |
+| What you're doing (a card, not a map) | bottom, top-left corner | you're doing something that takes time | [action-card.md](action-card.md) |
 
 ## 2. Principles
 
@@ -54,6 +55,10 @@ Two bands, split about 42 / 58 by a 1 px rule (`#2b3646`):
 - **Bottom, the detail:** the floor you're standing on, or the ship you're in.
 - **The info line**, bottom left over the detail band, says where you are in
   words (§9).
+- **The action card**, top left over the detail band, says what you're doing
+  while it takes time, with the seconds left and a draining bar
+  ([action-card.md](action-card.md)). It's chrome, the same size at any zoom,
+  and it's hidden when you're doing nothing.
 
 Each band has zoom buttons (**+**, **−**, **⌂**) top right, wheel zoom and
 drag pan. **⌂** puts the view back where the map starts it.
