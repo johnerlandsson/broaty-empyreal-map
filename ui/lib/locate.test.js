@@ -20,6 +20,38 @@ describe("indexStation", () => {
 });
 
 describe("locate", () => {
+  it("in a workshop, at its door on the door's level, inside", () => {
+    const w = locate(index, { roomId: "unit.7", name: "Juniper's small workshop", door: "tiss.workshops" }, 0);
+    const row = index.byId.get("tiss.workshops");
+    expect(w).toEqual({ kind: "room", id: "tiss.workshops", level: row.z, x: row.x, y: row.y, inside: true });
+    expect(keyOf(w)).toBe(keyOf(locate(index, { roomId: "tiss.workshops" }, null)));
+  });
+
+  it("in a workshop, the caption names it and its door, not the door's address", () => {
+    const msg = { roomId: "unit.7", name: "Juniper's small workshop", gravity: 0.3, door: "tiss.workshops" };
+    expect(infoLine(locate(index, msg, null), msg, index)).toBe("JUNIPER'S SMALL WORKSHOP · off Workshop Row · 0.3 g");
+  });
+
+  it("in a bunk, at the Bunkhouse door", () => {
+    const w = locate(index, { roomId: "bunk.3", door: "tiss.bunkhouse" }, null);
+    expect(w).toMatchObject({ kind: "room", id: "tiss.bunkhouse", inside: true });
+  });
+
+  it("a door the station doesn't know is off, as before", () => {
+    expect(locate(index, { roomId: "unit.7", name: "Juniper's small workshop", door: "orrin.market" }, 0)).toEqual({
+      kind: "off",
+      name: "Juniper's small workshop",
+    });
+    for (const door of [undefined, null, "", 7, {}, ["tiss.workshops"]]) {
+      expect(locate(index, { roomId: "unit.7", door }, 0).kind).toBe("off");
+    }
+  });
+
+  it("a room the station knows is that room, whatever door it carries", () => {
+    expect(locate(index, { roomId: "tiss.market", door: "tiss.workshops" }, null)).toMatchObject({ id: "tiss.market" });
+    expect(locate(index, { roomId: "tiss.market", door: "tiss.workshops" }, null).inside).toBeUndefined();
+  });
+
   it("room", () => {
     const w = locate(index, { roomId: "tiss.laundry" }, null);
     expect(w).toMatchObject({ kind: "room", level: 0, x: 4, y: -1 });

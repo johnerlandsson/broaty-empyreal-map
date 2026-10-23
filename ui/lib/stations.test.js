@@ -38,5 +38,8 @@ describe("stations", () => {
     expect(pickStation({ roomId: "ship.41.cockpit" }, "zennor", "tiss")).toBe("zennor");
     expect(pickStation({ roomId: "ship.41" }, "lanyon", "orrin")).toBe("lanyon");
     expect(pickStation(null, null, "tiss")).toBe("tiss");
+    // a workshop or bunk is its door's station's, whatever's docked or showing
+    expect(pickStation({ roomId: "unit.7", door: "tiss.workshops" }, "orrin", "orrin")).toBe("tiss");
+    expect(pickStation({ roomId: "bunk.3", door: 7 }, "orrin", "tiss")).toBe("orrin");
   });
 });

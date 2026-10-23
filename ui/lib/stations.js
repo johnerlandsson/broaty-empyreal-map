@@ -1,5 +1,5 @@
-// Which station's maps to show: the one whose room you're in, else the one your ship is docked
-// at, else whichever was showing. Pure; no DOM.
+// Which station's maps to show: the one whose room you're in (a workshop or bunk is its door's
+// station), else the one your ship is docked at, else whichever was showing. Pure; no DOM.
 
 const ROOM_PREFIX = {
   tiss: "tiss",
@@ -40,5 +40,5 @@ export function stationOfDock(place) {
  * @param {string} current the station showing now
  */
 export function pickStation(msg, docked, current) {
-  return stationOfRoom(msg?.roomId) ?? stationOfRoom(msg?.lift?.id) ?? docked ?? current;
+  return stationOfRoom(msg?.roomId) ?? stationOfRoom(msg?.door) ?? stationOfRoom(msg?.lift?.id) ?? docked ?? current;
 }

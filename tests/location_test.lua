@@ -305,4 +305,68 @@ test('stepping out of the airlock clears the hull', function()
   eq(m.shipRoom, nil)
 end)
 
+-- A workshop or bunk, as property.ts's roomFor builds it: no address, one exit out to its office room.
+local function unit_info(id, name, office)
+  return { id = id, name = name, area = 'tiss', areaName = 'T.I.S.S.',
+    exits = { OUT = { id = office, inverse = 'IN' } } }
+end
+
+test('in a workshop, the message carries its door', function()
+  local f = L.new()
+  eq(L.room_info(f, unit_info('unit.7', "Juniper's small workshop", 'tiss.workshops')), true)
+  L.empyreal_room(f, { id = 'unit.7', address = nil, gravity = 0.6, part = nil })
+  local m = L.message(f)
+  eq(m.roomId, 'unit.7')
+  eq(m.door, 'tiss.workshops')
+  eq(m.name, "Juniper's small workshop")
+  eq(m.gravity, 0.6)
+end)
+
+test('in a bunk, the message carries its door', function()
+  local f = L.new()
+  L.room_info(f, unit_info('bunk.3', "Juniper's bunk", 'tiss.bunkhouse'))
+  eq(L.message(f).door, 'tiss.bunkhouse')
+end)
+
+test('stepping out of a workshop clears the door', function()
+  local f = L.new()
+  L.room_info(f, unit_info('unit.7', "Juniper's small workshop", 'tiss.workshops'))
+  L.room_info(f, { id = 'tiss.workshops', name = 'Workshop Row', exits = { IN = { id = 'unit.7' } } })
+  eq(L.message(f).door, nil)
+end)
+
+test('a content room\'s out exit is not a door', function()
+  local f = L.new()
+  L.room_info(f, { id = 'tiss.lounge', name = 'Lounge', exits = { OUT = { id = 'tiss.concourse' } } })
+  eq(L.message(f).door, nil)
+end)
+
+test('odd-shaped exits give no door, never an error', function()
+  for _, exits in ipairs({ 'out', 7, {}, { OUT = 'tiss.workshops' }, { OUT = {} }, { OUT = { id = 7 } },
+      { OUT = { id = '' } }, { out = { id = 'tiss.workshops' } } }) do
+    local f = L.new()
+    L.room_info(f, { id = 'unit.7', exits = exits })
+    eq(L.message(f).door, nil)
+  end
+  eq(L.door('unit.7.x', { OUT = { id = 'tiss.workshops' } }), nil)
+  eq(L.door('unit.', { OUT = { id = 'tiss.workshops' } }), nil)
+  eq(L.door(nil, nil), nil)
+end)
+
+test('Empyreal.Room for another room clears the door; for the same room keeps it', function()
+  local f = L.new()
+  L.room_info(f, unit_info('unit.7', "Juniper's small workshop", 'tiss.workshops'))
+  L.empyreal_room(f, { id = 'unit.7', gravity = 0.6 })
+  eq(L.message(f).door, 'tiss.workshops')
+  L.empyreal_room(f, { id = 'tiss.workshops', address = 'Inner 4:30, fore', gravity = 0.6, part = 'inner' })
+  eq(L.message(f).door, nil)
+end)
+
+test('reset clears the door', function()
+  local f = L.new()
+  L.room_info(f, unit_info('bunk.3', "Juniper's bunk", 'tiss.bunkhouse'))
+  L.reset(f)
+  eq(L.message(f).door, nil)
+end)
+
 t.done()

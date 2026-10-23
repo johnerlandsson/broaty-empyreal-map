@@ -180,6 +180,11 @@ Your place is lit, never marked with a dot:
   same place doesn't restart it.
 - **One place.** Only your place is lit: never other players, never where
   you've been.
+- **At a door:** in a room the map doesn't have but whose door it does (a
+  workshop or bunk), the door room is lit dimly (fill .12, stroke 2 at .7, no
+  pulse) and a small amber tab on its far edge pulses for the door. Only the
+  door the game names; never a guessed position beyond it. The model lights
+  the door room as usual.
 - **Off the map:** where the map doesn't know your place, nothing is lit
   (§10).
 
@@ -259,13 +264,16 @@ name and normal case for the rest, joined with ` · `:
 - `LAUNDRY · Rim 2:00, aft · 0.9 g`: name, address (when it isn't the name),
   gravity.
 - `LIFT 3 · climbing hubward`, `LIFT 3 · at Mid 3:00`.
+- At a door (§6): `JUNIPER'S SMALL WORKSHOP · off Workshop Row · 0.3 g`, the
+  door in place of an address.
 - Off the map: the room name from GMCP, in capitals.
 
 A new map type says in its doc what its line shows.
 
 ## 10. Off the map and fallbacks
 
-- **Off the map.** When you're somewhere the band's map doesn't know, the
+- **Off the map.** When you're somewhere the band's map doesn't know (and,
+  for a workshop or bunk, doesn't know its door either), the
   plan stays where it was at 45% opacity, nothing is lit, and the info line
   shows the room name.
 - **Unknown kind.** When a map type covers a kind of place it has no drawing

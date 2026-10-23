@@ -55,6 +55,14 @@ Four plans, one per level:
   of the Berths, and the plate widens to take them
   (`reference/tiss-bays-mockup.html`, option A).
 - Lit: a room box, a corridor stretch, a lift symbol or the ladderway hatch.
+- In a workshop (`unit.<n>`) or bunk (`bunk.<n>`), which the game builds
+  itself with no address, you're at its door, as the game's own `go` and
+  `directions` place you (Empyreal commit 2b7228f): the room its one exit,
+  `out`, leads to, from mudstd.room.info. That room is lit at fill .12,
+  stroke 2 at .7, unpulsed, with a 22 × 7 amber door tab (`#fff3df` edge)
+  pulsing at the middle of its edge away from the corridor. The tab never
+  says where in the row the unit is; the game doesn't send that. The model
+  lights the door room's face as usual.
 
 ## Rooms, compartments and the highlight
 
@@ -65,7 +73,8 @@ guide.
 ## Info line
 
 `LAUNDRY · Rim 2:00, aft · 0.9 g`; in a lift, `LIFT 3 · climbing hubward`
-or `LIFT 3 · at Mid 3:00`.
+or `LIFT 3 · at Mid 3:00`; in a workshop or bunk, its name and its door in
+place of an address: `JUNIPER'S SMALL WORKSHOP · off Workshop Row · 0.3 g`.
 
 ## Code
 

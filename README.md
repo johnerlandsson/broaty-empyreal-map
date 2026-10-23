@@ -128,6 +128,10 @@ Your place is lit with the same glow as in the model, not marked with a dot:
 a room box, a stretch of corridor, a lift or the ladderway hatch. The plan
 switches to your floor when you arrive there and re-centres only when you
 walk out of the middle of the view. Closed rooms are drawn dashed and dimmed.
+In your workshop or bunk, which the station plan doesn't have, the room you
+came in from (Workshop Row or the Bunkhouse) is lit softly, with a small
+bright tab on its far edge for the door, and the model lights it as usual.
+The map shows only that door, not where in the row your unit is.
 Hover over a room or a corridor stop to see its name, its address and, for a
 closed room, why it's closed.
 
@@ -145,7 +149,9 @@ The line at the bottom left says where you are, for example
 `LAUNDRY · Rim 2:00, aft · 0.9 g` or `LIFT 3 · climbing hubward`. Aboard a
 ship it shows the room and the ship's class where it's known:
 `COCKPIT OF THE MULE · prospecting skiff`. In Zennor, whose rooms have no
-address, it shows the town: `THE SQUARE · Zennor · 1 g`. Anywhere else off the station
+address, it shows the town: `THE SQUARE · Zennor · 1 g`. In your workshop or bunk
+it names it and its door: `JUNIPER'S SMALL WORKSHOP · off Workshop Row · 0.3 g`.
+Anywhere else off the station
 plans, the deck plan dims, nothing is lit, and the line shows the room
 you're in.
 

@@ -66,6 +66,11 @@ export function locate(index, msg, prevLevel) {
     if (room && levelOf(index, room.id) !== null) {
       return { kind: "room", id: room.id, level: room.z, x: room.x, y: room.y };
     }
+    // in a workshop or bunk (a room the station doesn't know), you're at its door, on the door's level
+    const door = !room && str(msg.door) ? index.byId.get(msg.door) : undefined;
+    if (door && levelOf(index, door.id) !== null) {
+      return { kind: "room", id: door.id, level: door.z, x: door.x, y: door.y, inside: true };
+    }
     return { kind: "off", name: str(msg.name) ?? "" };
   } catch {
     return { kind: "off", name: "" };
@@ -100,8 +105,9 @@ export function infoLine(where, msg, index) {
     }
 
     const room = index?.byId?.get(where.id);
+    // inside a workshop or bunk: its own name, then the door, not the door's address
     const name = str(m.name) ?? str(room?.name) ?? "";
-    const address = str(m.address) ?? str(room?.address);
+    const address = where.inside ? `off ${room?.name ?? where.id}` : str(m.address) ?? str(room?.address);
     const g = m.gravity ?? room?.gravity;
     const parts = [name.toUpperCase()];
     if (address && address.toLowerCase() !== name.toLowerCase()) parts.push(address);

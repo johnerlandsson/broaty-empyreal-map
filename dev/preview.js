@@ -1,4 +1,4 @@
-// Preview driver: replays a walk round T.I.S.S., then flights to Orrin Station, Wenna Halt and the
+// Preview driver: replays a walk round T.I.S.S. (into a bunk and a workshop on the way), then flights to Orrin Station, Wenna Halt and the
 // four halts on decks (Morvah Deep, Gwithian Reach, Carrow Yard, Lanyon High) and a walk round
 // each, then down to Zennor on Tamsin and a walk round the town, through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
 // (src/station_map/location.lua, src/station_map/scene.lua).
@@ -59,6 +59,12 @@ function ride(hour, fromId, toId) {
   ];
 }
 
+/** Inside a leased workshop or bunk, as the game builds it: no address, its office room's gravity,
+ *  and the door out to that room, which is all the map is told of where it is. */
+function unit(id, name, doorId) {
+  return { label: `${name} (off ${byId.get(doorId).name})`, msg: { roomId: id, name, area: "tiss", areaName: "T.I.S.S.", gravity: byId.get(doorId).gravity, door: doorId } };
+}
+
 // a ship's rooms are ship.<n>.<room>, in the ship's own area, as the game names them now
 const COCKPIT = { roomId: "ship.41.cockpit", name: "Cockpit of the Magpie", area: "ship.41", areaName: "Magpie" };
 
@@ -99,6 +105,10 @@ const ROUTE = [
   room("tiss.laundry"),
   room("tiss.residential"),
   room("tiss.rim-0300"),
+  room("tiss.bunkhouse"),
+  unit("bunk.3", "Juniper's bunk", "tiss.bunkhouse"),
+  room("tiss.bunkhouse"),
+  room("tiss.rim-0300"),
   ...ride(3, "tiss.rim-0300", "tiss.mid-0300"),
   room("tiss.mid-0300"),
   room("tiss.gym"),
@@ -106,6 +116,12 @@ const ROUTE = [
   ...ride(3, "tiss.mid-0300", "tiss.inner-0300"),
   room("tiss.inner-0300"),
   room("tiss.fabricator"),
+  room("tiss.inner-0300"),
+  room("tiss.inner-0430"),
+  room("tiss.workshops"),
+  unit("unit.7", "Juniper's small workshop", "tiss.workshops"),
+  room("tiss.workshops"),
+  room("tiss.inner-0430"),
   room("tiss.inner-0300"),
   ...ride(3, "tiss.inner-0300", "tiss.hub"),
   room("tiss.hub"),

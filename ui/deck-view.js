@@ -23,6 +23,7 @@ import {
 import { attachPanZoom, el, glowFilter, rng, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
+const DOOR = { w: 22, h: 7, edge: "#fff3df" }; // the tab lit on a room's edge while you're in a unit off it
 export const TXT = "#e3eaf2";
 export const DIM = "#7d8a9a";
 export const PLATE = "#18202b";
@@ -340,21 +341,31 @@ export class DeckView {
     this.level = level;
   }
 
-  drawHighlight(plan, shape) {
+  /** Light shape; inside a unit off it, light it dimly with a door tab on its far edge instead. */
+  drawHighlight(plan, shape, inside = false) {
     plan.hl.replaceChildren();
     if (!shape) return;
+    const pulse = (node) => el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, node);
     for (const off of plan.offsets) {
       const g = el("g", { transform: `translate(${off} 0)`, filter: this.glow }, plan.hl);
-      const attrs = { fill: HL, "fill-opacity": 0.3, stroke: HL, "stroke-width": 3 };
+      const attrs = inside
+        ? { fill: HL, "fill-opacity": 0.12, stroke: HL, "stroke-opacity": 0.7, "stroke-width": 2 }
+        : { fill: HL, "fill-opacity": 0.3, stroke: HL, "stroke-width": 3 };
       let node;
       if (shape.kind === "circle") node = el("circle", { cx: shape.cx, cy: shape.cy, r: shape.r, ...attrs }, g);
       else if (shape.kind === "path") node = el("path", { d: shape.d, ...attrs }, g);
       else node = el("rect", { x: shape.x, y: shape.y, width: shape.width, height: shape.height, rx: shape.rx ?? 4, ...attrs }, g);
-      el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, node);
+      if (!inside) pulse(node);
+      else if (shape.kind === "rect") {
+        // the door: centred on the edge away from the corridor (y = 0 on a ring), never where in the row the unit is
+        const far = shape.y + shape.height / 2 > 0 ? shape.y + shape.height : shape.y;
+        pulse(el("rect", { x: shape.x + shape.width / 2 - DOOR.w / 2, y: far - DOOR.h / 2, width: DOOR.w, height: DOOR.h, rx: 2, fill: HL, stroke: DOOR.edge, "stroke-width": 1.2 }, g));
+      } else pulse(node);
     }
   }
 
-  /** Show the plan for where.level and light the player's place; "off" just clears the light. */
+  /** Show the plan for where.level and light the player's place (its door, from inside a workshop
+   *  or bunk); "off" just clears the light. */
   set(where) {
     if (!where || where.kind === "off") {
       if (this.key === "off") return;
@@ -368,11 +379,11 @@ export class DeckView {
     if (changed) this.show(level);
     const plan = this.plans[level];
     const shape = plan.shape ? plan.shape(where) : highlightShape(plan.layout, where);
-    const key = shapeKey(level, shape);
+    const key = shapeKey(level, shape) + (where.inside ? ":inside" : "");
     if (key === this.key) return; // same place as last time: keep the pulse running and the view where the user left it
     this.key = key;
     for (const p of this.plans) if (p !== plan) p.hl.replaceChildren();
-    this.drawHighlight(plan, shape);
+    this.drawHighlight(plan, shape, !!where.inside);
     if (!shape) {
       this.focus = null;
       if (changed) this.setView(this.homeView());

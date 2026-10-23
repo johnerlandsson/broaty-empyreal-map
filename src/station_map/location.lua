@@ -1,6 +1,7 @@
 -- Location reducer: folds three GMCP packages (mudstd.room.info,
 -- Empyreal.Room, Empyreal.Vehicle) into one small location message, with the
--- ship's hull and which of her rooms you're in when you're aboard one.
+-- ship's hull and which of her rooms you're in when you're aboard one, and the door you came in
+-- by when you're in your workshop or bunk.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 -- Uses no io/os/debug/coroutine (removed in Mallard's sandbox).
 
@@ -71,6 +72,7 @@ function L.message(state)
     hull = state.hull,
     hullName = state.hullName,
     shipRoom = L.ship_room(state.roomId),
+    door = state.door,
     lift = lift,
   }
 end
@@ -87,6 +89,17 @@ end
 function L.ship_room(id)
   if type(id) ~= 'string' then return nil end
   return id:match('^ship%.[^.]+%.(.+)$')
+end
+
+-- The room a workshop (`unit.<n>`) or bunk (`bunk.<n>`) opens onto: its one exit, `out`, from
+-- mudstd.room.info's `exits` (`OUT = { id = ... }`). The game builds these rooms itself, with no
+-- address, and they belong to their station as their door does. Nil for any other room or shape.
+function L.door(id, exits)
+  if type(id) ~= 'string' or not (id:match('^unit%.[^.]+$') or id:match('^bunk%.[^.]+$')) then return nil end
+  local out = type(exits) == 'table' and exits.OUT or nil
+  local door = type(out) == 'table' and str(out.id) or nil
+  if door == '' then return nil end
+  return door
 end
 
 function L.room_info(state, data)
@@ -109,6 +122,7 @@ function L.room_info(state, data)
     state.name = str(data.name)
     state.area = str(data.area)
     state.areaName = str(data.areaName)
+    state.door = L.door(id, data.exits)
     state.lift = nil
   end)
 end
@@ -134,6 +148,7 @@ function L.empyreal_room(state, data)
       state.roomId = nil
       state.area = nil
       state.areaName = nil
+      state.door = nil
       state.hull = nil
       state.hullName = nil
       state.name = str(data.address)
@@ -149,6 +164,7 @@ function L.empyreal_room(state, data)
       state.name = nil
       state.area = nil
       state.areaName = nil
+      state.door = nil
     end
     state.roomId = id
     state.address = str(data.address)
@@ -183,6 +199,7 @@ function L.reset(state)
     state.areaName = nil
     state.hull = nil
     state.hullName = nil
+    state.door = nil
     state.lift = nil
   end)
 end
