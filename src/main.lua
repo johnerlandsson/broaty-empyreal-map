@@ -23,7 +23,7 @@ local function post_location()
 end
 
 local function post_scene()
-  panel:post('scene', { scene = S.scene(scene), station = S.station(scene) })
+  panel:post('scene', { scene = S.scene(scene), station = S.station(scene), port = S.port(scene) })
 end
 
 local function post_charts()

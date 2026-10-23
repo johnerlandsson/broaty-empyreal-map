@@ -286,7 +286,9 @@ A new map type says in its doc what its line shows.
 - The same Background, Tones and Model edge as the models, so a rock looks
   like it belongs with a station.
 - Eased, never sudden: the stars speed up and slow down, stars cross-fade to
-  rocks.
+  rocks, and the ground below a port fades in and from day to night.
+- The ground below a port is the one place with colours of its own: Tamsin's
+  dusty face by day, near-black with Porthole lamps by night (space-scenes.md).
 - The frame loop runs only while something is on screen, and pauses while the
   panel is hidden.
 - The chart (§13) can cover the scene. While it does, the scene keeps its

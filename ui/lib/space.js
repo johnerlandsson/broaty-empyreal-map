@@ -1,20 +1,23 @@
 // The overview's space scenes, as plain data: a starfield seen looking ahead (still when parked,
-// streaming when travelling) and low-poly rocks drifting past at a belt. No DOM here; the canvas
+// streaming when travelling), low-poly rocks drifting past at a belt, and over a port the town
+// on its planet's face below. No DOM here; the canvas
 // drawing is in space-view.js.
 
 const PARKED = 0.01; // the parked starfield barely drifts
 
-/** What the view eases toward for a scene: space shown, rocks shown, star speed (0..1). */
+/** What the view eases toward for a scene: space shown, rocks shown, ground shown, star speed (0..1). */
 export function targets(scene) {
   switch (scene) {
     case "parked":
-      return { space: 1, belt: 0, speed: PARKED };
+      return { space: 1, belt: 0, ground: 0, speed: PARKED };
     case "travelling":
-      return { space: 1, belt: 0, speed: 1 };
+      return { space: 1, belt: 0, ground: 0, speed: 1 };
     case "belt":
-      return { space: 1, belt: 1, speed: 0 };
+      return { space: 1, belt: 1, ground: 0, speed: 0 };
+    case "port":
+      return { space: 1, belt: 0, ground: 1, speed: PARKED };
     default:
-      return { space: 0, belt: 0, speed: 0 };
+      return { space: 0, belt: 0, ground: 0, speed: 0 };
   }
 }
 
@@ -152,5 +155,34 @@ export class Belt {
       return { ...k, x, a: k.a + k.wa * dt, b: k.b + k.wb * dt };
     });
     this.rocks.sort((p, q) => p.d - q.d);
+  }
+}
+
+// --- a town below --------------------------------------------------------------------------
+
+/**
+ * A port seen from above, in units of the landing field's width about its centre (y down): the
+ * field, low roofs round it, the lamps that show at night and a beacon at each of the field's
+ * corners, and dusty patches on the ground about it.
+ */
+export class Town {
+  constructor(rnd) {
+    const field = { w: 1, h: 0.4 };
+    const outside = (x, y, m) => Math.abs(x) > field.w / 2 + m || Math.abs(y) > field.h / 2 + m;
+    const scatter = (n, m, make) => {
+      const out = [];
+      while (out.length < n) {
+        const x = (rnd() - 0.5) * 2.2;
+        const y = (rnd() - 0.5) * 1.3;
+        if (outside(x, y, m)) out.push(make(x, y));
+      }
+      return out;
+    };
+    this.field = field;
+    this.pads = [-1 / 3, 0, 1 / 3];
+    this.roofs = scatter(26, 0.06, (x, y) => ({ x, y, w: 0.06 + rnd() * 0.13, h: 0.04 + rnd() * 0.09, tone: 1 + Math.floor(rnd() * 2) }));
+    this.lamps = scatter(40, 0, (x, y) => ({ x, y, a: 0.35 + rnd() * 0.6 }));
+    this.beacons = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sy], i) => ({ x: (sx * field.w) / 2, y: (sy * field.h) / 2, at: i * 0.25 }));
+    this.dust = Array.from({ length: 30 }, () => ({ x: rnd(), y: rnd(), rx: 10 + rnd() * 40, ry: 3 + rnd() * 8, a: rnd() }));
   }
 }

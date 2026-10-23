@@ -35,8 +35,9 @@ you, as the wheel does.
 
 **Out in your ship.** Once you undock, the station model fades into a view
 looking ahead from your ship: a still starfield while you're parked, the
-stars streaming past while you travel, and low-poly asteroids tumbling past
-while you're at a belt. It's scenery only, with no controls; docking brings
+stars streaming past while you travel, low-poly asteroids tumbling past
+while you're at a belt, and over Zennor the town below on Tamsin's face, on
+the day side or the night side as it is in the game. It's scenery only, with no controls; docking brings
 the station back. Docked at another ship, say a skiff at a freighter's
 collar, you see what the freighter sees: the stars streaming past while she
 travels, the station while she's docked at one. This follows the ship you can fly: your own, or one you
@@ -160,7 +161,7 @@ python3 -m http.server 8765
 # http://localhost:8765/dev/preview.html
 ```
 
-`?step=N` jumps to step N of the walk, `?scene=belt` (or `parked`, `travelling`) opens on a
+`?step=N` jumps to step N of the walk, `?scene=belt` (or `parked`, `travelling`, `port-day`, `port-night`) opens on a
 space scene, and the menu in the bar switches it. `?debug` shows how often the model
 turned and redrew.
 

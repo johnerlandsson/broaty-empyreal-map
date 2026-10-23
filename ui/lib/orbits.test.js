@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EDGE_KM, ago, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
-  followStep, markOf, offCentre, offsetOn, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
+  daylit, followStep, markOf, offCentre, offsetOn, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
 } from "./orbits.js";
 
 const rad = (d) => (d * Math.PI) / 180;
@@ -428,5 +428,41 @@ describe("markOf", () => {
     expect(markOf("port")).toBe("station");
     expect(markOf(undefined)).toBe("station");
     expect(markOf(42)).toBe("station");
+  });
+});
+
+describe("daylit", () => {
+  // Tamsin at [6000, 0] at the epoch; a port on its 400 km surface turning once in 4 hours.
+  const port = (phase) =>
+    indexCharts({
+      epoch: 0,
+      bodies: [
+        { id: "senara", kind: "star" },
+        { id: "tamsin", kind: "planet", radius: 400, orbit: orbit("senara", 6000, 259200) },
+        { id: "zennor", kind: "port", orbit: orbit("tamsin", 400, 14400, { phase }) },
+      ],
+    });
+
+  it("is day with the town facing the star", () => {
+    expect(daylit(port(180), "zennor", 0)).toBe(true);
+  });
+
+  it("is night with the town facing away", () => {
+    expect(daylit(port(0), "zennor", 0)).toBe(false);
+  });
+
+  it("turns with the planet's day", () => {
+    expect(daylit(port(0), "zennor", 7200 * 1000)).toBe(true);
+    expect(daylit(port(0), "zennor", 14400 * 1000)).toBe(false);
+  });
+
+  it("is day just past the terminator and night just short of it", () => {
+    expect(daylit(port(95), "zennor", 0)).toBe(true);
+    expect(daylit(port(85), "zennor", 0)).toBe(false);
+  });
+
+  it("is null when the charts can't place it", () => {
+    expect(daylit(port(0), "nowhere", 0)).toBe(null);
+    expect(daylit(indexCharts({ bodies: [{ id: "zennor", kind: "port", orbit: orbit("tamsin", 400, 14400) }] }), "zennor", 0)).toBe(null);
   });
 });

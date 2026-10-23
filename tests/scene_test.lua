@@ -4,8 +4,11 @@ local t = require('support.t')
 local S = require('station_map.scene')
 local test, eq = t.test, t.eq
 
-local CHARTS = { epoch = 0, system = 'sol', bodies = {}, places = {
+local CHARTS = { epoch = 0, system = 'sol', bodies = {
+  { id = 'zennor', name = 'Zennor', kind = 'port' },
+}, places = {
   { id = 'tiss', name = 'T.I.S.S.', kind = 'station' },
+  { id = 'zennor', name = 'Zennor', kind = 'station' },
   { id = 'belt.7', name = 'Dusty Reach', kind = 'belt' },
   { id = 'mouth.2', name = 'Lane to Vega', kind = 'mouth' },
 } }
@@ -51,6 +54,48 @@ test('at a lane mouth is parked', function()
   S.space_charts(s, CHARTS)
   S.ship_status(s, status({ location = 'mouth.2' }))
   eq(S.scene(s), 'parked')
+end)
+
+test('over a port is port, and names it', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  eq(S.ship_status(s, status({ location = 'zennor' })), true)
+  eq(S.scene(s), 'port')
+  eq(S.port(s), 'zennor')
+  eq(S.station(s), nil)
+end)
+
+test('landed at a port is the station, with no port overhead', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, status({ docked = true, location = 'zennor' }))
+  eq(S.scene(s), 'station')
+  eq(S.port(s), nil)
+end)
+
+test('off a port, port is nil', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, status({ location = 'tiss' }))
+  eq(S.port(s), nil)
+  S.ship_status(s, status({ destination = 'zennor' }))
+  eq(S.port(s), nil)
+end)
+
+test('a host at rest over a port puts her guest over it too', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, status({ docked = true, host = { docked = false, location = 'zennor' } }))
+  eq(S.scene(s), 'port')
+  eq(S.port(s), 'zennor')
+end)
+
+test('charts arriving after the status turn parked into port', function()
+  local s = S.new()
+  S.ship_status(s, status({ location = 'zennor' }))
+  eq(S.scene(s), 'parked')
+  eq(S.space_charts(s, CHARTS), true)
+  eq(S.scene(s), 'port')
 end)
 
 test('a place missing from the charts is parked', function()

@@ -1,12 +1,14 @@
 -- Scene reducer: folds Ship.Status and Space.Charts into which picture the
--- overview shows: 'station', 'parked', 'travelling' or 'belt', and which
--- station your ship is docked at, if she is.
+-- overview shows: 'station', 'parked', 'travelling', 'belt' or 'port', which
+-- station your ship is docked at, if she is, and which port she's over.
 -- Ship.Status comes for the ship you're aboard and can fly, your own or one
 -- you crew (crew get leaseLeft null, which this ignores), and is null off
 -- her, so only as a guest aboard someone else's ship does this stay 'station'.
 -- Docked at another ship, her own `docked` is true with no `location`, and
 -- `host` says where her host is (gmcp.md §8.2): she rides with her host, so
 -- the picture is the host's.
+-- Over a port (a Space.Charts body of kind 'port', planetside.md §3), not
+-- landed, the picture is the planet's face below with the town on it.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 
 local S = {}
@@ -17,7 +19,7 @@ local function str(v)
 end
 
 function S.new()
-  return { belts = {} }
+  return { belts = {}, ports = {} }
 end
 
 function S.scene(state)
@@ -27,7 +29,15 @@ function S.scene(state)
   if at.docked then return 'station' end
   if at.destination then return 'travelling' end
   if at.location and state.belts[at.location] then return 'belt' end
+  if at.location and state.ports[at.location] then return 'port' end
   return 'parked'
+end
+
+-- The port your ship is over, not landed ('zennor'), or nil.
+function S.port(state)
+  if S.scene(state) ~= 'port' then return nil end
+  local at = state.ship.host or state.ship
+  return at.location
 end
 
 -- The station your ship is docked at ('tiss', 'orrin_station', 'wenna_halt', ...), or her
@@ -41,10 +51,10 @@ function S.station(state)
 end
 
 local function key(state)
-  return S.scene(state) .. '|' .. (S.station(state) or '')
+  return S.scene(state) .. '|' .. (S.station(state) or '') .. '|' .. (S.port(state) or '')
 end
 
--- Runs `fn`, returning true if the scene or the docked station changed because of it.
+-- Runs `fn`, returning true if the scene, the docked station or the port changed because of it.
 local function track(state, fn)
   local before = key(state)
   fn()
@@ -71,14 +81,23 @@ function S.ship_status(state, data)
   end)
 end
 
+-- Belts are places of kind 'belt'; a port is a body of kind 'port' (among places
+-- it's a 'station', gmcp.md §8.4).
 function S.space_charts(state, data)
-  if type(data) ~= 'table' or type(data.places) ~= 'table' then return false end
+  if type(data) ~= 'table' then return false end
+  if type(data.places) ~= 'table' and type(data.bodies) ~= 'table' then return false end
+  local places = type(data.places) == 'table' and data.places or {}
+  local bodies = type(data.bodies) == 'table' and data.bodies or {}
   return track(state, function()
-    local belts = {}
-    for _, p in ipairs(data.places) do
+    local belts, ports = {}, {}
+    for _, p in ipairs(places) do
       if type(p) == 'table' and p.kind == 'belt' and str(p.id) then belts[p.id] = true end
     end
+    for _, b in ipairs(bodies) do
+      if type(b) == 'table' and b.kind == 'port' and str(b.id) then ports[b.id] = true end
+    end
     state.belts = belts
+    state.ports = ports
   end)
 end
 
@@ -86,6 +105,7 @@ function S.reset(state)
   return track(state, function()
     state.ship = nil
     state.belts = {}
+    state.ports = {}
   end)
 end
 

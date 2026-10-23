@@ -78,6 +78,18 @@ export function positionOf(index, id, t, depth = 0) {
   return null;
 }
 
+// Whether a port on its planet's surface has its star above the horizon at wall-clock t (ms),
+// as the game's isDay (planetside.md §4): straight up from the planet's centre through the town,
+// against the way to the star. Null when the charts can't place the town or its planet.
+export function daylit(index, id, t) {
+  const planet = parentOf(index, id);
+  const here = positionOf(index, id, t);
+  const centre = planet === null ? null : positionOf(index, planet, t);
+  if (!here || !centre) return null;
+  // the star is at the origin: the way to it is -here
+  return (here[0] - centre[0]) * -here[0] + (here[1] - centre[1]) * -here[1] > 0;
+}
+
 // The nearest body that holds both, as the game's Orbits.common: a chain starts at the
 // item itself (a point's body), so a body is the frame of a trip to its own moon.
 export function frameOf(index, a, b) {

@@ -198,6 +198,13 @@ test('arriving at a charted belt posts the belt scene', function()
   eq(post_named(env, 'scene').data, { scene = 'belt' })
 end)
 
+test('arriving over a port posts the port scene with the port', function()
+  local env = boot()
+  env.gmcp_handlers['Space.Charts']('Space.Charts', { bodies = { { id = 'zennor', name = 'Zennor', kind = 'port' } } })
+  env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = false, location = 'zennor' })
+  eq(post_named(env, 'scene').data, { scene = 'port', port = 'zennor' })
+end)
+
 test('ready replays the scene when away from the station', function()
   local env = boot()
   env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = false, location = 'tiss' })

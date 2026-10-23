@@ -7,7 +7,8 @@
 //   ?repeat   with ?step: after it settles, re-send step N twice and report what changed
 //   ?debug    count model turns / redraws and deck highlights / re-centres, shown bottom-right
 //   ?still    send settings { turn_model: false }
-//   ?scene=S  open on overview scene S (station, parked, travelling or belt); the bar's menu switches it
+//   ?scene=S  open on overview scene S (station, parked, travelling, belt, or port-day / port-night over
+//             Zennor, which also emits charts placing it so); the bar's menu switches it
 //   ?hull=H   aboard a ship, send hull H (skiff, courier or freighter) as the server will; the bar's menu switches it
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
 //             docked-tiss, none, maelor or edge), emitting charts, chart-ship and chart { on: true }; the bar's menu switches it
@@ -229,7 +230,13 @@ function walk(from = 0, until = ROUTE.length - 1) {
 document.getElementById("walk").addEventListener("click", () => walk());
 
 const sceneMenu = document.getElementById("scene");
-sceneMenu.addEventListener("change", () => fp.emit("scene", { scene: sceneMenu.value }));
+function emitScene(name) {
+  const side = /^port-(day|night)$/.exec(name)?.[1];
+  if (!side) return fp.emit("scene", { scene: name });
+  fp.emit("charts", senaraCharts(Date.now(), null, side));
+  fp.emit("scene", { scene: "port", port: "zennor" });
+}
+sceneMenu.addEventListener("change", () => emitScene(sceneMenu.value));
 
 hullMenu.addEventListener("change", () => {
   if (lastMsg?.roomId?.startsWith("ship.")) fp.emit("location", structuredClone(withHull(lastMsg, true)));
@@ -267,7 +274,7 @@ function start() {
   fp.emit("settings", { turn_model: !q.has("still") });
   if (q.has("scene")) {
     sceneMenu.value = q.get("scene");
-    fp.emit("scene", { scene: sceneMenu.value });
+    emitScene(q.get("scene"));
   }
   if (q.has("hull")) hullMenu.value = q.get("hull");
   if (q.has("chart")) {

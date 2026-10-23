@@ -41,9 +41,21 @@ const mouth = (from, to, name, edge) => {
 /** The epoch is fixed at now - 30000 * 1000 so the moment matches the mockup's. */
 const epoch = (now) => now - 30000 * 1000;
 
-export function senaraCharts(now, edge = null) {
+/** Zennor, a port on Tamsin's surface turning with its 4-hour day (gmcp.md §8.4), set to face
+ *  Senara at `now` (day) or away from it (night). Tamsin's phase is 0 and the epoch 30000 s back. */
+function zennor(now, side) {
+  const since = (now - epoch(now)) / 1000;
+  const tamsin = (360 * since) / period(FRAMES.senara, 6000);
+  const turned = (360 * since) / 14400;
+  const phase = (((tamsin + (side === "night" ? 0 : 180) - turned) % 360) + 360) % 360;
+  const o = { parent: "tamsin", a: 400, e: 0, peri: 0, phase, period: 14400 };
+  return { body: { id: "zennor", name: "Zennor", kind: "port", orbit: o }, place: { id: "zennor", name: "Zennor", kind: "station", orbit: o, fit: null } };
+}
+
+export function senaraCharts(now, edge = null, side = "day") {
   const tiss = station("tiss", "Tamsin International Space Station", "tamsin", 900);
   const orrinStation = station("orrin_station", "Orrin Station", "orrin", 800);
+  const port = zennor(now, side);
   return {
     epoch: epoch(now),
     system: "senara",
@@ -53,10 +65,12 @@ export function senaraCharts(now, edge = null) {
       { id: "orrin", name: "Orrin", kind: "planet", radius: 500, orbit: orbit("senara", FRAMES.senara, 12000, { e: 0.1, phase: 150 }) },
       tiss.body,
       orrinStation.body,
+      port.body,
     ],
     places: [
       tiss.place,
       orrinStation.place,
+      port.place,
       belt("cinders", "The Cinders", "tamsin", 1800, { phase: 90 }, fit(now, 2 * DAY, 2600)),
       belt("gannet", "Gannet Belt", "tamsin", 2700, { phase: 200 }, fit(now, HOUR, 120)),
       // lost: an error of at least 0.9 * pi * a (a = 8500)

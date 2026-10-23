@@ -152,13 +152,14 @@ panel.on("settings", (msg) => {
 });
 
 panel.on("scene", (msg) => {
-  space.set(msg?.scene);
+  space.set(msg?.scene, msg?.port ?? null);
   docked = stationOfDock(msg?.station);
   render();
 });
 
 panel.on("charts", (msg) => {
   chart.setCharts(msg);
+  space.setCharts(chart.index);
   runChart();
 });
 

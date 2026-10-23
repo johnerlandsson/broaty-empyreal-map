@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Belt, Starfield, approach, rockFaces, makeRock, targets } from "./space.js";
+import { Belt, Starfield, Town, approach, rockFaces, makeRock, targets } from "./space.js";
 import { rng } from "./svg.js";
 
 describe("targets", () => {
@@ -19,6 +19,16 @@ describe("targets", () => {
 
   it("belt shows rocks and stops the stars", () => {
     expect(targets("belt")).toMatchObject({ space: 1, belt: 1, speed: 0 });
+  });
+
+  it("port shows the ground under still stars, no rocks", () => {
+    const t = targets("port");
+    expect(t).toMatchObject({ space: 1, belt: 0, ground: 1 });
+    expect(t.speed).toBeLessThan(0.05);
+  });
+
+  it("only port shows the ground", () => {
+    for (const s of ["station", "parked", "travelling", "belt"]) expect(targets(s).ground).toBe(0);
   });
 
   it("an unknown scene is the station", () => {
@@ -108,5 +118,26 @@ describe("rocks", () => {
     const b = new Belt(12, rng(5));
     b.step(0.1, 360, 220);
     for (let i = 1; i < b.rocks.length; i++) expect(b.rocks[i].d).toBeGreaterThanOrEqual(b.rocks[i - 1].d);
+  });
+});
+
+describe("Town", () => {
+  const town = new Town(rng(5));
+  const off = ([x, y]) => Math.abs(x) > town.field.w / 2 || Math.abs(y) > town.field.h / 2;
+
+  it("keeps roofs and lamps off the landing field", () => {
+    expect(town.roofs.length).toBeGreaterThan(10);
+    expect(town.lamps.length).toBeGreaterThan(10);
+    for (const r of town.roofs) expect(off([r.x, r.y]) || off([r.x + r.w, r.y + r.h])).toBe(true);
+    for (const l of town.lamps) expect(off([l.x, l.y])).toBe(true);
+  });
+
+  it("puts a beacon at each corner of the field", () => {
+    const { w, h } = town.field;
+    expect(town.beacons.map((b) => [Math.abs(b.x), Math.abs(b.y)])).toEqual(Array(4).fill([w / 2, h / 2]));
+  });
+
+  it("is the same town from the same seed", () => {
+    expect(new Town(rng(5))).toEqual(town);
   });
 });
