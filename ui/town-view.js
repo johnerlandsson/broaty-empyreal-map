@@ -1,21 +1,40 @@
-// A town's top band (Zennor): on the ground, so not a model but the skyline from the street. A
-// still, low-poly view in the models' Tones under the stars: the ridge rising east, the town's low
-// roofs and the port office's squat tower with its glass room, the field's blast wall at the
-// west, the salt pans a pale line on the horizon. Nothing is lit and nothing moves. It stands in
-// for the sky view (zennor-sky), which will replace this file: main.js needs only `div`, `set()`
-// and `setTurning()`, as from a ModelView.
+// A town's top band (Zennor): you're on the ground, so not a model but the skyline from the
+// street, a still, low-poly view in the models' Tones: the ridge rising east, the town's low roofs
+// and the port office's squat tower with its glass room, the field's blast wall at the west, the
+// salt pans a pale line on the horizon. Out of doors the sky is over it, as the game's `look sky`
+// tells it (ui/lib/sky.js): a dome from the western horizon through overhead to the eastern, with
+// Senara, T.I.S.S. and Orrin where the game puts them, each named and hovered with its sentence,
+// the sky's tint, stars and glow stepped with the game's bands. Indoors, or with no charts to say,
+// it's the skyline alone, with nothing in its sky. main.js redraws it each second while it's
+// live; it needs `div`, `set()` and `setTurning()` as from a ModelView, and `setCharts()`.
 
+import { groundSky, skyScene } from "./lib/sky.js";
 import { attachPanZoom, el, stars, zoomButtons } from "./lib/svg.js";
 
 const TONES = ["#3a4556", "#58667b", "#7e8da3"];
 const EDGE = "#0d1218";
 const GLASS = "#cfe3ff";
+const ORBIT = "#2b3646";
+const DIM = "#7d8a9a";
+const TEXT = "#e3eaf2";
+const STAR = "#fffaf0";
+const GOLD = "#ffcf6a";
+const GLOWS = { dusk: ["#e8925a", 0.35], dawn: ["#b8c8dc", 0.3] };
+const DOME = 170; // the sky's radius, its feet on the horizon either side of the town
 const HORIZON = 52;
 const VIEW = [-190, -150, 380, 250]; // the horizon low in it: a taller band shows more sky, not more ground
 
-export class SkylineView {
-  /** @param {HTMLElement} containerEl the band */
-  constructor(containerEl) {
+export class SkyView {
+  /**
+   * @param {HTMLElement} containerEl the band
+   * @param {{ byId: Map<string, { outdoors: boolean }> }} town indexTown()'s index, for which rooms are open to the sky
+   * @param {string} port the town's id in the charts ("zennor")
+   */
+  constructor(containerEl, town, port) {
+    this.town = town;
+    this.port = port;
+    this.charts = null;
+    this.outdoors = false;
     const div = document.createElement("div");
     div.className = "model";
     Object.assign(div.style, {
@@ -34,8 +53,12 @@ export class SkylineView {
     Object.assign(svg.style, { display: "block", width: "100%", height: "100%" });
     div.appendChild(svg);
     this.svg = svg;
-    stars(el("g", {}, svg), -1500, -1500, 3000, 1500 + HORIZON - 4, 1400, 11);
+    const defs = el("defs", {}, svg);
+    el("path", { d: dome() }, el("clipPath", { id: "sky-clip" }, defs));
+    el("feGaussianBlur", { stdDeviation: 10 }, el("filter", { id: "sky-soft", x: "-50%", y: "-50%", width: "200%", height: "200%" }, defs));
+    this.back = el("g", {}, svg); // tint and stars, behind the skyline
     skyline(el("g", {}, svg));
+    this.front = el("g", {}, svg); // the dome, its marks and the glow, over it: nothing up is hidden
     this.zoom = attachPanZoom(div, () => this.vb, (v) => this.setView(v), { minW: VIEW[2] * 0.4, maxW: VIEW[2] * 1.6 });
     zoomButtons(div, "8px", (f) => (f ? this.zoom(f) : this.setView(VIEW.slice())));
   }
@@ -45,10 +68,79 @@ export class SkylineView {
     this.svg.setAttribute("viewBox", v.map((n) => +n.toFixed(2)).join(" "));
   }
 
-  /** Where you are in town changes nothing here. */
-  set() {}
+  /** Where you are: out of doors in one of the town's rooms the sky shows, anywhere else not. */
+  set(where) {
+    this.outdoors = where?.kind === "room" && !!this.town?.byId.get(where.id)?.outdoors;
+    this.draw(Date.now());
+  }
 
   setTurning() {}
+
+  /** The system's charts, an indexCharts() result. */
+  setCharts(index) {
+    this.charts = index;
+    this.draw(Date.now());
+  }
+
+  /** Whether there's a sky to keep up: out of doors, with charts that place the town. */
+  get live() {
+    return this.outdoors && !!this.charts && groundSky(this.charts, this.port, Date.now()) !== null;
+  }
+
+  /** Draw the sky at wall-clock t (ms), or clear it to the bare skyline. */
+  draw(t) {
+    this.back.replaceChildren();
+    this.front.replaceChildren();
+    const sky = this.outdoors && this.charts ? groundSky(this.charts, this.port, t) : null;
+    if (!sky) return;
+    const scene = skyScene(sky);
+    const inside = el("g", { "clip-path": "url(#sky-clip)" }, this.back);
+    if (scene.tint) el("path", { d: dome(), fill: scene.tint }, inside);
+    if (scene.stars !== "none") stars(inside, -DOME, HORIZON - DOME, DOME * 2, DOME, scene.stars === "all" ? 260 : 25, 11);
+
+    const f = this.front;
+    if (scene.glow) {
+      const [fill, opacity] = GLOWS[scene.glow.kind];
+      el("ellipse", { cx: scene.glow.east ? DOME : -DOME, cy: HORIZON, rx: 70, ry: 26, fill, opacity, filter: "url(#sky-soft)" }, f);
+    }
+    const hover = el("path", { d: dome(), fill: "transparent" }, f);
+    el("title", {}, hover, scene.hover);
+    el("path", { d: dome(true), fill: "none", stroke: ORBIT, "stroke-dasharray": "2 3" }, f);
+    const label = { fill: DIM, "font-size": 8, "font-family": "var(--font-family, sans-serif)" };
+    el("text", { ...label, x: -DOME, y: HORIZON + 11, "text-anchor": "middle" }, f, "W");
+    el("text", { ...label, x: DOME, y: HORIZON + 11, "text-anchor": "middle" }, f, "E");
+    for (const m of scene.marks) {
+      const a = (m.angle * Math.PI) / 180;
+      const x = -DOME * Math.cos(a);
+      const y = HORIZON - DOME * Math.sin(a);
+      const g = el("g", {}, f);
+      el("title", {}, g, m.line);
+      mark(g, m.look, x, y);
+      const east = m.angle > 120;
+      el("text", { ...label, x: x + (east ? -9 : 9), y: y + 3, "text-anchor": east ? "end" : "start" }, g, m.name);
+    }
+  }
+}
+
+/** The dome: closed along the horizon, or just its arc. */
+function dome(open = false) {
+  return `M${-DOME},${HORIZON}A${DOME},${DOME} 0 0 1 ${DOME},${HORIZON}${open ? "" : "Z"}`;
+}
+
+/** A thing in the sky, as skyScene() looks it. */
+function mark(g, look, x, y) {
+  if (look === "sun") {
+    el("circle", { cx: x, cy: y, r: 16, fill: STAR, opacity: 0.18 }, g);
+    el("circle", { cx: x, cy: y, r: 6, fill: STAR }, g);
+  } else if (look === "spark") {
+    el("path", { d: `M${x - 6},${y}h12M${x},${y - 6}v12`, stroke: "#fff", "stroke-width": 0.6, opacity: 0.6 }, g);
+    el("circle", { cx: x, cy: y, r: 2.2, fill: "#fff" }, g);
+  } else if (look === "fleck") {
+    el("circle", { cx: x, cy: y, r: 1.8, fill: TEXT, opacity: 0.6 }, g);
+  } else {
+    el("circle", { cx: x, cy: y, r: 6, fill: GOLD, opacity: 0.15 }, g);
+    el("circle", { cx: x, cy: y, r: 2.4, fill: GOLD }, g);
+  }
 }
 
 function skyline(g) {

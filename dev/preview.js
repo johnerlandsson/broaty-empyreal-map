@@ -16,6 +16,8 @@
 //             chart { on: true }; the bar's menu switches it
 //   ?lanes=L  open the core lanes map on scenario L (senara, in-trunk, in-branch or petroc), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it
+//   ?sky=S    stand in Zennor's Square under sky S (night, dusk, dawn, low, overhead or tiss-overhead): the game's
+//             own charts from dev/sky-cases.json, shifted so a recorded moment of that sky is now; the bar's menu switches it
 
 import carrow from "../ui/data/carrow.js";
 import gwithian from "../ui/data/gwithian.js";
@@ -25,6 +27,7 @@ import orrin from "../ui/data/orrin.js";
 import station from "../ui/data/station.js";
 import wenna from "../ui/data/wenna.js";
 import zennor from "../ui/data/zennor.js";
+import skyCases from "./sky-cases.json" with { type: "json" };
 import { DeckView } from "../ui/deck-view.js";
 import { ModelView } from "../ui/model-view.js";
 import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts } from "./charts-fixture.js";
@@ -363,6 +366,35 @@ function emitLanes(name) {
 }
 lanesMenu.addEventListener("change", () => emitLanes(lanesMenu.value));
 
+// --- Zennor's sky: the game's recorded charts, shifted so a moment of the named sky is now ---------
+
+const skyMenu = document.getElementById("sky");
+const SKY_WORDS = {
+  night: (t) => t.startsWith("Night:") && t.includes("Orrin") && t.includes("T.I.S.S."),
+  dusk: (t) => t.startsWith("Dusk:"),
+  dawn: (t) => t.startsWith("The sky is paling"),
+  low: (t) => t.includes(" is low in "),
+  overhead: (t) => t.includes("stands high overhead"),
+  "tiss-overhead": (t) => t.includes("passing overhead, a bright"),
+};
+
+/** A tick half a minute into a stretch of that sky lasting five minutes or more. */
+function skyTick(name) {
+  const cs = skyCases.cases;
+  const i = cs.findIndex((c, k) => SKY_WORDS[name](c.text) && cs[k + 1] && cs[k + 1].tick - c.tick >= 300);
+  return i < 0 ? null : cs[i].tick + 30;
+}
+
+function emitSky(name) {
+  const tick = name ? skyTick(name) : null;
+  if (tick === null) return;
+  log(`sky: ${name} at tick ${tick}`);
+  fp.emit("charts", { ...skyCases.charts, epoch: Date.now() - tick * 1000 });
+  fp.emit("scene", { scene: "station", station: "zennor" });
+  show(ROUTE.findIndex((s) => s.msg?.roomId === "zennor.square"));
+}
+skyMenu.addEventListener("change", () => emitSky(skyMenu.value));
+
 function start() {
   fp.emit("settings", { turn_model: !q.has("still") });
   if (q.has("scene")) {
@@ -377,6 +409,11 @@ function start() {
   if (q.has("lanes")) {
     lanesMenu.value = q.get("lanes");
     emitLanes(lanesMenu.value);
+  }
+  if (q.has("sky")) {
+    skyMenu.value = q.get("sky");
+    emitSky(skyMenu.value);
+    return;
   }
   const n = q.has("step") ? Math.max(0, Math.min(ROUTE.length - 1, Number(q.get("step")) || 0)) : null;
   if (q.has("walk")) {

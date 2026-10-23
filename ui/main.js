@@ -31,7 +31,7 @@ import { ModelView } from "./model-view.js";
 import { SpaceView } from "./space-view.js";
 import { shipPlans, updateShip } from "./ship-deck.js";
 import { townPlans } from "./town-deck.js";
-import { SkylineView } from "./town-view.js";
+import { SkyView } from "./town-view.js";
 
 const modelEl = document.getElementById("model");
 const deckEl = document.getElementById("deck");
@@ -66,10 +66,10 @@ function decks(data, spec) {
   return { index, model, deck: new DeckView(deckEl, index, decksPlans(spec)), lastLevel: null, locate: locateDecks };
 }
 
-/** Zennor: a town on the ground, rooms placed by their compass exits; the skyline over it. */
+/** Zennor: a town on the ground, rooms placed by their compass exits; its sky over it. */
 function town(data, spec) {
   const index = indexTown(data, spec);
-  return { index, model: new SkylineView(modelEl), deck: new DeckView(deckEl, index, townPlans(spec)), lastLevel: null, locate: locateTown, info: townInfo };
+  return { index, model: new SkyView(modelEl, index, "zennor"), deck: new DeckView(deckEl, index, townPlans(spec)), lastLevel: null, locate: locateTown, info: townInfo };
 }
 
 const stations = {
@@ -110,6 +110,7 @@ const CHART_SMOOTH = 100; // ms between redraws while she's under way
 /** Redraw the chart or the lanes map once a second while it's shown and the panel visible, more
  *  often while she moves, and not at all otherwise; and keep the space scene from drawing under it. */
 function runChart() {
+  runSky();
   const view = chart.shown ? chart : lanes.shown ? lanes : null;
   space.setCovered(!!view);
   clearInterval(chartTimer);
@@ -132,6 +133,21 @@ function runChart() {
   }
 }
 document.addEventListener("visibilitychange", runChart);
+
+let scene = null; // the overview scene from the scene message: anything but "station" draws over the band
+let skyTimer = 0;
+
+/** Keep the town's sky moving, a redraw a second, while it's the band showing, there's a sky (out
+ *  of doors, with charts that place the town), and nothing covers it: not the chart or the lanes map, not a space
+ *  scene, not a hidden panel. Starting draws it for now at once. */
+function runSky() {
+  clearInterval(skyTimer);
+  skyTimer = 0;
+  const sky = stations.zennor.model;
+  if (current !== "zennor" || !sky.live || chart.shown || lanes.shown || document.hidden || (scene && scene !== "station")) return;
+  sky.draw(Date.now());
+  skyTimer = setInterval(() => sky.draw(Date.now()), 1000);
+}
 
 let current = null;
 let docked = null; // the station your ship is docked at, from the scene message
@@ -188,13 +204,16 @@ panel.on("settings", (msg) => {
 
 panel.on("scene", (msg) => {
   space.set(msg?.scene, msg?.port ?? null);
+  scene = msg?.scene ?? null;
   docked = stationOfDock(msg?.station);
   render();
+  runSky();
 });
 
 panel.on("charts", (msg) => {
   chart.setCharts(msg);
   space.setCharts(chart.index);
+  stations.zennor.model.setCharts(chart.index);
   runChart();
 });
 
@@ -222,6 +241,7 @@ panel.on("lanes-view", (msg) => {
 panel.on("location", (msg) => {
   last = msg;
   render();
+  runSky();
 });
 
 show("tiss");
