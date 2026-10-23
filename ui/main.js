@@ -7,8 +7,11 @@
 // last location, the docked station, and the level each plan last showed (a lift between floors
 // keeps the plan where it was). The system chart (◎) or the core lanes map (⋈) can cover the top band,
 // one at a time; while one does, the space scene doesn't draw. Docking and undocking, the station
-// model shows through the space scene, drawing near or falling away on the game's clock.
+// model shows through the space scene, drawing near or falling away on the game's clock. What you're
+// doing (Char.Action) is a card in the deck band's corner, over whichever plan shows; the overview is
+// left as it is.
 
+import { ActionCard } from "./action-card.js";
 import { ChartView } from "./chart-view.js";
 import carrow from "./data/carrow.js";
 import gwithian from "./data/gwithian.js";
@@ -86,6 +89,7 @@ const stations = {
 const ships = {}; // hull id -> the DeckView drawing that hull, built on first use
 const space = new SpaceView(modelEl);
 space.onAway = (away) => stations[current]?.model.setAway?.(away);
+const doing = new ActionCard(deckEl);
 const info = document.getElementById("info");
 const panel = window.panel;
 
@@ -260,6 +264,8 @@ panel.on("lanes-view", (msg) => {
   if (lanes.on) chart.setOn(false);
   runChart();
 });
+
+panel.on("action", (msg) => doing.set(msg));
 
 panel.on("location", (msg) => {
   last = msg;

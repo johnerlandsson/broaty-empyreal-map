@@ -40,11 +40,13 @@ local function boot(opts)
   package.loaded['station_map.lanes'] = nil
   package.loaded['station_map.work'] = nil
   package.loaded['station_map.manoeuvre'] = nil
+  package.loaded['station_map.action'] = nil
   local real_require = require
   _G.require = function(name)
     if name == 'station_map.location' or name == 'station_map.scene'
         or name == 'station_map.charts' or name == 'station_map.lanes' or name == 'station_map.work'
-        or name == 'station_map.manoeuvre' then
+        or name == 'station_map.manoeuvre'
+        or name == 'station_map.action' then
       env.requires[#env.requires + 1] = name
       package.loaded[name] = nil
     end
@@ -80,13 +82,14 @@ test('wires panel and requires each module once', function()
   local env = boot()
   eq(env.panel_id, 'map')
   eq(env.requires, { 'station_map.location', 'station_map.scene', 'station_map.charts', 'station_map.lanes',
-    'station_map.work', 'station_map.manoeuvre' })
+    'station_map.work', 'station_map.manoeuvre', 'station_map.action' })
   eq(type(env.gmcp_handlers['mudstd.room.info']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Room']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Vehicle']), 'function')
   eq(type(env.gmcp_handlers['Ship.Status']), 'function')
   eq(type(env.gmcp_handlers['Ship.Devices']), 'function')
   eq(type(env.gmcp_handlers['Space.Charts']), 'function')
+  eq(type(env.gmcp_handlers['Char.Action']), 'function')
   eq(type(env.world_handlers.disconnect), 'function')
   eq(type(env.panel_handlers.ready), 'function')
   eq(type(env.settings_handlers.change), 'function')
@@ -529,6 +532,58 @@ test('disconnect clears a run', function()
   env.posts = {}
   env.world_handlers.disconnect()
   eq(post_named(env, 'manoeuvre').data, { verb = nil })
+end)
+
+local REPAIR = { verb = 'repair', label = 'repairing the laser', stage = 2, stages = 3, left = 31, total = 48, queued = 1 }
+
+test('Char.Action posts what you are doing, its end from the clock', function()
+  local real = os.time
+  os.time = function() return 1000 end
+  local env = boot()
+  env.gmcp_handlers['Char.Action']('Char.Action', REPAIR)
+  os.time = real
+  eq(names(env), { 'action' })
+  eq(env.posts[1].data, { action = {
+    verb = 'repair', label = 'repairing the laser', stage = 2, stages = 3, ends = 1031, total = 48, queued = 1,
+  } })
+end)
+
+test('Char.Action null posts doing nothing, and only once', function()
+  local env = boot()
+  local h = env.gmcp_handlers['Char.Action']
+  h('Char.Action', REPAIR)
+  env.posts = {}
+  h('Char.Action', nil)
+  h('Char.Action', nil)
+  eq(names(env), { 'action' })
+  eq(env.posts[1].data, {})
+end)
+
+test('a Char.Action sub-package reaches no reducer', function()
+  local env = boot()
+  env.gmcp_handlers['Char.Action']('Char.Action.Extra', REPAIR)
+  eq(#env.posts, 0)
+end)
+
+test('ready replays what you are doing, and not doing nothing', function()
+  local env = boot()
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings' })
+  env.gmcp_handlers['Char.Action']('Char.Action', REPAIR)
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings', 'action' })
+  eq(env.posts[2].data.action.label, 'repairing the laser')
+end)
+
+test('disconnect posts doing nothing, if something was under way', function()
+  local env = boot()
+  env.world_handlers.disconnect()
+  eq(post_named(env, 'action'), nil)
+  env.gmcp_handlers['Char.Action']('Char.Action', REPAIR)
+  env.posts = {}
+  env.world_handlers.disconnect()
+  eq(post_named(env, 'action').data, {})
 end)
 
 t.done()

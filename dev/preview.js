@@ -23,6 +23,9 @@
 //             (dock-orrin, 20 s), with the manoeuvre and scene messages the Lua side posts, the scene
 //             changing as the run ends; ?left=N opens it with N s left, as a panel opened mid-run;
 //             ?stop=N stops it N s in, as `stop` or a fault does, so it eases back; the bar's menu switches it
+//   ?action=A play what you're doing, as the Lua side posts Char.Action (climbing on T.I.S.S., repair aboard the skiff in
+//             three stages, or dragging a crate on Orrin): it runs to its end, a move landing you in the next room;
+//             the bar's menu switches it
 //   ?sky=S    stand in Zennor's Square under sky S (night, dusk, dawn, low, overhead or tiss-overhead): the game's
 //             own charts from dev/sky-cases.json, shifted so a recorded moment of that sky is now; the bar's menu switches it
 
@@ -425,6 +428,58 @@ function emitLanes(name) {
 }
 lanesMenu.addEventListener("change", () => emitLanes(lanesMenu.value));
 
+// --- what you're doing: the action messages src/station_map/action.lua posts, played to their end -------
+
+const actionMenu = document.getElementById("action");
+const ACTIONS = {
+  // up the ladder at Mid 3:00 to the Inner Ring, a move
+  "climbing-tiss": {
+    at: room("tiss.mid-0300").msg, scene: { scene: "station", station: "tiss" },
+    verb: "move", label: "climbing", stages: [10], lands: room("tiss.inner-0300").msg,
+  },
+  // the mining laser aboard the Mule: finding the fault, fitting the parts (twice as long) and testing it, with a scan typed ahead
+  "repair-skiff": {
+    at: { roomId: "ship.12.cockpit", name: "Cockpit of the Mule", area: "ship.12", areaName: "Mule", hull: "skiff", hullName: "prospecting skiff" },
+    scene: { scene: "station", station: "tiss" },
+    verb: "repair", label: "repairing the mining laser", stages: [8, 16, 8], queued: 1,
+  },
+  // the crated stove from Orrin's Freight Office out to the deck, a move
+  "drag-orrin": {
+    at: room("orrin.freight").msg, scene: { scene: "station", station: "orrin_station" },
+    verb: "move", label: "dragging the crated stove", stages: [20], lands: room("orrin.deck-3-frame-2").msg,
+  },
+};
+let actionTimers = [];
+
+function emitAction(name) {
+  actionTimers.forEach(clearTimeout);
+  actionTimers = [];
+  const a = ACTIONS[name];
+  if (!a) {
+    fp.emit("action", {});
+    return;
+  }
+  fp.emit("scene", a.scene);
+  emitLocation(a.at);
+  status.textContent = `${a.label} (${name})`;
+  const total = a.stages.reduce((x, y) => x + y, 0);
+  const start = Math.floor(Date.now() / 1000);
+  const ends = start + total;
+  let t = 0;
+  a.stages.forEach((secs, i) => {
+    const msg = { action: { verb: a.verb, label: a.label, stage: i + 1, stages: a.stages.length, ends, total, queued: a.queued ?? 0 } };
+    actionTimers.push(setTimeout(() => fp.emit("action", msg), t * 1000));
+    t += secs;
+  });
+  actionTimers.push(
+    setTimeout(() => {
+      if (a.lands) emitLocation(a.lands);
+      fp.emit("action", {});
+    }, total * 1000),
+  );
+}
+actionMenu.addEventListener("change", () => emitAction(actionMenu.value));
+
 // --- Zennor's sky: the game's recorded charts, shifted so a moment of the named sky is now ---------
 
 const skyMenu = document.getElementById("sky");
@@ -504,6 +559,10 @@ function start() {
   if (q.has("manoeuvre")) {
     manoeuvreMenu.value = q.get("manoeuvre");
     emitManoeuvre(manoeuvreMenu.value);
+  }
+  if (q.has("action")) {
+    actionMenu.value = q.get("action");
+    emitAction(actionMenu.value);
     return;
   }
   if (q.has("sky")) {
