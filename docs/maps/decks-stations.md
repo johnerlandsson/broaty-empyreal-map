@@ -1,6 +1,7 @@
 # Decks stations
 
-*Status: built for Orrin Station. Last updated 2026-10-22.*
+*Status: built for Orrin Station, Morvah Deep, Gwithian Reach, Carrow Yard and Lanyon High.
+Last updated 2026-10-23.*
 
 ## What it is and when it shows
 
@@ -13,6 +14,24 @@ ship is docked there.
 | Station | Gravity | Shape | Rooms |
 |---|---|---|---|
 | Orrin Station | 0 g | a box three frames long and two decks deep, the Gallery in a glass blister on Deck 1, under Deck 2 | the Berths, Freight Office and Chart Office off Deck 3's passage; a hatchway down to the Concourse on Deck 2, the Exchange off its passage, and a hatch down to the Gallery |
+| Morvah Deep | 0 g | as Orrin | as Orrin |
+| Gwithian Reach | 0 g | as Orrin | as Orrin |
+| Carrow Yard | 0 g | as Orrin | as Orrin |
+| Lanyon High | 0 g | as Orrin | as Orrin |
+
+The four halts (empyreal bc71307) are outposts of Orrin's class, laid out as
+it is room for room; only their prefixes and prose differ. What sets them
+apart on the map is their tints and cradles, from their descriptions:
+
+| Station | Passages and Concourse | Freight Office | Chart Office | Exchange | Cradles |
+|---|---|---|---|---|---|
+| Orrin Station | `industrial` (foundry orange) | `industrial` | `docks` | `concourse` | big ones for ore tugs and drop cans, skiffs' at the corners |
+| Morvah Deep | `concourse` (hazard yellow) | `midring` | `offices` (the weather screens) | `offices` | five short, squat ones for skimmers |
+| Gwithian Reach | `industrial` (rust red) | `midring` (ingots) | `docks` | `concourse` | ore barges, a long water tanker, skiffs' at the corners |
+| Carrow Yard | `midring` (sensible grey) | `industrial` (ships' parts) | `docks` | `offices` (the yards' bids) | five alike, in even rows |
+| Lanyon High | `hydroponics` (green cord, vines) | `concourse` (grain) | `docks` | `commons` | three broad ones for grain ships |
+
+The Berths and the Gallery are `docks` everywhere.
 
 Orrin Station was a drum until the game rebuilt it on decks (empyreal
 3833090, 772647b). Wenna Halt is still one (see
@@ -20,13 +39,15 @@ Orrin Station was a drum until the game rebuilt it on decks (empyreal
 
 ## Where its data comes from
 
-`ui/data/orrin.js`, copied from `content/areas/orrin.yaml` in the Empyreal
-source: each room's id, name, address, flags and exits, as the YAML has them
+`ui/data/orrin.js` (and `morvah.js`, `gwithian.js`, `carrow.js`,
+`lanyon.js`), copied from `content/areas/orrin.yaml` (and the others) in the
+Empyreal source: each room's id, name, address, flags and exits, as the YAML has them
 (north fore, south aft, west port, east starboard), and the area's gravity.
 Nothing is placed by hand. `parseAddress()` in `ui/lib/decks.js` reads each
 address as the game's coords do: x the side (starboard positive), y the frame
 (counting fore), z the deck (counting up, away from the planet). A test
-checks the data against the YAML whenever `~/dev/empyreal` is there.
+checks each station's data against its YAML whenever `~/dev/empyreal` is
+there.
 
 What the addresses don't say is in `DECKS` in `ui/lib/decks.js`: the room id
 prefix, a district tint per room, which rooms are blisters, and the cradles at

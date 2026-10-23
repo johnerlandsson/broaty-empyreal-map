@@ -1,5 +1,6 @@
-// Preview driver: replays a walk round T.I.S.S., then flights to Orrin Station and Wenna Halt and a
-// walk round each, then down to Zennor on Tamsin and a walk round the town, through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
+// Preview driver: replays a walk round T.I.S.S., then flights to Orrin Station, Wenna Halt and the
+// four halts on decks (Morvah Deep, Gwithian Reach, Carrow Yard, Lanyon High) and a walk round
+// each, then down to Zennor on Tamsin and a walk round the town, through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
 // (src/station_map/location.lua, src/station_map/scene.lua).
 //
 //   ?step=N   open on route step N, as a panel re-mounting mid-walk would (only step N is replayed)
@@ -16,6 +17,10 @@
 //   ?lanes=L  open the core lanes map on scenario L (senara, in-trunk, in-branch or petroc), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it
 
+import carrow from "../ui/data/carrow.js";
+import gwithian from "../ui/data/gwithian.js";
+import lanyon from "../ui/data/lanyon.js";
+import morvah from "../ui/data/morvah.js";
 import orrin from "../ui/data/orrin.js";
 import station from "../ui/data/station.js";
 import wenna from "../ui/data/wenna.js";
@@ -27,7 +32,8 @@ import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts } from "./charts-f
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
 const town = zennor.rooms.map((r) => ({ ...r, gravity: zennor.area.gravity })); // the area's gravity, as the game sends it
-const byId = new Map([...station.rooms, ...orrin.rooms, ...wenna.rooms, ...town].map((r) => [r.id, r]));
+const DATA = [station.rooms, orrin.rooms, wenna.rooms, morvah.rooms, gwithian.rooms, carrow.rooms, lanyon.rooms, town];
+const byId = new Map(DATA.flat().map((r) => [r.id, r]));
 
 // --- the route -------------------------------------------------------------------------------
 
@@ -67,6 +73,17 @@ function freighter(key, name) {
       shipRoom: key,
     },
   };
+}
+
+/** Fly to a halt laid out as Orrin is (`prefix`, its dock `place`), dock, and go round it once. */
+function halt(prefix, name, place) {
+  const at = (key) => room(`${prefix}.${key}`);
+  return [
+    { label: `Flying to ${name}`, msg: COCKPIT, scene: { scene: "travelling" } },
+    { label: `Docked at ${name}`, msg: COCKPIT, scene: { scene: "station", station: place } },
+    ...["berth", "deck-3-frame-2", "freight", "deck-3-frame-2", "charts", "deck-3-frame-2", "deck-3-frame-1"].map(at),
+    ...["concourse", "deck-2-frame-2", "market", "deck-2-frame-2", "gallery"].map(at),
+  ];
 }
 
 const ROUTE = [
@@ -152,6 +169,10 @@ const ROUTE = [
   room("wenna.lounge"),
   room("wenna.concourse"),
   room("wenna.berth"),
+  ...halt("morvah", "Morvah Deep", "morvah_deep"),
+  ...halt("gwithian", "Gwithian Reach", "gwithian_reach"),
+  ...halt("carrow", "Carrow Yard", "carrow_yard"),
+  ...halt("lanyon", "Lanyon High", "lanyon_high"),
   { label: "Flying to Zennor", msg: COCKPIT, scene: { scene: "travelling" } },
   { label: "Landed at Zennor", msg: COCKPIT, scene: { scene: "station", station: "zennor" } },
   room("zennor.field"),

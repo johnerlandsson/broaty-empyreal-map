@@ -43,6 +43,107 @@ export const DECKS = {
       [1, 2, 0.18, 0.16, 0.36],
     ],
   },
+  // The four halts below are laid out as Orrin is, room for room; only their paint and their
+  // cradles differ.
+
+  // A gas giant's skimmer port: passages in scuffed hazard yellow, a weather office for charts,
+  // and squat, scoop-mouthed skimmers in short cradles round the well.
+  morvah: {
+    prefix: "morvah",
+    tints: {
+      "morvah.berth": DISTRICT_COLOURS.docks,
+      "morvah.deck-3-frame-2": DISTRICT_COLOURS.concourse, // hazard yellow
+      "morvah.deck-3-frame-1": DISTRICT_COLOURS.concourse,
+      "morvah.freight": DISTRICT_COLOURS.midring, // spare parts in, waiting on the crews
+      "morvah.charts": DISTRICT_COLOURS.offices, // Morvah's weather, storm band by storm band
+      "morvah.concourse": DISTRICT_COLOURS.concourse,
+      "morvah.deck-2-frame-2": DISTRICT_COLOURS.concourse,
+      "morvah.market": DISTRICT_COLOURS.offices,
+      "morvah.gallery": DISTRICT_COLOURS.docks,
+    },
+    blisters: ["morvah.gallery"],
+    cradles: [
+      [0, 3, 0.3, 0.3, 0.22], // the docking well's mouth
+      [-1, 3, 0.36, 0.32, 0.42], // skimmers: squat
+      [1, 3, 0.36, 0.32, 0.42],
+      [-1, 2, 0.36, 0.32, 0.42],
+      [0, 2, 0.36, 0.32, 0.42],
+      [1, 2, 0.36, 0.32, 0.42],
+    ],
+  },
+  // A dry world's smelter port: rust-red paint over the red dust, ingots in the freight office,
+  // and ore barges and one water tanker in the cradles.
+  gwithian: {
+    prefix: "gwithian",
+    tints: {
+      "gwithian.berth": DISTRICT_COLOURS.docks,
+      "gwithian.deck-3-frame-2": DISTRICT_COLOURS.industrial, // rust red
+      "gwithian.deck-3-frame-1": DISTRICT_COLOURS.industrial,
+      "gwithian.freight": DISTRICT_COLOURS.midring, // ingots, waiting to go out
+      "gwithian.charts": DISTRICT_COLOURS.docks,
+      "gwithian.concourse": DISTRICT_COLOURS.industrial,
+      "gwithian.deck-2-frame-2": DISTRICT_COLOURS.industrial,
+      "gwithian.market": DISTRICT_COLOURS.concourse,
+      "gwithian.gallery": DISTRICT_COLOURS.docks,
+    },
+    blisters: ["gwithian.gallery"],
+    cradles: [
+      [0, 3, 0.3, 0.3, 0.22], // the docking well's mouth
+      [-1, 3, 0.34, 0.3, 0.75], // ore barges
+      [1, 3, 0.34, 0.3, 0.75],
+      [0, 2, 0.3, 0.3, 0.95], // the water tanker
+      [-1, 2, 0.18, 0.16, 0.36], // skiffs, at the corners
+      [1, 2, 0.18, 0.16, 0.36],
+    ],
+  },
+  // The shipyards' port: everything a sensible grey and kept that way, crates of ships' parts in
+  // the freight office, buyers at the exchange, and the cradles in neat even rows.
+  carrow: {
+    prefix: "carrow",
+    tints: {
+      "carrow.berth": DISTRICT_COLOURS.docks,
+      "carrow.deck-3-frame-2": DISTRICT_COLOURS.midring, // sensible grey
+      "carrow.deck-3-frame-1": DISTRICT_COLOURS.midring,
+      "carrow.freight": DISTRICT_COLOURS.industrial, // ships' parts from the yards
+      "carrow.charts": DISTRICT_COLOURS.docks,
+      "carrow.concourse": DISTRICT_COLOURS.midring,
+      "carrow.deck-2-frame-2": DISTRICT_COLOURS.midring,
+      "carrow.market": DISTRICT_COLOURS.offices, // the yards' standing bids
+      "carrow.gallery": DISTRICT_COLOURS.docks,
+    },
+    blisters: ["carrow.gallery"],
+    cradles: [
+      [0, 3, 0.3, 0.3, 0.22], // the docking well's mouth
+      [-1, 3, 0.3, 0.28, 0.6], // all alike, in rows
+      [1, 3, 0.3, 0.28, 0.6],
+      [-1, 2, 0.3, 0.28, 0.6],
+      [0, 2, 0.3, 0.28, 0.6],
+      [1, 2, 0.3, 0.28, 0.6],
+    ],
+  },
+  // An old garden world's port: handlines in green cord, herbs and trailing vines, grain sacks in
+  // the freight office, and broad, slow grain ships in wide cradles.
+  lanyon: {
+    prefix: "lanyon",
+    tints: {
+      "lanyon.berth": DISTRICT_COLOURS.docks,
+      "lanyon.deck-3-frame-2": DISTRICT_COLOURS.hydroponics, // green cord and herbs
+      "lanyon.deck-3-frame-1": DISTRICT_COLOURS.hydroponics,
+      "lanyon.freight": DISTRICT_COLOURS.concourse, // grain
+      "lanyon.charts": DISTRICT_COLOURS.docks,
+      "lanyon.concourse": DISTRICT_COLOURS.hydroponics, // planters and vines
+      "lanyon.deck-2-frame-2": DISTRICT_COLOURS.hydroponics,
+      "lanyon.market": DISTRICT_COLOURS.commons, // a factor in a good coat
+      "lanyon.gallery": DISTRICT_COLOURS.docks,
+    },
+    blisters: ["lanyon.gallery"],
+    cradles: [
+      [0, 3, 0.3, 0.3, 0.22], // the docking well's mouth
+      [-1, 3, 0.44, 0.3, 0.8], // grain ships: broad and slow
+      [1, 3, 0.44, 0.3, 0.8],
+      [0, 2, 0.44, 0.3, 0.8],
+    ],
+  },
 };
 
 // --- addresses and the index -----------------------------------------------------------------

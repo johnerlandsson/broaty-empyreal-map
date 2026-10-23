@@ -9,6 +9,10 @@
 // one at a time; while one does, the space scene doesn't draw.
 
 import { ChartView } from "./chart-view.js";
+import carrow from "./data/carrow.js";
+import gwithian from "./data/gwithian.js";
+import lanyon from "./data/lanyon.js";
+import morvah from "./data/morvah.js";
 import orrin from "./data/orrin.js";
 import station from "./data/station.js";
 import wenna from "./data/wenna.js";
@@ -49,7 +53,7 @@ function drum(data, spec) {
   return { index, model, deck: new DeckView(deckEl, index, drumPlans(spec)), lastLevel: null };
 }
 
-/** Orrin Station: a box on decks, cut away above your deck; a plan a deck, rooms placed by address. */
+/** Orrin Station and the halts: a box on decks, cut away above your deck; a plan a deck, rooms placed by address. */
 function decks(data, spec) {
   const index = indexDecks(data, spec);
   const model = new ModelView(modelEl, index, {
@@ -73,6 +77,10 @@ const stations = {
   orrin: decks(orrin, DECKS.orrin),
   wenna: drum(wenna, DRUMS.wenna),
   zennor: town(zennor, TOWNS.zennor),
+  morvah: decks(morvah, DECKS.morvah),
+  gwithian: decks(gwithian, DECKS.gwithian),
+  carrow: decks(carrow, DECKS.carrow),
+  lanyon: decks(lanyon, DECKS.lanyon),
 };
 const ships = {}; // hull id -> the DeckView drawing that hull, built on first use
 const space = new SpaceView(modelEl);

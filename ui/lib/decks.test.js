@@ -2,8 +2,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import carrow from "../data/carrow.js";
+import gwithian from "../data/gwithian.js";
+import lanyon from "../data/lanyon.js";
+import morvah from "../data/morvah.js";
 import orrin from "../data/orrin.js";
 import {
+  CELL,
   DECKS,
   buildDecksModel,
   decksCut,
@@ -14,6 +19,7 @@ import {
   locateDecks,
   parseAddress,
 } from "./decks.js";
+import { DISTRICT_COLOURS } from "./geometry.js";
 import { infoLine } from "./locate.js";
 
 const sub = (a, b) => a.map((c, i) => c - b[i]);
@@ -50,10 +56,20 @@ describe("parseAddress", () => {
   });
 });
 
-describe("Orrin Station's data", () => {
-  it("has the nine rooms of content/areas/orrin.yaml, each with an address on the grid", () => {
-    expect(ids.length).toBe(9);
-    for (const r of orrin.rooms) expect(parseAddress(r.address), r.id).not.toBe(null);
+// every station on decks, by its spec's key: its data, and its area file in the Empyreal source
+const STATIONS = { orrin, morvah, gwithian, carrow, lanyon };
+
+describe.each(Object.entries(STATIONS))("%s's data", (key, data) => {
+  const spec = DECKS[key];
+  const index = indexDecks(data, spec);
+  const room = (id) => index.byId.get(id);
+
+  it(`has the nine rooms of content/areas/${key}.yaml, each with an address on the grid`, () => {
+    expect(data.rooms.length).toBe(9);
+    for (const r of data.rooms) {
+      expect(r.id.startsWith(`${spec.prefix}.`), r.id).toBe(true);
+      expect(parseAddress(r.address), r.id).not.toBe(null);
+    }
     expect(index.byId.size).toBe(9);
   });
 
@@ -73,23 +89,44 @@ describe("Orrin Station's data", () => {
   });
 
   it("is weightless throughout", () => {
-    for (const r of orrin.rooms) expect(r.gravity, r.id).toBe(0);
+    for (const r of data.rooms) expect(r.gravity, r.id).toBe(0);
   });
 
-  const yaml = join(homedir(), "dev/empyreal/content/areas/orrin.yaml");
-  it.skipIf(!existsSync(yaml))("matches orrin.yaml's names, addresses and exits", () => {
-    const rooms = readFileSync(yaml, "utf8")
+  it("tints every room, and only in district colours", () => {
+    const colours = Object.values(DISTRICT_COLOURS);
+    expect(Object.keys(spec.tints).sort()).toEqual(data.rooms.map((r) => r.id).sort());
+    for (const [id, tint] of Object.entries(spec.tints)) expect(colours, id).toContain(tint);
+  });
+
+  it("has its blisters among its rooms, and cradles that don't overlap", () => {
+    for (const id of spec.blisters) expect(room(id), id).toBeDefined();
+    for (const [i, a] of spec.cradles.entries()) {
+      for (const b of spec.cradles.slice(i + 1)) {
+        const apart = a[1] !== b[1] || Math.abs(a[0] - b[0]) * CELL.side >= (a[2] + b[2]) * CELL.side;
+        expect(apart, `${a} ${b}`).toBe(true);
+      }
+    }
+  });
+
+  const yaml = join(homedir(), `dev/empyreal/content/areas/${key}.yaml`);
+  it.skipIf(!existsSync(yaml))(`matches ${key}.yaml's names, addresses, flags, exits and gravity`, () => {
+    const text = readFileSync(yaml, "utf8");
+    const gravity = Number(/\n {2}gravity: ([\d.]+)/.exec(text)[1]);
+    const rooms = text
       .split(/\n {2}- id: /)
       .slice(1)
       .map((chunk) => {
         const id = chunk.split("\n")[0].trim();
         const name = /\n {4}name: (.+)/.exec(chunk)[1].trim();
         const address = /\n {4}address: (.+)/.exec(chunk)[1].trim();
+        const flags = /\n {4}flags: \[(.*)\]/.exec(chunk)?.[1].split(",").map((f) => f.trim()).filter(Boolean) ?? [];
         const block = /\n {4}exits:\n((?: {6}.+\n?)+)/.exec(chunk)[1];
         const exits = Object.fromEntries([...block.matchAll(/ {6}(\w+): ([\w.-]+)/g)].map((m) => [m[1], m[2]]));
-        return { id, name, address, exits };
+        return { id, name, address, gravity, flags, exits };
       });
-    expect(orrin.rooms.map(({ id, name, address, exits }) => ({ id, name, address, exits }))).toEqual(rooms);
+    expect(data.rooms.map(({ id, name, address, gravity, flags, exits }) => ({ id, name, address, gravity, flags, exits }))).toEqual(
+      rooms,
+    );
   });
 });
 

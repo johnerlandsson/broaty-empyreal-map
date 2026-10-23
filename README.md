@@ -1,12 +1,14 @@
 # Empyreal Map
 
 A [Mallard](https://mallard.vnsf.xyz) plugin for the MUD Empyreal: maps
-that follow you as you play. It maps three stations: T.I.S.S., which it
+that follow you as you play. It maps seven stations: T.I.S.S., which it
 follows as you walk, ride the lifts and visit the docks, the small outpost
-Orrin Station, and Wenna Halt, one lane over in Maelor's system. It also maps
-Zennor, the town on the planet Tamsin below T.I.S.S. The panel shows
-whichever place you're in, or the one your ship is docked or landed at,
-and charts the star system you're in and the lanes across the core.
+Orrin Station, Wenna Halt, one lane over in Maelor's system, and the four
+halts further out, Morvah Deep, Gwithian Reach, Carrow Yard and Lanyon
+High. It also maps Zennor, the town on the planet Tamsin below T.I.S.S. The
+panel shows whichever place you're in, or the one your ship is docked or
+landed at, and charts the star system you're in and the lanes across the
+core.
 
 ---
 
@@ -29,6 +31,13 @@ Gallery in a glass blister underneath. Your room's cell glows. When you're
 on Deck 2, Deck 3 is lifted off and drawn only as a dashed outline, so your
 deck is the top of the model. In the Gallery, both decks are outlined and
 the blister hangs below them.
+
+**Morvah Deep, Gwithian Reach, Carrow Yard and Lanyon High** are built as
+Orrin is, room for room, and drawn the same way. Each wears its own paint:
+Morvah's hazard yellow, with short cradles for its squat skimmers;
+Gwithian's rust red, with ore barges and a water tanker; Carrow's sensible
+grey, its cradles in even rows; and Lanyon's green, with broad cradles for
+its grain ships.
 
 **Wenna Halt** is a drum, spun to 0.6 g, with the kelp-green Concourse round
 it, a clean row of courier cradles outside the Berths, and the Lounge's wide
@@ -93,7 +102,8 @@ switch each other off.
   hatch down. Deck 2 has the Concourse, the Exchange and the hatch down to
   the Gallery, whose blister is outlined beneath it. Deck 1 is the Gallery
   alone, under the hull's outline. Each plan says its deck and 0 g, and the
-  frames are numbered down the side.
+  frames are numbered down the side. The four halts' plans are the same,
+  in their own colours.
 - **Wenna Halt:** one plan for the whole outpost, laid out as its exits go:
   the Concourse across the middle, the Exchange north, the Freight Office
   south, the Chart Office west and the Berths east with their airlock
@@ -184,8 +194,9 @@ npm test            # vitest for the UI and data code, then the Lua tests
 
 **Preview.** Serve the repository root and open the preview, which runs the
 panel in a browser with a stand-in for Mallard and a **▶ Walk** button that
-replays a walk round T.I.S.S., then flights to Orrin Station and Wenna Halt
-and a walk round each, then a landing at Zennor and a walk round the town:
+replays a walk round T.I.S.S., then flights to Orrin Station, Wenna Halt and
+the four halts and a walk round each, then a landing at Zennor and a walk
+round the town:
 
 ```bash
 python3 -m http.server 8765
@@ -215,7 +226,9 @@ Orrin Station's nine rooms (`ui/data/orrin.js`) are copied from
 exits. Nothing is placed by hand: each room's cell comes from its address
 (`Deck 3, frame 2, port 1`), and a test checks the file against the YAML
 when `~/dev/empyreal` is there. What the addresses don't say (colours, the
-blister, cradles) is in `DECKS` in `ui/lib/decks.js`.
+blister, cradles) is in `DECKS` in `ui/lib/decks.js`. The four halts
+(`ui/data/morvah.js`, `gwithian.js`, `carrow.js`, `lanyon.js`) are copied
+from their area files the same way, and checked the same way.
 
 Wenna Halt's six rooms (`ui/data/wenna.js`) are written by hand from
 `content/areas/wenna.yaml`. The game gives that area no layout, so the rooms
