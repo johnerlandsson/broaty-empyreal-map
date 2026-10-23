@@ -168,15 +168,14 @@ function buildDocksPlan(svg, index) {
   // the plate reaches past the outermost side room each way (T.I.S.S.'s bays run on to starboard)
   const reach = (sg) => Math.max(SX, ...layout.rooms.filter((b) => Math.sign(b.cx) === sg).map((b) => sg * b.cx)) + 70;
   el("rect", { x: -reach(-1), y: topY, width: reach(-1) + reach(1), height: botY - topY, rx: 24, fill: PLATE }, g);
-  // spine corridor (from the Blister's base, under the dome and stops), Bearing collar, Hub
-  el("rect", { x: -CH, y: blister.cy, width: 2 * CH, height: bearing.cy - blister.cy, fill: CORR }, g);
+  // spine corridor (from the Blister's base, under the dome and stops) and on to the Hub, under the Bearing collar
+  el("rect", { x: -CH, y: blister.cy, width: 2 * CH, height: hub.cy - HUB_R - blister.cy, fill: CORR }, g);
   el("rect", { x: -BEARING.w / 2, y: bearing.cy - BEARING.h / 2, width: BEARING.w, height: BEARING.h, rx: 6, fill: "#1d2a38", stroke: "#cfe3ff", "stroke-width": 1.4 }, g);
   for (let i = 0; i < 7; i++) {
     el("circle", { cx: -27 + i * 9, cy: bearing.cy - BEARING.h / 2, r: 2.5, fill: "#cfe3ff" }, g);
     el("circle", { cx: -27 + i * 9, cy: bearing.cy + BEARING.h / 2, r: 2.5, fill: "#cfe3ff" }, g);
   }
   label(g, 0, bearing.cy, "The Bearing", 11);
-  el("rect", { x: -CH, y: bearing.cy + BEARING.h / 2, width: 2 * CH, height: hub.cy - HUB_R - (bearing.cy + BEARING.h / 2), fill: CORR }, g);
   // passage down to Freight Transfer, under the Hub and its 6 o'clock lift
   const tTop = transfer.cy - transfer.h / 2;
   el("rect", { x: -8, y: hub.cy + HUB_R, width: 16, height: tTop - (hub.cy + HUB_R), fill: PASSAGE }, g);
