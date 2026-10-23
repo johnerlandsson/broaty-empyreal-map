@@ -1,0 +1,2829 @@
+{
+ "empyreal": "7492196",
+ "port": "zennor",
+ "charts": {
+  "epoch": 1791460800000,
+  "system": "senara",
+  "bodies": [
+   {
+    "id": "senara",
+    "name": "Senara",
+    "kind": "star",
+    "radius": 800,
+    "orbit": null
+   },
+   {
+    "id": "tamsin",
+    "name": "Tamsin",
+    "kind": "planet",
+    "radius": 400,
+    "orbit": {
+     "parent": "senara",
+     "a": 6000,
+     "e": 0,
+     "peri": 0,
+     "phase": 0,
+     "period": 259199.99999999997
+    }
+   },
+   {
+    "id": "tiss",
+    "name": "Tamsin International Space Station",
+    "kind": "station",
+    "radius": null,
+    "orbit": {
+     "parent": "tamsin",
+     "a": 900,
+     "e": 0,
+     "peri": 0,
+     "phase": 0,
+     "period": 7200
+    }
+   },
+   {
+    "id": "zennor",
+    "name": "Zennor",
+    "kind": "port",
+    "radius": null,
+    "orbit": {
+     "parent": "tamsin",
+     "a": 400,
+     "e": 0,
+     "peri": 0,
+     "phase": 0,
+     "period": 14400
+    }
+   },
+   {
+    "id": "orrin",
+    "name": "Orrin",
+    "kind": "planet",
+    "radius": 500,
+    "orbit": {
+     "parent": "senara",
+     "a": 12000,
+     "e": 0.1,
+     "peri": 0,
+     "phase": 150,
+     "period": 733128.3107342125
+    }
+   },
+   {
+    "id": "orrin_station",
+    "name": "Orrin Station",
+    "kind": "station",
+    "radius": null,
+    "orbit": {
+     "parent": "orrin",
+     "a": 800,
+     "e": 0,
+     "peri": 0,
+     "phase": 0,
+     "period": 10800
+    }
+   }
+  ],
+  "places": [
+   {
+    "id": "tiss",
+    "name": "Tamsin International Space Station",
+    "kind": "station",
+    "orbit": {
+     "parent": "tamsin",
+     "a": 900,
+     "e": 0,
+     "peri": 0,
+     "phase": 0,
+     "period": 7200
+    },
+    "fit": null,
+    "edge": null,
+    "open": null
+   },
+   {
+    "id": "orrin_station",
+    "name": "Orrin Station",
+    "kind": "station",
+    "orbit": {
+     "parent": "orrin",
+     "a": 800,
+     "e": 0,
+     "peri": 0,
+     "phase": 0,
+     "period": 10800
+    },
+    "fit": null,
+    "edge": null,
+    "open": null
+   },
+   {
+    "id": "zennor",
+    "name": "Zennor",
+    "kind": "station",
+    "orbit": {
+     "parent": "tamsin",
+     "a": 400,
+     "e": 0,
+     "peri": 0,
+     "phase": 0,
+     "period": 14400
+    },
+    "fit": null,
+    "edge": null,
+    "open": null
+   },
+   {
+    "id": "cinders-1",
+    "name": "The Cinders",
+    "kind": "belt",
+    "orbit": {
+     "parent": "tamsin",
+     "a": 1800.6493499354938,
+     "e": 0,
+     "peri": 0,
+     "phase": 87.10019256628254,
+     "period": 20375.696125790004
+    },
+    "fit": {
+     "seen": 1791460800000,
+     "error": 79,
+     "at": 1791460800000
+    },
+    "edge": null,
+    "open": null
+   },
+   {
+    "id": "gannet-1",
+    "name": "Gannet Belt",
+    "kind": "belt",
+    "orbit": {
+     "parent": "tamsin",
+     "a": 2699.291841022608,
+     "e": 0,
+     "peri": 0,
+     "phase": 200.43893923264474,
+     "period": 37397.57960070209
+    },
+    "fit": {
+     "seen": 1791460800000,
+     "error": 70,
+     "at": 1791460800000
+    },
+    "edge": null,
+    "open": null
+   },
+   {
+    "id": "anvil-1",
+    "name": "The Anvil",
+    "kind": "belt",
+    "orbit": {
+     "parent": "senara",
+     "a": 8481.505806840622,
+     "e": 0.05,
+     "peri": 0,
+     "phase": 40.236794586834435,
+     "period": 435629.78646605136
+    },
+    "fit": {
+     "seen": 1791460800000,
+     "error": 49,
+     "at": 1791460800000
+    },
+    "edge": null,
+    "open": null
+   },
+   {
+    "id": "mouth:senara:maelor",
+    "name": "the Maelor lane mouth",
+    "kind": "mouth",
+    "orbit": null,
+    "fit": null,
+    "edge": {
+     "r": 15000,
+     "bearing": 76.13,
+     "at": 1791460800000
+    },
+    "open": true
+   },
+   {
+    "id": "mouth:senara:keyne",
+    "name": "the Keyne lane mouth",
+    "kind": "mouth",
+    "orbit": null,
+    "fit": null,
+    "edge": {
+     "r": 15000,
+     "bearing": 235.56,
+     "at": 1791460800000
+    },
+    "open": true
+   }
+  ]
+ },
+ "cases": [
+  {
+   "tick": 0,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 686,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 687,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 2544,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 2545,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 3052,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 3053,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 3547,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 3548,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 3761,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 3762,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 3973,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 3974,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 4394,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 4395,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 5222,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 5223,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 6433,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 6434,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 8813,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 8814,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 10024,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 10025,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 10852,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 10853,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 11273,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 11274,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 11699,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 11700,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 11855,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 11856,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 13713,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 13714,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 14340,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 14341,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 15086,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 15087,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 16944,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 16945,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 17868,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 17869,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 18794,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 18795,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 19008,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 19009,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 19220,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 19221,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 19641,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 19642,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 20469,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 20470,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 21680,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 21681,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 24060,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 24061,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 25271,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 25272,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 26099,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 26100,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 26255,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 26256,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 26520,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 26521,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 26732,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 26733,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 26946,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 26947,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 28113,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 28114,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 28740,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 28741,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 29486,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 29487,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 31344,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 31345,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 32673,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 32674,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 34041,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 34042,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 34255,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 34256,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 34467,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 34468,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 34888,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 34889,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 35716,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 35717,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 36927,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 36928,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 39307,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 39308,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 40518,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 40519,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 40655,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 40656,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 41346,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 41347,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 41767,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 41768,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 41979,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 41980,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 42193,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 42194,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 42513,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 42514,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 43140,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 43141,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 43886,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 43887,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 45744,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 45745,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 47461,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 47462,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 49288,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 49289,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 49502,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 49503,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 49714,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 49715,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 50135,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 50136,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 50963,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 50964,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 52175,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 52176,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 54554,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 54555,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 55055,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 55056,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 55765,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 55766,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 56593,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 56594,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 56913,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 56914,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 57014,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 57015,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 57226,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 57227,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 57440,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 57441,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 57540,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 57541,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 58286,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 58287,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 60144,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 60145,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 62228,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 62229,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 64535,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 64536,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 64655,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 64656,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 64749,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 64750,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 64961,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 64962,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 65382,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 65383,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 66210,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 66211,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 67422,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 67423,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 69455,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 69456,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 69801,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 69802,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 71012,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 71013,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 71313,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 71314,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 71840,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 71841,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 71939,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 71940,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 72261,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 72262,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 72474,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 72475,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 72686,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 72687,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 72688,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 74544,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 74545,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 76964,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 76965,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 79380,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 79381,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 79782,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 79783,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 79996,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 79997,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 80208,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 80209,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 80630,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 80631,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 81457,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 81458,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 82669,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 82670,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 83855,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 83856,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 85048,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 85049,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 85713,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 85714,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 86259,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 86260,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 86340,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 86341,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 87086,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 87087,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 87088,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 87508,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 87509,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 87721,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 87722,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 87934,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 87935,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 88944,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 88945,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 91654,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 91655,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 94057,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 94058,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 95030,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 95031,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 95243,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 95244,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 95456,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 95457,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 95877,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 95878,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 96704,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 96705,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 97916,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 97917,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 98255,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 98256,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 100113,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 100114,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 100295,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 100296,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 100740,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 100741,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 101486,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 101487,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 101506,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 101507,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 102334,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 102335,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 102755,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 102756,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 102968,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 102969,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 103181,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 103182,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 103344,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 103345,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 106279,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 106280,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 108662,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 108663,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 110277,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 110278,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 110490,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 110491,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 110703,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 110704,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 111124,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 111125,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 111951,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 111952,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 112655,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 112656,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 113163,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 113164,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 114513,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 114514,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 115140,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 115141,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 115542,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 115543,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 115886,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 115887,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 116753,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 116754,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 117581,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 117582,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 117744,
+   "text": "Senara is going down in the west, reddened by the dust. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 117745,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 118002,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 118003,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 118428,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 118429,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 120808,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 120809,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 123165,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 123166,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 125463,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 125464,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 125524,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 125525,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 125737,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 125738,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 125950,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 125951,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 126371,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 126372,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 127055,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 127056,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 127199,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 127200,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 128410,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 128411,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 128913,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 128914,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 129540,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 129541,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 130286,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 130287,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 130789,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 130790,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 132000,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 132001,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 132144,
+   "text": "Senara is low in the west, and the shadows reach long to the east. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 132145,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 132828,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 132829,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 133249,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 133250,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 133675,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 133676,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 135209,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 135210,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 137536,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 137537,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 139796,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 139797,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 140771,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 140772,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 140984,
+   "text": "The sky is paling in the east: Senara will be up soon. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 140985,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 141197,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 141198,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 141455,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 141456,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 141618,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 141619,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 142446,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 142447,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 143313,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 143314,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 143657,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 143658,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 143940,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 143941,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 144686,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 144687,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 146036,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 146037,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 146544,
+   "text": "Senara is well up in the west of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 146545,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 147248,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 147249,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 148075,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 148076,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 148496,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 148497,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 148922,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 148923,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 149470,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 149471,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 151771,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 151772,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 154004,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 154005,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 155855,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 155856,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 156018,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 156019,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 156231,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 156232,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 156444,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 156445,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 156865,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 156866,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 157693,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 157694,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 157713,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 157714,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 158339,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 158340,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 158904,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 158905,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 159086,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 159087,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 160944,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 160945,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 161283,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 161284,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 162495,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 162496,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 163322,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 163323,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 163743,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 163744,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 163956,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 163957,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 164169,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 164170,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 165941,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 165942,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 168175,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 168176,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 170255,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 170256,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 170477,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 170478,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 171265,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 171266,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 171478,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 171479,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 171691,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 171692,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 172112,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 172113,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is climbing up out of the west, a pale fleck against the sky."
+  },
+  {
+   "tick": 172114,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 172740,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 172741,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 172940,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 172941,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 173486,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 173487,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 174151,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 174152,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 175344,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 175345,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 176530,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 176531,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 177742,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 177743,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 178569,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 178570,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 178991,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 178992,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 179203,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 179204,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 179417,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 179418,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 180164,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 180165,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 182426,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 182427,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 184655,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 184656,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 184756,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 184757,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 186512,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 186513,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 186514,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 186725,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 186726,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 186938,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 186939,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 187139,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is passing overhead, a pale fleck against the sky, heading west."
+  },
+  {
+   "tick": 187140,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 187359,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 187360,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 187886,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 187887,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 188187,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 188188,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 189398,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 189399,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 189744,
+   "text": "Senara stands high overhead, small and white, and the shadows are short. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 189745,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 191777,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 191778,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 192989,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 192990,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 193817,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 193818,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 194238,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 194239,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 194450,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 194451,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 194522,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star in the east."
+  },
+  {
+   "tick": 194523,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 194664,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 194665,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 196821,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 196822,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 199055,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 199056,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 199181,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 199182,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 200913,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 200914,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 201540,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 201541,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 201759,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 201760,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 201973,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 201974,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 202185,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 202186,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 202286,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is passing overhead, a pale fleck against the sky, heading east."
+  },
+  {
+   "tick": 202287,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 202606,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 202607,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 203434,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 203435,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 204144,
+   "text": "Senara is well up in the east of a pale, dusty sky. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 204145,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 204645,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 204646,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 207024,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 207025,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 208236,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 208237,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 209064,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 209065,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 209485,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 209486,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 209697,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 209698,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 209911,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 209912,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 211353,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 211354,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 213455,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 213456,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 213739,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 213740,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 215313,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 215314,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 215939,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 215940,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 216686,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 216687,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 217006,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 217007,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 217220,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 217221,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 217432,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 217433,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 217853,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 217854,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 218544,
+   "text": "Senara is low in the east, and the shadows reach long to the west. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 218545,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 218681,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 218682,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 219892,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 219893,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 222272,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 222273,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 223483,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 223484,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 224311,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 224312,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 224732,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 224733,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 224944,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 224945,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 225158,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 225159,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 225990,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 225991,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 227855,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 227856,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 228396,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 228397,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 229713,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 229714,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 230340,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 230341,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 231086,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 231087,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 232253,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 232254,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 232467,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 232468,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 232679,
+   "text": "The sky is paling in the east: Senara will be up soon. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 232680,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 232944,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold. T.I.S.S. is sinking toward the east, a pale fleck against the sky."
+  },
+  {
+   "tick": 232945,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 233100,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 233101,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 233928,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 233929,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 235139,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 235140,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 237519,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 237520,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 238730,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 238731,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 239558,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 239559,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 239979,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 239980,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 240191,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 240192,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 240405,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 240406,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 240703,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 240704,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 242255,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 242256,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 243123,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 243124,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 244113,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 244114,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 244740,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 244741,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 245486,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  },
+  {
+   "tick": 245487,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 247344,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is sinking toward the east, a bright, steady spark."
+  },
+  {
+   "tick": 247345,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 247500,
+   "text": "Night: the sky is black and crowded with stars."
+  },
+  {
+   "tick": 247501,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 247926,
+   "text": "The sky is paling in the east: Senara will be up soon."
+  },
+  {
+   "tick": 247927,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 248347,
+   "text": "Senara has just come up over the eastern horizon, and everything it touches is gold."
+  },
+  {
+   "tick": 248348,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 249175,
+   "text": "Senara is low in the east, and the shadows reach long to the west."
+  },
+  {
+   "tick": 249176,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 250386,
+   "text": "Senara is well up in the east of a pale, dusty sky."
+  },
+  {
+   "tick": 250387,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 252766,
+   "text": "Senara stands high overhead, small and white, and the shadows are short."
+  },
+  {
+   "tick": 252767,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 253977,
+   "text": "Senara is well up in the west of a pale, dusty sky."
+  },
+  {
+   "tick": 253978,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 254805,
+   "text": "Senara is low in the west, and the shadows reach long to the east."
+  },
+  {
+   "tick": 254806,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 255226,
+   "text": "Senara is going down in the west, reddened by the dust."
+  },
+  {
+   "tick": 255227,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 255438,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out."
+  },
+  {
+   "tick": 255439,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 255469,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star high overhead."
+  },
+  {
+   "tick": 255470,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 255652,
+   "text": "Dusk: the west still glows where Senara went down, and the first stars are out. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 255653,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 256655,
+   "text": "Night: the sky is black and crowded with stars. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 256656,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 257900,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark. Orrin is a steady golden star in the west."
+  },
+  {
+   "tick": 257901,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 258513,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is climbing up out of the west, a bright, steady spark."
+  },
+  {
+   "tick": 258514,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 259140,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading west."
+  },
+  {
+   "tick": 259141,
+   "text": "Night: the sky is black and crowded with stars. T.I.S.S. is passing overhead, a bright, steady spark, heading east."
+  }
+ ]
+}
