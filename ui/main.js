@@ -5,8 +5,8 @@
 // plan instead, one view per hull drawing, built on first use.
 // The Lua side holds all state and replays it when we post "ready", so this file keeps only the
 // last location, the docked station, and the level each plan last showed (a lift between floors
-// keeps the plan where it was). The system chart (◎) can cover the top band; while it does, the space
-// scene doesn't draw.
+// keeps the plan where it was). The system chart (◎) or the core lanes map (⋈) can cover the top band,
+// one at a time; while one does, the space scene doesn't draw.
 
 import { ChartView } from "./chart-view.js";
 import orrin from "./data/orrin.js";
@@ -14,6 +14,7 @@ import station from "./data/station.js";
 import wenna from "./data/wenna.js";
 import zennor from "./data/zennor.js";
 import { DeckView } from "./deck-view.js";
+import { LanesView } from "./lanes-view.js";
 import { decksPlans } from "./decks-deck.js";
 import { drumPlans } from "./drum-deck.js";
 import { DECKS, buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "./lib/decks.js";
@@ -78,9 +79,18 @@ const space = new SpaceView(modelEl);
 const info = document.getElementById("info");
 const panel = window.panel;
 
+// switching one of the chart and the lanes map on switches the other off; the Lua side does too
 const chart = new ChartView(modelEl, {
   onToggle(on) {
     panel.post("chart", { on });
+    if (on) lanes.setOn(false);
+    runChart();
+  },
+});
+const lanes = new LanesView(modelEl, {
+  onToggle(on) {
+    panel.post("lanes-view", { on });
+    if (on) chart.setOn(false);
     runChart();
   },
 });
@@ -89,27 +99,28 @@ let chartRaf = 0;
 let chartLast = 0;
 const CHART_SMOOTH = 100; // ms between redraws while she's under way
 
-/** Redraw the chart once a second while it's shown and the panel visible, more often while she
- *  moves, and not at all otherwise; and keep the space scene from drawing under it. */
+/** Redraw the chart or the lanes map once a second while it's shown and the panel visible, more
+ *  often while she moves, and not at all otherwise; and keep the space scene from drawing under it. */
 function runChart() {
-  space.setCovered(chart.shown);
+  const view = chart.shown ? chart : lanes.shown ? lanes : null;
+  space.setCovered(!!view);
   clearInterval(chartTimer);
   cancelAnimationFrame(chartRaf);
   chartTimer = 0;
   chartRaf = 0;
-  if (!chart.shown || document.hidden) return;
-  chart.draw(Date.now());
-  if (chart.moving) {
+  if (!view || document.hidden) return;
+  view.draw(Date.now());
+  if (view.moving) {
     const step = (now) => {
       if (now - chartLast >= CHART_SMOOTH) {
         chartLast = now;
-        chart.draw(Date.now());
+        view.draw(Date.now());
       }
       chartRaf = requestAnimationFrame(step);
     };
     chartRaf = requestAnimationFrame(step);
   } else {
-    chartTimer = setInterval(() => chart.draw(Date.now()), 1000);
+    chartTimer = setInterval(() => view.draw(Date.now()), 1000);
   }
 }
 document.addEventListener("visibilitychange", runChart);
@@ -186,6 +197,17 @@ panel.on("chart-ship", (msg) => {
 
 panel.on("chart", (msg) => {
   chart.setOn(msg?.on);
+  runChart();
+});
+
+panel.on("lanes", (msg) => {
+  lanes.setLanes(msg);
+  runChart();
+});
+
+panel.on("lanes-view", (msg) => {
+  lanes.setOn(msg?.on);
+  if (lanes.on) chart.setOn(false);
   runChart();
 });
 

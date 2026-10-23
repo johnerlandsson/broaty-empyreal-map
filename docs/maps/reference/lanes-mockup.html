@@ -1,0 +1,222 @@
+<!doctype html>
+<!-- The core lanes map, 2026-10-23: three ways to draw the six systems, their trunks and the two
+     branches. Topology from content/help/lanes.md (public); nothing is placed where the stars are.
+     Two states each: docked at T.I.S.S. with the Petroc branch seen open 2h ago and the Keyne branch
+     never seen; and in the Senara–Maelor trunk, 40% through, with the Petroc branch seen closed 3d
+     ago and the Keyne branch seen open 20m ago. A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Core lanes: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:18px; }
+  .row { display:flex; gap:26px; justify-content:center; align-items:flex-start; }
+  figure { margin:0; text-align:center; }
+  figcaption { margin:8px 0 2px; color:#e3eaf2; font-size:14px; }
+  figcaption small { display:block; color:#7d8a9a; max-width:380px; margin:4px auto 0; font-size:12px; line-height:1.4; }
+  .pair { display:flex; flex-direction:column; gap:10px; }
+  .frame { position:relative; width:380px; height:240px; background:#04060c; border:1px solid #2b3646; border-radius:6px; overflow:hidden; }
+  .cap { color:#7d8a9a; font-size:11px; text-align:left; margin:2px 0 -6px 2px; }
+  svg { display:block; }
+  text { font-family: Inter, system-ui, sans-serif; }
+  .btns { position:absolute; top:8px; right:8px; display:flex; gap:3px; }
+  .btns span { width:22px; height:22px; border-radius:5px; background:#04060cb0; border:1px solid #2b3646; color:#dfe7f1; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  .btns span.on { border-color:#7d8a9a; }
+</style></head><body>
+<script>
+const HL = "#ffb347", HLS = "#fff3df", DIM = "#7d8a9a", ORBIT = "#2b3646", GLASS = "#cfe3ff", TEXT = "#e3eaf2";
+const TONE = ["#3a4556", "#58667b", "#7e8da3"];
+const SYS = [
+  { id: "petroc", name: "Petroc", st: ["Morvah Deep"] },
+  { id: "keyne", name: "Keyne", st: ["Gwithian Reach"] },
+  { id: "senara", name: "Senara", st: ["T.I.S.S.", "Orrin Station"] },
+  { id: "maelor", name: "Maelor", st: ["Wenna Halt"] },
+  { id: "elowen", name: "Elowen", st: ["Carrow Yard"] },
+  { id: "mabyn", name: "Mabyn", st: ["Lanyon High"] },
+];
+const TRUNKS = [["petroc", "keyne"], ["keyne", "senara"], ["senara", "maelor"], ["maelor", "elowen"], ["elowen", "mabyn"]];
+const STATES = [
+  { cap: "Docked at T.I.S.S.", here: "senara", lane: null,
+    br: { pm: { open: true, ago: "2h ago" }, km: null } },
+  { cap: "In the Senara–Maelor trunk, 40%, 3m 40s to go", here: null, lane: ["senara", "maelor"], p: 0.4,
+    br: { pm: { open: false, ago: "3d ago" }, km: { open: true, ago: "20m ago" } } },
+];
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function starfield(svg) {
+  let s = 31; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 70; i++) el("circle", { cx: r() * 380, cy: r() * 240, r: 0.6, fill: "#fff", opacity: 0.08 + r() * 0.3 }, svg);
+}
+function defs(svg) {
+  const d = el("defs", {}, svg);
+  const f = el("filter", { id: "glow", x: "-100%", y: "-100%", width: "300%", height: "300%" }, d);
+  el("feGaussianBlur", { stdDeviation: 2.2, result: "b" }, f);
+  const m = el("feMerge", {}, f); el("feMergeNode", { in: "b" }, m); el("feMergeNode", { in: "SourceGraphic" }, m);
+}
+// a branch's line style and its words
+function branchStyle(b) {
+  if (!b) return { stroke: TONE[0], dash: "1 4", width: 1.5, words: "not seen" };
+  if (b.open) return { stroke: GLASS, dash: "", width: 2, words: `open · seen ${b.ago}` };
+  return { stroke: TONE[1], dash: "5 4", width: 1.5, words: `closed · seen ${b.ago}` };
+}
+function frame(parent, cap, draw, st) {
+  const pair = parent;
+  el("div", {}, null);
+  const c = document.createElement("div"); c.className = "cap"; c.textContent = cap; pair.appendChild(c);
+  const f = document.createElement("div"); f.className = "frame"; pair.appendChild(f);
+  const svg = el("svg", { width: 380, height: 240, viewBox: "0 0 380 240" }, f);
+  defs(svg); starfield(svg); draw(svg, st);
+  const b = document.createElement("div"); b.className = "btns";
+  b.innerHTML = `<span class="on">⋈</span><span>◎</span><span>+</span>`; f.appendChild(b);
+}
+function ship(svg, a, b, p) {
+  const x = a[0] + (b[0] - a[0]) * p, y = a[1] + (b[1] - a[1]) * p;
+  const ang = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI + 90;
+  const g = el("g", { filter: "url(#glow)", transform: `translate(${x} ${y}) rotate(${ang})` }, svg);
+  el("path", { d: "M0,-6 L4.5,5 L0,2.5 L-4.5,5 Z", fill: HL, stroke: HLS, "stroke-width": 0.8 }, g);
+  el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, g);
+  return [x, y];
+}
+function laneHL(svg, a, b, p) {
+  const x = a[0] + (b[0] - a[0]) * p, y = a[1] + (b[1] - a[1]) * p;
+  el("line", { x1: a[0], y1: a[1], x2: x, y2: y, stroke: HL, "stroke-opacity": 0.3, "stroke-width": 3 }, svg);
+  el("line", { x1: x, y1: y, x2: b[0], y2: b[1], stroke: HL, "stroke-opacity": 0.7, "stroke-width": 1.5, "stroke-dasharray": "4 4" }, svg);
+}
+function node(svg, x, y, here, r = 5) {
+  if (here) {
+    const g = el("g", { filter: "url(#glow)" }, svg);
+    el("circle", { cx: x, cy: y, r: r + 4, fill: "none", stroke: HL, "stroke-width": 2 }, g);
+    el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, g);
+  }
+  el("circle", { cx: x, cy: y, r, fill: "#fffaf0", opacity: 0.95 }, svg);
+}
+function diamond(svg, x, y, s = 3) {
+  el("path", { d: `M${x},${y - s} L${x + s},${y} L${x},${y + s} L${x - s},${y} Z`, fill: GLASS }, svg);
+}
+
+// ---- A: the line, inner to outer, the Petroc branch arched over, the Keyne branch under ----------
+function drawA(svg, st) {
+  const y = 118, x0 = 34, dx = 62.4;
+  const P = Object.fromEntries(SYS.map((s, i) => [s.id, [x0 + i * dx, y]]));
+  // branches first, under the trunks
+  const arc = (a, b, h, s, labelY) => {
+    const [ax] = P[a], [bx] = P[b];
+    el("path", { d: `M${ax},${y} C${ax},${y + h} ${bx},${y + h} ${bx},${y}`, fill: "none",
+      stroke: s.stroke, "stroke-width": s.width, "stroke-dasharray": s.dash }, svg);
+    el("text", { x: (ax + bx) / 2, y: labelY, "text-anchor": "middle", "font-size": 9, fill: DIM }, svg, s.words);
+  };
+  const pm = branchStyle(st.br.pm), km = branchStyle(st.br.km);
+  arc("petroc", "maelor", -96, pm, 34);
+  arc("keyne", "mabyn", 124, km, 222);
+  for (const [a, b] of TRUNKS) el("line", { x1: P[a][0], y1: y, x2: P[b][0], y2: y, stroke: TONE[2], "stroke-width": 2 }, svg);
+  if (st.lane) { laneHL(svg, P[st.lane[0]], P[st.lane[1]], st.p); ship(svg, P[st.lane[0]], P[st.lane[1]], st.p); }
+  for (const s of SYS) {
+    const [x] = P[s.id];
+    node(svg, x, y, st.here === s.id);
+    el("text", { x, y: y - 12, "text-anchor": "middle", "font-size": 10, fill: st.here === s.id ? TEXT : DIM }, svg, s.name);
+    s.st.forEach((n, j) => {
+      diamond(svg, x - 0, y + 16 + j * 22, 2.5);
+      const words = n.split(" ");
+      words.forEach((w, k) => el("text", { x, y: y + 27 + j * 22 + k * 9 - (s.st.length > 1 ? 0 : 0), "text-anchor": "middle", "font-size": 8, fill: DIM }, svg, s.st.length > 1 ? (k ? "" : n.replace(" Station", "")) : w));
+    });
+  }
+  if (st.lane) el("text", { x: 190, y: 104, "text-anchor": "middle", "font-size": 9, fill: HL }, svg, "3m 40s");
+}
+
+// ---- B: a timetable, top to bottom, the branches as brackets to the left ----------------------------
+function drawB(svg, st) {
+  const x = 96, y0 = 26, dy = 38;
+  const P = Object.fromEntries(SYS.map((s, i) => [s.id, [x, y0 + i * dy]]));
+  const pm = branchStyle(st.br.pm), km = branchStyle(st.br.km);
+  const bracket = (a, b, bx, s) => {
+    const ya = P[a][1], yb = P[b][1];
+    el("path", { d: `M${x},${ya} H${bx + 6} Q${bx},${ya} ${bx},${ya + 6} V${yb - 6} Q${bx},${yb} ${bx + 6},${yb} H${x}`,
+      fill: "none", stroke: s.stroke, "stroke-width": s.width, "stroke-dasharray": s.dash }, svg);
+  };
+  bracket("keyne", "mabyn", 22, km);
+  // a gap in the outer bracket's stub where the inner bracket crosses it
+  el("rect", { x: 47, y: P.keyne[1] - 3, width: 6, height: 6, fill: "#04060c" }, svg);
+  bracket("petroc", "maelor", 50, pm);
+  for (const [a, b] of TRUNKS) el("line", { x1: x, y1: P[a][1], x2: x, y2: P[b][1], stroke: TONE[2], "stroke-width": 2 }, svg);
+  if (st.lane) { laneHL(svg, P[st.lane[0]], P[st.lane[1]], st.p); ship(svg, P[st.lane[0]], P[st.lane[1]], st.p); }
+  for (const s of SYS) {
+    const [, y] = P[s.id];
+    node(svg, x, y, st.here === s.id, 4.5);
+    el("text", { x: x + 16, y: y + 3.5, "font-size": 11, fill: st.here === s.id ? TEXT : "#c3ccd8" }, svg, s.name);
+    s.st.forEach((n, j) => {
+      const sx = x + 66 + j * 74;
+      diamond(svg, sx, y, 2.5);
+      el("text", { x: sx + 6, y: y + 3, "font-size": 9, fill: DIM }, svg, n);
+    });
+  }
+  // the branches' states, as a key bottom right
+  const key = [["Petroc–Maelor", pm], ["Keyne–Mabyn", km]];
+  key.forEach(([n, s], i) => {
+    const ky = 190 + i * 24;
+    el("line", { x1: 238, y1: ky - 3, x2: 254, y2: ky - 3, stroke: s.stroke, "stroke-width": s.width, "stroke-dasharray": s.dash }, svg);
+    el("text", { x: 260, y: ky, "font-size": 9, fill: DIM }, svg, `${n}`);
+    el("text", { x: 260, y: ky + 9, "font-size": 8, fill: DIM, opacity: 0.8 }, svg, s.words);
+  });
+  if (st.lane) el("text", { x: x + 16, y: (P.senara[1] + P.maelor[1]) / 2 + 3, "font-size": 9, fill: HL }, svg, "in the Maelor lane · 3m 40s");
+}
+
+// ---- C: untangled, a 3×2 grid of system cards, every lane a short line ------------------------------
+function drawC(svg, st) {
+  const cw = 104, ch = 54;
+  const C = { petroc: [62, 62], maelor: [190, 62], elowen: [318, 62], keyne: [62, 160], senara: [190, 160], mabyn: [318, 160] };
+  const pm = branchStyle(st.br.pm), km = branchStyle(st.br.km);
+  const edge = (a, b, s, mid) => {
+    if (mid) el("path", { d: `M${C[a][0]},${C[a][1] + ch / 2} C${C[a][0]},${C[a][1] + 72} ${C[b][0]},${C[b][1] + 72} ${C[b][0]},${C[b][1] + ch / 2}`,
+      fill: "none", stroke: s.stroke, "stroke-width": s.width, "stroke-dasharray": s.dash }, svg);
+    else el("line", { x1: C[a][0], y1: C[a][1], x2: C[b][0], y2: C[b][1], stroke: s.stroke, "stroke-width": s.width, "stroke-dasharray": s.dash }, svg);
+  };
+  const trunk = { stroke: TONE[2], width: 2, dash: "" };
+  edge("petroc", "maelor", pm); edge("keyne", "mabyn", km, true);
+  for (const [a, b] of TRUNKS) edge(a, b, trunk);
+  el("text", { x: 126, y: 26, "text-anchor": "middle", "font-size": 9, fill: DIM }, svg, pm.words);
+  el("text", { x: 190, y: 234, "text-anchor": "middle", "font-size": 9, fill: DIM }, svg, `Keyne–Mabyn · ${km.words}`);
+  if (st.lane) {
+    const a = [C.senara[0], C.senara[1] - ch / 2], b = [C.maelor[0], C.maelor[1] + ch / 2];
+    laneHL(svg, a, b, st.p); ship(svg, a, b, st.p);
+    el("text", { x: 198, y: 114, "font-size": 9, fill: HL }, svg, "3m 40s");
+  }
+  for (const s of SYS) {
+    const [x, y] = C[s.id], here = st.here === s.id;
+    if (here) {
+      const g = el("g", { filter: "url(#glow)" }, svg);
+      el("rect", { x: x - cw / 2 - 2, y: y - ch / 2 - 2, width: cw + 4, height: ch + 4, rx: 7, fill: "none", stroke: HL, "stroke-width": 2 }, g);
+      el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, g);
+    }
+    el("rect", { x: x - cw / 2, y: y - ch / 2, width: cw, height: ch, rx: 5, fill: "#0e131a", stroke: here ? HL : TONE[0] }, svg);
+    el("circle", { cx: x - cw / 2 + 11, cy: y - ch / 2 + 12, r: 3.5, fill: "#fffaf0" }, svg);
+    el("text", { x: x - cw / 2 + 20, y: y - ch / 2 + 15.5, "font-size": 11, fill: here ? TEXT : "#c3ccd8" }, svg, s.name);
+    s.st.forEach((n, j) => {
+      diamond(svg, x - cw / 2 + 11, y - ch / 2 + 29 + j * 13, 2.5);
+      el("text", { x: x - cw / 2 + 20, y: y - ch / 2 + 32 + j * 13, "font-size": 9, fill: DIM }, svg, n);
+    });
+  }
+}
+
+const OPTIONS = [
+  ["A · The line", "Inner to outer, left to right, as the help page reads. The Petroc branch arches over, the Keyne branch under, each with its state on it. Station names are small to fit six across.", drawA],
+  ["B · The timetable", "Top to bottom, inner to outer, room for both of Senara's stations on one row. The branches are brackets on the left (the Keyne one bridged over the Petroc one), their states in a key.", drawB],
+  ["C · Untangled", "Six cards on a 3×2 grid so every lane is short and nothing crosses: the Petroc branch along the top, the Keyne branch under. Roomiest, but the chain snakes, so inner to outer is less plain.", drawC],
+];
+const row = document.createElement("div"); row.className = "row"; document.body.appendChild(row);
+for (const [name, desc, fn] of OPTIONS) {
+  const fig = document.createElement("figure"); row.appendChild(fig);
+  const pair = document.createElement("div"); pair.className = "pair"; fig.appendChild(pair);
+  for (const st of STATES) frame(pair, st.cap, fn, st);
+  const fc = document.createElement("figcaption"); fc.innerHTML = `${name}<small>${desc}</small>`; fig.appendChild(fc);
+}
+</script>
+<div style="max-width:1200px;margin:16px auto 0;font-size:12px;line-height:1.5">
+  Branch lines in all three: <span style="color:#cfe3ff">solid Glass</span> open as last seen,
+  dashed Tone closed as last seen, faint dots not seen. Trunks are always solid; they never close.
+  You are here: the amber ring (the highlight). In a lane: the stretch behind solid amber, ahead
+  dashed, and her chevron where her progress puts her. ⋈ is the new toggle, left of ◎.
+</div>
+</body></html>

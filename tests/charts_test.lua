@@ -55,6 +55,25 @@ test('cleans orbits, fits, edges and places', function()
   eq(C.charts(s).epoch, 1000)
 end)
 
+test('a mouth keeps open, a boolean only', function()
+  local s = C.new()
+  C.space_charts(s, charts({ places = {
+    { id = 'mouth:petroc:maelor', name = 'the Maelor lane mouth', kind = 'mouth', open = false },
+    { id = 'mouth:petroc:keyne', name = 'the Keyne lane mouth', kind = 'mouth', open = true },
+    { id = 'tiss', name = 'T.I.S.S.', kind = 'station', open = 'yes' },
+  } }))
+  local p = C.charts(s).places
+  eq(p[1].open, false)
+  eq(p[2].open, true)
+  eq(p[3].open, nil)
+  -- a branch closing is a change to the charts
+  eq(C.space_charts(s, charts({ places = {
+    { id = 'mouth:petroc:maelor', name = 'the Maelor lane mouth', kind = 'mouth', open = true },
+    { id = 'mouth:petroc:keyne', name = 'the Keyne lane mouth', kind = 'mouth', open = true },
+    { id = 'tiss', name = 'T.I.S.S.', kind = 'station', open = 'yes' },
+  } })), true)
+end)
+
 test('same charts again is not a change', function()
   local s = fresh()
   eq(C.space_charts(s, charts()), false)

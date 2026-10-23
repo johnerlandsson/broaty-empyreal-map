@@ -1,5 +1,6 @@
 -- Empyreal map (T.I.S.S., Orrin Station and Wenna Halt so far): folds GMCP location frames into one small message
--- and pushes it to the "map" panel, and your ship's frames into the overview's scene. All state lives here; the panel is a
+-- and pushes it to the "map" panel, and your ship's frames into the overview's scene, the system chart and the
+-- core lanes map. The lanes' states as last seen are kept in Mallard's storage, so they outlive a restart. All state lives here; the panel is a
 -- pure presentation layer that asks for a replay with "ready".
 --
 -- Mallard's require has no cache, so each module is required exactly once.
@@ -7,11 +8,23 @@
 local L = require('station_map.location')
 local S = require('station_map.scene')
 local C = require('station_map.charts')
+local N = require('station_map.lanes')
 
 local panel = mud.panel('map')
 local state = L.new()
 local scene = S.new()
 local chart = C.new()
+local lanes = N.new()
+
+-- storage is per plugin and world; a bad stored value (or none) is no sightings
+if storage then
+  local ok, saved = pcall(storage.get, 'lanes')
+  if ok then N.load(lanes, saved) end
+end
+
+local function save_lanes()
+  if storage then pcall(storage.set, 'lanes', N.saved(lanes)) end
+end
 
 local function has_location(s)
   local m = L.message(s)
@@ -38,6 +51,14 @@ local function post_chart_on()
   panel:post('chart', { on = C.on(chart) })
 end
 
+local function post_lanes()
+  panel:post('lanes', N.message(lanes))
+end
+
+local function post_lanes_on()
+  panel:post('lanes-view', { on = N.on(lanes) })
+end
+
 local function post_settings()
   panel:post('settings', { turn_model = settings.get('turn_model') ~= false })
 end
@@ -51,17 +72,20 @@ local reducers = {
   ['empyreal.vehicle'] = L.vehicle,
 }
 
--- Each of these folds into the scene first, then the chart.
+-- Each of these folds into the scene first, then the chart, then the lanes.
 local function scene_ship(data)
   if S.ship_status(scene, data) then post_scene() end
   C.ship_status(chart, data, os.time())
   -- Always: the panel times a trip from the fresh `received`.
   post_chart_ship()
+  if N.ship_status(lanes, data, os.time()) then post_lanes() end
 end
 
 local function scene_charts(data)
   if S.space_charts(scene, data) then post_scene() end
   if C.space_charts(chart, data) then post_charts() end
+  if N.space_charts(lanes, data, os.time()) then post_lanes() end
+  save_lanes() -- every time: a lane seen now was seen until now
 end
 
 local scene_reducers = {
@@ -98,6 +122,8 @@ world.on('disconnect', function()
     post_charts()
     post_chart_ship()
   end
+  if N.reset(lanes, os.time()) then post_lanes() end
+  save_lanes()
 end)
 
 panel:on_message('ready', function()
@@ -108,11 +134,21 @@ panel:on_message('ready', function()
   if C.charts(chart) then post_charts() end
   if C.ship(chart) then post_chart_ship() end
   if C.on(chart) then post_chart_on() end
+  if N.message(lanes).system or next(N.saved(lanes)) then post_lanes() end
+  if N.on(lanes) then post_lanes_on() end
 end)
 
+-- The chart and the lanes map each cover the top band: switching one on switches the other off.
 panel:on_message('chart', function(data)
   if type(data) ~= 'table' or type(data.on) ~= 'boolean' then return end
   if C.set_on(chart, data.on) then post_chart_on() end
+  if data.on and N.set_on(lanes, false) then post_lanes_on() end
+end)
+
+panel:on_message('lanes-view', function(data)
+  if type(data) ~= 'table' or type(data.on) ~= 'boolean' then return end
+  if N.set_on(lanes, data.on) then post_lanes_on() end
+  if data.on and C.set_on(chart, false) then post_chart_on() end
 end)
 
 settings.on('change', function(key)

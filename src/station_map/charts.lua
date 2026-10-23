@@ -3,7 +3,7 @@
 -- payload leaves out and this remembers: where she `from` left, the `point` she
 -- holds at once her trip there ends, whether she is `searching` for a belt, and
 -- when the status `received` and when her trip began, `depart` (whole seconds), which fix
--- the trip's timing; and her `name`.
+-- the trip's timing; and her `name`. A lane mouth keeps its `open` (a closed branch's is false).
 -- She reads from `host` when set, as scene.lua does.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 
@@ -47,6 +47,11 @@ local function clean_edge(e)
   return { r = r, bearing = bearing, at = at }
 end
 
+local function bool(v)
+  if type(v) == 'boolean' then return v end
+  return nil
+end
+
 local function clean_list(list, fn)
   local out = {}
   if type(list) ~= 'table' then return out end
@@ -66,7 +71,8 @@ local function clean_charts(data)
     end),
     places = clean_list(data.places, function(p)
       return { id = p.id, name = str(p.name) or p.id, kind = str(p.kind),
-        orbit = clean_orbit(p.orbit), fit = clean_fit(p.fit), edge = clean_edge(p.edge) }
+        orbit = clean_orbit(p.orbit), fit = clean_fit(p.fit), edge = clean_edge(p.edge),
+        open = bool(p.open) }
     end),
   }
 end

@@ -24,15 +24,24 @@ local function boot(opts)
     on = function(ev, fn) env.settings_handlers[ev] = fn end,
   }
   _G.log = { debug = function(...) env.debug[#env.debug + 1] = { ... } end }
+  env.stored = opts.stored or {}
+  _G.storage = {
+    get = function(key)
+      if opts.bad_storage then error('not JSON') end
+      return env.stored[key]
+    end,
+    set = function(key, v) env.stored[key] = v end,
+  }
 
   -- Mallard's require has no cache: count loads of our module.
   package.loaded['station_map.location'] = nil
   package.loaded['station_map.scene'] = nil
   package.loaded['station_map.charts'] = nil
+  package.loaded['station_map.lanes'] = nil
   local real_require = require
   _G.require = function(name)
     if name == 'station_map.location' or name == 'station_map.scene'
-        or name == 'station_map.charts' then
+        or name == 'station_map.charts' or name == 'station_map.lanes' then
       env.requires[#env.requires + 1] = name
       package.loaded[name] = nil
     end
@@ -67,7 +76,7 @@ end
 test('wires panel and requires each module once', function()
   local env = boot()
   eq(env.panel_id, 'map')
-  eq(env.requires, { 'station_map.location', 'station_map.scene', 'station_map.charts' })
+  eq(env.requires, { 'station_map.location', 'station_map.scene', 'station_map.charts', 'station_map.lanes' })
   eq(type(env.gmcp_handlers['mudstd.room.info']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Room']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Vehicle']), 'function')
@@ -245,7 +254,7 @@ end)
 test('Space.Charts posts charts after the scene', function()
   local env = boot()
   env.gmcp_handlers['Space.Charts']('Space.Charts', { system = 'sol', places = { { id = 'belt.7', kind = 'belt' } } })
-  eq(names(env), { 'charts' })
+  eq(names(env), { 'charts', 'lanes' })
   eq(env.posts[1].data.system, 'sol')
   env.posts = {}
   env.gmcp_handlers['Space.Charts']('Space.Charts', { system = 'sol', places = { { id = 'belt.7', kind = 'belt' } } })
@@ -294,7 +303,7 @@ test('the panel chart message is kept and replayed on ready', function()
   env.panel_handlers.chart({ on = 'yes' })
   eq(#env.posts, 0)
   env.panel_handlers.ready({})
-  eq(names(env), { 'settings', 'scene', 'charts', 'chart-ship', 'chart' })
+  eq(names(env), { 'settings', 'scene', 'charts', 'chart-ship', 'chart', 'lanes' })
   eq(post_named(env, 'chart').data, { on = true })
 end)
 
@@ -310,7 +319,7 @@ test('disconnect posts charts nil and keeps the chart on', function()
   env.panel_handlers.chart({ on = true })
   env.posts = {}
   env.world_handlers.disconnect()
-  eq(names(env), { 'location', 'charts', 'chart-ship' })
+  eq(names(env), { 'location', 'charts', 'chart-ship', 'lanes' })
   eq(post_named(env, 'charts').data, nil)
   eq(post_named(env, 'chart-ship').data, nil)
   -- a panel remounted while disconnected is told it's still on
@@ -324,6 +333,90 @@ test('chart-ship carries her name', function()
   local env = boot()
   env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = true, location = 'tiss' })
   eq(post_named(env, 'chart-ship').data.name, 'Mule')
+end)
+
+-- Petroc's mouths, the Maelor branch closed
+local PETROC = { system = 'petroc', places = {
+  { id = 'morvah_deep', name = 'Morvah Deep', kind = 'station' },
+  { id = 'mouth:petroc:keyne', name = 'the Keyne lane mouth', kind = 'mouth', open = true },
+  { id = 'mouth:petroc:maelor', name = 'the Maelor lane mouth', kind = 'mouth', open = false },
+} }
+
+test('Space.Charts posts lanes and stores the sightings', function()
+  local real = os.time
+  os.time = function() return 500 end
+  local env = boot()
+  env.gmcp_handlers['Space.Charts']('Space.Charts', PETROC)
+  os.time = real
+  local m = post_named(env, 'lanes').data
+  eq(m.system, 'petroc')
+  eq(m.visible, { 'keyne-petroc', 'maelor-petroc' })
+  eq(m.seen['maelor-petroc'], { open = false, at = 500 })
+  eq(env.stored.lanes['maelor-petroc'], { open = false, at = 500 })
+end)
+
+test('stored sightings are loaded and replayed on ready', function()
+  local env = boot({ stored = { lanes = { ['keyne-mabyn'] = { open = true, at = 42 } } } })
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings', 'lanes' })
+  eq(post_named(env, 'lanes').data.seen, { ['keyne-mabyn'] = { open = true, at = 42 } })
+end)
+
+test('storage that fails to read is no sightings', function()
+  local env = boot({ bad_storage = true })
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings' })
+end)
+
+test('a jump posts the lane she is in', function()
+  local env = boot()
+  local h = env.gmcp_handlers['Ship.Status']
+  h('Ship.Status', { name = 'Mule', location = 'mouth:petroc:maelor' })
+  env.posts = {}
+  h('Ship.Status', { name = 'Mule', destination = 'mouth:maelor:petroc', progress = 0, eta = 400,
+    status = 'in the Maelor lane 0%' })
+  eq(post_named(env, 'lanes').data.transit.lane, 'maelor-petroc')
+end)
+
+test('the lanes view and the chart switch each other off', function()
+  local env = boot()
+  env.panel_handlers.chart({ on = true })
+  env.posts = {}
+  env.panel_handlers['lanes-view']({ on = true })
+  eq(names(env), { 'lanes-view', 'chart' })
+  eq(env.posts[1].data, { on = true })
+  eq(env.posts[2].data, { on = false })
+  env.posts = {}
+  env.panel_handlers.chart({ on = true })
+  eq(names(env), { 'chart', 'lanes-view' })
+  eq(env.posts[2].data, { on = false })
+  env.posts = {}
+  env.panel_handlers['lanes-view']('junk')
+  env.panel_handlers['lanes-view']({ on = false })
+  eq(#env.posts, 0)
+end)
+
+test('ready replays the lanes view when on', function()
+  local env = boot()
+  env.panel_handlers['lanes-view']({ on = true })
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings', 'lanes-view' })
+end)
+
+test('disconnect keeps the sightings, stamped', function()
+  local real = os.time
+  os.time = function() return 500 end
+  local env = boot()
+  env.gmcp_handlers['Space.Charts']('Space.Charts', PETROC)
+  os.time = function() return 900 end
+  env.posts = {}
+  env.world_handlers.disconnect()
+  os.time = real
+  local m = post_named(env, 'lanes').data
+  eq(m.system, nil)
+  eq(m.seen['maelor-petroc'], { open = false, at = 900 })
+  eq(env.stored.lanes['maelor-petroc'], { open = false, at = 900 })
 end)
 
 t.done()

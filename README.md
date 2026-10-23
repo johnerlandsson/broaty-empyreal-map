@@ -5,7 +5,8 @@ that follow you as you play. It maps three stations: T.I.S.S., which it
 follows as you walk, ride the lifts and visit the docks, the small outpost
 Orrin Station, and Wenna Halt, one lane over in Maelor's system. It also maps
 Zennor, the town on the planet Tamsin below T.I.S.S. The panel shows
-whichever place you're in, or the one your ship is docked or landed at.
+whichever place you're in, or the one your ship is docked or landed at,
+and charts the star system you're in and the lanes across the core.
 
 ---
 
@@ -60,6 +61,19 @@ searches for a belt the arc lights up instead of her path, and a lane mouth
 gets a mark only if the game says where it faces: a stable lane's does, a wild
 lane's is only "somewhere on the edge". Press ◎ again for the
 station or the view ahead.
+
+**The core lanes.** Beside ◎, a ⋈ button swaps the band for a map of the
+core's six systems: Petroc, Keyne, Senara, Maelor, Elowen and Mabyn, top to
+bottom, inner to outer, each with its stations. The trunks run down a line
+between them. The two branches, Petroc–Maelor and Keyne–Mabyn, are brackets
+beside it: solid when you last saw them open, dashed when closed, dotted if
+you've never been where they start. A key says how long ago you saw each
+one ("open · now", "closed · seen 3d 4h ago"). You only find out from the
+mouths in the system you're in, and the map remembers what you saw across
+restarts. It never guesses when a branch will open. Your system has the
+amber ring; in a lane, the lane is lit and your ship moves along it with the
+time left. The spacing is even, not where the stars really are. ⋈ and ◎
+switch each other off.
 
 **The deck plan (bottom).** A floor plan of the floor you're on:
 

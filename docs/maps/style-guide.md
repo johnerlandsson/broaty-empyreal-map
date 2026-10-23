@@ -23,6 +23,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | Space scenes | top | you're out in a ship you own or crew, undocked | [space-scenes.md](space-scenes.md) |
 | Ship plans | bottom | you're aboard any ship, docked or not | [ship-plans.md](ship-plans.md) |
 | Orrery (the system chart) | top | the ◎ toggle is on | [orrery.md](orrery.md) |
+| Core lanes map | top | the ⋈ toggle is on | [lanes.md](lanes.md) |
 
 ## 2. Principles
 
@@ -390,7 +391,8 @@ what it draws and how.
   shows once the game has sent the charts. A disconnect hides it and the
   chart, but leaves the chart on or off as it was. While the chart is on it has a Dim
   border, the band's + − ⌂, wheel and drag act on the chart, and what's
-  under it keeps its state without drawing.
+  under it keeps its state without drawing. Switching it on switches the
+  lanes map (§13.5) off, and the other way round.
 - **Hover** any mark for a Mallard tooltip: its name; for a belt, its error
   and when it was seen ("±2,600 km, seen 2d 4h ago"); for a port, its planet
   ("on Tamsin's surface"); for your ship, where she's bound and when she'll
@@ -412,6 +414,24 @@ what it draws and how.
   ⌂ pressed while the band has no size frames again once it has one.
 - **Live:** redrawn at least once a second while it's shown and the panel
   is visible, never otherwise.
+
+### 13.5 The core lanes map
+
+A schematic of the core's systems and lanes (see lanes.md), behind the **⋈**
+toggle left of ◎, styled and shown like it. It shares the chart's colours:
+
+- **Stops:** Star dots on a vertical line, inner to outer, evenly spaced,
+  never placed where the stars are. Names in 11 (yours in Text, the rest
+  `#c3ccd8`), stations as Glass diamonds named in Dim, 9.
+- **Trunks:** 2 px in the lightest Tone.
+- **Branches**, as last seen: open solid Glass 2 px; closed dashed `5 4` in
+  the middle Tone; never seen dotted `1 4` in the darkest Tone. A key names
+  each with its state and how old it is ("closed · seen 3d 4h ago", "open ·
+  now"). Nothing predicts a branch opening.
+- **You are here:** the amber ring of the highlight (§6) round your system.
+  **In a lane:** the lane lit amber, behind her solid at .3 and ahead dashed
+  `4 4` at .7, with her amber chevron, and "in the Maelor lane · 3m 40s" in
+  amber in the key.
 
 ## 14. Adding a map
 

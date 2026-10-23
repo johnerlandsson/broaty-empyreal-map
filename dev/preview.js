@@ -12,6 +12,8 @@
 //   ?hull=H   aboard a ship, send hull H (skiff, courier or freighter) as the server will; the bar's menu switches it
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
 //             docked-tiss, landed-zennor, none, maelor or edge), emitting charts, chart-ship and chart { on: true }; the bar's menu switches it
+//   ?lanes=L  open the core lanes map on scenario L (senara, in-trunk, in-branch or petroc), emitting lanes and
+//             lanes-view { on: true }; the bar's menu switches it
 
 import orrin from "../ui/data/orrin.js";
 import station from "../ui/data/station.js";
@@ -297,6 +299,37 @@ function emitChart(name) {
 }
 chartMenu.addEventListener("change", () => emitChart(chartMenu.value));
 
+// --- the core lanes map: what the Lua side's lanes reducer posts ----------------------------
+
+const lanesMenu = document.getElementById("lanes");
+
+function emitLanes(name) {
+  if (!name) {
+    fp.emit("lanes-view", { on: false });
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const SCENARIOS = {
+    // docked at T.I.S.S.: the Petroc branch seen open two hours ago, the Keyne branch never
+    senara: { system: "senara", visible: ["keyne-senara", "maelor-senara"],
+      seen: { "maelor-petroc": { open: true, at: now - 7800 }, "keyne-senara": { open: true, at: now }, "maelor-senara": { open: true, at: now } } },
+    // in the Senara–Maelor trunk, 40% through: the charts are Maelor's already
+    "in-trunk": { system: "maelor", visible: ["elowen-maelor", "maelor-petroc", "maelor-senara"],
+      seen: { "maelor-petroc": { open: false, at: now - 3 * 86400 }, "keyne-mabyn": { open: true, at: now - 1200 } },
+      transit: { lane: "maelor-senara", from: "senara", to: "maelor", progress: 0.4, eta: 220, received: now } },
+    // in the Keyne branch, out to Mabyn
+    "in-branch": { system: "mabyn", visible: ["elowen-mabyn", "keyne-mabyn"],
+      seen: { "keyne-mabyn": { open: true, at: now }, "maelor-petroc": { open: true, at: now - 5 * 3600 } },
+      transit: { lane: "keyne-mabyn", from: "keyne", to: "mabyn", progress: 0.3, eta: 300, received: now } },
+    // at Morvah Deep, the Maelor branch closed now
+    petroc: { system: "petroc", visible: ["keyne-petroc", "maelor-petroc"],
+      seen: { "maelor-petroc": { open: false, at: now } } },
+  };
+  fp.emit("lanes", SCENARIOS[name] ?? SCENARIOS.senara);
+  fp.emit("lanes-view", { on: true });
+}
+lanesMenu.addEventListener("change", () => emitLanes(lanesMenu.value));
+
 function start() {
   fp.emit("settings", { turn_model: !q.has("still") });
   if (q.has("scene")) {
@@ -307,6 +340,10 @@ function start() {
   if (q.has("chart")) {
     chartMenu.value = q.get("chart");
     emitChart(chartMenu.value);
+  }
+  if (q.has("lanes")) {
+    lanesMenu.value = q.get("lanes");
+    emitLanes(lanesMenu.value);
   }
   const n = q.has("step") ? Math.max(0, Math.min(ROUTE.length - 1, Number(q.get("step")) || 0)) : null;
   if (q.has("walk")) {

@@ -1,6 +1,6 @@
 # The orrery
 
-*Status: built. Last updated 2026-10-22.*
+*Status: built. Last updated 2026-10-23.*
 
 ## What it is and when it shows
 
@@ -14,7 +14,8 @@ It shows while the **◎** button is on. The button sits left of the band's
 ship or not. It hides again when you disconnect, and the chart with it. The
 chart stays on or off as you left it through docking, undocking, walking about
 and a dropped connection, and a reopened panel gets the choice back. It doesn't
-outlive the session.
+outlive the session. The core lanes map's **⋈** (lanes.md) sits left of ◎,
+and switching either on switches the other off.
 
 While it's on, + −, the wheel and drag act on the chart, and the station model
 or space scene underneath keeps its state but doesn't draw. The chart shows the
