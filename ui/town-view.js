@@ -108,6 +108,16 @@ export class SkyView {
     const inside = el("g", { "clip-path": "url(#sky-clip)" }, this.back);
     if (scene.tint) el("path", { d: dome(), fill: scene.tint }, inside);
     if (scene.stars !== "none") stars(inside, -DOME, HORIZON - DOME, DOME * 2, DOME, scene.stars === "all" ? 260 : 25, 11);
+    // Dawn's paling, in the sky behind the ridge, rising from Senara's side of the horizon: the
+    // glow on the horizon alone sits on the ridge's face, pale on pale, and doesn't show.
+    if (scene.glow?.kind === "dawn") {
+      const cx = scene.glow.east ? DOME : -DOME;
+      const g = el("radialGradient", { id: "sky-dawn", cx, cy: HORIZON, r: 190, gradientUnits: "userSpaceOnUse" }, inside);
+      el("stop", { offset: 0, "stop-color": "#8fa2bd", "stop-opacity": 0.7 }, g);
+      el("stop", { offset: 0.5, "stop-color": "#4a5a74", "stop-opacity": 0.3 }, g);
+      el("stop", { offset: 1, "stop-color": "#04060c", "stop-opacity": 0 }, g);
+      el("path", { d: dome(), fill: "url(#sky-dawn)" }, inside);
+    }
 
     const f = this.front;
     if (scene.glow) {

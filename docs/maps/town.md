@@ -71,8 +71,9 @@ game's `ground.ts` works it out (planetside.md §4), and moving as you watch:
   steady spark."). Hovering over the empty sky gives Senara's.
 - **The sky's colour** steps with the game's bands, so it never says more
   than the words. Night is black and crowded with stars. At dusk Senara's
-  side glows warm and a few stars are out. At dawn its side pales and
-  there are no stars, since the game's dawn names none. By day the dome
+  side glows warm and a few stars are out. At dawn the sky pales, a glow rising
+  from its side of the horizon behind the ridge, and there are no stars,
+  since the game's dawn names none. By day the dome
   is tinted a dark, dusty blue-grey, a step lighter for each band: just up,
   low, well up, overhead.
 

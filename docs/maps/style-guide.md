@@ -115,6 +115,7 @@ On a town's plan (the ground, not a deck; see town.md):
 | Day tints | `#1c2430`, `#232d3a`, `#2c3846`, `#364455` | a town's sky dome while its star is just up, low, well up and overhead (`SKY_TINTS` in `ui/lib/sky.js`) |
 | Dusk glow | `#e8925a` at .35 | the horizon where the star went down, at dusk |
 | Dawn glow | `#b8c8dc` at .3 | the horizon where the star will come up, at dawn |
+| Dawn sky | `#8fa2bd` at .7 → `#4a5a74` at .3 → none, radius 190 | the sky rising from that horizon at dawn, behind the skyline, so it shows above the ridge |
 
 ### 4.4 District colours
 
