@@ -178,9 +178,48 @@ test('a new system drops from, point and searching', function()
   C.ship_status(s, { location = 'tiss' }, 0)
   C.ship_status(s, { destination = 'gannet', progress = 0.1, eta = 100 }, 1)
   eq(C.ship(s).from, 'tiss')
-  C.space_charts(s, charts({ system = 'vega' }))
+  C.space_charts(s, charts({ system = 'vega', bodies = {}, places = {
+    { id = 'vega_halt', name = 'Vega Halt', kind = 'station' },
+  } }))
   eq(C.ship(s).from, nil)
   eq(C.ship(s).searching, nil)
+end)
+
+-- Ship.Status comes before Space.Charts in the game's refresh (gmcp.ts), so out of a lane her
+-- status at the far mouth lands while the charts are still the old system's.
+local function maelor()
+  return charts({ system = 'maelor', bodies = {
+    { id = 'wenna_halt', name = 'Wenna Halt', kind = 'station',
+      orbit = { parent = 'wenna', a = 700, period = 9000 } },
+  }, places = {
+    { id = 'wenna_halt', name = 'Wenna Halt', kind = 'station' },
+    { id = 'mouth:maelor:senara', name = 'the Senara lane mouth', kind = 'mouth',
+      edge = { r = 15000, bearing = 263, at = 5 } },
+  } })
+end
+
+test('out of a lane, her first trip starts from the far mouth', function()
+  local s = fresh()
+  C.ship_status(s, { location = 'mouth:senara:maelor' }, 0)
+  C.ship_status(s, { destination = 'mouth:maelor:senara', progress = 0, eta = 380 }, 1)
+  C.ship_status(s, { location = 'mouth:maelor:senara' }, 381) -- before the new system's charts
+  C.space_charts(s, maelor())
+  C.ship_status(s, { destination = 'wenna_halt', progress = 0, eta = 600 }, 390)
+  eq(C.ship(s).from, 'mouth:maelor:senara')
+end)
+
+test('a new system keeps a point in a frame it has', function()
+  local s = fresh()
+  C.ship_status(s, { destination = 'pt:wenna:100:200', progress = 0.9, eta = 2 }, 0)
+  C.ship_status(s, { location = nil }, 2)
+  eq(C.ship(s).point, 'pt:wenna:100:200')
+  C.space_charts(s, maelor())
+  eq(C.ship(s).point, nil) -- wenna is no body or place of this fixture: dropped
+  local s2 = fresh()
+  C.ship_status(s2, { destination = 'pt:tiss:1:2', progress = 0.9, eta = 2 }, 0)
+  C.ship_status(s2, { location = nil }, 2)
+  C.space_charts(s2, charts({ system = 'sol2' })) -- tiss is still there
+  eq(C.ship(s2).point, 'pt:tiss:1:2')
 end)
 
 test('status nil clears the ship', function()

@@ -83,9 +83,32 @@ local function same(a, b)
   return true
 end
 
-local function drop_memory(ship)
+-- True if the charts have id as a body or a place, or, for a point, its body.
+local function knows(charts, id)
+  if not id then return false end
+  id = id:match('^pt:([^:]+):') or id
+  for _, list in ipairs({ charts.bodies, charts.places }) do
+    for _, it in ipairs(list) do
+      if it.id == id then return true end
+    end
+  end
+  return false
+end
+
+-- Into a new system, forget what's no place of it. Not all of it: out of a lane her status at the
+-- far mouth comes before the new system's charts (gmcp.ts), and her next trip starts from there.
+local function drop_memory(state, charts)
+  local keep = function(id) return knows(charts, id) and id or nil end
+  local ship, prev = state.ship, state.prev
   if ship then
-    ship.from, ship.point, ship.searching, ship.depart = nil, nil, nil, nil
+    ship.from, ship.point, ship.searching = keep(ship.from), keep(ship.point), keep(ship.searching)
+    if not keep(ship.destination) then ship.depart = nil end
+  end
+  if prev then
+    prev.location = keep(prev.location)
+    if not keep(prev.destination) then
+      prev.destination, prev.progress, prev.eta, prev.depart_progress = nil, nil, nil, nil
+    end
   end
 end
 
@@ -93,10 +116,7 @@ function C.space_charts(state, data)
   if type(data) ~= 'table' then return false end
   local new = clean_charts(data)
   local old = state.charts
-  if old and old.system ~= new.system then
-    drop_memory(state.ship)
-    state.prev = nil
-  end
+  if old and old.system ~= new.system then drop_memory(state, new) end
   state.charts = new
   return not same(old, new)
 end
