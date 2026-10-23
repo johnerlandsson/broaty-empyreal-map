@@ -10,7 +10,8 @@ const rad = (deg) => (deg * Math.PI) / 180;
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
 // Index a charts message by id; a body and a place with the same id merge, keeping the body's
-// kind (a port is a station among places, gmcp.md §8.4).
+// kind (a port is a station among places, gmcp.md §8.4). A lane mouth's `open` is whether its lane
+// is open now (a branch closes for most of the year), null when not sent.
 export function indexCharts(charts) {
   const items = new Map();
   const put = (it, place) => {
@@ -23,7 +24,7 @@ export function indexCharts(charts) {
   for (const p of charts?.places ?? []) put(p, true);
   for (const it of items.values()) {
     it.name ??= it.id;
-    for (const k of ["kind", "radius", "orbit", "fit", "edge"]) it[k] ??= null;
+    for (const k of ["kind", "radius", "orbit", "fit", "edge", "open"]) it[k] ??= null;
   }
   return { system: charts?.system ?? null, epoch: num(charts?.epoch) ?? 0, items };
 }
@@ -369,4 +370,69 @@ export function ago(ms) {
 export function mouthStar(name) {
   const s = String(name ?? "");
   return s.replace(/^the\s+/i, "").replace(/\s+lane mouth$/i, "").trim() || s;
+}
+
+// True when the game says a lane mouth's lane is closed now; a mouth with no `open` is drawn open.
+export const isClosed = (it) => it?.open === false;
+
+// A mouth's name on the chart and its off-view marker: "Petroc", or "Petroc · closed".
+export const mouthLabel = (m) => (isClosed(m) ? `${mouthStar(m.name)} · closed` : mouthStar(m.name));
+
+// Where to draw mouths on the edge, their bearings `degs`, so none is nearer another than `gap`
+// degrees: a crowd is spread evenly about its middle, in bearing order, and every other mouth stays
+// where it is (a spread one may come out past 360°). `groups` are the crowds (and the loners), as indices into degs in bearing order.
+export function spreadOnEdge(degs, gap) {
+  const n = degs.length;
+  if (!n) return { angles: [], groups: [] };
+  gap = Math.min(gap, 360 / n);
+  const order = degs.map((d, i) => [((d % 360) + 360) % 360, i]).sort((a, b) => a[0] - b[0]);
+  const groups = [];
+  for (const o of order) {
+    const last = groups.at(-1);
+    if (last && o[0] - last.at(-1)[0] < gap) last.push(o);
+    else groups.push([o]);
+  }
+  // the last crowd runs on into the first across 0°
+  if (groups.length > 1 && groups[0][0][0] + 360 - groups.at(-1).at(-1)[0] < gap) {
+    groups.at(-1).push(...groups.shift().map(([d, i]) => [d + 360, i]));
+  }
+  const angles = degs.slice();
+  for (const g of groups) {
+    if (g.length < 2) continue;
+    const mid = g.reduce((s, [d]) => s + d, 0) / g.length;
+    g.forEach(([, i], k) => {
+      angles[i] = mid + (k - (g.length - 1) / 2) * gap;
+    });
+  }
+  return { angles, groups: groups.map((g) => g.map(([, i]) => i)) };
+}
+
+// Points within d of each other, as indices: each joins the first cluster whose first point is
+// within d of it, else starts its own.
+export function clusters(points, d) {
+  const out = [];
+  points.forEach((p, i) => {
+    const c = out.find((c) => Math.hypot(points[c[0]][0] - p[0], points[c[0]][1] - p[1]) < d);
+    if (c) c.push(i);
+    else out.push([i]);
+  });
+  return out;
+}
+
+// Boxes [x0, y0, x1, y1] that overlap, directly or through others, as groups of indices in order;
+// two only join if near(i, j) says so too.
+export function overlapping(boxes, near = () => true) {
+  const root = boxes.map((_, i) => i);
+  const find = (i) => (root[i] === i ? i : (root[i] = find(root[i])));
+  const meet = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = 0; j < i; j++) if (meet(boxes[i], boxes[j]) && near(i, j)) root[find(i)] = find(j);
+  }
+  const groups = new Map();
+  boxes.forEach((_, i) => {
+    const r = find(i);
+    if (!groups.has(r)) groups.set(r, []);
+    groups.get(r).push(i);
+  });
+  return [...groups.values()];
 }

@@ -21,7 +21,7 @@ While it's on, + −, the wheel and drag act on the chart, and the station model
 or space scene underneath keeps its state but doesn't draw. The chart shows the
 system in the latest charts, so crossing into another star's system switches it.
 
-The map shows only what the character knows. Two things are withheld on
+The map shows only what the character knows. Three things are withheld on
 purpose:
 
 - **Search legs.** When she reaches where her charts put a belt and it isn't
@@ -32,6 +32,9 @@ purpose:
 - **Where a wild lane's mouth faces.** The game sends it only for stable lanes
   (see below), so a wild lane's mouth gets no mark and no off-view marker, and
   nothing on the chart hints at a direction.
+- **When a branch opens.** A closed mouth says it's closed and nothing more:
+  the game never says when it will open (`help lanes`: "watch the stars"), and
+  the chart doesn't work it out from the stars' orbits.
 
 ## Where its data comes from
 
@@ -99,6 +102,13 @@ stable lane's direction (Senara to Maelor or Keyne) as public, but **wild
 lanes**, which come and go nearer the galactic core, won't get one, so a mouth
 without `edge` is still drawn only as "somewhere on the edge".
 
+Since 2026-10-23 (Empyreal 2fd6c81) a mouth also carries `open`: whether its
+lane is open now. A trunk always is; a branch (Petroc–Maelor, Keyne–Mabyn) is
+open only about forty days a year, while its stars pass close. The charts are
+resent when it changes. `open` is null for every other place, and a mouth
+without it is drawn open. A system can have three mouths now: Keyne and Maelor
+have two trunks and a branch each.
+
 ## Top band
 
 Everything the style guide's §13 draws:
@@ -112,7 +122,13 @@ Everything the style guide's §13 draws:
   "· lost".
 - **Mouths** with a bearing (a stable lane's) as a double chevron named by the
   star it leads to; without one (a wild lane's), the edge ring is named at its
-  top, a line a mouth: "Maelor lane, somewhere on the edge".
+  top, a line a mouth: "Maelor lane, somewhere on the edge". A **closed**
+  mouth's chevrons are dashed in Dim, as a closed room's outline is, and its
+  name says so: "Petroc · closed", "Petroc lane, closed, somewhere on the edge".
+  Mouths nearer each other than 18 px at the zoom you're at (Maelor's Senara
+  and Petroc mouths can be under a degree apart) are spread evenly along the
+  edge about their middle and their names stacked; zoomed in they sit where
+  the game puts them.
 - **Ports** as a small Glass dome on their planet's edge where the town is now,
   turning with the planet, and no orbit ring. The dome sits on the disc as
   drawn, so it stays on the edge when the planet is drawn bigger than it is.
@@ -131,11 +147,16 @@ Everything the style guide's §13 draws:
   gets a small chevron at the band's edge, with its name and its distance from
   your ship in thousands of km ("Orrin 16k"), or from the middle of the view
   when she can't be placed. A lost belt gets none, and nor does a body whose
-  disc (the star's bright glow) still reaches into the band.
+  disc (the star's bright glow) still reaches into the band. A closed mouth's
+  is named "Petroc · closed 21k", its chevron dashed. Markers within 12 px of
+  each other share one chevron (dashed only if all of them are closed mouths),
+  and markers within 48 px whose names would overlap stack them as one, a line
+  each. A name that still overlaps one already placed goes on the other side of
+  its own chevron if there's room; bigger stacks are placed first.
 - **A scale bar**, top left.
 - **Hover** any mark for its name; a belt's error and when it was seen; a
   port's planet; where she's bound and when she'll arrive, or where she's
-  docked or landed.
+  docked or landed; "closed" under a closed mouth's name.
 
 **Zoom and framing.** + − and the wheel zoom, drag pans, ⌂ frames. You can zoom
 in to 1,000 km across and out to 2.3 times the system's radius, times the band's
@@ -172,7 +193,8 @@ Unchanged: it says where you are aboard.
   on `ready`.
 - `ui/lib/orbits.js`: pure maths with no DOM. Kepler's equation, positions at a
   time, the transit line and her position, error growth, framing boxes, the
-  off-view markers and folding. Tests in `ui/lib/orbits.test.js`.
+  off-view markers and folding, and spreading crowded mouths and stacking
+  crowded markers. Tests in `ui/lib/orbits.test.js`.
 - `ui/chart-view.js`: the SVG, the ◎ button, zoom and pan (`attachPanZoom` and
   `zoomButtons` from `ui/lib/svg.js`), following her, the tooltips.
 - `ui/main.js`: wires the messages to the chart and keeps the redraw timer.
@@ -181,8 +203,11 @@ Unchanged: it says where you are aboard.
 - Preview: `dev/charts-fixture.js` builds Senara's and Maelor's systems from the
   game's content, and `?chart=` in `dev/preview.js` opens the chart on one of
   its scenarios (`parked-gannet`, `under-way-orrin`, `searching-cinders`,
-  `at-point`, `docked-tiss`, `landed-zennor`, `none`, `maelor`, or `edge` for an invented mouth
-  bearing). The bar's menu switches between them.
+  `at-point`, `docked-tiss`, `landed-zennor`, `none`, `maelor`, `maelor-lanes` for Maelor's
+  three mouths with the Petroc branch closed, or `edge` for Senara's mouth with
+  its bearing). The bar's menu switches between them.
+  `docs/maps/reference/closed-mouth-mockup.html` has the three looks weighed
+  for a closed mouth; the dashed one was picked.
 
 ## Where it differs from the style guide
 

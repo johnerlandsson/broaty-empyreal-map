@@ -11,7 +11,7 @@
 //             Zennor, which also emits charts placing it so); the bar's menu switches it
 //   ?hull=H   aboard a ship, send hull H (skiff, courier or freighter) as the server will; the bar's menu switches it
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
-//             docked-tiss, landed-zennor, none, maelor, edge, to-mouth, adrift or from-stop), emitting charts, chart-ship and
+//             docked-tiss, landed-zennor, none, maelor, maelor-lanes, edge, to-mouth, adrift or from-stop), emitting charts, chart-ship and
 //             chart { on: true }; the bar's menu switches it
 //   ?lanes=L  open the core lanes map on scenario L (senara, in-trunk, in-branch or petroc), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it
@@ -297,8 +297,8 @@ function emitChart(name) {
     adrift: { name: "Mule", docked: false, stop, received: s },
     "from-stop": { name: "Mule", docked: false, stop, destination: "mouth:senara:maelor", progress: 0.2, eta: 210, depart: s - 50, received: s },
   };
-  if (name === "maelor") {
-    fp.emit("charts", maelorCharts(now));
+  if (name === "maelor" || name === "maelor-lanes") {
+    fp.emit("charts", maelorCharts(now, null, name === "maelor-lanes"));
     fp.emit("chart-ship", stamp(MAELOR_SHIP));
   } else if (MOUTH_TRIPS[name]) {
     fp.emit("charts", senaraCharts(now, EDGE(now)));

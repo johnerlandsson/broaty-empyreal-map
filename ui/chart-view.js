@@ -7,6 +7,7 @@
 import {
   EDGE_KM,
   ago,
+  clusters,
   edgeMarker,
   errorAt,
   fitBox,
@@ -14,14 +15,18 @@ import {
   followStep,
   homeBox,
   indexCharts,
+  isClosed,
   isLost,
   markOf,
+  mouthLabel,
   mouthStar,
   onSurface,
+  overlapping,
   parsePoint,
   positionOf,
   scaleKm,
   shipFix,
+  spreadOnEdge,
   systemRadius,
 } from "./lib/orbits.js";
 import { attachPanZoom, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
@@ -47,6 +52,9 @@ const BUTTONS_W = 64; // the top right corner the ◎ and + − ⌂ take, px
 const BUTTONS_H = 112;
 const MARKER_INSET = 14; // px from the band's edge to an off-view chevron
 const TOP_CLEAR = 22; // px kept clear at the top for the scale bar and the buttons
+const MOUTH_GAP = 18; // px: mouths nearer than this on the edge are spread apart, their names stacked
+const MARKER_GAP = 12; // px: off-view markers nearer than this are one chevron, a line each
+const STACK_GAP = 48; // px: off-view markers nearer than this whose names would overlap stack them
 
 let instances = 0;
 
@@ -388,7 +396,7 @@ export class ChartView {
       const p = index.items.get(it.orbit.parent);
       return p?.kind !== "star" && (2 * (Number(it.orbit.a) || 0)) / s < LABEL_PX;
     };
-    const offView = []; // [name, km position, drawn radius px] for the edge markers
+    const offView = []; // [name, km position, drawn radius px, closed] for the edge markers
 
     // a planet's disc: its true radius, or at least 3.5 px
     const discR = (it) => Math.max(3.5, (Number(it.radius) || 0) / s);
@@ -426,7 +434,9 @@ export class ChartView {
         const c = P([0, 0]);
         const r = R / s;
         el("circle", { cx: c[0], cy: c[1], r, fill: "none", stroke: ORBIT, "stroke-dasharray": "1 5", "pointer-events": "none" }, marks);
-        const loose = mouths.filter((m) => !pos(m.id)).map((m) => `${mouthStar(m.name)} lane, somewhere on the edge`);
+        const loose = mouths
+          .filter((m) => !pos(m.id))
+          .map((m) => `${mouthStar(m.name)} lane${isClosed(m) ? ", closed," : ""} somewhere on the edge`);
         loose.forEach((text, i) => label(c[0], c[1] - r + 16 + i * 12, text)); // just inside its top
         const hit = el("circle", { cx: c[0], cy: c[1], r, fill: "none", stroke: "transparent", "stroke-width": 8, "pointer-events": "stroke" }, marks);
         if (loose.length) tip(hit, "edge", loose[0], loose.slice(1).join("\n"));
@@ -523,24 +533,50 @@ export class ChartView {
       });
     }
 
-    // mouths with a bearing: a double chevron on the edge, pointing out
-    for (const m of mouths) {
-      safe(() => {
-        const p = pos(m.id);
-        if (!p) return;
-        const [x, y] = P(p);
-        const deg = (Math.atan2(p[1], p[0]) * 180) / Math.PI;
+    // mouths with a bearing: a double chevron on the edge, pointing out, dashed in Dim if its lane is
+    // closed (style guide §13). Mouths too near each other at this zoom are spread along the edge,
+    // their names stacked.
+    safe(() => {
+      const placed = mouths.map((m) => [m, pos(m.id)]).filter(([, p]) => p);
+      const R = systemRadius(index) / s;
+      const { angles, groups } = spreadOnEdge(
+        placed.map(([, p]) => (Math.atan2(p[1], p[0]) * 180) / Math.PI),
+        ((MOUTH_GAP / Math.max(R, 1)) * 180) / Math.PI,
+      );
+      placed.forEach(([m, p], i) => {
+        const r = Math.hypot(p[0], p[1]);
+        const a = (angles[i] * Math.PI) / 180;
+        const [x, y] = P([r * Math.cos(a), r * Math.sin(a)]);
+        const closed = isClosed(m);
         const g = el("g", {}, marks);
-        el("path", { d: "M-5,-6 L3,0 L-5,6 M-1,-6 L7,0 L-1,6", fill: "none", stroke: GLASS, "stroke-width": 1.4, transform: `translate(${x} ${y}) rotate(${-deg})` }, g);
+        el("path", {
+          d: "M-5,-6 L3,0 L-5,6 M-1,-6 L7,0 L-1,6",
+          fill: "none",
+          stroke: closed ? DIM : GLASS,
+          "stroke-width": 1.4,
+          ...(closed ? { "stroke-dasharray": "2.2 1.8" } : {}),
+          transform: `translate(${x} ${y}) rotate(${-angles[i]})`,
+        }, g);
         el("circle", { cx: x, cy: y, r: 8, fill: "transparent" }, g);
-        const u = Math.hypot(p[0], p[1]) || 1;
-        const lx = x - (p[0] / u) * 12;
-        const ly = y + (p[1] / u) * 12 + 3;
-        label(lx, ly, mouthStar(m.name), p[0] >= 0 ? "end" : "start", [x, y - 12]);
-        tip(g, `mouth:${m.id}`, m.name);
-        offView.push([mouthStar(m.name), p]);
+        tip(g, `mouth:${m.id}`, m.name, closed ? "closed" : "");
+        offView.push([mouthLabel(m), p, 0, closed]);
       });
-    }
+      // a crowd's names, one line a mouth in bearing order, just inside its middle; stacked up from
+      // the edge below the star, down from it above
+      for (const grp of groups) {
+        const mid = (grp.reduce((sum, i) => sum + angles[i], 0) / grp.length) * (Math.PI / 180);
+        const r = Math.hypot(...placed[grp[0]][1]);
+        const [x, y] = P([r * Math.cos(mid), r * Math.sin(mid)]);
+        const lx = x - Math.cos(mid) * 12;
+        const ly = y + Math.sin(mid) * 12 + 3;
+        const up = Math.sin(mid) < 0;
+        grp.forEach((i, k) => {
+          const dy = (up ? k - (grp.length - 1) : k) * 12;
+          // one that won't fit beside them goes above them instead, the stack centred
+          label(lx, ly + dy, mouthLabel(placed[i][0]), Math.cos(mid) >= 0 ? "end" : "start", [x, y - 12 - (grp.length - 1 - k) * 12]);
+        });
+      }
+    });
 
     // her route and her chevron
     safe(() => {
@@ -584,7 +620,10 @@ export class ChartView {
     const view = this.visible();
     const inner = [view[0], view[1] + TOP_CLEAR * s, view[2], view[3] - TOP_CLEAR * s];
     const from = herPos ?? [cx, -cy];
-    for (const [name, p, r = 0] of offView) {
+    // each off-view thing's marker; those that land together are one chevron (dashed if all of them
+    // are closed mouths) with a line each
+    const shown = [];
+    for (const [name, p, r = 0, closed = false] of offView) {
       safe(() => {
         // off the band, it's marked just inside it, below the scale bar and the buttons
         if (!edgeMarker(view, [p[0], -p[1]], 0)) return;
@@ -593,20 +632,74 @@ export class ChartView {
         if (Math.hypot(Math.max(0, -px, px - w), Math.max(0, -py, py - h)) < r) return;
         const m = edgeMarker(inner, [p[0], -p[1]], MARKER_INSET * s);
         if (!m) return;
-        const [x, y] = P([m.x, -m.y]);
-        const deg = (m.angle * 180) / Math.PI;
-        el("path", { d: "M-4,-5 L3,0 L-4,5", fill: "none", stroke: DIM, "stroke-width": 1.3, transform: `translate(${x} ${y}) rotate(${deg})` }, over);
         const km = Math.hypot(p[0] - from[0], p[1] - from[1]);
-        const t2 = el("text", {
-          x: x - Math.cos(m.angle) * 10,
-          y: y - Math.sin(m.angle) * 10 + 3,
-          "font-size": 9,
-          fill: DIM,
-          "text-anchor": Math.cos(m.angle) > 0.3 ? "end" : Math.cos(m.angle) < -0.3 ? "start" : "middle",
-          "font-family": FONT,
+        shown.push({ at: P([m.x, -m.y]), angle: m.angle, text: `${name} ${thousands(km)}`, closed });
+      });
+    }
+    // a chevron a cluster; then the names of nearby clusters whose names would overlap stacked as one
+    // (a far one's name stays by its own chevron)
+    const drawn = clusters(shown.map((it) => it.at), MARKER_GAP).map((c) => {
+      const [x, y] = shown[c[0]].at;
+      const angle = shown[c[0]].angle;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const anchor = cos > 0.3 ? "end" : cos < -0.3 ? "start" : "middle";
+      const tx = x - cos * 10;
+      const ty = y - sin * 10 + 3;
+      const lines = c.map((i) => shown[i].text);
+      const tw = Math.max(...lines.map((l) => l.length * 5));
+      const x0 = anchor === "end" ? tx - tw : anchor === "middle" ? tx - tw / 2 : tx;
+      return { c, x, y, angle, anchor, tx, ty, lines, box: [x0, ty - 9, x0 + tw, ty + 11 * (lines.length - 1) + 2] };
+    });
+    for (const k of drawn) {
+      safe(() => {
+        el("path", {
+          d: "M-4,-5 L3,0 L-4,5",
+          fill: "none",
+          stroke: DIM,
+          "stroke-width": 1.3,
+          ...(k.c.every((i) => shown[i].closed) ? { "stroke-dasharray": "2 1.6" } : {}),
+          transform: `translate(${k.x} ${k.y}) rotate(${(k.angle * 180) / Math.PI})`,
+        }, over);
+      });
+    }
+    const near = (i, j) => Math.hypot(drawn[i].x - drawn[j].x, drawn[i].y - drawn[j].y) < STACK_GAP;
+    // a name that would still overlap names already placed goes on the other side of its chevron,
+    // if it fits in the band there; the biggest stacks are placed first, so it's the lone names that move
+    const placedBoxes = [];
+    const meets = (a) => placedBoxes.some((b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]);
+    const stacks = overlapping(drawn.map((k) => k.box), near);
+    const size = (grp) => grp.reduce((n, g) => n + drawn[g].lines.length, 0);
+    stacks.sort((a, b) => size(b) - size(a));
+    for (const grp of stacks) {
+      safe(() => {
+        const k = drawn[grp[0]];
+        const lines = grp.flatMap((g) => drawn[g].lines);
+        // stacked away from the band's edge: up from the bottom, down from the top
+        const sin = Math.sin(k.angle);
+        const lift = sin > 0.3 ? -(lines.length - 1) : sin < -0.3 ? 0 : -(lines.length - 1) / 2;
+        const tw = Math.max(...lines.map((l) => l.length * 5));
+        const top = k.ty + lift * 11 - 9;
+        const bottom = k.ty + (lift + lines.length - 1) * 11 + 2;
+        const boxAt = (x, anchor) => {
+          const x0 = anchor === "end" ? x - tw : anchor === "middle" ? x - tw / 2 : x;
+          return [x0, top, x0 + tw, bottom];
+        };
+        let [x, anchor] = [k.tx, k.anchor];
+        if (meets(boxAt(x, anchor))) {
+          const sides = anchor === "start" ? [[k.x - 8, "end"]] : anchor === "end" ? [[k.x + 8, "start"]] : [[k.x - 8, "end"], [k.x + 8, "start"]];
+          const other = sides.find(([sx, sa]) => {
+            const b = boxAt(sx, sa);
+            return b[0] >= 0 && b[2] <= w && !meets(b);
+          });
+          if (other) [x, anchor] = other;
+        }
+        placedBoxes.push(boxAt(x, anchor));
+        lines.forEach((line, n) => {
+          const t2 = el("text", { x, y: k.ty + (lift + n) * 11, "font-size": 9, fill: DIM, "text-anchor": anchor, "font-family": FONT });
+          t2.textContent = line;
+          over.appendChild(t2);
         });
-        t2.textContent = `${name} ${thousands(km)}`;
-        over.appendChild(t2);
       });
     }
 

@@ -340,7 +340,9 @@ what it draws and how.
 - **The edge:** a ring dotted `1 5` in Orbit at the lane mouths' distance,
   whenever the system has a mouth.
 - **A mouth with a bearing** (a stable lane's): a double chevron in Glass on the edge, pointing
-  out along it.
+  out along it. A **closed** one (its branch lane is closed now) is the same chevron dashed
+  `2.2 1.8` in Dim, as a closed room is dashed (§8.2). Mouths nearer than 18 px are spread
+  evenly along the edge about their middle.
 - **A mouth without one** (a wild lane's): no mark and no off-view marker. The edge ring is
   named in Dim at its top, one line a mouth: "Maelor lane, somewhere on the
   edge". Nothing on the ring hints at a direction.
@@ -359,7 +361,9 @@ what it draws and how.
 
 - Names in Dim, 10, beside the star, the planets, the belts (with `±N` km,
   thousands separated) and the mouths that have a bearing (by the star they
-  face: "Maelor").
+  face: "Maelor"; a closed one "Petroc · closed"). Spread mouths' names are
+  stacked, a line each in bearing order, stacked up from the edge below the
+  star and down from it above.
 - Stations are named on hover only.
 - A port is named outward from its planet, beside the dome, or centred on the
   line under the planet's name when the dome is on the bottom of the disc,
@@ -376,7 +380,10 @@ what it draws and how.
 
 - **Edge markers:** a body, a belt or a mouth with a bearing that's off the
   view is a small Dim chevron just inside the band's edge, pointing at it, named
-  with its distance in thousands of km, 9: "Orrin 16k". The distance is from
+  with its distance in thousands of km, 9: "Orrin 16k", a closed mouth's
+  "Petroc · closed 21k" with its chevron dashed `2 1.6`. Markers within 12 px
+  share a chevron, a line each; markers within 48 px whose names would overlap
+  stack them, and a name still in the way goes the other side of its chevron. The distance is from
   your ship, or from the view's centre when she can't be placed. Stations,
   ports and folded satellites get none. Neither does a lost belt, which is its whole
   ring and so has no one place to point at, nor a body whose disc reaches into

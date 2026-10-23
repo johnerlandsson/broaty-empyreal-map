@@ -59,7 +59,9 @@ at the edge, and your ship in amber with her route when she's under way.
 Zoom and drag as on a plan, ⌂ to frame. It shows only what you know: while she
 searches for a belt the arc lights up instead of her path, and a lane mouth
 gets a mark only if the game says where it faces: a stable lane's does, a wild
-lane's is only "somewhere on the edge". Press ◎ again for the
+lane's is only "somewhere on the edge". A branch lane's mouth is dashed and
+named "closed" while the lane is closed, which is most of the year; the chart
+doesn't say when it'll open, because the game doesn't. Press ◎ again for the
 station or the view ahead.
 
 **The core lanes.** Beside ◎, a ⋈ button swaps the band for a map of the

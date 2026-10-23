@@ -1,5 +1,5 @@
 // Fixture for the orrery preview: Space.Charts as C.charts would post it, and the ship's chart state.
-// Built from ~/dev/empyreal/content/game/system.yaml and belts.yaml (Senara, Maelor, Tamsin, Orrin, Wenna
+// Built from ~/dev/empyreal/content/game/system.yaml, belts.yaml and galaxy.yaml (Senara, Maelor, Tamsin, Orrin, Wenna
 // and the belts). The game sends each orbit's period as frame.period * (a / frame.a)^1.5, with the
 // parent's frame; `period` below does the same. km / deg / s; fit times in ms.
 
@@ -32,8 +32,9 @@ function belt(id, name, parent, a, extra, f) {
   return { id, name, kind: "belt", orbit: orbit(parent, FRAMES[parent], a, extra), fit: f };
 }
 
-const mouth = (from, to, name, edge) => {
-  const p = { id: `mouth:${from}:${to}`, name, kind: "mouth", orbit: null, fit: null };
+/** A lane mouth: `open` is whether its lane is open now, as the game sends it (a trunk always). */
+const mouth = (from, to, name, edge, open = true) => {
+  const p = { id: `mouth:${from}:${to}`, name, kind: "mouth", orbit: null, fit: null, open };
   if (edge) p.edge = edge;
   return p;
 };
@@ -80,7 +81,17 @@ export function senaraCharts(now, edge = null, side = "day") {
   };
 }
 
-export function maelorCharts(now, edge = null) {
+/** Maelor's three mouths at day 60 of the galaxy's year, worked out from galaxy.yaml as the game's
+ *  mouthPos does: two trunks (Senara, Elowen) and the Petroc branch, closed (its stars 16.6 units
+ *  apart, past its `open` 16). The Senara and Petroc mouths are under a degree apart. */
+const MAELOR_LANES = (now) => [
+  mouth("maelor", "senara", "the Senara lane mouth", { r: 15000, bearing: 287.01, at: now }, true),
+  mouth("maelor", "elowen", "the Elowen lane mouth", { r: 15000, bearing: 198.58, at: now }, true),
+  mouth("maelor", "petroc", "the Petroc lane mouth", { r: 15000, bearing: 287.84, at: now }, false),
+];
+
+/** Maelor, with its one Senara mouth (no bearing unless edge is given), or with all three (`lanes`). */
+export function maelorCharts(now, edge = null, lanes = false) {
   const wennaHalt = station("wenna_halt", "Wenna Halt", "wenna", 700);
   return {
     epoch: epoch(now),
@@ -93,13 +104,13 @@ export function maelorCharts(now, edge = null) {
     places: [
       wennaHalt.place,
       belt("kestrel", "Kestrel Belt", "wenna", 2000, { phase: 300 }, fit(now, 6 * HOUR, 200)),
-      mouth("maelor", "senara", "the Senara lane mouth", edge),
+      ...(lanes ? MAELOR_LANES(now) : [mouth("maelor", "senara", "the Senara lane mouth", edge)]),
     ],
   };
 }
 
-/** The mouth's edge marker. The bearing is INVENTED: the game doesn't send one, so this only shows how
- *  the chart draws a marker when it has one. */
+/** The Senara mouth's `edge`, as the game sends it (gmcp.md §8.3): 76° is toward Maelor at tick 0.
+ *  Without it (the `maelor` and other Senara scenarios) the chart shows a mouth it can't place. */
 export const EDGE = (now) => ({ r: 15000, bearing: 76, at: now });
 
 /** chart-ship messages by scenario (Senara); `received` and `depart` are stamped when emitted. */

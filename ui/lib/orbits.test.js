@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   EDGE_KM, ago, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
-  daylit, followStep, markOf, stopFix, offCentre, offsetOn, onSurface, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
+  clusters, daylit, followStep, isClosed, markOf, mouthLabel, offCentre, offsetOn, onSurface, overlapping, parentOf,
+  parsePoint, positionOf, scaleKm, shipFix, spreadOnEdge, stopFix, systemRadius,
 } from "./orbits.js";
 
 const rad = (d) => (d * Math.PI) / 180;
@@ -56,6 +57,19 @@ describe("indexCharts", () => {
       places: [{ id: "zennor", name: "Zennor", kind: "station", orbit: o, fit: null }],
     });
     expect(i.items.get("zennor").kind).toBe("port");
+  });
+
+  it("keeps whether a mouth is open, null when not sent", () => {
+    const i = indexCharts({
+      places: [
+        { id: "mouth:maelor:petroc", kind: "mouth", open: false },
+        { id: "mouth:maelor:senara", kind: "mouth", open: true },
+        { id: "mouth:maelor:elowen", kind: "mouth" },
+      ],
+    });
+    expect(i.items.get("mouth:maelor:petroc").open).toBe(false);
+    expect(i.items.get("mouth:maelor:senara").open).toBe(true);
+    expect(i.items.get("mouth:maelor:elowen").open).toBeNull();
   });
 
   it("copes with missing lists", () => {
@@ -417,6 +431,76 @@ describe("mouthStar", () => {
     expect(mouthStar("Somewhere")).toBe("Somewhere");
     expect(mouthStar(null)).toBe("");
   });
+});
+
+describe("isClosed and mouthLabel", () => {
+  it("is closed only when the game says open is false", () => {
+    expect(isClosed({ kind: "mouth", open: false })).toBe(true);
+    expect(isClosed({ kind: "mouth", open: true })).toBe(false);
+    expect(isClosed({ kind: "mouth", open: null })).toBe(false);
+    expect(isClosed(null)).toBe(false);
+  });
+
+  it("names a closed mouth's star with closed", () => {
+    expect(mouthLabel({ name: "the Petroc lane mouth", open: false })).toBe("Petroc · closed");
+    expect(mouthLabel({ name: "the Senara lane mouth", open: true })).toBe("Senara");
+    expect(mouthLabel({ name: "the Senara lane mouth", open: null })).toBe("Senara");
+  });
+});
+
+describe("spreadOnEdge", () => {
+  const near = (a, b) => expect(a).toBeCloseTo(b, 6);
+
+  it("leaves mouths far enough apart where they are", () => {
+    const { angles, groups } = spreadOnEdge([10, 100, 250], 5);
+    expect(angles).toEqual([10, 100, 250]);
+    expect(groups).toEqual([[0], [1], [2]]);
+  });
+
+  it("spreads a crowd about its middle, in bearing order", () => {
+    const { angles, groups } = spreadOnEdge([287.84, 198.58, 287.01], 10);
+    expect(groups).toEqual([[1], [2, 0]]);
+    near(angles[2], 287.425 - 5);
+    near(angles[0], 287.425 + 5);
+    expect(angles[1]).toBe(198.58);
+  });
+
+  it("joins a crowd across 0°", () => {
+    const { angles, groups } = spreadOnEdge([359, 1, 180], 10);
+    expect(groups).toEqual([[2], [0, 1]]);
+    near(angles[0] % 360, 355);
+    near(angles[1] % 360, 5);
+  });
+
+  it("never spreads them wider than the ring holds", () => {
+    const { angles } = spreadOnEdge([0, 1, 2], 200);
+    near(angles[1] - angles[0], 120);
+  });
+
+  it("copes with none", () => expect(spreadOnEdge([], 10)).toEqual({ angles: [], groups: [] }));
+});
+
+describe("clusters", () => {
+  it("groups points within d of a cluster's first, in order", () => {
+    expect(clusters([[0, 0], [100, 0], [3, 4], [104, 0], [0, 50]], 6)).toEqual([[0, 2], [1, 3], [4]]);
+  });
+
+  it("copes with none", () => expect(clusters([], 6)).toEqual([]));
+});
+
+describe("overlapping", () => {
+  it("groups boxes that overlap, through others too", () => {
+    const boxes = [[0, 0, 10, 10], [50, 0, 60, 10], [8, 8, 20, 20], [18, 18, 30, 30], [9, 0, 20, 5]];
+    expect(overlapping(boxes)).toEqual([[0, 2, 3, 4], [1]]);
+  });
+
+  it("joins only those it's told are near", () => {
+    const boxes = [[0, 0, 10, 10], [5, 0, 15, 10], [8, 0, 20, 10]];
+    expect(overlapping(boxes, (i, j) => Math.abs(i - j) === 1)).toEqual([[0, 1, 2]]);
+    expect(overlapping(boxes, (i, j) => i + j === 2)).toEqual([[0, 2], [1]]);
+  });
+
+  it("copes with none", () => expect(overlapping([])).toEqual([]));
 });
 
 describe("followStep", () => {
