@@ -15,6 +15,7 @@ import {
   homeBox,
   indexCharts,
   isLost,
+  markOf,
   mouthStar,
   parsePoint,
   positionOf,
@@ -445,7 +446,7 @@ export class ChartView {
     for (const it of items) {
       if (hidden(it)) continue;
       safe(() => {
-        if (it.kind === "star") {
+        if (markOf(it.kind) === "star") {
           const p = pos(it.id);
           if (!p) return;
           const [x, y] = P(p);
@@ -456,7 +457,7 @@ export class ChartView {
           label(x, y + r * 2.2 + 8, it.name); // below the brightest of the glow, so it reads
           tip(g, `body:${it.id}`, it.name);
           offView.push([it.name, p, r * 1.6]); // its glow is still half as bright out there: it reads as the star
-        } else if (it.kind === "planet") {
+        } else if (markOf(it.kind) === "planet") {
           const p = pos(it.id);
           if (!p) return;
           const [x, y] = P(p);
@@ -474,7 +475,7 @@ export class ChartView {
           if (!crowded(it)) label(x, y + r + 12, it.name);
           tip(g, `body:${it.id}`, it.name);
           offView.push([it.name, p, r]);
-        } else if (it.kind === "station") {
+        } else if (markOf(it.kind) === "station") {
           const p = pos(it.id);
           if (!p) return;
           const [x, y] = P(p);

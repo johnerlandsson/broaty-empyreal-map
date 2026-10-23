@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EDGE_KM, ago, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
-  followStep, offCentre, offsetOn, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
+  followStep, markOf, offCentre, offsetOn, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
 } from "./orbits.js";
 
 const rad = (d) => (d * Math.PI) / 180;
@@ -416,5 +416,17 @@ describe("followStep", () => {
     const step = followStep(vb, [80, 50], null, false);
     expect(step.vb).toEqual(vb);
     expect(step.margin).toBeCloseTo(0.6, 9);
+  });
+});
+
+describe("markOf", () => {
+  it("draws each known kind as itself", () => {
+    for (const k of ["star", "planet", "station", "belt", "mouth"]) expect(markOf(k)).toBe(k);
+  });
+
+  it("draws a kind it doesn't know (a port, say) as a station, never as nothing", () => {
+    expect(markOf("port")).toBe("station");
+    expect(markOf(undefined)).toBe("station");
+    expect(markOf(42)).toBe("station");
   });
 });

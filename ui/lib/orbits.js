@@ -265,6 +265,11 @@ export function followStep(vb, p, margin, touched) {
   return { vb, margin: Math.max(0.35, Math.min(margin ?? Infinity, offCentre(vb, p))) };
 }
 
+// How a kind of body or place is drawn: as itself if the chart knows it, else as a station, so a
+// new kind (a port) still shows rather than nothing (style guide §10).
+const MARKS = new Set(["star", "planet", "station", "belt", "mouth"]);
+export const markOf = (kind) => (MARKS.has(kind) ? kind : "station");
+
 // An orbit under 8 px across is drawn folded into its parent.
 export function folded(index, id, kmPerPx) {
   const a = num(index.items.get(id)?.orbit?.a);
