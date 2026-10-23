@@ -1,0 +1,349 @@
+<!doctype html>
+<!-- Zennor, 2026-10-23: three ways to draw the town plan (bottom band) and three for the top band.
+     Rooms from content/areas/zennor.yaml in ~/dev/empyreal, placed by their compass exits: one cell a
+     step, north up, `up` carrying on the way you came (the Ridge Path's east) with a dashed "up".
+     You're in the Square. A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Zennor: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:18px; }
+  h2 { color:#e3eaf2; font-size:15px; font-weight:600; margin:10px 0 12px; text-align:center; }
+  .row { display:flex; gap:26px; justify-content:center; align-items:flex-start; margin-bottom:28px; }
+  figure { margin:0; text-align:center; }
+  figcaption { margin:8px 0 2px; color:#e3eaf2; font-size:14px; }
+  figcaption small { display:block; color:#7d8a9a; max-width:380px; margin:4px auto 0; font-size:12px; line-height:1.4; text-align:left; }
+  .frame { position:relative; width:380px; background:#04060c; border:1px solid #2b3646; border-radius:6px; overflow:hidden; }
+  svg { display:block; }
+  text { font-family: Inter, system-ui, sans-serif; }
+  .btns { position:absolute; top:6px; right:6px; display:flex; gap:3px; }
+  .btns span { width:20px; height:20px; border-radius:4px; background:#04060cb0; border:1px solid #2b3646; color:#dfe7f1; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  .info { position:absolute; left:8px; bottom:8px; font:11px "DejaVu Sans Mono", monospace; color:#dfe7f1; background:#04060cb3; padding:2px 6px; border-radius:4px; letter-spacing:.5px; }
+</style></head><body>
+<h2>Bottom band: the town plan</h2>
+<div class="row" id="plans"></div>
+<h2>Top band: on the ground at Zennor</h2>
+<div class="row" id="tops"></div>
+<script>
+const NS = "http://www.w3.org/2000/svg";
+const el = (n, a, p, t) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); if (t != null) e.textContent = t; p && p.appendChild(e); return e; };
+const TXT = "#e3eaf2", DIM = "#7d8a9a", PLATE = "#18202b", EDGE = "#3b4a5c", CORR = "#262f3b", PASSAGE = "#56657a", HL = "#ffb347", GLASS = "#cfe3ff";
+const DC = { concourse: "#d9a441", residential: "#5b8def", hydroponics: "#4caf7a", commons: "#a57be0", offices: "#3fb6b2", industrial: "#d0703c", docks: "#cfe3ff" };
+const TONES = ["#3a4556", "#58667b", "#7e8da3"];
+const GROUND = "#110e0b", STONE = "#4b4338"; // option B only: new colours it would add to the guide
+const label = (g, x, y, s, size, a = {}) => el("text", { x, y, "font-size": size, fill: TXT, "text-anchor": "middle", "dominant-baseline": "middle", ...a }, g, s);
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+function stars(g, x, y, w, h, n, seed) { const r = rng(seed); for (let i = 0; i < n; i++) el("circle", { cx: x + r() * w, cy: y + r() * h, r: 0.5 + r() * 0.9, fill: "#fff", opacity: 0.12 + r() * 0.6 }, g); }
+function glow(defs) { const f = el("filter", { id: "glow", x: "-50%", y: "-50%", width: "200%", height: "200%" }, defs); el("feGaussianBlur", { stdDeviation: 4, result: "b" }, f); const m = el("feMerge", {}, f); el("feMergeNode", { in: "b" }, m); el("feMergeNode", { in: "SourceGraphic" }, m); }
+function lit(g, shape) { const a = { fill: HL, "fill-opacity": 0.3, stroke: HL, "stroke-width": 3, filter: "url(#glow)" }; const n = shape.r ? el("circle", { cx: shape.cx, cy: shape.cy, r: shape.r, ...a }, g) : el("rect", { ...shape, rx: shape.rx ?? 5, ...a }, g); el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, n); }
+
+// --- the town, as the exits place it: x east, y north, one cell a step ----------------------
+const W = 140, H = 96;
+const X = (x) => x * W, Y = (y) => -y * H;
+const ROOMS = {
+  field: { name: "Landing Field", x: 0, y: 3, kind: "field" },
+  office: { name: "Field Office", x: -1, y: 3, kind: "building", tint: DC.offices },
+  tower: { name: "Port Office", x: 1, y: 3, kind: "building", tint: DC.docks, tower: true },
+  gate: { name: "Field Gate", x: 0, y: 2, kind: "street" },
+  top: { name: "Top of Fore Street", x: 0, y: 1, kind: "street" },
+  ridge: { name: "Ridge Path", x: 1, y: 1, kind: "path" },
+  overlook: { name: "The Overlook", x: 2, y: 1, kind: "overlook" },
+  square: { name: "The Square", x: 0, y: 0, kind: "square" },
+  exchange: { name: "Exchange", x: -1, y: 0, kind: "building", tint: DC.concourse },
+  inn: { name: "The Tinner's Arms", x: 1, y: 0, kind: "building", tint: DC.commons },
+  foot: { name: "Foot of Fore Street", x: 0, y: -1, kind: "street" },
+  water: { name: "Water House", x: -1, y: -1, kind: "building", tint: DC.residential },
+  terraces: { name: "The Terraces", x: 0, y: -2, kind: "terraces" },
+  lower: { name: "Lower Terraces", x: 0, y: -3, kind: "terraces", lower: true },
+};
+for (const r of Object.values(ROOMS)) { r.cx = X(r.x); r.cy = Y(r.y); }
+const R = ROOMS;
+const BW = 104, BH = 54; // a building
+const FW = 128, FH = 76; // the field
+const TW = 128, TH = 62; // a terrace
+const SQ = { w: 86, h: 66 };
+const ST = 28; // street width
+
+function roomBox(g, r, w = BW, h = BH, col = r.tint, a = {}) {
+  el("rect", { x: r.cx - w / 2, y: r.cy - h / 2, width: w, height: h, rx: 5, fill: col, "fill-opacity": 0.22, stroke: col, "stroke-opacity": 0.85, "stroke-width": 1.6, ...a }, g);
+  nameOf(g, r, r.cx, r.cy);
+}
+function nameOf(g, r, x, y, a = {}) {
+  const words = r.name.split(" "), half = Math.ceil(words.length / 2);
+  const lines = r.name.length > 14 && words.length > 1 ? [words.slice(0, half).join(" "), words.slice(half).join(" ")] : [r.name];
+  lines.forEach((t, i) => label(g, x, y + (i - (lines.length - 1) / 2) * 14, t, a.size ?? 12, a));
+}
+const pass = (g, x0, y0, x1, y1, w = 16) => el("rect", { x: Math.min(x0, x1) - (x0 === x1 ? w / 2 : 0), y: Math.min(y0, y1) - (y0 === y1 ? w / 2 : 0), width: Math.abs(x1 - x0) || w, height: Math.abs(y1 - y0) || w, fill: PASSAGE }, g);
+
+// the field's pads: scorched circles, a line drawing (they're part of the field, not rooms)
+function pads(g, r, stroke = DIM) {
+  for (const dx of [-38, 0, 38]) {
+    el("circle", { cx: r.cx + dx, cy: r.cy - 14, r: 13, fill: "#0e131a", stroke, "stroke-width": 1.2 }, g);
+    el("circle", { cx: r.cx + dx, cy: r.cy - 14, r: 5, fill: "none", stroke, "stroke-width": 1, "stroke-dasharray": "2 2" }, g);
+  }
+}
+// a terrace's rows, contour-wise
+function rows(g, r, n, col, wavy) {
+  const x0 = r.cx - TW / 2 + 8, x1 = r.cx + TW / 2 - 8;
+  for (let i = 1; i <= n; i++) {
+    const y = r.cy - TH / 2 + (i * TH) / (n + 1);
+    const d = wavy ? `M${x0},${y}q${(x1 - x0) / 4},-3 ${(x1 - x0) / 2},0t${(x1 - x0) / 2},0` : `M${x0},${y}H${x1}`;
+    el("path", { d, stroke: col, "stroke-opacity": 0.55, "stroke-width": 1.2, fill: "none" }, g);
+  }
+}
+function wellhead(g, r, col = DIM) { el("circle", { cx: r.cx, cy: r.cy + 16, r: 6, fill: "#0e131a", stroke: col, "stroke-width": 1.4 }, g); }
+function upLine(g, from, to) {
+  el("path", { d: `M${from[0]},${from[1]}L${to[0]},${to[1]}`, stroke: DIM, "stroke-width": 1.5, "stroke-dasharray": "4 4", fill: "none" }, g);
+  label(g, (from[0] + to[0]) / 2, (from[1] + to[1]) / 2 - 9, "up", 9, { fill: DIM });
+}
+function overlook(g, r, ring = DC.docks) {
+  el("circle", { cx: r.cx, cy: r.cy, r: 36, fill: ring, "fill-opacity": 0.1, stroke: ring, "stroke-opacity": 0.6, "stroke-width": 1.4 }, g);
+  // the bench, its back to the wind (north), facing the valley
+  el("rect", { x: r.cx - 12, y: r.cy - 26, width: 24, height: 5, rx: 2, fill: DIM, opacity: 0.7 }, g);
+  nameOf(g, r, r.cx, r.cy + 2, { size: 11 });
+  label(g, r.cx, r.cy + 48, "", 9);
+}
+
+// --- a plan frame ---------------------------------------------------------------------------
+function frame(parent, title, text, w, h, vb, draw, info) {
+  const f = document.createElement("figure"); parent.appendChild(f);
+  const box = document.createElement("div"); box.className = "frame"; f.appendChild(box);
+  const svg = el("svg", { width: w, height: h, viewBox: vb.join(" ") }, box);
+  glow(el("defs", {}, svg));
+  draw(svg);
+  box.insertAdjacentHTML("beforeend", `<div class="btns"><span>+</span><span>−</span><span>⌂</span></div>` + (info ? `<div class="info">${info}</div>` : ""));
+  const cap = document.createElement("figcaption"); cap.innerHTML = `${title}<small>${text}</small>`; f.appendChild(cap);
+}
+const VB = [-218, -346, 576, 712];
+const INFO = "THE SQUARE · Zennor · 1 g";
+const plans = document.getElementById("plans");
+const litSquare = (g) => lit(g, { x: R.square.cx - SQ.w / 2, y: R.square.cy - SQ.h / 2, width: SQ.w, height: SQ.h, rx: 10 });
+
+// A: a station's plan, on the ground. Plate on stars, streets as corridor bands, buildings as room
+// boxes, the field, terraces and overlook drawn as what they are.
+frame(plans, "A · Street plan",
+  "The station plans' language, unchanged: a Plate under the town on the starfield, Fore Street and the Ridge Path as corridor bands with a stop dot each, the buildings as tinted room boxes off them. The field is a Glass-edged apron with three pads, the terraces green with their rows, the Overlook a round room up a dashed \"up\" from the path. No new colours.",
+  380, 470, VB, (svg) => {
+    stars(svg, VB[0], VB[1], VB[2], VB[3], 160, 7);
+    const g = el("g", {}, svg);
+    el("rect", { x: -200, y: -340, width: 540, height: 680, rx: 24, fill: PLATE }, g);
+    // Fore Street, gate to foot, and the track on down the terraces
+    el("rect", { x: -ST / 2, y: R.field.cy + FH / 2, width: ST, height: R.foot.cy - R.field.cy - FH / 2, fill: CORR }, g);
+    pass(g, 0, R.foot.cy, 0, R.terraces.cy - TH / 2, 12);
+    pass(g, 0, R.terraces.cy + TH / 2, 0, R.lower.cy - TH / 2 + 4, 12);
+    // the Ridge Path east off the top of the street
+    el("rect", { x: 0, y: R.top.cy - 10, width: R.ridge.cx + 20, height: 20, fill: CORR }, g);
+    upLine(g, [R.ridge.cx + 12, R.ridge.cy], [R.overlook.cx - 38, R.overlook.cy]);
+    for (const k of ["gate", "top", "foot", "ridge"]) el("circle", { cx: R[k].cx, cy: R[k].cy, r: 4, fill: "#aab8c8" }, g);
+    // the arch over the gate
+    el("path", { d: `M${-ST / 2 - 6},${R.gate.cy + 6}v-10a${ST / 2 + 6},${ST / 2 + 6} 0 0 1 ${ST + 12},0v10`, stroke: "#9fb0c3", "stroke-width": 1.6, fill: "none" }, g);
+    label(g, 20, R.gate.cy, "Field Gate", 11, { "text-anchor": "start", fill: TXT });
+    label(g, -20, R.top.cy, "Top of", 11, { "text-anchor": "end" }); label(g, -20, R.top.cy + 13, "Fore Street", 11, { "text-anchor": "end" });
+    label(g, 20, R.foot.cy + 14, "Foot of Fore Street", 11, { "text-anchor": "start" });
+    label(g, R.ridge.cx, R.ridge.cy + 22, "Ridge Path", 11);
+    // the square
+    el("rect", { x: R.square.cx - SQ.w / 2, y: R.square.cy - SQ.h / 2, width: SQ.w, height: SQ.h, rx: 10, fill: CORR, stroke: PASSAGE, "stroke-width": 1.2 }, g);
+    wellhead(g, R.square); label(g, R.square.cx, R.square.cy - 8, "The Square", 12);
+    // passages to the buildings
+    pass(g, R.office.cx + BW / 2, R.field.cy, R.field.cx - FW / 2, R.field.cy);
+    pass(g, R.field.cx + FW / 2, R.field.cy, R.tower.cx - BW / 2, R.field.cy);
+    pass(g, R.exchange.cx + BW / 2, 0, -SQ.w / 2, 0);
+    pass(g, SQ.w / 2, 0, R.inn.cx - BW / 2, 0);
+    pass(g, R.water.cx + BW / 2, R.foot.cy, -ST / 2, R.foot.cy);
+    for (const k of ["office", "tower", "exchange", "inn", "water"]) roomBox(g, R[k]);
+    // the field
+    el("rect", { x: R.field.cx - FW / 2, y: R.field.cy - FH / 2, width: FW, height: FH, rx: 5, fill: DC.docks, "fill-opacity": 0.1, stroke: DC.docks, "stroke-opacity": 0.75, "stroke-width": 1.6 }, g);
+    pads(g, R.field); label(g, R.field.cx, R.field.cy + 22, "Landing Field", 12);
+    // the terraces
+    for (const k of ["terraces", "lower"]) {
+      const r = R[k];
+      el("rect", { x: r.cx - TW / 2, y: r.cy - TH / 2, width: TW, height: TH, rx: 5, fill: DC.hydroponics, "fill-opacity": 0.16, stroke: DC.hydroponics, "stroke-opacity": 0.8, "stroke-width": 1.6 }, g);
+      rows(g, r, r.lower ? 3 : 5, DC.hydroponics, r.lower);
+      el("rect", { x: r.cx - 58, y: r.cy - 9, width: 116, height: 18, rx: 3, fill: PLATE, opacity: 0.8 }, g);
+      label(g, r.cx, r.cy, r.name, 12);
+    }
+    overlook(g, R.overlook);
+    label(g, -186, -326, "N ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
+    litSquare(g);
+  }, INFO);
+
+// B: the ground itself. No plate and no stars: dark earth, the old windbreak wall round the town
+// with its gate, buildings as stone blocks, the open rooms as ground with a dashed edge.
+frame(plans, "B · Walled town",
+  "Looking down at ground, not a deck: no stars, a dark earth tone, and the old windbreak wall in stone round the town with the gap of the Field Gate. Buildings are room boxes on stone footings; the open rooms (street, square, path) are bare ground with a dashed edge, named in Dim. The field sits outside the wall in its blast walls, the terraces step down below it. Adds two colours to the guide (Ground, Stone).",
+  380, 470, VB, (svg) => {
+    el("rect", { x: VB[0], y: VB[1], width: VB[2], height: VB[3], fill: GROUND }, svg);
+    const g = el("g", {}, svg);
+    // the street as packed earth
+    const open = (x, y, w, h, rx = 4) => el("rect", { x, y, width: w, height: h, rx, fill: "#1c1814", stroke: STONE, "stroke-width": 1, "stroke-dasharray": "4 3" }, g);
+    open(-ST / 2, R.gate.cy - H / 2 + 6, ST, R.foot.cy - R.gate.cy + H - 12, 4);
+    open(ST / 2, R.top.cy - 10, R.ridge.cx + 14 - ST / 2, 20);
+    open(R.square.cx - SQ.w / 2, R.square.cy - SQ.h / 2, SQ.w, SQ.h, 10);
+    wellhead(g, R.square, STONE);
+    // the windbreak wall, town only (gate to foot), with the gate's gap at the north
+    const wx0 = -206, wx1 = 214, wy0 = R.gate.cy, wy1 = R.foot.cy + 40;
+    el("path", { d: `M${-ST / 2 - 4},${wy0}H${wx0 + 14}q-14,0 -14,14V${wy1 - 14}q0,14 14,14H${-ST / 2 - 10}M${ST / 2 + 10},${wy1}H${wx1 - 14}q14,0 14,-14V${R.top.cy + 14}M${wx1},${R.top.cy - 14}V${wy0 + 14}q0,-14 -14,-14H${ST / 2 + 4}`, stroke: STONE, "stroke-width": 5, fill: "none", "stroke-linecap": "round" }, g);
+    el("path", { d: `M${-ST / 2 - 4},${wy0 + 3}v-6a${ST / 2 + 4},${ST / 2 + 4} 0 0 1 ${ST + 8},0v6`, stroke: STONE, "stroke-width": 3, fill: "none" }, g);
+    label(g, 22, R.gate.cy + 14, "Field Gate", 11, { fill: DIM, "text-anchor": "start" });
+    label(g, -20, R.top.cy, "Top of", 11, { "text-anchor": "end", fill: DIM }); label(g, -20, R.top.cy + 13, "Fore Street", 11, { "text-anchor": "end", fill: DIM });
+    label(g, 20, R.foot.cy + 14, "Foot of Fore Street", 11, { "text-anchor": "start", fill: DIM });
+    label(g, R.ridge.cx + 40, R.ridge.cy + 24, "Ridge Path", 11, { fill: DIM });
+    label(g, R.square.cx, R.square.cy - 8, "The Square", 12);
+    // the snowmelt channel past the foot of the street, under the water house
+    el("path", { d: `M${-206},${R.foot.cy - 2}H${-ST / 2}`, stroke: DC.residential, "stroke-opacity": 0.6, "stroke-width": 3 }, g);
+    // the switchbacks up the ridge and the overlook
+    el("path", { d: `M${R.ridge.cx + 14},${R.ridge.cy}l12,-8l10,12l10,-12l10,12l10,-8`, stroke: STONE, "stroke-width": 2, fill: "none" }, g);
+    upLine(g, [R.ridge.cx + 68, R.ridge.cy], [R.overlook.cx - 38, R.overlook.cy]);
+    // footings and buildings
+    for (const k of ["office", "tower", "exchange", "inn", "water"]) {
+      const r = R[k];
+      el("rect", { x: r.cx - BW / 2 - 4, y: r.cy - BH / 2 - 4, width: BW + 8, height: BH + 8, rx: 6, fill: STONE }, g);
+      el("rect", { x: r.cx - BW / 2, y: r.cy - BH / 2, width: BW, height: BH, rx: 5, fill: "#0e0c0a" }, g);
+      roomBox(g, r);
+    }
+    el("rect", { x: R.office.cx + BW / 2 + 4, y: R.field.cy - 7, width: R.field.cx - FW / 2 - R.office.cx - BW / 2 - 4, height: 14, fill: "#1c1814" }, g);
+    el("rect", { x: R.field.cx + FW / 2, y: R.field.cy - 7, width: R.tower.cx - BW / 2 - 4 - FW / 2, height: 14, fill: "#1c1814" }, g);
+    el("rect", { x: R.exchange.cx + BW / 2 + 4, y: -7, width: -SQ.w / 2 - R.exchange.cx - BW / 2 - 4, height: 14, fill: "#1c1814" }, g);
+    el("rect", { x: SQ.w / 2, y: -7, width: R.inn.cx - BW / 2 - 4 - SQ.w / 2, height: 14, fill: "#1c1814" }, g);
+    // the field in its blast walls
+    el("rect", { x: R.field.cx - FW / 2, y: R.field.cy - FH / 2, width: FW, height: FH, rx: 8, fill: "#2a2a2c", "fill-opacity": 0.6, stroke: STONE, "stroke-width": 4 }, g);
+    pads(g, R.field, "#8a8f96"); label(g, R.field.cx, R.field.cy + 22, "Landing Field", 12);
+    // the track south and the terraces, each held up by a dry stone wall
+    el("rect", { x: -6, y: wy1, width: 12, height: R.lower.cy - wy1, fill: "#1c1814" }, g);
+    for (const k of ["terraces", "lower"]) {
+      const r = R[k];
+      el("rect", { x: r.cx - TW / 2, y: r.cy - TH / 2, width: TW, height: TH, rx: 3, fill: DC.hydroponics, "fill-opacity": r.lower ? 0.1 : 0.16, stroke: DC.hydroponics, "stroke-opacity": 0.75, "stroke-width": 1.4 }, g);
+      el("path", { d: `M${r.cx - TW / 2},${r.cy + TH / 2}H${r.cx + TW / 2}`, stroke: STONE, "stroke-width": 4 }, g);
+      rows(g, r, r.lower ? 3 : 5, DC.hydroponics, r.lower);
+      el("rect", { x: r.cx - 58, y: r.cy - 9, width: 116, height: 18, rx: 3, fill: GROUND, opacity: 0.85 }, g);
+      label(g, r.cx, r.cy, r.name, 12);
+    }
+    overlook(g, R.overlook, STONE);
+    label(g, -200, -340, "N ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
+    litSquare(g);
+  }, INFO);
+
+// C: A's plan on a hillside. Contours under it say where the ground climbs: flat at the field,
+// tight across the steep street, a wall a terrace, and rings round the ridge to the overlook.
+frame(plans, "C · Hillside",
+  "A's plan, with the lie of the land under it in faint contours: none on the flat field, close together across the steep top of Fore Street, one per terrace wall stepping down the valley, and rings climbing the ridge to the Overlook, so \"up\" reads as height, not north. No stars (it's ground), no new colours: the contours are Dim at low opacity.",
+  380, 470, VB, (svg) => {
+    const g = el("g", {}, svg);
+    el("rect", { x: -200, y: -340, width: 540, height: 680, rx: 24, fill: PLATE }, g);
+    const con = el("g", { stroke: DIM, "stroke-opacity": 0.28, "stroke-width": 1, fill: "none" }, g);
+    // the hill falls away south of the field
+    for (const [y, a] of [[R.gate.cy - 28, 6], [R.gate.cy + 4, 10], [R.top.cy - 30, 12], [R.top.cy - 4, 10], [R.top.cy + 26, 14], [R.square.cy + 46, 8], [R.foot.cy + 20, 6]]) {
+      el("path", { d: `M-200,${y}C-120,${y + a} -60,${y - a} 0,${y}S120,${y + a} ${y > R.top.cy + 30 ? 340 : 120},${y - a}`, }, con);
+    }
+    // the ridge: rings rising east to the overlook
+    for (let i = 0; i < 6; i++) el("ellipse", { cx: R.overlook.cx + 20, cy: R.overlook.cy - 6, rx: 44 + i * 22, ry: 40 + i * 18 }, con);
+    // terrace walls, stepping down
+    for (const r of [R.terraces, R.lower]) for (const dy of [-TH / 2 - 8, TH / 2 + 8]) el("path", { d: `M-200,${r.cy + dy}C-100,${r.cy + dy + 6} 100,${r.cy + dy - 6} 340,${r.cy + dy}` }, con);
+    // A's plan over it
+    el("rect", { x: -ST / 2, y: R.field.cy + FH / 2, width: ST, height: R.foot.cy - R.field.cy - FH / 2, fill: CORR }, g);
+    pass(g, 0, R.foot.cy, 0, R.terraces.cy - TH / 2, 12);
+    pass(g, 0, R.terraces.cy + TH / 2, 0, R.lower.cy - TH / 2 + 4, 12);
+    el("rect", { x: 0, y: R.top.cy - 10, width: R.ridge.cx + 20, height: 20, fill: CORR }, g);
+    upLine(g, [R.ridge.cx + 12, R.ridge.cy], [R.overlook.cx - 38, R.overlook.cy]);
+    for (const k of ["gate", "top", "foot", "ridge"]) el("circle", { cx: R[k].cx, cy: R[k].cy, r: 4, fill: "#aab8c8" }, g);
+    el("path", { d: `M${-ST / 2 - 6},${R.gate.cy + 6}v-10a${ST / 2 + 6},${ST / 2 + 6} 0 0 1 ${ST + 12},0v10`, stroke: "#9fb0c3", "stroke-width": 1.6, fill: "none" }, g);
+    label(g, 20, R.gate.cy, "Field Gate", 11, { "text-anchor": "start" });
+    label(g, -20, R.top.cy, "Top of", 11, { "text-anchor": "end" }); label(g, -20, R.top.cy + 13, "Fore Street", 11, { "text-anchor": "end" });
+    label(g, 20, R.foot.cy + 14, "Foot of Fore Street", 11, { "text-anchor": "start" });
+    label(g, R.ridge.cx, R.ridge.cy + 22, "Ridge Path", 11);
+    el("rect", { x: R.square.cx - SQ.w / 2, y: R.square.cy - SQ.h / 2, width: SQ.w, height: SQ.h, rx: 10, fill: CORR, stroke: PASSAGE, "stroke-width": 1.2 }, g);
+    wellhead(g, R.square); label(g, R.square.cx, R.square.cy - 8, "The Square", 12);
+    pass(g, R.office.cx + BW / 2, R.field.cy, R.field.cx - FW / 2, R.field.cy);
+    pass(g, R.field.cx + FW / 2, R.field.cy, R.tower.cx - BW / 2, R.field.cy);
+    pass(g, R.exchange.cx + BW / 2, 0, -SQ.w / 2, 0);
+    pass(g, SQ.w / 2, 0, R.inn.cx - BW / 2, 0);
+    pass(g, R.water.cx + BW / 2, R.foot.cy, -ST / 2, R.foot.cy);
+    for (const k of ["office", "tower", "exchange", "inn", "water"]) roomBox(g, R[k], BW, BH, R[k].tint, { fill: R[k].tint });
+    el("rect", { x: R.field.cx - FW / 2, y: R.field.cy - FH / 2, width: FW, height: FH, rx: 5, fill: DC.docks, "fill-opacity": 0.1, stroke: DC.docks, "stroke-opacity": 0.75, "stroke-width": 1.6 }, g);
+    pads(g, R.field); label(g, R.field.cx, R.field.cy + 22, "Landing Field", 12);
+    for (const k of ["terraces", "lower"]) {
+      const r = R[k];
+      // each terrace a stepped strip: rows on green, its wall a darker lip on the downhill side
+      el("rect", { x: r.cx - TW / 2, y: r.cy - TH / 2, width: TW, height: TH, rx: 5, fill: DC.hydroponics, "fill-opacity": 0.16, stroke: DC.hydroponics, "stroke-opacity": 0.8, "stroke-width": 1.6 }, g);
+      rows(g, r, r.lower ? 3 : 5, DC.hydroponics, r.lower);
+      el("rect", { x: r.cx - TW / 2 + 2, y: r.cy + TH / 2 - 5, width: TW - 4, height: 4, fill: DC.hydroponics, opacity: 0.45 }, g);
+      el("rect", { x: r.cx - 58, y: r.cy - 9, width: 116, height: 18, rx: 3, fill: PLATE, opacity: 0.85 }, g);
+      label(g, r.cx, r.cy, r.name, 12);
+    }
+    overlook(g, R.overlook);
+    label(g, -186, -326, "N ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
+    litSquare(g);
+  }, INFO);
+
+// --- the top band ---------------------------------------------------------------------------
+const tops = document.getElementById("tops");
+const TVB = [-190, -130, 380, 260];
+
+/** Tamsin as a flat-shaded globe: lat/long quads, three Tones by the light, ochre-tinted, ice at the pole. */
+function globe(g, R0, tilt, spin, lightAt) {
+  const L = (() => { const v = [-0.5, 0.75, 0.45]; const m = Math.hypot(...v); return v.map((c) => c / m); })();
+  const mix = (a, b, t) => { const p = (s) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16)); const A = p(a), B = p(b); return `#${A.map((c, i) => Math.round(c + (B[i] - c) * t).toString(16).padStart(2, "0")).join("")}`; };
+  const P = (lat, lon) => {
+    const x = Math.cos(lat) * Math.sin(lon + spin), y = Math.sin(lat), z = Math.cos(lat) * Math.cos(lon + spin);
+    const y2 = y * Math.cos(tilt) - z * Math.sin(tilt), z2 = y * Math.sin(tilt) + z * Math.cos(tilt);
+    return [x, y2, z2];
+  };
+  const NLAT = 9, NLON = 18, faces = [];
+  for (let i = 0; i < NLAT; i++) for (let j = 0; j < NLON; j++) {
+    const a0 = -Math.PI / 2 + (i * Math.PI) / NLAT, a1 = a0 + Math.PI / NLAT, o0 = (j * 2 * Math.PI) / NLON, o1 = o0 + (2 * Math.PI) / NLON;
+    const pts = [P(a0, o0), P(a0, o1), P(a1, o1), P(a1, o0)];
+    const c = pts.reduce((s, p) => s.map((v, k) => v + p[k] / 4), [0, 0, 0]);
+    if (c[2] <= 0.02) continue;
+    const n = c.map((v) => v / Math.hypot(...c));
+    const l = n[0] * L[0] + n[1] * L[1] + n[2] * L[2];
+    let fill = TONES[l > 0.66 ? 2 : l > 0.33 ? 1 : 0];
+    fill = i >= NLAT - 1 ? mix(fill, GLASS, 0.45) : mix(fill, (i + j) % 3 ? DC.industrial : DC.concourse, 0.22);
+    faces.push({ pts, z: c[2], fill, key: i === 5 && j === 2 ? "zennor" : null });
+  }
+  faces.sort((a, b) => a.z - b.z);
+  const d = (pts) => "M" + pts.map((p) => `${(p[0] * R0).toFixed(1)},${(-p[1] * R0).toFixed(1)}`).join("L") + "Z";
+  for (const f of faces) el("path", { d: d(f.pts), fill: f.fill, stroke: "#0d1218", "stroke-width": 0.8 }, g);
+  const z = faces.find((f) => f.key);
+  if (z) { const p = el("path", { d: d(z.pts), fill: HL, "fill-opacity": 0.55, stroke: "#fff3df", "stroke-width": 1.4, filter: "url(#glow)" }, g); el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, p); }
+}
+
+frame(tops, "1 · Tamsin, Zennor lit",
+  "The overview's job, where you are in the whole: Tamsin as a flat-shaded globe in the models' Tones, tinted ochre with its polar ice in Glass, and Zennor's facet lit as a model's room is. Still, no labels. The sky view (zennor-sky) would replace it, or sit beside it.",
+  380, 260, TVB, (svg) => { stars(svg, TVB[0], TVB[1], TVB[2], TVB[3], 90, 3); globe(el("g", {}, svg), 105, 0.35, -0.6); });
+
+frame(tops, "2 · The skyline",
+  "Standing on the ground: a low-poly skyline in Tones under the stars, the ridge rising east, the town's low roofs and the port office's squat tower, the field's blast wall at the left. Says \"on the ground\" by looking it. The closest to the planned sky view, so the easiest for it to grow from; nothing is lit.",
+  380, 260, TVB, (svg) => {
+    stars(svg, TVB[0], TVB[1], TVB[2], 170, 110, 11);
+    const g = el("g", {}, svg);
+    // far salt pans: a pale line at the horizon
+    el("path", { d: "M-190,52H190", stroke: GLASS, "stroke-opacity": 0.35, "stroke-width": 1.5 }, g);
+    // the ridge, east, two faces
+    el("path", { d: "M10,52L95,-22L140,-6L190,-30V60H10Z", fill: TONES[1], stroke: "#0d1218", "stroke-width": 1.3 }, g);
+    el("path", { d: "M95,-22L120,60H10Z", fill: TONES[0], stroke: "#0d1218", "stroke-width": 1.3 }, g);
+    el("path", { d: "M95,-22L140,-6L190,-30V60H120Z", fill: TONES[2], stroke: "#0d1218", "stroke-width": 1.3 }, g);
+    // the ground
+    el("path", { d: "M-190,52H190V130H-190Z", fill: TONES[0], stroke: "#0d1218", "stroke-width": 1.3 }, g);
+    el("path", { d: "M-190,52H190V60H-190Z", fill: "#3a3a32" }, g);
+    // roofs: low blocks with a lit face and a dark one
+    const block = (x, w, h, tint) => {
+      el("path", { d: `M${x},60V${60 - h}H${x + w}V60Z`, fill: tint ?? TONES[1], stroke: "#0d1218", "stroke-width": 1.2 }, g);
+      el("path", { d: `M${x + w},60V${60 - h}l8,-4V56Z`, fill: TONES[0], stroke: "#0d1218", "stroke-width": 1.2 }, g);
+      el("path", { d: `M${x},${60 - h}l8,-4H${x + w + 8}l-8,4Z`, fill: TONES[2], stroke: "#0d1218", "stroke-width": 1.2 }, g);
+    };
+    block(-120, 34, 12); block(-80, 26, 16); block(-44, 40, 11); block(4, 30, 14); block(42, 22, 34); // the tower
+    block(-160, 30, 9);
+    el("path", { d: "M42,26h22", stroke: GLASS, "stroke-width": 3, "stroke-opacity": 0.8 }, g); // the controller's glass room
+    // the field's blast wall, far left
+    el("path", { d: "M-190,60V54H-168V60", fill: "none", stroke: TONES[2], "stroke-width": 2 }, g);
+  }, null);
+
+frame(tops, "3 · A word, and the ground",
+  "The simplest: the stars, a flat horizon in the darkest Tone, and the place in the models' label style, ZENNOR, with \"on the ground · Tamsin\" in Dim under it. Plain, and clearly a placeholder until the sky view comes.",
+  380, 260, TVB, (svg) => {
+    stars(svg, TVB[0], TVB[1], TVB[2], 175, 90, 5);
+    const g = el("g", {}, svg);
+    el("path", { d: "M-190,48C-90,42 40,50 190,38V130H-190Z", fill: TONES[0], stroke: "#0d1218", "stroke-width": 1.3 }, g);
+    label(g, 0, -14, "ZENNOR", 22, { "font-weight": 600, "letter-spacing": 1.5, fill: "#dfe7f1" });
+    label(g, 0, 12, "on the ground · Tamsin", 11, { fill: DIM });
+  }, null);
+</script>
+</body></html>

@@ -1,6 +1,6 @@
 # Map style guide
 
-*Last updated 2026-10-22.*
+*Last updated 2026-10-23.*
 
 This guide is the visual language every map in the panel shares: the station
 models, the space scenes, the deck plans and the ship plans. Each kind of map
@@ -19,6 +19,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | T.I.S.S. model and deck plans | top, bottom | you're on T.I.S.S., or your ship is docked there | [tiss.md](tiss.md) |
 | Drum station models and plans (Wenna Halt) | top, bottom | you're on that station, or your ship is docked there | [drum-stations.md](drum-stations.md) |
 | Decks station models and plans (Orrin Station) | top, bottom | you're on that station, or your ship is docked there | [decks-stations.md](decks-stations.md) |
+| Town skyline and plan (Zennor) | top, bottom | you're in the town, or your ship is landed there | [town.md](town.md) |
 | Space scenes | top | you're out in a ship you own or crew, undocked | [space-scenes.md](space-scenes.md) |
 | Ship plans | bottom | you're aboard any ship, docked or not | [ship-plans.md](ship-plans.md) |
 | Orrery (the system chart) | top | the ◎ toggle is on | [orrery.md](orrery.md) |
@@ -90,6 +91,14 @@ with these as fallbacks.
 | Glass | `#cfe3ff` | windows, domes, airlock hatches |
 | Porthole | `#ffd98a` at .25 to .85 | lit portholes along a station hull |
 | Status lights | `#59d18a` ok, `#e8b04a` busy, `#3a4556` empty | berth hatches |
+
+On a town's plan (the ground, not a deck; see town.md):
+
+| Name | Value | Used for |
+|---|---|---|
+| Ground | `#110e0b` | the bare earth under the whole plan, in place of the stars and Plate |
+| Earth | `#1c1814` | open ground you walk across: streets, a square, a path, doors and tracks |
+| Stone | `#4b4338` | a town's wall and gate arch, building footings, blast walls, terrace walls, an open room's dashed edge |
 
 ### 4.3 Models and scenes
 
@@ -200,10 +209,11 @@ follow these rules.
 - **Fore up.** On a ring, fore is up and spinward right, matching the game's
   compass (fore = n, spinward = e). On a station drum the plan is laid out as
   the exits go, north up. On a station on decks there's one plan a deck, fore
-  up and starboard right, each room in the cell its address names.
+  up and starboard right, each room in the cell its address names. On a town
+  on the ground, north up, one cell a step as its compass exits go.
 - **Plate on stars.** A station's rooms sit on a Plate floor with rounded
   corners, over the starfield. A ship sits in its own hull outline instead
-  (see ship-plans.md).
+  (see ship-plans.md), and a town lies on Ground, with no stars (see town.md).
 - **Passages** are Passage-coloured bars between a room and the corridor or
   hall it opens off.
 - **Fixtures** (lifts, ladders, stairs, ramps, hatches) are small line symbols

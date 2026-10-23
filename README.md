@@ -3,8 +3,9 @@
 A [Mallard](https://mallard.vnsf.xyz) plugin for the MUD Empyreal: maps
 that follow you as you play. It maps three stations: T.I.S.S., which it
 follows as you walk, ride the lifts and visit the docks, the small outpost
-Orrin Station, and Wenna Halt, one lane over in Maelor's system. The panel
-shows whichever station you're on, or the one your ship is docked at.
+Orrin Station, and Wenna Halt, one lane over in Maelor's system. It also maps
+Zennor, the town on the planet Tamsin below T.I.S.S. The panel shows
+whichever place you're in, or the one your ship is docked or landed at.
 
 ---
 
@@ -32,6 +33,10 @@ the blister hangs below them.
 it, a clean row of courier cradles outside the Berths, and the Lounge's wide
 window collar at the fore end of the axis. The drum turns your room to face
 you, as the wheel does.
+
+**Zennor** is on the ground, so instead of a model the top band shows its
+skyline under the stars: the ridge rising east, the town's low roofs and the
+Port Office's squat tower. It's scenery, and nothing on it is lit.
 
 **Out in your ship.** Once you undock, the station model fades into a view
 looking ahead from your ship: a still starfield while you're parked, the
@@ -78,6 +83,15 @@ station or the view ahead.
   south, the Chart Office west and the Berths east with their airlock
   hatches, and a ramp up to the Lounge, at 0.2 g, its deep chairs facing
   one wide window on the sea.
+- **Zennor:** the town from above, north up, laid out as its exits go, on
+  bare earth inside its old stone wall. The Landing Field is at the north in
+  its blast walls, with the Field Office and the Port Office either side.
+  Fore Street runs south through the arch of the Field Gate to the Square,
+  with the Exchange and the Tinner's Arms off it, and on to the Water House
+  and out of the wall to the green Terraces stepping down below. The Ridge
+  Path leaves the top of the street east, through the wall and up its
+  switchbacks to the Overlook. Buildings are boxes on stone footings, and the
+  streets are packed earth. On a street, its stretch of the street lights.
 
 Your place is lit with the same glow as in the model, not marked with a dot:
 a room box, a stretch of corridor, a lift or the ladderway hatch. The plan
@@ -99,7 +113,8 @@ room for its name.
 The line at the bottom left says where you are, for example
 `LAUNDRY · Rim 2:00, aft · 0.9 g` or `LIFT 3 · climbing hubward`. Aboard a
 ship it shows the room and the ship's class where it's known:
-`COCKPIT OF THE MULE · prospecting skiff`. Anywhere else off the station
+`COCKPIT OF THE MULE · prospecting skiff`. In Zennor, whose rooms have no
+address, it shows the town: `THE SQUARE · Zennor · 1 g`. Anywhere else off the station
 plans, the deck plan dims, nothing is lit, and the line shows the room
 you're in.
 
@@ -154,7 +169,7 @@ npm test            # vitest for the UI and data code, then the Lua tests
 **Preview.** Serve the repository root and open the preview, which runs the
 panel in a browser with a stand-in for Mallard and a **▶ Walk** button that
 replays a walk round T.I.S.S., then flights to Orrin Station and Wenna Halt
-and a walk round each:
+and a walk round each, then a landing at Zennor and a walk round the town:
 
 ```bash
 python3 -m http.server 8765
@@ -190,6 +205,14 @@ Wenna Halt's six rooms (`ui/data/wenna.js`) are written by hand from
 `content/areas/wenna.yaml`. The game gives that area no layout, so the rooms
 are placed from their exits and descriptions. What's particular to the drum
 (colours, cradles, the ramp) is in `DRUMS` in `ui/lib/drum.js`.
+
+Zennor's fourteen rooms (`ui/data/zennor.js`) are copied from
+`content/areas/zennor.yaml`: ids, names, flags and exits, and the area's
+gravity. Nothing is placed by hand. The rooms have no addresses or coords, so
+each one's place comes from its compass exits, one cell a step, and a test
+checks the file against the YAML when `~/dev/empyreal` is there. What the
+exits don't say (colours, which open ground is a square, a path or terraces,
+the wall) is in `TOWNS` in `ui/lib/town.js`.
 
 ---
 

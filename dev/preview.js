@@ -1,5 +1,5 @@
 // Preview driver: replays a walk round T.I.S.S., then flights to Orrin Station and Wenna Halt and a
-// walk round each, through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
+// walk round each, then down to Zennor on Tamsin and a walk round the town, through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
 // (src/station_map/location.lua, src/station_map/scene.lua).
 //
 //   ?step=N   open on route step N, as a panel re-mounting mid-walk would (only step N is replayed)
@@ -16,13 +16,15 @@
 import orrin from "../ui/data/orrin.js";
 import station from "../ui/data/station.js";
 import wenna from "../ui/data/wenna.js";
+import zennor from "../ui/data/zennor.js";
 import { DeckView } from "../ui/deck-view.js";
 import { ModelView } from "../ui/model-view.js";
 import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts } from "./charts-fixture.js";
 
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
-const byId = new Map([...station.rooms, ...orrin.rooms, ...wenna.rooms].map((r) => [r.id, r]));
+const town = zennor.rooms.map((r) => ({ ...r, gravity: zennor.area.gravity })); // the area's gravity, as the game sends it
+const byId = new Map([...station.rooms, ...orrin.rooms, ...wenna.rooms, ...town].map((r) => [r.id, r]));
 
 // --- the route -------------------------------------------------------------------------------
 
@@ -145,6 +147,31 @@ const ROUTE = [
   room("wenna.charts"),
   room("wenna.concourse"),
   room("wenna.lounge"),
+  room("wenna.concourse"),
+  room("wenna.berth"),
+  { label: "Flying to Zennor", msg: COCKPIT, scene: { scene: "travelling" } },
+  { label: "Landed at Zennor", msg: COCKPIT, scene: { scene: "station", station: "zennor" } },
+  room("zennor.field"),
+  room("zennor.field-office"),
+  room("zennor.field"),
+  room("zennor.tower"),
+  room("zennor.field"),
+  room("zennor.gate"),
+  room("zennor.fore-top"),
+  room("zennor.ridge-path"),
+  room("zennor.overlook"),
+  room("zennor.ridge-path"),
+  room("zennor.fore-top"),
+  room("zennor.square"),
+  room("zennor.exchange"),
+  room("zennor.square"),
+  room("zennor.inn"),
+  room("zennor.square"),
+  room("zennor.fore-foot"),
+  room("zennor.water-house"),
+  room("zennor.fore-foot"),
+  room("zennor.terraces"),
+  room("zennor.lower-terraces"),
 ];
 window.ROUTE = ROUTE;
 

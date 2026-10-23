@@ -1,7 +1,8 @@
 // Panel entry: wires the Lua side's messages to the station model (top), the space scenes that
 // replace it while you're out in your ship, and the deck plan (bottom). Each station has its own
-// model and plan; only the one you're on (or docked at) shows. Aboard a ship (any "ship." room)
-// the bottom band shows that ship's plan instead, one view per hull drawing, built on first use.
+// model and plan (a town on the ground has a skyline for its model); only the one you're on (or
+// docked or landed at) shows. Aboard a ship (any "ship." room) the bottom band shows that ship's
+// plan instead, one view per hull drawing, built on first use.
 // The Lua side holds all state and replays it when we post "ready", so this file keeps only the
 // last location, the docked station, and the level each plan last showed (a lift between floors
 // keeps the plan where it was). The system chart (◎) can cover the top band; while it does, the space
@@ -11,6 +12,7 @@ import { ChartView } from "./chart-view.js";
 import orrin from "./data/orrin.js";
 import station from "./data/station.js";
 import wenna from "./data/wenna.js";
+import zennor from "./data/zennor.js";
 import { DeckView } from "./deck-view.js";
 import { decksPlans } from "./decks-deck.js";
 import { drumPlans } from "./drum-deck.js";
@@ -19,9 +21,12 @@ import { DRUMS, buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
 import { hullOf, isShipRoom, shipInfo } from "./lib/hulls.js";
 import { indexStation, infoLine, locate } from "./lib/locate.js";
 import { pickStation, stationOfDock } from "./lib/stations.js";
+import { TOWNS, indexTown, locateTown, townInfo } from "./lib/town.js";
 import { ModelView } from "./model-view.js";
 import { SpaceView } from "./space-view.js";
 import { shipPlans, updateShip } from "./ship-deck.js";
+import { townPlans } from "./town-deck.js";
+import { SkylineView } from "./town-view.js";
 
 const modelEl = document.getElementById("model");
 const deckEl = document.getElementById("deck");
@@ -56,7 +61,18 @@ function decks(data, spec) {
   return { index, model, deck: new DeckView(deckEl, index, decksPlans(spec)), lastLevel: null, locate: locateDecks };
 }
 
-const stations = { tiss: tiss(), orrin: decks(orrin, DECKS.orrin), wenna: drum(wenna, DRUMS.wenna) };
+/** Zennor: a town on the ground, rooms placed by their compass exits; the skyline over it. */
+function town(data, spec) {
+  const index = indexTown(data, spec);
+  return { index, model: new SkylineView(modelEl), deck: new DeckView(deckEl, index, townPlans(spec)), lastLevel: null, locate: locateTown, info: townInfo };
+}
+
+const stations = {
+  tiss: tiss(),
+  orrin: decks(orrin, DECKS.orrin),
+  wenna: drum(wenna, DRUMS.wenna),
+  zennor: town(zennor, TOWNS.zennor),
+};
 const ships = {}; // hull id -> the DeckView drawing that hull, built on first use
 const space = new SpaceView(modelEl);
 const info = document.getElementById("info");
@@ -144,7 +160,7 @@ function render() {
     return;
   }
   showDeck(s.deck);
-  info.textContent = infoLine(where, last, s.index);
+  info.textContent = (s.info ?? infoLine)(where, last, s.index);
 }
 
 panel.on("settings", (msg) => {
