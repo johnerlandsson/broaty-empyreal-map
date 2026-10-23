@@ -75,24 +75,38 @@ export function attachPanZoom(div, get, set, { minW, maxW }) {
     },
     { passive: false },
   );
+  // A press must not start WebKit's own drag of the SVG (an image ghost follows the pointer, and
+  // the webview swallows the release, so the pan never lets go) or a text selection: Tauri's
+  // webview handles native drag badly (Mallard's docs/tauri-webview-quirks.md).
+  Object.assign(div.style, { userSelect: "none", webkitUserSelect: "none", webkitUserDrag: "none" });
+  const block = (e) => e.preventDefault();
+  div.addEventListener("selectstart", block);
   let drag = null;
+  const end = () => {
+    drag = null;
+  };
+  div.addEventListener("dragstart", (e) => {
+    e.preventDefault();
+    end();
+  });
   div.addEventListener("pointerdown", (e) => {
     if (e.target.closest?.(".zoom")) return;
+    if (e.button !== 0) return; // a right-click's release goes to the context menu, not here
+    e.preventDefault();
     drag = [e.clientX, e.clientY];
     div.setPointerCapture?.(e.pointerId);
   });
   div.addEventListener("pointermove", (e) => {
     if (!drag) return;
+    if (!(e.buttons & 1)) return end(); // released where we didn't hear it
     const s = scale();
     const v = get();
     set([v[0] - (e.clientX - drag[0]) * s, v[1] - (e.clientY - drag[1]) * s, v[2], v[3]]);
     drag = [e.clientX, e.clientY];
   });
-  const end = () => {
-    drag = null;
-  };
   div.addEventListener("pointerup", end);
   div.addEventListener("pointercancel", end);
+  div.addEventListener("lostpointercapture", end);
   return zoom;
 }
 
