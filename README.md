@@ -45,8 +45,13 @@ window collar at the fore end of the axis. The drum turns your room to face
 you, as the wheel does.
 
 **Zennor** is on the ground, so instead of a model the top band shows its
-skyline under the stars: the ridge rising east, the town's low roofs and the
-Port Office's squat tower. It's scenery, and nothing on it is lit.
+skyline: the ridge rising east, the town's low roofs and the Port Office's
+squat tower. Out of doors, the sky is over it as the game's `look sky` tells
+it, moving as you watch: day and night, dawn and dusk, T.I.S.S. climbing out
+of the west, passing overhead and setting, and Orrin as a golden star at
+night. Each is drawn where the game puts it on a dome from the western
+horizon to the eastern, and hovering over one shows the game's own sentence
+for it. Indoors you can't see the sky, so the band is the skyline alone.
 
 **Out in your ship.** Once you undock, the station model fades into a view
 looking ahead from your ship: a still starfield while you're parked, the

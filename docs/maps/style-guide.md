@@ -19,7 +19,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | T.I.S.S. model and deck plans | top, bottom | you're on T.I.S.S., or your ship is docked there | [tiss.md](tiss.md) |
 | Drum station models and plans (Wenna Halt) | top, bottom | you're on that station, or your ship is docked there | [drum-stations.md](drum-stations.md) |
 | Decks station models and plans (Orrin Station and the four halts) | top, bottom | you're on that station, or your ship is docked there | [decks-stations.md](decks-stations.md) |
-| Town skyline and plan (Zennor) | top, bottom | you're in the town, or your ship is landed there | [town.md](town.md) |
+| Town sky and plan (Zennor) | top, bottom | you're in the town, or your ship is landed there | [town.md](town.md) |
 | Space scenes | top | you're out in a ship you own or crew, undocked | [space-scenes.md](space-scenes.md) |
 | Ship plans | bottom | you're aboard any ship, docked or not | [ship-plans.md](ship-plans.md) |
 | Orrery (the system chart) | top | the ◎ toggle is on | [orrery.md](orrery.md) |
@@ -111,6 +111,10 @@ On a town's plan (the ground, not a deck; see town.md):
 | Orbit | `#2b3646` | the chart's orbit rings and its dotted edge ring (§13); the same as the panel's rule |
 | Star | `#fffaf0` | the chart's star, and the centre of its radial glow (§13) |
 | Glass | `#cfe3ff` (§4.2) | the chart's station diamonds, port domes and lane mouth chevrons (§13) |
+| Planet star | `#ffcf6a` | another planet seen from the ground at night, a steady golden star (Orrin from Zennor, town.md) |
+| Day tints | `#1c2430`, `#232d3a`, `#2c3846`, `#364455` | a town's sky dome while its star is just up, low, well up and overhead (`SKY_TINTS` in `ui/lib/sky.js`) |
+| Dusk glow | `#e8925a` at .35 | the horizon where the star went down, at dusk |
+| Dawn glow | `#b8c8dc` at .3 | the horizon where the star will come up, at dawn |
 
 ### 4.4 District colours
 
