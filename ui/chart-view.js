@@ -152,7 +152,6 @@ export class ChartView {
 
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = "◎";
     btn.title = "System chart";
     Object.assign(btn.style, {
       position: "absolute",
@@ -166,11 +165,15 @@ export class ChartView {
       border: `1px solid ${ORBIT}`,
       background: "var(--bg, #04060c)",
       color: "var(--fg, #dfe7f1)",
-      fontSize: "14px",
-      lineHeight: "1",
       cursor: "pointer",
       padding: "0",
     });
+    // drawn, not a ◎ glyph: a glyph sits wherever the font's metrics put it, off the button's middle
+    const icon = el("svg", { viewBox: "0 0 16 16", width: 14, height: 14, fill: "none", stroke: "currentColor", "stroke-width": 1.3 }, btn);
+    icon.style.display = "block";
+    icon.style.margin = "auto";
+    el("circle", { cx: 8, cy: 8, r: 6.5 }, icon);
+    el("circle", { cx: 8, cy: 8, r: 3 }, icon);
     btn.style.background = "color-mix(in srgb, var(--bg, #04060c) 70%, transparent)";
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
