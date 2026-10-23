@@ -17,6 +17,7 @@ import {
   isLost,
   markOf,
   mouthStar,
+  onSurface,
   parsePoint,
   positionOf,
   scaleKm,
@@ -386,13 +387,27 @@ export class ChartView {
     };
     const offView = []; // [name, km position, drawn radius px] for the edge markers
 
+    // a planet's disc: its true radius, or at least 3.5 px
+    const discR = (it) => Math.max(3.5, (Number(it.radius) || 0) / s);
+    // where a port is drawn: on its planet's disc as drawn, where the town is now (px), with the
+    // way out from the planet's centre; null for anything else
+    const ground = (id) => {
+      const on = onSurface(index, id, t);
+      const c = on && pos(on.parent.id);
+      if (!c) return null;
+      const [px, py] = P(c);
+      const r = discR(on.parent);
+      const u = [Math.cos(on.angle), -Math.sin(on.angle)];
+      return { x: px + u[0] * r, y: py + u[1] * r, u, base: [px, py], r, parent: on.parent };
+    };
+
     // the star's position, for lighting the planets
     const star = items.find((it) => it.kind === "star");
     const starPos = star ? pos(star.id) : [0, 0];
 
-    // orbit rings
+    // orbit rings (a port's is its planet's surface: no ring)
     for (const it of items) {
-      if (!it.orbit || hidden(it)) continue;
+      if (!it.orbit || hidden(it) || markOf(it.kind) === "port") continue;
       safe(() => {
         const base = pos(it.orbit.parent);
         if (!base) return;
@@ -461,7 +476,7 @@ export class ChartView {
           const p = pos(it.id);
           if (!p) return;
           const [x, y] = P(p);
-          const r = Math.max(3.5, (Number(it.radius) || 0) / s);
+          const r = discR(it);
           const g = el("g", {}, marks);
           el("circle", { cx: x, cy: y, r, fill: TONES[0], stroke: EDGE, "stroke-width": 1 }, g);
           if (starPos) {
@@ -482,6 +497,26 @@ export class ChartView {
           const d = el("rect", { x: x - 2.6, y: y - 2.6, width: 5.2, height: 5.2, fill: GLASS, transform: `rotate(45 ${x} ${y})` }, marks);
           tip(d, `body:${it.id}`, it.name);
         }
+      });
+    }
+
+    // ports, over their planets: a dome on the planet's edge, flat side down, named outward from it
+    // (under the planet's own name when it's on the bottom of the disc)
+    for (const it of items) {
+      if (markOf(it.kind) !== "port" || hidden(it)) continue;
+      safe(() => {
+        const at = ground(it.id);
+        if (!at) return;
+        const { x, y, u } = at;
+        const deg = (Math.atan2(u[1], u[0]) * 180) / Math.PI;
+        const g = el("g", {}, marks);
+        el("path", { d: "M0,-3.6 A3.6,3.6 0 0 1 0,3.6 Z", fill: GLASS, transform: `translate(${x} ${y}) rotate(${deg})` }, g);
+        el("circle", { cx: x, cy: y, r: 6, fill: "transparent" }, g);
+        if (!crowded(it)) {
+          if (u[1] > 0.5) label(x, at.base[1] + at.r + 24, it.name);
+          else label(x + u[0] * 9, y + u[1] * 9 + 3, it.name, u[0] >= 0 ? "start" : "end", [x, y - 10]);
+        }
+        tip(g, `body:${it.id}`, it.name, `on ${at.parent.name}'s surface`);
       });
     }
 
@@ -532,8 +567,11 @@ export class ChartView {
         const b = P(d);
         el("circle", { cx: b[0], cy: b[1], r: 5, fill: "none", stroke: HL, "stroke-opacity": 0.7, "stroke-width": 1.2, "pointer-events": "none" }, marks);
       } else if (fix.kind === "at" && herPos) {
-        const c = chevron(lit, P(herPos), -Math.PI / 2);
-        const where = this.ship?.docked ? `docked at ${nameOf(fix.place)}` : `at ${nameOf(fix.place)}`;
+        // at a port, on its dome: the planet's disc may be drawn bigger than it is
+        const at = ground(fix.place);
+        const c = chevron(lit, at ? [at.x, at.y] : P(herPos), -Math.PI / 2);
+        const docked = at ? "landed at" : "docked at";
+        const where = `${this.ship?.docked ? docked : at ? "over" : "at"} ${nameOf(fix.place)}`;
         tip(c, "ship", shipName, where);
       }
     });

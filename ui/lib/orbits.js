@@ -9,17 +9,18 @@ const DEPTH = 8;
 const rad = (deg) => (deg * Math.PI) / 180;
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
-// Index a charts message by id; a body and a place with the same id merge.
+// Index a charts message by id; a body and a place with the same id merge, keeping the body's
+// kind (a port is a station among places, gmcp.md §8.4).
 export function indexCharts(charts) {
   const items = new Map();
-  const put = (it) => {
+  const put = (it, place) => {
     if (!it || it.id == null) return;
     const have = items.get(it.id) ?? { id: it.id };
-    for (const [k, v] of Object.entries(it)) if (v !== null && v !== undefined) have[k] = v;
+    for (const [k, v] of Object.entries(it)) if (v !== null && v !== undefined && !(place && k === "kind" && have.kind != null)) have[k] = v;
     items.set(it.id, have);
   };
-  for (const b of charts?.bodies ?? []) put(b);
-  for (const p of charts?.places ?? []) put(p);
+  for (const b of charts?.bodies ?? []) put(b, false);
+  for (const p of charts?.places ?? []) put(p, true);
   for (const it of items.values()) {
     it.name ??= it.id;
     for (const k of ["kind", "radius", "orbit", "fit", "edge"]) it[k] ??= null;
@@ -278,9 +279,20 @@ export function followStep(vb, p, margin, touched) {
 }
 
 // How a kind of body or place is drawn: as itself if the chart knows it, else as a station, so a
-// new kind (a port) still shows rather than nothing (style guide §10).
-const MARKS = new Set(["star", "planet", "station", "belt", "mouth"]);
+// new kind still shows rather than nothing (style guide §10).
+const MARKS = new Set(["star", "planet", "station", "port", "belt", "mouth"]);
 export const markOf = (kind) => (MARKS.has(kind) ? kind : "station");
+
+// A port's planet and the angle (radians, y up) from the planet's centre to the port at wall-clock
+// t (ms): the chart draws it on the planet's drawn edge there, not on its orbit. Null for anything
+// but a port, or a port it can't place.
+export function onSurface(index, id, t) {
+  const it = index.items.get(id);
+  const parent = it?.kind === "port" ? index.items.get(it.orbit?.parent) : null;
+  const p = parent && positionOf(index, id, t);
+  const c = p && positionOf(index, parent.id, t);
+  return c ? { parent, angle: Math.atan2(p[1] - c[1], p[0] - c[0]) } : null;
+}
 
 // An orbit under 8 px across is drawn folded into its parent.
 export function folded(index, id, kmPerPx) {

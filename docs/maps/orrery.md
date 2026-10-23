@@ -36,10 +36,17 @@ purpose:
 
 `Space.Charts`, from the game's `sendChartsGmcp` in `~/dev/empyreal`: the
 star's id as `system`, the clock's `epoch`, the `bodies` (star, planets,
-stations) and the `places` (stations, belts, mouths), each with an orbit
+stations, ports) and the `places` (stations, belts, mouths), each with an orbit
 (parent, `a` in km, `e`, `peri`, `phase`, `period` in seconds). A belt carries a
 `fit` of when it was `seen` and how far off it may be (`error`, km, as of `at`).
 It is resent when places or fits change and every game hour.
+
+**Ports.** A town on a planet (since 2026-10-22, Zennor on Tamsin) is a body of
+kind `port` whose orbit is its planet's surface: `a` is the planet's radius and
+`period` its day (gmcp.md §8.4). Among `places` the same id is a `station`; the
+two merge into one item, keeping the body's kind, so it's drawn once, as a
+port. Docked there, she has landed; there and not docked, she's over it (the
+game's "You arrive over Zennor.").
 
 `Ship.Status` gives her `name`, `docked`, `location`, `destination`, `progress`
 and `eta`, and her host's when she's docked at another ship, which is where she
@@ -96,8 +103,13 @@ Everything the style guide's §13 draws:
 - **Mouths** with a bearing (a stable lane's) as a double chevron named by the
   star it leads to; without one (a wild lane's), the edge ring is named at its
   top, a line a mouth: "Maelor lane, somewhere on the edge".
-- **A body of a kind the chart doesn't know** (the game's first was a `port`)
-  as a station's diamond, so it still shows.
+- **Ports** as a small Glass dome on their planet's edge where the town is now,
+  turning with the planet, and no orbit ring. The dome sits on the disc as
+  drawn, so it stays on the edge when the planet is drawn bigger than it is.
+  Named outward from the planet, or under the planet's name when it's on the
+  bottom of the disc, by the satellites' rule; hovered, "on Tamsin's surface".
+- **A body of a kind the chart doesn't know** as a station's diamond, so it
+  still shows.
 - **Your ship** as an amber chevron, and **her route** dashed ahead, solid
   behind, with a ring where she'll arrive. Nothing else on the chart is amber
   except a belt she's searching.
@@ -111,8 +123,9 @@ Everything the style guide's §13 draws:
   when she can't be placed. A lost belt gets none, and nor does a body whose
   disc (the star's bright glow) still reaches into the band.
 - **A scale bar**, top left.
-- **Hover** any mark for its name; a belt's error and when it was seen; where
-  she's bound and when she'll arrive.
+- **Hover** any mark for its name; a belt's error and when it was seen; a
+  port's planet; where she's bound and when she'll arrive, or where she's
+  docked or landed.
 
 **Zoom and framing.** + − and the wheel zoom, drag pans, ⌂ frames. You can zoom
 in to 1,000 km across and out to 2.3 times the system's radius, times the band's
@@ -158,7 +171,7 @@ Unchanged: it says where you are aboard.
 - Preview: `dev/charts-fixture.js` builds Senara's and Maelor's systems from the
   game's content, and `?chart=` in `dev/preview.js` opens the chart on one of
   its scenarios (`parked-gannet`, `under-way-orrin`, `searching-cinders`,
-  `at-point`, `docked-tiss`, `none`, `maelor`, or `edge` for an invented mouth
+  `at-point`, `docked-tiss`, `landed-zennor`, `none`, `maelor`, or `edge` for an invented mouth
   bearing). The bar's menu switches between them.
 
 ## Where it differs from the style guide

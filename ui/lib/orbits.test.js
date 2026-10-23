@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EDGE_KM, ago, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
-  daylit, followStep, markOf, offCentre, offsetOn, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
+  daylit, followStep, markOf, offCentre, offsetOn, onSurface, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
 } from "./orbits.js";
 
 const rad = (d) => (d * Math.PI) / 180;
@@ -47,6 +47,15 @@ describe("indexCharts", () => {
     });
     expect(i.items.get("x")).toMatchObject({ radius: 5, fit: 3 });
     expect(i.items.get("x").orbit.a).toBe(1);
+  });
+
+  it("keeps the body's kind over the place's: a port is a station among places", () => {
+    const o = orbit("tamsin", 400, 14400);
+    const i = indexCharts({
+      bodies: [{ id: "zennor", name: "Zennor", kind: "port", orbit: o }],
+      places: [{ id: "zennor", name: "Zennor", kind: "station", orbit: o, fit: null }],
+    });
+    expect(i.items.get("zennor").kind).toBe("port");
   });
 
   it("copes with missing lists", () => {
@@ -421,11 +430,11 @@ describe("followStep", () => {
 
 describe("markOf", () => {
   it("draws each known kind as itself", () => {
-    for (const k of ["star", "planet", "station", "belt", "mouth"]) expect(markOf(k)).toBe(k);
+    for (const k of ["star", "planet", "station", "port", "belt", "mouth"]) expect(markOf(k)).toBe(k);
   });
 
-  it("draws a kind it doesn't know (a port, say) as a station, never as nothing", () => {
-    expect(markOf("port")).toBe("station");
+  it("draws a kind it doesn't know as a station, never as nothing", () => {
+    expect(markOf("moonbase")).toBe("station");
     expect(markOf(undefined)).toBe("station");
     expect(markOf(42)).toBe("station");
   });
@@ -464,5 +473,35 @@ describe("daylit", () => {
   it("is null when the charts can't place it", () => {
     expect(daylit(port(0), "nowhere", 0)).toBe(null);
     expect(daylit(indexCharts({ bodies: [{ id: "zennor", kind: "port", orbit: orbit("tamsin", 400, 14400) }] }), "zennor", 0)).toBe(null);
+  });
+});
+
+describe("onSurface", () => {
+  const port = (extra = {}) =>
+    indexCharts({
+      epoch: 0,
+      bodies: [
+        { id: "senara", kind: "star" },
+        { id: "tamsin", name: "Tamsin", kind: "planet", radius: 400, orbit: orbit("senara", 6000, 259200) },
+        { id: "zennor", name: "Zennor", kind: "port", orbit: orbit("tamsin", 400, 14400, extra) },
+        { id: "tiss", kind: "station", orbit: orbit("tamsin", 900, 7200) },
+      ],
+    });
+
+  it("gives a port's planet and the bearing it's at on it, turning with the planet's day", () => {
+    const i = port({ phase: 30 });
+    const s = onSurface(i, "zennor", 0);
+    expect(s.parent.id).toBe("tamsin");
+    expect(s.angle).toBeCloseTo(rad(30), 9);
+    expect(onSurface(i, "zennor", 3600 * 1000).angle).toBeCloseTo(rad(120), 9); // a quarter of a 4 h day on
+  });
+
+  it("is null for anything but a port, and for a port it can't place", () => {
+    const i = port();
+    expect(onSurface(i, "tiss", 0)).toBeNull();
+    expect(onSurface(i, "tamsin", 0)).toBeNull();
+    expect(onSurface(i, "nowhere", 0)).toBeNull();
+    i.items.get("zennor").orbit.parent = "gone";
+    expect(onSurface(i, "zennor", 0)).toBeNull();
   });
 });

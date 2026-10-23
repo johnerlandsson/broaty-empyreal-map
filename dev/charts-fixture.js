@@ -109,6 +109,7 @@ export const SHIPS = {
   "searching-cinders": { name: "Mule", docked: false, destination: "cinders", progress: 0.3, eta: 120, from: "tiss", searching: "cinders" },
   "at-point": { name: "Mule", docked: false, point: "pt:tamsin:1500:-2000" },
   "docked-tiss": { name: "Mule", docked: true, location: "tiss" },
+  "landed-zennor": { name: "Mule", docked: true, location: "zennor" },
   none: null,
 };
 

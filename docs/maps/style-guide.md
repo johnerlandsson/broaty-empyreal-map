@@ -109,7 +109,7 @@ On a town's plan (the ground, not a deck; see town.md):
 | Glass mix | Glass mixed in at .45 | domes, window collars |
 | Orbit | `#2b3646` | the chart's orbit rings and its dotted edge ring (§13); the same as the panel's rule |
 | Star | `#fffaf0` | the chart's star, and the centre of its radial glow (§13) |
-| Glass | `#cfe3ff` (§4.2) | the chart's station diamonds and lane mouth chevrons (§13) |
+| Glass | `#cfe3ff` (§4.2) | the chart's station diamonds, port domes and lane mouth chevrons (§13) |
 
 ### 4.4 District colours
 
@@ -323,7 +323,12 @@ what it draws and how.
   toward the star in the lightest Tone; at least 3.5 px radius, else its true
   radius.
 - **Stations:** a small diamond (about 5 px) in Glass. A body or place of a
-  kind the chart has no drawing for (a port) takes the station's (§10).
+  kind the chart has no drawing for takes the station's (§10).
+- **Ports** (a town on a planet's surface): a half-disc about 3.6 px in
+  radius in Glass, flat side on the planet's disc as drawn, where the town is
+  now, so it turns with the planet and stays on the edge when the disc is
+  drawn at its 3.5 px least. No orbit ring: its orbit is the planet's surface.
+  Your ship there sits on the dome.
 - **Belts:** an arc along the fit's orbit, centred where the fit puts the
   belt and reaching its error either way: 14 segments, 5 px wide with round
   caps, in the lightest Tone at opacity `.15 + .6 × (1 − |2f − 1|)` for a
@@ -355,11 +360,14 @@ what it draws and how.
   thousands separated) and the mouths that have a bearing (by the star they
   face: "Maelor").
 - Stations are named on hover only.
-- **Folding:** a satellite whose orbit is under 8 px across on screen is
-  folded into its parent: no ring, no mark, no label, unless it's your ship's
+- A port is named outward from its planet, beside the dome, or centred on the
+  line under the planet's name when the dome is on the bottom of the disc,
+  where the two would meet.
+- **Folding:** a satellite (a port among them) whose orbit is under 8 px
+  across on screen is folded into its parent: no ring, no mark, no label, unless it's your ship's
   place or destination.
-- **Naming satellites:** a planet's satellite (a moon, or a belt round a
-  planet) is named only once its orbit is 80 px across, so it doesn't crowd
+- **Naming satellites:** a planet's satellite (a moon, a belt round a
+  planet, or a port on it) is named only once its orbit is 80 px across, so it doesn't crowd
   its parent's name. Before that it's still drawn and still hoverable. The
   same goes for your ship's place or destination, which is always named.
 
@@ -368,8 +376,8 @@ what it draws and how.
 - **Edge markers:** a body, a belt or a mouth with a bearing that's off the
   view is a small Dim chevron just inside the band's edge, pointing at it, named
   with its distance in thousands of km, 9: "Orrin 16k". The distance is from
-  your ship, or from the view's centre when she can't be placed. Stations and
-  folded satellites get none. Neither does a lost belt, which is its whole
+  your ship, or from the view's centre when she can't be placed. Stations,
+  ports and folded satellites get none. Neither does a lost belt, which is its whole
   ring and so has no one place to point at, nor a body whose disc reaches into
   the band (the star's, out to 1.6 times its radius, where its glow is still
   half as bright), since you can see it.
@@ -384,8 +392,9 @@ what it draws and how.
   border, the band's + − ⌂, wheel and drag act on the chart, and what's
   under it keeps its state without drawing.
 - **Hover** any mark for a Mallard tooltip: its name; for a belt, its error
-  and when it was seen ("±2,600 km, seen 2d 4h ago"); for your ship, where
-  she's bound and when she'll arrive; for the edge ring, its label.
+  and when it was seen ("±2,600 km, seen 2d 4h ago"); for a port, its planet
+  ("on Tamsin's surface"); for your ship, where she's bound and when she'll
+  arrive, or where she's docked ("landed at" a port, "over" it undocked); for the edge ring, its label.
 - **Framing:** ⌂ frames her line and her when she's under way, else the body
   she's nearest and its satellites, else the whole system. The view reframes
   itself only when the chart is turned on, the system changes (and again on

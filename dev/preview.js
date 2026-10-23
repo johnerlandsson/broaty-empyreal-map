@@ -11,7 +11,7 @@
 //             Zennor, which also emits charts placing it so); the bar's menu switches it
 //   ?hull=H   aboard a ship, send hull H (skiff, courier or freighter) as the server will; the bar's menu switches it
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
-//             docked-tiss, none, maelor or edge), emitting charts, chart-ship and chart { on: true }; the bar's menu switches it
+//             docked-tiss, landed-zennor, none, maelor or edge), emitting charts, chart-ship and chart { on: true }; the bar's menu switches it
 
 import orrin from "../ui/data/orrin.js";
 import station from "../ui/data/station.js";
