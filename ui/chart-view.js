@@ -571,10 +571,11 @@ export class ChartView {
         el("circle", { cx: b[0], cy: b[1], r: 5, fill: "none", stroke: HL, "stroke-opacity": 0.7, "stroke-width": 1.2, "pointer-events": "none" }, marks);
       } else if (fix.kind === "at" && herPos) {
         // at a port, on its dome: the planet's disc may be drawn bigger than it is
-        const at = ground(fix.place);
+        const at = fix.place ? ground(fix.place) : null;
         const c = chevron(lit, at ? [at.x, at.y] : P(herPos), -Math.PI / 2);
         const docked = at ? "landed at" : "docked at";
-        const where = `${this.ship?.docked ? docked : at ? "over" : "at"} ${nameOf(fix.place)}`;
+        // at no place: stopped mid-trip, at rest where she was
+        const where = fix.place ? `${this.ship?.docked ? docked : at ? "over" : "at"} ${nameOf(fix.place)}` : "adrift";
         tip(c, "ship", shipName, where);
       }
     });

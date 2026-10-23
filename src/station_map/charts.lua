@@ -4,12 +4,16 @@
 -- holds at once her trip there ends, whether she is `searching` for a belt, and
 -- when the status `received` and when her trip began, `depart` (whole seconds), which fix
 -- the trip's timing; and her `name`. A lane mouth keeps its `open` (a closed branch's is false).
+-- Stopped mid-trip she's at rest where she was along it, which the payload doesn't say: `stop`
+-- keeps the trip she stopped on (its start, destination, depart and arrive) and when (`at`), so
+-- the panel can place her there and start her next trip from it.
 -- She reads from `host` when set, as scene.lua does.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 
 local C = {}
 
 local SLACK = 5 -- seconds an eta may grow by before it means a new leg
+local STOPS = 4 -- stops kept one inside another: a trip from a stop, stopped on in turn
 
 local function str(v)
   if type(v) == 'string' then return v end
@@ -109,6 +113,7 @@ local function drop_memory(state, charts)
   if ship then
     ship.from, ship.point, ship.searching = keep(ship.from), keep(ship.point), keep(ship.searching)
     if not keep(ship.destination) then ship.depart = nil end
+    if ship.stop and not keep(ship.stop.destination) then ship.stop = nil end
   end
   if prev then
     prev.location = keep(prev.location)
@@ -152,6 +157,21 @@ local function leg_due(prev, now)
   return prev.eta - (now - prev.received) <= SLACK
 end
 
+-- The trip she's on as a stop's leg, if it has a start and a departure to place her by; nil else.
+local function stop_of(ship, prev, now)
+  if not (ship and ship.destination and ship.depart and prev.eta and prev.received) then return nil end
+  if not (ship.from or ship.stop) then return nil end
+  local inner = ship.stop
+  if not ship.from and inner then
+    -- keep STOPS deep at most: past that the oldest is dropped, and with it where she is
+    local depth, s = 1, inner
+    while s.stop do depth, s = depth + 1, s.stop end
+    if depth >= STOPS then return nil end
+  end
+  return { from = ship.from, stop = (not ship.from) and inner or nil, destination = ship.destination,
+    depart = ship.depart, arrive = prev.received + prev.eta, at = now }
+end
+
 -- When the trip began, whole seconds, from a status's progress and eta (the game's progress
 -- is (tick - depart) / (arrive - depart)); nil when it can't be worked out.
 local function depart_of(cur)
@@ -180,13 +200,15 @@ function C.ship_status(state, data, now)
   local prev, old = state.prev, state.ship
   if prev and prev.hosted ~= cur.hosted then prev, old = nil, nil end -- not the same ship
 
-  local from, point, searching, depart, depart_progress
+  local from, point, searching, depart, depart_progress, stop
   if cur.destination then
     local same_trip = prev and prev.destination == cur.destination
     if same_trip then
       from = old and old.from
+      stop = old and old.stop
     elseif prev and not prev.destination then
       from = prev.location or (old and old.point)
+      if not from then stop = old and old.stop end
     end
     local new_leg = false
     if is_belt(state, cur.destination) then
@@ -209,9 +231,12 @@ function C.ship_status(state, data, now)
     if prev and prev.destination and leg_due(prev, cur.received) then
       if prev.destination:sub(1, 3) == 'pt:' then point = prev.destination end
       if is_belt(state, prev.destination) then searching = prev.destination end
+    elseif prev and prev.destination and not (old and old.searching) then
+      stop = stop_of(old, prev, cur.received) -- stopped where she was on the way
     end
     point = point or (old and old.point)
     searching = searching or (old and old.searching)
+    if not (prev and prev.destination) then stop = old and old.stop end
   end
 
   state.prev = {
@@ -223,7 +248,7 @@ function C.ship_status(state, data, now)
     name = str(data.name),
     docked = cur.docked, location = cur.location, destination = cur.destination,
     progress = cur.progress, eta = cur.eta, received = cur.received, depart = depart,
-    from = from, point = point, searching = searching,
+    from = from, point = point, searching = searching, stop = stop,
   }
   return not same(before, snapshot(state.ship))
 end

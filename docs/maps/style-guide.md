@@ -396,8 +396,10 @@ what it draws and how.
 - **Hover** any mark for a Mallard tooltip: its name; for a belt, its error
   and when it was seen ("±2,600 km, seen 2d 4h ago"); for a port, its planet
   ("on Tamsin's surface"); for your ship, where she's bound and when she'll
-  arrive, or where she's docked ("landed at" a port, "over" it undocked); for the edge ring, its label.
-- **Framing:** ⌂ frames her line and her when she's under way, else the body
+  arrive, or where she's docked ("landed at" a port, "over" it undocked), or
+  "adrift" where she stopped mid-trip; for the edge ring, its label.
+- **Framing:** ⌂ frames her line and her when she's under way (or the trip
+  she stopped on and her, adrift where she stopped), else the body
   she's nearest and its satellites, else the whole system. The view reframes
   itself only when the chart is turned on, the system changes (and again on
   the first ship status after it), or a trip starts or ends while you haven't

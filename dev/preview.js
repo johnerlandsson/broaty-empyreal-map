@@ -11,7 +11,8 @@
 //             Zennor, which also emits charts placing it so); the bar's menu switches it
 //   ?hull=H   aboard a ship, send hull H (skiff, courier or freighter) as the server will; the bar's menu switches it
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
-//             docked-tiss, landed-zennor, none, maelor or edge), emitting charts, chart-ship and chart { on: true }; the bar's menu switches it
+//             docked-tiss, landed-zennor, none, maelor, edge, to-mouth, adrift or from-stop), emitting charts, chart-ship and
+//             chart { on: true }; the bar's menu switches it
 //   ?lanes=L  open the core lanes map on scenario L (senara, in-trunk, in-branch or petroc), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it
 
@@ -288,9 +289,20 @@ function emitChart(name) {
     const depart = m.destination && m.progress < 1 ? received - Math.round((m.progress * m.eta) / (1 - m.progress)) : undefined;
     return { ...m, received, ...(depart !== undefined ? { depart } : {}) };
   };
+  // bound for the Maelor lane mouth from T.I.S.S.; stopped two thirds of the way; and off again
+  const s = Math.floor(now / 1000);
+  const stop = { from: "tiss", destination: "mouth:senara:maelor", depart: s - 540, arrive: s + 270, at: s - 30 };
+  const MOUTH_TRIPS = {
+    "to-mouth": { name: "Mule", docked: false, from: "tiss", destination: "mouth:senara:maelor", progress: 0.4, eta: 480 },
+    adrift: { name: "Mule", docked: false, stop, received: s },
+    "from-stop": { name: "Mule", docked: false, stop, destination: "mouth:senara:maelor", progress: 0.2, eta: 210, depart: s - 50, received: s },
+  };
   if (name === "maelor") {
     fp.emit("charts", maelorCharts(now));
     fp.emit("chart-ship", stamp(MAELOR_SHIP));
+  } else if (MOUTH_TRIPS[name]) {
+    fp.emit("charts", senaraCharts(now, EDGE(now)));
+    fp.emit("chart-ship", name === "to-mouth" ? stamp(MOUTH_TRIPS[name]) : MOUTH_TRIPS[name]);
   } else {
     fp.emit("charts", senaraCharts(now, name === "edge" ? EDGE(now) : null));
     fp.emit("chart-ship", stamp(name === "edge" ? SHIPS["parked-gannet"] : SHIPS[name]));

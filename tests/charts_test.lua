@@ -416,4 +416,93 @@ test('a point is dropped when she gains a host', function()
   eq(C.ship(s).point, nil)
 end)
 
+-- A stop mid-trip (`stop` or `hold`, before the leg is due): the game leaves her at rest where
+-- she was along the line and sends only "adrift". The trip she stopped on is kept as `stop`, so
+-- the panel can place her, and her next trip starts from it.
+local function stopped_on_the_way()
+  local s = fresh()
+  C.ship_status(s, { location = 'tiss' }, 0)
+  C.ship_status(s, { destination = 'mouth:senara:maelor', progress = 0, eta = 800 }, 1)
+  C.ship_status(s, { destination = 'mouth:senara:maelor', progress = 0.5, eta = 400 }, 401)
+  C.ship_status(s, { status = 'adrift' }, 402)
+  return s
+end
+
+test('a stop mid-trip keeps the trip she stopped on', function()
+  local s = stopped_on_the_way()
+  eq(C.ship(s).stop, { from = 'tiss', destination = 'mouth:senara:maelor', depart = 1, arrive = 801, at = 402 })
+  eq(C.ship(s).point, nil)
+  eq(C.ship(s).from, nil)
+end)
+
+test('her stop holds while she is adrift', function()
+  local s = stopped_on_the_way()
+  C.ship_status(s, { status = 'adrift' }, 500)
+  eq(C.ship(s).stop.at, 402)
+end)
+
+test('the next trip starts from her stop', function()
+  local s = stopped_on_the_way()
+  C.ship_status(s, { destination = 'mouth:senara:maelor', progress = 0, eta = 266 }, 404)
+  eq(C.ship(s).from, nil)
+  eq(C.ship(s).stop.from, 'tiss')
+  C.ship_status(s, { destination = 'mouth:senara:maelor', progress = 0.2, eta = 213 }, 457)
+  eq(C.ship(s).stop.at, 402)
+end)
+
+test('a second stop keeps the first inside it', function()
+  local s = stopped_on_the_way()
+  C.ship_status(s, { destination = 'gannet', progress = 0, eta = 100 }, 404)
+  C.ship_status(s, { status = 'adrift' }, 430)
+  local st = C.ship(s).stop
+  eq(st.destination, 'gannet')
+  eq(st.from, nil)
+  eq(st.stop.from, 'tiss')
+  eq(st.at, 430)
+end)
+
+test('stops nest only so deep', function()
+  local s = stopped_on_the_way()
+  local t0 = 404
+  for i = 1, 6 do
+    C.ship_status(s, { destination = 'gannet', progress = 0, eta = 100 }, t0)
+    C.ship_status(s, { status = 'adrift' }, t0 + 10)
+    t0 = t0 + 20
+  end
+  local depth, st = 0, C.ship(s).stop
+  while st do depth, st = depth + 1, st.stop end
+  eq(depth <= 4, true)
+end)
+
+test('a stop with no start to it keeps nothing', function()
+  local s = fresh()
+  C.ship_status(s, { destination = 'mouth:senara:maelor', progress = 0.5, eta = 400 }, 1) -- panel started mid-trip
+  C.ship_status(s, { status = 'adrift' }, 2)
+  eq(C.ship(s).stop, nil)
+end)
+
+test('arriving somewhere drops her stop', function()
+  local s = stopped_on_the_way()
+  C.ship_status(s, { destination = 'tiss', progress = 0, eta = 10 }, 404)
+  C.ship_status(s, { location = 'tiss' }, 414)
+  eq(C.ship(s).stop, nil)
+  eq(C.ship(s).from, nil)
+end)
+
+test('a trip that comes due and goes loose is no stop', function()
+  local s = fresh()
+  C.ship_status(s, { location = 'tiss' }, 0)
+  C.ship_status(s, { destination = 'gannet', progress = 0, eta = 100 }, 1)
+  C.ship_status(s, { status = 'adrift' }, 101)
+  eq(C.ship(s).stop, nil)
+end)
+
+test('a new system drops a stop it has no place for', function()
+  local s = stopped_on_the_way()
+  C.space_charts(s, charts({ system = 'maelor', bodies = {}, places = {
+    { id = 'wenna_halt', name = 'Wenna Halt', kind = 'station' },
+  } }))
+  eq(C.ship(s).stop, nil)
+end)
+
 t.done()

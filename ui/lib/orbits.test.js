@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EDGE_KM, ago, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
-  daylit, followStep, markOf, offCentre, offsetOn, onSurface, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
+  daylit, followStep, markOf, stopFix, offCentre, offsetOn, onSurface, parentOf, parsePoint, positionOf, scaleKm, shipFix, systemRadius,
 } from "./orbits.js";
 
 const rad = (d) => (d * Math.PI) / 180;
@@ -158,6 +158,21 @@ describe("frameOf", () => {
   it("lets a body be the frame of a trip to what orbits it", () => {
     expect(frameOf(idx, "tamsin", "tiss")).toBe("tamsin");
     expect(frameOf(idx, "pt:tamsin:1:1", "tamsin")).toBe("tamsin");
+  });
+  // the game's locationFrame: a mouth has no orbit, and rides with its star
+  it("puts a trip to or from a lane mouth in the star's frame", () => {
+    expect(frameOf(idx, "tiss", "mouth")).toBe("senara");
+    expect(frameOf(idx, "mouth", "gannet")).toBe("senara");
+    expect(frameOf(idx, "mouth", "mouth")).toBe("mouth");
+  });
+
+  it("draws a trip to a lane mouth", () => {
+    const ship = { docked: false, from: "tiss", destination: "mouth", progress: 0.5, eta: 100, received: 1000 };
+    const leg = legOf(idx, ship);
+    expect(leg.frame).toBe("senara");
+    expect(leg.to[0]).toBeCloseTo(0, 6);
+    expect(leg.to[1]).toBeCloseTo(15000, 6);
+    expect(shipFix(idx, ship, 1000000).kind).toBe("moving");
   });
 });
 
@@ -503,5 +518,67 @@ describe("onSurface", () => {
     expect(onSurface(i, "nowhere", 0)).toBeNull();
     i.items.get("zennor").orbit.parent = "gone";
     expect(onSurface(i, "zennor", 0)).toBeNull();
+  });
+});
+
+describe("stops mid-trip", () => {
+  // tiss to gannet round Tamsin, left at 900 s, due at 1100, stopped half way at 1000
+  const stop = { from: "tiss", destination: "gannet", depart: 900, arrive: 1100, at: 1000 };
+  const near = (a, b) => {
+    expect(a[0]).toBeCloseTo(b[0], 6);
+    expect(a[1]).toBeCloseTo(b[1], 6);
+  };
+  const leg = legOf(idx, { from: "tiss", destination: "gannet", depart: 900, progress: 0, eta: 200, received: 900 });
+  const mid = [(leg.from[0] + leg.to[0]) / 2, (leg.from[1] + leg.to[1]) / 2];
+
+  it("puts her where she was along the trip, at rest in its frame", () => {
+    const f = stopFix(idx, stop);
+    expect(f.frame).toBe("tamsin");
+    near(f.off, mid);
+  });
+
+  it("holds her there while she's adrift, riding with the frame", () => {
+    for (const t of [1000000, 5000000]) {
+      const fix = shipFix(idx, { docked: false, stop }, t);
+      expect(fix.kind).toBe("at");
+      expect(fix.place).toBe(null);
+      const f = positionOf(idx, "tamsin", t);
+      near(fix.pos, [f[0] + mid[0], f[1] + mid[1]]);
+    }
+  });
+
+  it("starts her next trip from it", () => {
+    const next = { docked: false, stop, destination: "tiss", depart: 1010, progress: 0, eta: 50, received: 1010 };
+    const l = legOf(idx, next);
+    expect(l.frame).toBe("tamsin");
+    near(l.from, mid);
+    near(l.to, offsetOn(idx.items.get("tiss").orbit, 0, 1060000));
+    expect(shipFix(idx, next, 1020000).kind).toBe("moving");
+  });
+
+  it("places a stop on a trip from a stop", () => {
+    const second = { stop, destination: "tiss", depart: 1010, arrive: 1060, at: 1035 };
+    const l = legOf(idx, { stop, destination: "tiss", depart: 1010, progress: 0, eta: 50, received: 1010 });
+    const f = stopFix(idx, second);
+    near(f.off, [(l.from[0] + l.to[0]) / 2, (l.from[1] + l.to[1]) / 2]);
+  });
+
+  it("is nowhere when the charts can't place the trip", () => {
+    expect(stopFix(idx, { ...stop, from: "nowhere" })).toBe(null);
+    expect(stopFix(idx, null)).toBe(null);
+    expect(shipFix(idx, { stop: { ...stop, destination: "nowhere" } }, 1000000).kind).toBe("none");
+  });
+
+  it("frames her and the trip she stopped on", () => {
+    const t = 1000000;
+    const fix = shipFix(idx, { stop }, t);
+    const box = homeBox(idx, { stop }, t);
+    const f = positionOf(idx, "tamsin", t);
+    for (const p of [fix.pos, [f[0] + leg.from[0], f[1] + leg.from[1]], [f[0] + leg.to[0], f[1] + leg.to[1]]]) {
+      expect(p[0]).toBeGreaterThan(box[0]);
+      expect(p[0]).toBeLessThan(box[2]);
+      expect(p[1]).toBeGreaterThan(box[1]);
+      expect(p[1]).toBeLessThan(box[3]);
+    }
   });
 });

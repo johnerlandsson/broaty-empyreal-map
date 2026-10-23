@@ -92,13 +92,17 @@ export function daylit(index, id, t) {
 }
 
 // The nearest body that holds both, as the game's Orbits.common: a chain starts at the
-// item itself (a point's body), so a body is the frame of a trip to its own moon.
+// item itself (a point's body), so a body is the frame of a trip to its own moon. Every chain
+// ends at the system's star, as the game's locationFrame has it: a lane mouth, with no orbit,
+// rides with its star.
 export function frameOf(index, a, b) {
   const known = (id) => parsePoint(id) || index.items.has(id);
   if (!known(a) || !known(b)) return null;
+  const star = index.items.get(index.system)?.kind === "star" ? index.system : null;
   const above = (id) => {
     const out = [];
     for (let p = parsePoint(id)?.body ?? id; p !== null && out.length < DEPTH; p = parentOf(index, p)) out.push(p);
+    if (star !== null && out.at(-1) !== star) out.push(star);
     return out;
   };
   const up = new Set(above(a));
@@ -118,28 +122,65 @@ export function errorAt(fit, a, t) {
 // Lost once the error is nearly half way round the orbit.
 export const isLost = (errorKm, a) => errorKm >= 0.9 * Math.PI * a;
 
+// A trip as a straight line in the frame's offsets, times in ms, from a place's id or from a stop
+// (`stop`, below); null when unplaceable.
+function legFrom(index, from, stop, destination, depart, arrive, depth) {
+  if (depth > DEPTH || !destination) return null;
+  const halt = !from && stop ? stopFix(index, stop, depth + 1) : null;
+  if (!from && !halt) return null;
+  const frame = frameOf(index, from ?? halt.frame, destination);
+  if (frame === null) return null;
+  const rel = (p, t) => {
+    const f = positionOf(index, frame, t);
+    return p && f && [p[0] - f[0], p[1] - f[1]];
+  };
+  let start;
+  if (from) start = positionOf(index, from, depart);
+  else {
+    const h = positionOf(index, halt.frame, depart);
+    start = h && [h[0] + halt.off[0], h[1] + halt.off[1]];
+  }
+  const a = rel(start, depart);
+  const b = rel(positionOf(index, destination, arrive), arrive);
+  return a && b ? { frame, from: a, to: b, depart, arrive } : null;
+}
+
 // Her trip as a straight line in the frame's offsets, times in ms; null when unplaceable.
 export function legOf(index, ship) {
-  const { from, destination } = ship ?? {};
+  const { from, stop, destination } = ship ?? {};
   const received = num(ship?.received);
   const eta = num(ship?.eta);
-  if (!from || !destination || received === null || eta === null) return null;
-  const frame = frameOf(index, from, destination);
-  if (frame === null) return null;
+  if (!(from || stop) || !destination || received === null || eta === null) return null;
   const progress = Math.min(Math.max(num(ship.progress) ?? 0, 0), 1);
   const arrive = (received + eta) * 1000;
   // the departure the Lua side kept from the trip's first status: worked out again from a late
   // one, progress (rounded to 2 places) would swing it by minutes
   const kept = num(ship.depart);
   const depart = kept !== null ? kept * 1000 : progress >= 1 ? arrive : arrive - (eta / (1 - progress)) * 1000;
-  const at = (id, t) => {
-    const p = positionOf(index, id, t);
-    const f = positionOf(index, frame, t);
-    return p && f && [p[0] - f[0], p[1] - f[1]];
+  return legFrom(index, from ?? null, stop ?? null, destination, depart, arrive, 0);
+}
+
+// Where a stop mid-trip left her: the Lua side keeps the trip she stopped on (its start, a place
+// or an earlier stop, its destination, depart and arrive, whole seconds) and when she stopped
+// (`at`). The game leaves her at rest where she was, riding with the body whose reach she's in;
+// the charts don't say how far a body reaches, so she rides with the trip's frame, the same
+// body unless she stopped close by a deeper one. Her offset `off` from `frame`, and the `leg`
+// she stopped on, or null.
+export function stopFix(index, stop, depth = 0) {
+  if (!stop || typeof stop !== "object") return null;
+  const depart = num(stop.depart);
+  const arrive = num(stop.arrive);
+  const at = num(stop.at);
+  if (depart === null || arrive === null || at === null) return null;
+  const leg = legFrom(index, stop.from ?? null, stop.stop ?? null, stop.destination, depart * 1000, arrive * 1000, depth);
+  if (!leg) return null;
+  const span = leg.arrive - leg.depart;
+  const k = span > 0 ? Math.min(Math.max((at * 1000 - leg.depart) / span, 0), 1) : 1;
+  return {
+    frame: leg.frame,
+    off: [leg.from[0] + (leg.to[0] - leg.from[0]) * k, leg.from[1] + (leg.to[1] - leg.from[1]) * k],
+    leg,
   };
-  const a = at(from, depart);
-  const b = at(destination, arrive);
-  return a && b ? { frame, from: a, to: b, depart, arrive } : null;
 }
 
 // Where your ship is at wall-clock t (ms): at a place, moving, searching, bound or none.
@@ -168,6 +209,10 @@ export function shipFix(index, ship, t) {
   }
   const here = ship.location || ship.point;
   if (here) return { kind: "at", place: here, pos: positionOf(index, here, t) };
+  // stopped mid-trip: at rest where she stopped, at no place
+  const halt = stopFix(index, ship.stop);
+  const f = halt && positionOf(index, halt.frame, t);
+  if (f) return { kind: "at", place: null, pos: [f[0] + halt.off[0], f[1] + halt.off[1]], stopped: halt.leg };
   return { kind: "none" };
 }
 
@@ -201,10 +246,12 @@ export function homeBox(index, ship, t) {
     return [-r, -r, r, r];
   };
   const fix = shipFix(index, ship, t);
-  if (fix.kind === "moving") {
-    const f = positionOf(index, fix.leg.frame, t);
-    if (!f || !fix.pos) return whole();
-    const pts = [fix.pos, [f[0] + fix.leg.from[0], f[1] + fix.leg.from[1]], [f[0] + fix.leg.to[0], f[1] + fix.leg.to[1]]];
+  // under way, or adrift where she stopped: her and the trip's two ends
+  const leg = fix.kind === "moving" ? fix.leg : fix.stopped;
+  if (leg) {
+    const f = positionOf(index, leg.frame, t);
+    if (!f || !fix.pos?.every(Number.isFinite)) return whole();
+    const pts = [fix.pos, [f[0] + leg.from[0], f[1] + leg.from[1]], [f[0] + leg.to[0], f[1] + leg.to[1]]];
     const xs = pts.map((p) => p[0]);
     const ys = pts.map((p) => p[1]);
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];

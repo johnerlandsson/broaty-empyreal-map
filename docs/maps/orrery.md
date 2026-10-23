@@ -60,15 +60,24 @@ her place are worked out:
 - docked or at a place: at its position, a belt's being where the fit puts it;
 - under way: a straight line in the frame of the nearest body that holds both
   ends, from where she left to where the destination will be when she arrives,
-  as the game flies her. Arrival is each status's `eta` on from when it came.
+  as the game flies her. A lane mouth has no orbit and rides with its star, as
+  in the game, so a trip to or from one is in the star's frame. Arrival is each status's `eta` on from when it came.
   Departure is kept from the trip's first status: `progress` comes rounded to
   two places, so worked out again late in a trip it would swing by minutes;
 - a trip only ends, or a search starts a new leg, once it has come due. Before
   that a longer `eta` is a delay (debris), not a search, and going loose is a
   stop or a hold wherever she was: she isn't placed at the point she was bound
   for, and the belt isn't lit;
+- stopped mid-trip (`stop` or `hold`): the game sends only "adrift", with no
+  location. charts.lua keeps the trip she stopped on and when she stopped, as
+  `stop`, and the chart places her where that put her, at rest. The game has
+  her ride with the body whose reach she's in, which the charts don't give, so
+  she rides with the trip's frame: the same body unless she stopped close by a
+  deeper one. Her next trip starts from there. A trip from a stop can be
+  stopped on in turn, up to four deep;
 - not drawn when she can't be placed: under way with no remembered start (the
-  panel started mid-trip), loose with nowhere known, in a lane, or when no
+  panel or the plugin started mid-trip, a plugin reload included), loose with
+  nowhere known, in a lane, or when no
   `Ship.Status` came (as a guest aboard someone else's ship). The destination's
   ring is still drawn if she's bound somewhere.
 
