@@ -152,3 +152,39 @@ export function groundSky(index, port, t, short = SHORT) {
     return null;
   }
 }
+
+/** Degrees along the sky's dome from its western foot, through overhead (90), to its eastern. */
+export const skyAngle = (alt, east) => (east ? 180 - alt : alt);
+
+/** The dome's tint in each band Senara is up in, a step lighter as it climbs: dark, dusty
+ *  blue-greys, since the scene is always dark (style guide §4). None at twilight or night. */
+export const SKY_TINTS = { up: "#1c2430", low: "#232d3a", "well up": "#2c3846", overhead: "#364455" };
+
+/**
+ * What the dome draws for a sky from groundSky(): its tint, its stars and its glow, stepped
+ * with the game's band so they say no more than its words ("the first stars are out" at dusk,
+ * none named at dawn), the empty sky's hover (Senara's line), and a mark for each thing the
+ * words name, where they put it: Senara while it's up, the stations as a spark when dark and a
+ * fleck when not, the planets as gold.
+ */
+export function skyScene(sky) {
+  const { sun, band } = sky;
+  const twilight = band === "twilight";
+  const marks = [];
+  if (sun.alt >= 0) marks.push({ id: sun.id, look: "sun", angle: skyAngle(sun.alt, sun.east), name: sun.name, line: sun.line });
+  for (const b of sky.bodies)
+    marks.push({
+      id: b.id,
+      look: b.kind === "planet" ? "gold" : sky.dark ? "spark" : "fleck",
+      angle: skyAngle(b.alt, b.east),
+      name: b.name,
+      line: b.line,
+    });
+  return {
+    tint: SKY_TINTS[band] ?? null,
+    stars: band === "night" ? "all" : twilight && !sun.rising ? "few" : "none",
+    glow: twilight ? { east: sun.east, kind: sun.rising ? "dawn" : "dusk" } : null,
+    hover: sun.line,
+    marks,
+  };
+}

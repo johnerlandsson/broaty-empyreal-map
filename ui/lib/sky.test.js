@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import cases from "../../dev/sky-cases.json" with { type: "json" };
 import { daylit, indexCharts } from "./orbits.js";
-import { groundSky } from "./sky.js";
+import { groundSky, skyAngle, skyScene } from "./sky.js";
 
 // The game's own sky over Zennor, recorded by dev/sky-cases.ts from ground.ts (empyreal 7492196):
 // its Space.Charts, and the text either side of every change over a Tamsin year.
@@ -111,5 +111,78 @@ describe("groundSky's thresholds, as ground.ts's", () => {
   it("is dark below -5", () => {
     expect(sunAt(-5 + E).dark).toBe(false);
     expect(sunAt(-5 - E).dark).toBe(true);
+  });
+});
+
+// Each of the game's skies over a year, with its scene.
+const skies = cases.cases.map((c) => groundSky(idx, "zennor", at(c.tick)));
+const lightness = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  return (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
+};
+
+describe("skyAngle", () => {
+  it("runs from the western foot through overhead to the eastern", () => {
+    expect(skyAngle(0, false)).toBe(0);
+    expect(skyAngle(30, false)).toBe(30);
+    expect(skyAngle(90, true)).toBe(90);
+    expect(skyAngle(30, true)).toBe(150);
+    expect(skyAngle(0, true)).toBe(180);
+  });
+});
+
+describe("skyScene", () => {
+  it("puts the sun on the dome only when it's up", () => {
+    for (const sky of skies) {
+      const suns = skyScene(sky).marks.filter((m) => m.look === "sun");
+      if (sky.band === "night" || sky.band === "twilight") expect(suns).toEqual([]);
+      else expect(suns).toEqual([expect.objectContaining({ id: "senara", name: "Senara", angle: skyAngle(sky.sun.alt, sky.sun.east), line: sky.sun.line })]);
+    }
+  });
+
+  it("steps the sky with the game's band", () => {
+    const by = (band, rising) => skies.find((s) => s.band === band && (rising === undefined || s.sun.rising === rising));
+    expect(skyScene(by("night"))).toMatchObject({ tint: null, stars: "all", glow: null });
+    const dusk = by("twilight", false);
+    expect(skyScene(dusk)).toMatchObject({ tint: null, stars: "few", glow: { east: dusk.sun.east, kind: "dusk" } });
+    const dawn = by("twilight", true);
+    expect(skyScene(dawn)).toMatchObject({ tint: null, stars: "none", glow: { east: dawn.sun.east, kind: "dawn" } });
+    const tints = ["up", "low", "well up", "overhead"].map((b) => skyScene(by(b)));
+    for (const t of tints) expect(t).toMatchObject({ stars: "none", glow: null });
+    const l = tints.map((t) => lightness(t.tint));
+    for (let i = 1; i < l.length; i++) expect(l[i]).toBeGreaterThan(l[i - 1]);
+  });
+
+  it("is the same scene all through a band", () => {
+    for (const sky of skies) {
+      const { tint, stars, glow } = skyScene(sky);
+      const other = skyScene(skies.find((s) => s.band === sky.band && s.sun.rising === sky.sun.rising && s.sun.east === sky.sun.east));
+      expect({ tint, stars, glow }).toEqual({ tint: other.tint, stars: other.stars, glow: other.glow });
+    }
+  });
+
+  it("draws a station as a spark when dark, a fleck when not", () => {
+    for (const sky of skies)
+      for (const m of skyScene(sky).marks.filter((m) => m.id === "tiss")) expect(m.look).toBe(sky.dark ? "spark" : "fleck");
+    expect(skies.some((s) => s.dark && s.bodies.some((b) => b.id === "tiss"))).toBe(true);
+    expect(skies.some((s) => !s.dark && s.bodies.some((b) => b.id === "tiss"))).toBe(true);
+  });
+
+  it("draws a planet as gold", () => {
+    const marks = skies.flatMap((s) => skyScene(s).marks.filter((m) => m.id === "orrin"));
+    expect(marks.length).toBeGreaterThan(0);
+    for (const m of marks) expect(m).toMatchObject({ look: "gold", name: "Orrin" });
+  });
+
+  it("marks exactly what the words list, where they put it", () => {
+    for (const sky of skies) {
+      const s = skyScene(sky);
+      expect(s.marks.map((m) => m.line)).toEqual([...(sky.sun.alt >= 0 ? [sky.sun.line] : []), ...sky.bodies.map((b) => b.line)]);
+      for (const b of sky.bodies) expect(s.marks.find((m) => m.id === b.id).angle).toBe(skyAngle(b.alt, b.east));
+    }
+  });
+
+  it("hovers the empty sky with the sun's line", () => {
+    for (const sky of skies) expect(skyScene(sky).hover).toBe(sky.sun.line);
   });
 });
