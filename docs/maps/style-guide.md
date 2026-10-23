@@ -310,7 +310,8 @@ what it draws and how.
 - **Planets:** a disc in the darkest Tone with a Model edge outline, its half
   toward the star in the lightest Tone; at least 3.5 px radius, else its true
   radius.
-- **Stations:** a small diamond (about 5 px) in Glass.
+- **Stations:** a small diamond (about 5 px) in Glass. A body or place of a
+  kind the chart has no drawing for (a port) takes the station's (§10).
 - **Belts:** an arc along the fit's orbit, centred where the fit puts the
   belt and reaching its error either way: 14 segments, 5 px wide with round
   caps, in the lightest Tone at opacity `.15 + .6 × (1 − |2f − 1|)` for a
@@ -320,9 +321,9 @@ what it draws and how.
   says "· lost". A belt is never drawn as a point.
 - **The edge:** a ring dotted `1 5` in Orbit at the lane mouths' distance,
   whenever the system has a mouth.
-- **A mouth with a bearing:** a double chevron in Glass on the edge, pointing
+- **A mouth with a bearing** (a stable lane's): a double chevron in Glass on the edge, pointing
   out along it.
-- **A mouth without one:** no mark and no off-view marker. The edge ring is
+- **A mouth without one** (a wild lane's): no mark and no off-view marker. The edge ring is
   named in Dim at its top, one line a mouth: "Maelor lane, somewhere on the
   edge". Nothing on the ring hints at a direction.
 - **Your ship:** an amber chevron pointing the way she's going (up when

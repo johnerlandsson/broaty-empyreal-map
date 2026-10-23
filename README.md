@@ -51,7 +51,8 @@ and moving, the belts drawn as arcs as wide as the game's doubt about them
 at the edge, and your ship in amber with her route when she's under way.
 Zoom and drag as on a plan, ⌂ to frame. It shows only what you know: while she
 searches for a belt the arc lights up instead of her path, and a lane mouth
-gets a mark only if the game says where it faces. Press ◎ again for the
+gets a mark only if the game says where it faces: a stable lane's does, a wild
+lane's is only "somewhere on the edge". Press ◎ again for the
 station or the view ahead.
 
 **The deck plan (bottom).** A floor plan of the floor you're on:

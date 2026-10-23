@@ -28,9 +28,9 @@ purpose:
   player's to know, so they're never drawn. While she searches, the belt's own
   arc lights amber and pulses instead, since she's somewhere along it as far as
   you know. She isn't drawn as a chevron and her route isn't drawn.
-- **Where a lane mouth faces.** The game doesn't send it (see below), so a
-  mouth gets no mark and no off-view marker, and nothing on the chart hints at
-  a direction.
+- **Where a wild lane's mouth faces.** The game sends it only for stable lanes
+  (see below), so a wild lane's mouth gets no mark and no off-view marker, and
+  nothing on the chart hints at a direction.
 
 ## Where its data comes from
 
@@ -64,15 +64,23 @@ her place are worked out:
   `Ship.Status` came (as a guest aboard someone else's ship). The destination's
   ring is still drawn if she's bound somewhere.
 
+Out of a lane, the game sends her status at the far mouth before the new
+system's charts. Crossing into a new system forgets only what isn't one of its
+bodies or places, so her first trip from the mouth still has its start.
+
 A belt is drawn as an arc along its fit, reaching the error either way. After
 `at` the error grows and never shrinks, until the hourly resend corrects it. At
 90% of half way round it is **lost**: the whole orbit, dashed.
 
 **Lane mouths.** A mouth has no orbit, only a distance, 15,000 km out, which
-`help lanes` tells every player. The game's maintainer was asked (2026-10-22)
-for an `edge {r, bearing, at}` on each mouth, and may keep mouths' directions
-for players to find and share, so it may never come. The chart works without it.
-When it does come, the mouth is a double chevron on the edge at its bearing.
+`help lanes` tells every player. Since 2026-10-22 the game sends where a
+stable lane's mouth faces, as `edge {r, bearing, at}`: the bearing in degrees,
+counterclockwise from +x as orbit angles are, as of `at`. It creeps round as
+the stars orbit the galaxy, about 0.08° an hour for Maelor's, and the hourly
+resend keeps it fresh, so the chart doesn't project it. The maintainer counts a
+stable lane's direction (Senara to Maelor or Keyne) as public, but **wild
+lanes**, which come and go nearer the galactic core, won't get one, so a mouth
+without `edge` is still drawn only as "somewhere on the edge".
 
 ## Top band
 
@@ -85,8 +93,11 @@ Everything the style guide's §13 draws:
 - **Belts** as a fading arc with a few rocks at its centre, named with their
   error ("Gannet Belt ±2,600"). A lost belt is its whole orbit, dashed, named
   "· lost".
-- **Mouths** with a bearing as a double chevron; without one, the edge ring is
-  named at its top, a line a mouth: "Maelor lane, somewhere on the edge".
+- **Mouths** with a bearing (a stable lane's) as a double chevron named by the
+  star it leads to; without one (a wild lane's), the edge ring is named at its
+  top, a line a mouth: "Maelor lane, somewhere on the edge".
+- **A body of a kind the chart doesn't know** (the game's first was a `port`)
+  as a station's diamond, so it still shows.
 - **Your ship** as an amber chevron, and **her route** dashed ahead, solid
   behind, with a ring where she'll arrive. Nothing else on the chart is amber
   except a belt she's searching.
