@@ -442,7 +442,9 @@ git commit -m "feat(sky): Zennor's sky over the town, as look sky tells it"
 
 - [ ] **Step 3: `README.md`**
 
-In the town's part of "The panel", say:
+Rewrite the **Zennor** paragraph under "The station model (top)" (it starts
+"**Zennor** is on the ground", and still says "skyline under the stars").
+It should say:
 - outdoors, the top band is Zennor's sky as `look sky` tells it: day and
   night, dawn and dusk, T.I.S.S. crossing, and Orrin at night, moving as
   you watch, with hover for the game's words
