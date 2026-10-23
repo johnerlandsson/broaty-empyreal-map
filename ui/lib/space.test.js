@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Belt, Starfield, Town, approach, rockFaces, makeRock, targets, work, workLines } from "./space.js";
+import { Belt, Starfield, Town, approach, awayAt, awayLook, rockFaces, makeRock, targets, work, workLines } from "./space.js";
 import { rng } from "./svg.js";
 
 describe("targets", () => {
@@ -259,5 +259,66 @@ describe("Town", () => {
 
   it("is the same town from the same seed", () => {
     expect(new Town(rng(5))).toEqual(town);
+  });
+});
+
+describe("awayAt", () => {
+  const undock = { verb: "undock", start: 1000, end: 11000 };
+  const dock = { verb: "dock", start: 1000, end: 21000 };
+
+  it("undocking, the station falls away from as docked to backed out", () => {
+    expect(awayAt(undock, 1000)).toBe(0);
+    expect(awayAt(undock, 6000)).toBeCloseTo(0.5);
+    expect(awayAt(undock, 11000)).toBe(1);
+  });
+
+  it("docking, it draws near from backed out to as docked", () => {
+    expect(awayAt(dock, 1000)).toBe(1);
+    expect(awayAt(dock, 11000)).toBeCloseTo(0.5);
+    expect(awayAt(dock, 21000)).toBe(0);
+  });
+
+  it("moves steadily: never back, eased at the ends", () => {
+    let prev = -1;
+    for (let t = 1000; t <= 11000; t += 250) {
+      const a = awayAt(undock, t);
+      expect(a).toBeGreaterThanOrEqual(prev);
+      prev = a;
+    }
+    expect(awayAt(undock, 1500)).toBeLessThan(0.05);
+  });
+
+  it("holds at its ends before and after the run", () => {
+    expect(awayAt(undock, 0)).toBe(0);
+    expect(awayAt(dock, 60000)).toBe(0);
+  });
+
+  it("a run with no length is over", () => {
+    expect(awayAt({ verb: "dock", start: 5, end: 5 }, 0)).toBe(0);
+  });
+
+  it("anything else is null", () => {
+    expect(awayAt(null, 0)).toBeNull();
+    expect(awayAt({ verb: "travel", start: 0, end: 10 }, 5)).toBeNull();
+  });
+});
+
+describe("awayLook", () => {
+  it("as docked: the model as it is, no starfield over it", () => {
+    expect(awayLook(0)).toEqual({ zoom: 1, model: 1, stars: 0 });
+  });
+
+  it("backed out: a twelfth of its size, gone into the starfield", () => {
+    expect(awayLook(1)).toEqual({ zoom: 12, model: 0, stars: 1 });
+  });
+
+  it("fades only at the far end", () => {
+    expect(awayLook(0.8).model).toBe(1);
+    expect(awayLook(0.9).model).toBeCloseTo(0.5);
+  });
+
+  it("clamps out-of-range distances", () => {
+    expect(awayLook(-1)).toEqual(awayLook(0));
+    expect(awayLook(2)).toEqual(awayLook(1));
   });
 });

@@ -1,0 +1,138 @@
+<!doctype html>
+<!-- Docking and undocking on the game's clock, 2026-10-24: three ways to draw the manoeuvre in the overview.
+     Each row is a strip of frames across the game's own time: undocking from T.I.S.S. (10 s, the model
+     shown until `docked` flips, then the parked starfield) and docking at Orrin Station (20 s, the
+     starfield until `docked` flips, then the model). Uses the real station models; serve the repo root
+     over http to open it. A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Docking and undocking: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:16px 20px; }
+  h2 { color:#e3eaf2; font-size:15px; margin:18px 0 2px; }
+  h2 small { color:#7d8a9a; font-weight:400; font-size:12px; margin-left:8px; }
+  .row { display:flex; gap:8px; align-items:flex-start; margin:6px 0 2px; }
+  .lab { width:74px; flex:none; color:#e3eaf2; font-size:12px; padding-top:50px; }
+  figure { margin:0; text-align:center; }
+  figcaption { font:11px "DejaVu Sans Mono", monospace; margin-top:3px; }
+  .f { position:relative; width:170px; height:118px; background:#04060c; border-radius:6px; overflow:hidden; outline:1px solid #18202b; }
+  .f canvas { position:absolute; inset:0; width:100%; height:100%; }
+  .f .m { position:absolute; inset:0; }
+  .f .m .model { background:transparent !important; }
+  .f .m button { display:none; }
+  .f .over { position:absolute; inset:0; pointer-events:none; }
+</style></head><body>
+<script type="module">
+import orrin from "../../../ui/data/orrin.js";
+import station from "../../../ui/data/station.js";
+import { ModelView } from "../../../ui/model-view.js";
+import { DECKS, buildDecksModel, decksCut, decksKey, indexDecks } from "../../../ui/lib/decks.js";
+import { indexStation } from "../../../ui/lib/locate.js";
+import { Starfield } from "../../../ui/lib/space.js";
+import { rng } from "../../../ui/lib/svg.js";
+
+const W = 170, H = 118, STAR = "223,231,241", BEACON = "232,176,74", GLASS = "#cfe3ff";
+const ease = (t) => t * t * (3 - 2 * t);
+const clamp = (t) => Math.max(0, Math.min(1, t));
+
+const tissIndex = indexStation(station);
+const orrinIndex = indexDecks(orrin, DECKS.orrin);
+const build = {
+  tiss: (el) => new ModelView(el, tissIndex),
+  orrin: (el) => new ModelView(el, orrinIndex, { faces: buildDecksModel(orrinIndex, DECKS.orrin), keyOf: decksKey, hourOf: () => null, cutOf: (w) => decksCut(orrinIndex, w), labels: false }),
+};
+
+/** The parked starfield, as space-view.js draws it, at alpha a. */
+function starfield(cv, a) {
+  const g = cv.getContext("2d");
+  const f = new Starfield(220, rng(42));
+  g.lineCap = "round";
+  for (const [x0, y0, x1, y1, al, lw] of f.segments(W, H)) {
+    g.strokeStyle = `rgba(${STAR},${al * a})`;
+    g.lineWidth = lw;
+    g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1 + 0.01, y1); g.stroke();
+  }
+}
+
+/**
+ * One frame. `look` = { stars: 0..1 the parked starfield's alpha, model: 0..1 the model's opacity,
+ * zoom: 1 the model as docked, smaller further off, ownStars: the model's own backdrop shown,
+ * filter: css filter for the model, draw(g): anything over it }.
+ */
+function frame(parent, station, caption, look) {
+  const fig = parent.appendChild(document.createElement("figure"));
+  const f = fig.appendChild(document.createElement("div"));
+  f.className = "f";
+  const cv = f.appendChild(document.createElement("canvas"));
+  cv.width = W; cv.height = H;
+  if (look.stars) starfield(cv, look.stars);
+  if (look.model > 0) {
+    const m = f.appendChild(document.createElement("div"));
+    m.className = "m";
+    const view = build[station](m);
+    const svg = view.svg;
+    svg.querySelector(":scope > g").style.opacity = look.ownStars ?? 0; // its own backdrop of stars
+    const [x, y, w, h] = view.bounds;
+    const k = 1 / (look.zoom ?? 1);
+    view.setView([x + w / 2 - (w * k) / 2, y + h / 2 - (h * k) / 2, w * k, h * k]);
+    m.style.opacity = look.model;
+    if (look.filter) view.geo.style.filter = look.filter;
+  }
+  if (look.draw) {
+    const o = f.appendChild(document.createElement("canvas"));
+    o.className = "over"; o.width = W; o.height = H;
+    look.draw(o.getContext("2d"));
+  }
+  fig.appendChild(Object.assign(document.createElement("figcaption"), { textContent: caption }));
+}
+
+function strip(label, station, frames) {
+  const row = document.body.appendChild(document.createElement("div"));
+  row.className = "row";
+  row.appendChild(Object.assign(document.createElement("div"), { className: "lab", innerHTML: label }));
+  for (const [cap, look] of frames) frame(row, station, cap, look);
+}
+
+function option(title, note, undock, dock) {
+  document.body.appendChild(Object.assign(document.createElement("h2"), { innerHTML: `${title}<small>${note}</small>` }));
+  // undock: 10 s; frames at 0, 2.5, 5, 7.5, 10 s left, then docked → false
+  const U = [0, 0.25, 0.5, 0.75, 0.95];
+  strip("Undock<br>T.I.S.S.", "tiss", [
+    ...U.map((p) => [`${Math.round(10 - p * 10)} s left`, undock(p)]),
+    ["undocked", { stars: 1, model: 0 }],
+  ]);
+  const D = [0, 0.25, 0.5, 0.75, 0.95];
+  strip("Dock<br>Orrin", "orrin", [
+    ...D.map((p) => [`${Math.round(20 - p * 20)} s left`, dock(p)]),
+    ["docked", { model: 1, ownStars: 1 }],
+  ]);
+}
+
+// --- A: the model itself recedes and nears --------------------------------------------------
+option("A · Falls away, draws near",
+  "The model itself, scaled: backing out, it shrinks into the starfield and is a speck as she clears; coming in, a speck ahead grows to the model as docked. The model's own stars give way to the parked starfield.",
+  (p) => { const e = ease(p); return { stars: e, ownStars: 1 - e, model: 1 - clamp((p - 0.8) / 0.2) * 0.6, zoom: 1 / (1 + 11 * e) }; },
+  (p) => { const e = ease(p); return { stars: 1 - e, ownStars: e, model: clamp(p / 0.15) , zoom: 1 / (1 + 11 * (1 - e)) }; });
+
+// --- B: berth lights count it down, the picture still ----------------------------------------
+const lights = (n, on) => (g) => {
+  const gap = (W - 30) / (n - 1);
+  for (let i = 0; i < n; i++) {
+    const x = 15 + i * gap, y = H - 9, lit = i < on;
+    const grd = g.createRadialGradient(x, y, 0, x, y, 5);
+    grd.addColorStop(0, `rgba(${BEACON},${lit ? 0.95 : 0.12})`);
+    grd.addColorStop(1, `rgba(${BEACON},0)`);
+    g.fillStyle = grd; g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.fill();
+  }
+};
+option("B · Berth lights",
+  "The picture holds still: the model while she backs out, the starfield while she runs in. A row of berth lights in the busy amber counts the game's seconds: going out one by one on the way out, lighting up one by one on the way in.",
+  (p) => ({ model: 1, ownStars: 1, draw: lights(10, Math.ceil(10 * (1 - p))) }),
+  (p) => ({ stars: 1, model: 0, draw: lights(10, Math.floor(10 * p)) }));
+
+// --- C: the station as a silhouette against the stars ---------------------------------------
+const rim = `drop-shadow(0 0 0.6px ${GLASS}) drop-shadow(0 0 0.6px ${GLASS})`;
+option("C · Silhouette",
+  "Off the berth the station is a dark shape edged in Glass against the parked stars. Backing out, the lit model darkens to its silhouette, then shrinks to a third and fades; running in, a small silhouette grows and its faces light up in the last stretch.",
+  (p) => { const dark = clamp(p / 0.35); const e = ease(clamp((p - 0.25) / 0.75)); return { stars: e, ownStars: 1 - dark, model: 1 - clamp((p - 0.75) / 0.25) * 0.85, zoom: 1 - 0.65 * e, filter: `brightness(${1 - 0.85 * dark}) ${dark > 0.3 ? rim : ""}` }; },
+  (p) => { const e = ease(clamp(p / 0.75)); const lit = clamp((p - 0.7) / 0.3); return { stars: 1 - lit, ownStars: lit, model: 0.3 + 0.7 * clamp(p / 0.3), zoom: 0.35 + 0.65 * e, filter: `brightness(${0.15 + 0.85 * lit}) ${lit < 0.7 ? rim : ""}` }; });
+</script>
+</body></html>

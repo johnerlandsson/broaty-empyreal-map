@@ -50,6 +50,24 @@ function S.station(state)
   return nil
 end
 
+-- The station a dock or an undock starting now is about, if the overview has a picture of it:
+-- undocking, the station she's leaving (or her host is docked at: she backs off the host's
+-- collar into its approach), not a port, where she lifts off over the ground; docking, the
+-- station whose approach she's parked at. Nil otherwise: off a host out in space, the picture
+-- is the host's either side. Docking at a ship parked at a station's approach looks the same
+-- as docking at the station (Ship.Status doesn't say which), so it's that station's. Pure.
+function S.manoeuvre_at(state, verb)
+  if verb == 'undock' then
+    local st = S.station(state)
+    if st and not state.ports[st] then return st end
+    return nil
+  end
+  if verb == 'dock' and S.scene(state) == 'parked' then
+    return state.ship.location -- a lane mouth too: the panel has no model for it
+  end
+  return nil
+end
+
 local function key(state)
   return S.scene(state) .. '|' .. (S.station(state) or '') .. '|' .. (S.port(state) or '')
 end

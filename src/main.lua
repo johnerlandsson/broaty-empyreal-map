@@ -1,5 +1,6 @@
 -- Empyreal map (T.I.S.S., Orrin Station and Wenna Halt so far): folds GMCP location frames into one small message
--- and pushes it to the "map" panel, and your ship's frames into the overview's scene, the system chart, the
+-- and pushes it to the "map" panel, and your ship's frames into the overview's scene, its docking and
+-- undocking (timed by Ship.Devices), the system chart, the
 -- core lanes map and what her sensors and laser are doing. The lanes' states as last seen are kept in Mallard's storage, so they outlive a restart. All state lives here; the panel is a
 -- pure presentation layer that asks for a replay with "ready".
 --
@@ -10,6 +11,7 @@ local S = require('station_map.scene')
 local C = require('station_map.charts')
 local N = require('station_map.lanes')
 local W = require('station_map.work')
+local M = require('station_map.manoeuvre')
 
 local panel = mud.panel('map')
 local state = L.new()
@@ -17,6 +19,7 @@ local scene = S.new()
 local chart = C.new()
 local lanes = N.new()
 local work = W.new()
+local manoeuvre = M.new()
 
 -- storage is per plugin and world; a bad stored value (or none) is no sightings
 if storage then
@@ -39,6 +42,10 @@ end
 
 local function post_scene()
   panel:post('scene', { scene = S.scene(scene), station = S.station(scene), port = S.port(scene) })
+end
+
+local function post_manoeuvre()
+  panel:post('manoeuvre', M.message(manoeuvre, os.time()))
 end
 
 local function post_charts()
@@ -81,6 +88,8 @@ local reducers = {
 -- Each of these folds into the scene first, then the chart, then the lanes.
 local function scene_ship(data)
   if S.ship_status(scene, data) then post_scene() end
+  -- Off her, Ship.Devices isn't sent again (gmcp.ts sendShipGmcp): what she was doing goes too.
+  if type(data) ~= 'table' and M.reset(manoeuvre) then post_manoeuvre() end
   C.ship_status(chart, data, os.time())
   -- Always: the panel times a trip from the fresh `received`.
   post_chart_ship()
@@ -96,6 +105,8 @@ end
 
 local function ship_devices(data)
   if W.ship_devices(work, data, os.time()) then post_work() end
+  local at = function(verb) return S.manoeuvre_at(scene, verb) end
+  if M.ship_devices(manoeuvre, data, os.time(), at) then post_manoeuvre() end
 end
 
 local scene_reducers = {
@@ -128,6 +139,7 @@ world.on('disconnect', function()
   L.reset(state)
   post_location()
   if S.reset(scene) then post_scene() end
+  if M.reset(manoeuvre) then post_manoeuvre() end
   -- The chart stays on: the panel hides it, and its ◎, with no charts.
   if C.reset(chart) then
     post_charts()
@@ -143,6 +155,7 @@ panel:on_message('ready', function()
   if has_location(state) then post_location() end
   -- The panel starts on the station with none docked at, so only anything else needs replaying.
   if S.scene(scene) ~= 'station' or S.station(scene) then post_scene() end
+  if manoeuvre.verb then post_manoeuvre() end -- what's left of it now: the panel starts part-way
   if C.charts(chart) then post_charts() end
   if C.ship(chart) then post_chart_ship() end
   if C.on(chart) then post_chart_on() end

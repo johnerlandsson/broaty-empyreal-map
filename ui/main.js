@@ -6,7 +6,8 @@
 // The Lua side holds all state and replays it when we post "ready", so this file keeps only the
 // last location, the docked station, and the level each plan last showed (a lift between floors
 // keeps the plan where it was). The system chart (◎) or the core lanes map (⋈) can cover the top band,
-// one at a time; while one does, the space scene doesn't draw.
+// one at a time; while one does, the space scene doesn't draw. Docking and undocking, the station
+// model shows through the space scene, drawing near or falling away on the game's clock.
 
 import { ChartView } from "./chart-view.js";
 import carrow from "./data/carrow.js";
@@ -84,6 +85,7 @@ const stations = {
 };
 const ships = {}; // hull id -> the DeckView drawing that hull, built on first use
 const space = new SpaceView(modelEl);
+space.onAway = (away) => stations[current]?.model.setAway?.(away);
 const info = document.getElementById("info");
 const panel = window.panel;
 
@@ -151,11 +153,13 @@ function runSky() {
 
 let current = null;
 let docked = null; // the station your ship is docked at, from the scene message
+let approaching = null; // the station a dock under way is drawing near, from the manoeuvre message
 let last = null; // the last location message
 
 /** Show the station model for key; the bottom band is render()'s, since a ship can take it. */
 function show(key) {
   if (key === current) return;
+  stations[current]?.model.setAway?.(0); // a model left behind part-way is put back
   current = key;
   for (const [k, s] of Object.entries(stations)) s.model.div.style.display = k === key ? "" : "none";
 }
@@ -179,7 +183,7 @@ function shipView(id) {
 }
 
 function render() {
-  show(pickStation(last, docked, current ?? "tiss"));
+  show(pickStation(last, docked ?? approaching, current ?? "tiss"));
   const s = stations[current];
   const where = (s.locate ?? locate)(s.index, last, s.lastLevel);
   if (where.kind !== "off") s.lastLevel = where.level;
@@ -211,6 +215,23 @@ panel.on("scene", (msg) => {
 });
 
 panel.on("work", (msg) => space.setWork(msg));
+
+// A dock or an undock, timed from now by what's left of it; the station it's about must be one we draw.
+panel.on("manoeuvre", (msg) => {
+  const verb = msg?.verb;
+  const key = stationOfDock(msg?.at);
+  const left = Number(msg?.left);
+  const total = Number(msg?.total);
+  const timed = (verb === "dock" || verb === "undock") && key && Number.isFinite(left) && Number.isFinite(total);
+  approaching = timed && verb === "dock" ? key : null;
+  if (timed) {
+    const end = Date.now() + left * 1000;
+    space.setManoeuvre({ verb, start: end - Math.max(total, left) * 1000, end });
+  } else {
+    space.setManoeuvre(null);
+  }
+  render();
+});
 
 panel.on("charts", (msg) => {
   chart.setCharts(msg);

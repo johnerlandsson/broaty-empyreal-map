@@ -39,10 +39,12 @@ local function boot(opts)
   package.loaded['station_map.charts'] = nil
   package.loaded['station_map.lanes'] = nil
   package.loaded['station_map.work'] = nil
+  package.loaded['station_map.manoeuvre'] = nil
   local real_require = require
   _G.require = function(name)
     if name == 'station_map.location' or name == 'station_map.scene'
-        or name == 'station_map.charts' or name == 'station_map.lanes' or name == 'station_map.work' then
+        or name == 'station_map.charts' or name == 'station_map.lanes' or name == 'station_map.work'
+        or name == 'station_map.manoeuvre' then
       env.requires[#env.requires + 1] = name
       package.loaded[name] = nil
     end
@@ -78,7 +80,7 @@ test('wires panel and requires each module once', function()
   local env = boot()
   eq(env.panel_id, 'map')
   eq(env.requires, { 'station_map.location', 'station_map.scene', 'station_map.charts', 'station_map.lanes',
-    'station_map.work' })
+    'station_map.work', 'station_map.manoeuvre' })
   eq(type(env.gmcp_handlers['mudstd.room.info']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Room']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Vehicle']), 'function')
@@ -466,6 +468,67 @@ test('disconnect posts no work', function()
   env.world_handlers.disconnect()
   local m = post_named(env, 'work')
   eq(m.data, {})
+end)
+
+-- Docking and undocking, timed by Ship.Devices.
+
+local function nav_busy(busy, left)
+  return { devices = { { id = 'nav', condition = 100, busy = busy, left = left, attachments = {} } } }
+end
+
+test('an undock from a station posts manoeuvre, timed from now, about the station', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = true, location = 'tiss' })
+  env.posts = {}
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('undock', 10))
+  local p = post_named(env, 'manoeuvre')
+  eq(p.data, { verb = 'undock', left = 10, total = 10, at = 'tiss' })
+end)
+
+test('a Ship.Devices resend with the same end posts nothing', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('dock', 20))
+  env.posts = {}
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('dock', 20))
+  eq(post_named(env, 'manoeuvre'), nil)
+end)
+
+test('the run ending posts verb nil', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('dock', 20))
+  env.posts = {}
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy(nil, nil))
+  eq(post_named(env, 'manoeuvre').data, { verb = nil })
+end)
+
+test('stepping off her clears a run: Ship.Devices stops coming', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('dock', 20))
+  env.posts = {}
+  env.gmcp_handlers['Ship.Status']('Ship.Status', nil)
+  eq(post_named(env, 'manoeuvre').data, { verb = nil })
+end)
+
+test('ready replays a run under way, and nothing without one', function()
+  local env = boot()
+  env.panel_handlers.ready({})
+  eq(post_named(env, 'manoeuvre'), nil)
+  env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', location = 'orrin_station' })
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('dock', 12))
+  env.posts = {}
+  env.panel_handlers.ready({})
+  local p = post_named(env, 'manoeuvre')
+  eq(p.data.verb, 'dock')
+  eq(p.data.total, 20)
+  eq(p.data.at, 'orrin_station')
+end)
+
+test('disconnect clears a run', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('undock', 10))
+  env.posts = {}
+  env.world_handlers.disconnect()
+  eq(post_named(env, 'manoeuvre').data, { verb = nil })
 end)
 
 t.done()

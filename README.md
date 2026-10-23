@@ -63,7 +63,12 @@ rocks, brackets and a filling ring round a rock while she assays one, and
 the laser's beam on a rock while she mines, with the seconds left in the
 corner. A program's work shows the same as yours. The rocks themselves stay
 scenery: the map never shows what a scan found. There are no controls; docking brings
-the station back. Docked at another ship, say a skiff at a freighter's
+the station back. Undocking and docking take as long as the game's do: as
+your ship backs out of the berth the station falls away into the stars,
+and as she runs in it grows out of them to the station as docked, so the
+picture changes when the game says you've undocked or docked. Open the panel
+part-way through and it picks up from where she is; if she stops short (you
+type `stop`, or the nav faults), the station eases back to where it was. Docked at another ship, say a skiff at a freighter's
 collar, you see what the freighter sees: the stars streaming past while she
 travels, the station while she's docked at one. This follows the ship you can fly: your own, or one you
 crew. Aboard someone else's ship as a guest, the station model stays,
@@ -221,7 +226,9 @@ python3 -m http.server 8765
 
 `?step=N` jumps to step N of the walk, `?scene=belt` (or `parked`, `travelling`, `port-day`, `port-night`) opens on a
 space scene, and the menu in the bar switches it. `?work=scanning` (or `assaying`, `mining`, `idle`)
-opens on the belt with the ship at that work. `?debug` shows how often the model
+opens on the belt with the ship at that work. `?manoeuvre=undock-tiss` (or `dock-orrin`) runs an
+undock from T.I.S.S. or a dock at Orrin Station on the game's clock, `&left=N` opening it N seconds
+from the end and `&stop=N` stopping it N seconds in. `?debug` shows how often the model
 turned and redrew.
 
 ### Rebuilding the station data

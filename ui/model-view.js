@@ -1,13 +1,15 @@
 // The station model: a flat-shaded, painter's-algorithm drawing of a station as SVG polygons,
 // T.I.S.S. unless given another's faces. The wheel (or drum) turns by itself so the player's clock
 // position comes round to the camera; the player's place is shown by lighting the faces that share
-// their key. The user can zoom and pan, not rotate.
+// their key. The user can zoom and pan, not rotate. Docking and undocking, it shrinks or grows in its
+// framing as the space scene's timing says (setAway).
 // Geometry lives in lib/geometry.js, lib/model.js, lib/drum.js and lib/decks.js, turn maths in
 // lib/turn.js.
 
 import { BLZ, FRONT, P3, RR, RT, RWZ, project, roll } from "./lib/geometry.js";
 import { keyOf } from "./lib/locate.js";
 import { buildModel } from "./lib/model.js";
+import { awayLook } from "./lib/space.js";
 import { shortestTurn, turnDuration } from "./lib/turn.js";
 import { attachPanZoom, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
 
@@ -125,7 +127,8 @@ export class ModelView {
 
     const id = `glow-model-${++instances}`;
     glowFilter(el("defs", {}, svg), id);
-    stars(el("g", {}, svg), -2500, -2500, 5000, 5000, 1200, 21);
+    this.backdrop = el("g", {}, svg);
+    stars(this.backdrop, -2500, -2500, 5000, 5000, 1200, 21);
     this.geo = el("g", {}, svg);
     this.hot = el("g", { filter: `url(#${id})`, "pointer-events": "none" }, svg);
     this.pulse = el("g", {}, this.hot);
@@ -140,6 +143,7 @@ export class ModelView {
     this.run = 0; // bumped to cancel an animation in flight
     this.raf = 0;
     this.timer = 0;
+    this.away = 0; // 0 as docked, 1 backed out of the berth (setAway)
     this.draw();
 
     const W = this.bounds[2];
@@ -227,6 +231,23 @@ export class ModelView {
       );
     for (const r of rings) text(colX, r.y, r.text);
     text(docks.x, docks.y, docks.text);
+  }
+
+  /**
+   * Draw the station `away` from as docked (0) to backed out of the berth (1), as awayLook has it:
+   * smaller in its framing, its backdrop of stars giving way to the space scene's over it, fading
+   * at the far end, and no zoom buttons. Back at 0 it's as it was, framed as docked.
+   */
+  setAway(away) {
+    if (away === this.away) return;
+    this.away = away;
+    const { zoom, model, stars: field } = awayLook(away);
+    const [x, y, w, h] = this.bounds;
+    this.setView(away === 0 ? this.bounds.slice() : [x + (w - w * zoom) / 2, y + (h - h * zoom) / 2, w * zoom, h * zoom]);
+    this.backdrop.style.opacity = away === 0 ? "" : String(1 - field);
+    this.svg.style.opacity = model === 1 ? "" : String(model);
+    const buttons = this.div.querySelector(".zoom");
+    if (buttons) buttons.style.visibility = away === 0 ? "" : "hidden";
   }
 
   setView(v) {

@@ -19,6 +19,10 @@
 //   ?work=W   at a belt, the ship's work W (scanning, assaying, mining or idle) as the work message has it
 //             (src/station_map/work.lua): a scan or assay starts now and starts again a second after it
 //             ends, as a program at par would; the bar's menu switches it
+//   ?manoeuvre=M  aboard the Magpie, undock from T.I.S.S. (undock-tiss, 10 s) or dock at Orrin Station
+//             (dock-orrin, 20 s), with the manoeuvre and scene messages the Lua side posts, the scene
+//             changing as the run ends; ?left=N opens it with N s left, as a panel opened mid-run;
+//             ?stop=N stops it N s in, as `stop` or a fault does, so it eases back; the bar's menu switches it
 //   ?sky=S    stand in Zennor's Square under sky S (night, dusk, dawn, low, overhead or tiss-overhead): the game's
 //             own charts from dev/sky-cases.json, shifted so a recorded moment of that sky is now; the bar's menu switches it
 
@@ -311,6 +315,42 @@ function emitScene(name) {
 }
 sceneMenu.addEventListener("change", () => emitScene(sceneMenu.value));
 
+// --- docking and undocking: the manoeuvre message (src/station_map/manoeuvre.lua) and the scene change at its end ---
+
+const MANOEUVRES = {
+  "undock-tiss": { verb: "undock", total: 10, at: "tiss", before: { scene: "station", station: "tiss" }, after: { scene: "parked" } },
+  "dock-orrin": { verb: "dock", total: 20, at: "orrin_station", before: { scene: "parked" }, after: { scene: "station", station: "orrin_station" } },
+};
+const manoeuvreMenu = document.getElementById("manoeuvre");
+let manoeuvreTimers = [];
+
+function emitManoeuvre(name) {
+  manoeuvreTimers.forEach(clearTimeout);
+  manoeuvreTimers = [];
+  const m = MANOEUVRES[name];
+  if (!m) return fp.emit("manoeuvre", { verb: null });
+  const left = q.has("left") ? Math.max(0, Math.min(m.total, Number(q.get("left")) || 0)) : m.total;
+  const stop = q.has("stop") ? Number(q.get("stop")) : null;
+  emitLocation(COCKPIT);
+  fp.emit("scene", m.before);
+  fp.emit("manoeuvre", { verb: m.verb, left, total: m.total, at: m.at });
+  status.textContent = `${name} · ${left} s left${stop !== null ? ` · stops ${stop} s in` : ""}`;
+  const later = (s, fn) => manoeuvreTimers.push(setTimeout(fn, s * 1000));
+  if (stop !== null && stop < left) {
+    later(stop, () => {
+      fp.emit("manoeuvre", { verb: null });
+      status.textContent = `${name} · stopped`;
+    });
+    return;
+  }
+  later(left, () => {
+    fp.emit("scene", m.after); // Ship.Status comes first, then Ship.Devices (gmcp.ts sendShipGmcp)
+    fp.emit("manoeuvre", { verb: null });
+    status.textContent = `${name} · done`;
+  });
+}
+manoeuvreMenu.addEventListener("change", () => emitManoeuvre(manoeuvreMenu.value));
+
 hullMenu.addEventListener("change", () => {
   if (lastMsg?.roomId?.startsWith("ship.")) fp.emit("location", structuredClone(withHull(lastMsg, true)));
 });
@@ -460,6 +500,11 @@ function start() {
   if (q.has("work")) {
     workMenu.value = q.get("work");
     emitWork(workMenu.value);
+  }
+  if (q.has("manoeuvre")) {
+    manoeuvreMenu.value = q.get("manoeuvre");
+    emitManoeuvre(manoeuvreMenu.value);
+    return;
   }
   if (q.has("sky")) {
     skyMenu.value = q.get("sky");

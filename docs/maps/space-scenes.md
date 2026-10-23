@@ -82,6 +82,66 @@ the town it keeps what it last showed, the day side at first. This is no more
 than the player knows: the canopy tells them, and the orbits are the ones the
 chart draws.
 
+## Docking and undocking
+
+Undocking and docking take time in the game, and the overview takes the same
+time: the scene still changes when `docked` flips, but the station gets there
+first.
+
+**What the game says** (`~/dev/empyreal`, since 7dc0991, 2026-10-23). The nav
+device's `busy` in `Ship.Devices` is `undock` while she backs out of the berth
+and `dock` while she runs in, and its `left` is the seconds to the end. It's
+re-sent only when the end changes (`sendShipGmcp` in `gmcp.ts`), never as it
+counts down, so the plugin counts down itself. In `Ship.Status`:
+
+- **Undocking** (`startUndock`/`tickUndock` in `systems/space.ts`): `docked`
+  stays true and `location` the station for the whole run (her `status` says
+  "undocking from"); `docked` flips to false as it ends. It's 10 s
+  (`content/game/actions.yaml`), 15 s if the pilot's check fails.
+- **Docking** (`startDock`/`tickDock`): she's at the station's approach, so
+  `docked` is false and `location` the station's id the whole run; `docked`
+  flips to true as it ends. It's 20 s, but the drift call a third of the way
+  in can hold it: `left` sits at 0 until it's answered, and an answer can bring
+  the end 5 s earlier, which is re-sent.
+
+**What the plugin keeps.** `src/station_map/manoeuvre.lua` folds
+`Ship.Devices` into the nav's verb while it's `dock` or `undock` with a known
+`left`, its end as a local timestamp (`os.time()` + `left`, fixed on arrival),
+its start, and the station it's about. The game sends no length, so a run
+first seen with less than its par left started that much before, and one with
+more (the failed undock) started then. A resend whose end is within a second
+of the last is the same end. Anything else, an odd shape or null, clears it.
+`S.manoeuvre_at` in `scene.lua` names the station: undocking, the one the
+scene shows you docked at, your host's if you're at a ship's collar in a bay;
+docking, the one whose approach you're parked at. A port's landing and
+lift-off are left alone (the ground has a picture of its own), and so is a
+run off a host out in space, where the picture is the host's either side.
+Off the ship, `Ship.Status` null clears it, since `Ship.Devices` stops coming.
+The panel gets `manoeuvre`: `{ verb, left, total, at }`, or `{ verb = nil }`,
+with `left` counted to the moment it's posted, so `ready` replays what's left.
+
+**What the panel draws.** One number, how far away the station is (0 as
+docked, 1 backed out of the berth), drives it (`awayAt`, `awayLook` in
+`ui/lib/space.js`). Undocking it goes 0 to 1 over the run, docking 1 to 0,
+eased at both ends; past the end it holds, as a dock does waiting on the drift
+call. While a run is on, the space canvas is see-through: no Background, only
+the parked stars at that strength, over the station model, which shrinks in
+its framing to a twelfth of its size and fades in the last fifth of the
+distance, its own backdrop of stars giving way to the canvas's (`setAway` in
+`ui/model-view.js`, its zoom buttons hidden). Undocking ends with the station
+a speck gone into the stars as the scene turns `parked`; docking ends on the
+model as docked as the scene turns `station`, so neither change shows a seam.
+Docking draws the model of the station being approached, which isn't yet the
+one you're docked at. Opened part-way, it starts from what's left. A run that
+stops early (`stop`, a fault, the host gone) eases back to where the scene has
+the station, at 1.5 per second, and the model is put back as it was.
+
+**Docking at a ship.** `Ship.Status` doesn't say whether a dock at a station's
+approach is for a berth or for a ship parked there, so it's drawn as the
+station's; if she ends up at the ship's collar, the scene stays `parked` and
+the station eases back into the stars. This is no more than the player knows:
+it's their own ship's manoeuvre, timed as their prompt times it.
+
 ## Top band
 
 A canvas over the model: the Background, then stars or rocks. Rocks use the
@@ -149,12 +209,17 @@ Unchanged: it says where you are aboard.
 
 `ui/space-view.js` (the canvas and frame loop, and the ground below a port),
 `ui/lib/space.js` (scene targets, easing, starfield, belt, rocks, the held
-rock, `work()` and `workLines()`, the town's layout), `ui/lib/orbits.js`
-(`daylit`), `src/station_map/scene.lua`, `src/station_map/work.lua`. The
-preview's `?scene=port-day` and `?scene=port-night` put Zennor's town on the
-day or night side. `?work=scanning` (or `assaying`, `mining`, `idle`)
-opens on the belt with the ship at that work, a scan or assay starting again
-a second after it ends, as a program at par would.
+rock, `work()` and `workLines()`, the town's layout, a dock's or an undock's
+distance), `ui/lib/orbits.js` (`daylit`), `ui/model-view.js` (`setAway`),
+`src/station_map/scene.lua`, `src/station_map/work.lua`,
+`src/station_map/manoeuvre.lua`. The preview's `?scene=port-day` and
+`?scene=port-night` put Zennor's town on the day or night side.
+`?work=scanning` (or `assaying`, `mining`, `idle`) opens on the belt with the
+ship at that work, a scan or assay starting again a second after it ends, as
+a program at par would. `?manoeuvre=undock-tiss` and `?manoeuvre=dock-orrin`
+run an undock from T.I.S.S. and a dock at Orrin Station, `&left=N` opening
+part-way and `&stop=N` stopping early. The options for how to draw it are in
+`reference/dock-approach-mockup.html`.
 
 ## Where it differs from the style guide
 

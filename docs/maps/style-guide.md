@@ -307,6 +307,11 @@ A new map type says in its doc what its line shows.
 
 - A canvas over the model that fades in (2.5 per second) when you're out in
   your own ship, and out again when you dock.
+- Undocking and docking take the game's time, not a fade: the canvas turns
+  see-through over the model, which shrinks to a twelfth of its size into the
+  parked stars as she backs out, or grows out of them to its docked framing as
+  she runs in, eased at both ends and fading only in the last fifth of the
+  distance. One stopped early eases back (1.5 per second).
 - No controls and no highlight; the model's zoom buttons hide under it.
 - **The ship's work at a belt** is the one thing drawn over the scenery: the
   sensors' line crossing the band left to right over a scan's time, with a

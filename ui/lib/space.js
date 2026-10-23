@@ -27,6 +27,38 @@ export function approach(v, target, dt, rate) {
   return Math.abs(next - target) < 1e-3 ? target : next;
 }
 
+// --- docking and undocking -------------------------------------------------------------------
+
+const FAR = 12; // backed out of the berth, the station is 1/FAR of its size as docked
+const FADE_FROM = 0.8; // how far away the station starts to fade into the stars
+
+const smooth = (t) => t * t * (3 - 2 * t);
+const clamp01 = (t) => Math.max(0, Math.min(1, t));
+
+/**
+ * How far away the station is (0 as docked, 1 backed out of the berth) at `now`, for a dock or an
+ * undock timed `{ verb, start, end }` in ms: undocking it falls away over the run, docking it
+ * draws near, eased at both ends. Past its end it holds there, as a dock does while the drift
+ * call keeps her waiting; anything else is null.
+ */
+export function awayAt(m, now) {
+  if (!m || (m.verb !== "dock" && m.verb !== "undock")) return null;
+  const span = m.end - m.start;
+  const p = span > 0 ? clamp01((now - m.start) / span) : 1;
+  return m.verb === "undock" ? smooth(p) : 1 - smooth(p);
+}
+
+/**
+ * How the overview draws the station at distance `away`: `zoom`, how many times wider than its
+ * docked framing the model's view is (it shrinks by as much); `model`, its opacity, fading into
+ * the stars at the far end; and `stars`, the parked starfield's alpha over it, the model's own
+ * backdrop of stars showing the rest.
+ */
+export function awayLook(away) {
+  const a = clamp01(away);
+  return { zoom: 1 + (FAR - 1) * a, model: 1 - smooth(clamp01((a - FADE_FROM) / (1 - FADE_FROM))), stars: a };
+}
+
 const NEAR = 0.02;
 const RUSH = 0.45; // depth per second at full speed
 

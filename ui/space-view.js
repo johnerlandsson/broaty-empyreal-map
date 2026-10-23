@@ -4,9 +4,12 @@
 // its star is up or not; no controls. It fades in over the model (hiding its zoom buttons),
 // eases the stars' speed and cross-fades stars and rocks; the frame loop runs only while
 // something is on screen, and pauses while the panel is hidden or the system chart covers it.
+// Docking and undocking, it turns see-through over the station model, which shrinks into the
+// parked starfield or grows out of it on the game's clock (setManoeuvre, onAway); one stopped
+// early eases back to the scene's own picture.
 
 import { daylit } from "./lib/orbits.js";
-import { Belt, Starfield, Town, approach, rockFaces, targets, work, workLines } from "./lib/space.js";
+import { Belt, Starfield, Town, approach, awayAt, awayLook, rockFaces, targets, work, workLines } from "./lib/space.js";
 import { rng } from "./lib/svg.js";
 
 const BG = "#04060c";
@@ -16,6 +19,8 @@ const STAR = "223,231,241";
 const FADE = 2.5; // per second: space in and out, stars to rocks, the ground in and out
 const SPEED = 0.9; // per second: the stars speeding up and slowing down
 const DUSK = 1; // per second: day to night on the ground below, and back
+const DRIFT = targets("parked").speed; // the parked stars' drift, theirs as they show through
+const BACK = 1.5; // per second: a dock or an undock stopped early, the station back where it was
 const LOOK = 1000; // ms between asking whether the town below is in daylight
 // the planet's face: [top, upper, bottom] of its gradient, by day and by night
 const DAY = ["#6e5a44", "#8a7052", "#5c4936"];
@@ -67,6 +72,11 @@ export class SpaceView {
     this.raf = 0;
     this.last = 0;
     this.covered = false; // the chart is over the band: keep the state, draw nothing
+    this.run = null; // a dock or an undock under way, { verb, start, end } in ms
+    this.away = 0; // 0 the station as docked, 1 backed out of the berth
+    this.through = false; // drawing the station's distance: see-through over the model
+    /** @type {((away: number) => void) | null} draws the model at a distance; 0 puts it back */
+    this.onAway = null;
 
     new ResizeObserver(() => this.resize()).observe(containerEl);
     document.addEventListener("visibilitychange", () => (document.hidden ? this.pause() : this.wake()));
@@ -86,6 +96,12 @@ export class SpaceView {
   /** What the ship's sensors and laser are doing: the work message (src/station_map/work.lua). */
   setWork(msg) {
     this.work = msg && typeof msg === "object" ? msg : null;
+  }
+
+  /** Time a dock or an undock: `{ verb, start, end }` in local ms, or null when none is under way. */
+  setManoeuvre(run) {
+    this.run = run;
+    this.wake();
   }
 
   /** The system's charts, an indexCharts() result, for where the port and its star are. */
@@ -149,12 +165,53 @@ export class SpaceView {
     }
     this.lit = approach(this.lit, this.litTarget, dt, DUSK);
 
-    this.cv.style.opacity = String(this.space);
-    this.cv.style.pointerEvents = this.space > 0 ? "auto" : "none";
-    if (this.space > 0 && this.w) this.draw(dt);
+    const timed = awayAt(this.run, Date.now());
+    if (timed !== null) {
+      this.away = timed;
+      this.through = true;
+    } else if (this.through) {
+      // stopped early, or over with the scene changed: ease to where the scene has the station
+      this.away = approach(this.away, t.space, dt, BACK);
+      if (this.away === t.space) {
+        this.through = false;
+        this.space = this.away; // the scene's own fade carries on from here
+        this.onAway?.(0);
+      }
+    }
+
+    if (this.through) {
+      this.onAway?.(this.away);
+      this.cv.style.opacity = "1";
+      this.cv.style.pointerEvents = "none";
+      if (this.w) this.drawThrough(dt);
+    } else {
+      this.cv.style.opacity = String(this.space);
+      this.cv.style.pointerEvents = this.space > 0 ? "auto" : "none";
+      if (this.space > 0 && this.w) this.draw(dt);
+    }
 
     // back on the station with the fade done: nothing to draw until the next scene
-    this.raf = this.space === 0 && t.space === 0 ? 0 : requestAnimationFrame((n) => this.frame(n));
+    this.raf = !this.through && this.space === 0 && t.space === 0 ? 0 : requestAnimationFrame((n) => this.frame(n));
+  }
+
+  /** Over the station model at a distance: no backdrop, only the parked stars, as strong as it's far. */
+  drawThrough(dt) {
+    this.g.clearRect(0, 0, this.w, this.h);
+    this.field.step(dt, Math.max(this.speed, DRIFT)); // still stars are zero-length strokes, which don't draw
+    this.drawStars(awayLook(this.away).stars);
+  }
+
+  drawStars(dim) {
+    const { g } = this;
+    g.lineCap = "round";
+    for (const [x0, y0, x1, y1, a, lw] of this.field.segments(this.w, this.h)) {
+      g.strokeStyle = `rgba(${STAR},${a * dim})`;
+      g.lineWidth = lw;
+      g.beginPath();
+      g.moveTo(x0, y0);
+      g.lineTo(x1, y1);
+      g.stroke();
+    }
   }
 
   draw(dt) {
@@ -165,16 +222,7 @@ export class SpaceView {
 
     if (this.rocks < 1) {
       this.field.step(dt, this.speed);
-      g.lineCap = "round";
-      const dim = (1 - this.rocks) * (1 - 0.5 * this.ground * this.lit); // a sunlit face below outshines them
-      for (const [x0, y0, x1, y1, a, lw] of this.field.segments(w, h)) {
-        g.strokeStyle = `rgba(${STAR},${a * dim})`;
-        g.lineWidth = lw;
-        g.beginPath();
-        g.moveTo(x0, y0);
-        g.lineTo(x1, y1);
-        g.stroke();
-      }
+      this.drawStars((1 - this.rocks) * (1 - 0.5 * this.ground * this.lit)); // a sunlit face below outshines them
     }
 
     if (this.rocks > 0) {
