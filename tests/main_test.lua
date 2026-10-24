@@ -10,6 +10,7 @@ local function boot(opts)
     settings_handlers = {}, posts = {}, debug = {}, requires = {} }
   local setting_values = { turn_model = true }
   if opts.turn_model ~= nil then setting_values.turn_model = opts.turn_model end
+  if opts.auto_view ~= nil then setting_values.auto_view = opts.auto_view end
   env.setting_values = setting_values
 
   local panel = {}
@@ -195,7 +196,7 @@ local CHARTS = { places = { { id = 'belt.7', name = 'Dusty Reach', kind = 'belt'
 test('setting off posts the travelling scene', function()
   local env = boot()
   env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = false, destination = 'belt.7', progress = 0 })
-  eq(names(env), { 'scene', 'chart-ship' })
+  eq(names(env), { 'scene', 'chart-ship', 'chart' }) -- auto_view: the chart while she travels
   eq(env.posts[1].data, { scene = 'travelling' })
 end)
 
@@ -246,7 +247,7 @@ test('docking posts the station scene with the station she is docked at', functi
   h('Ship.Status', { name = 'Mule', docked = false, destination = 'orrin_station' })
   env.posts = {}
   h('Ship.Status', { name = 'Mule', docked = true, location = 'orrin_station' })
-  eq(names(env), { 'scene', 'chart-ship' })
+  eq(names(env), { 'scene', 'chart-ship', 'chart' }) -- auto_view: the chart off, docked
   eq(env.posts[1].data, { scene = 'station', station = 'orrin_station' })
 end)
 
@@ -410,6 +411,86 @@ test('ready replays the lanes view when on', function()
   env.posts = {}
   env.panel_handlers.ready({})
   eq(names(env), { 'settings', 'lanes-view' })
+end)
+
+-- The views switch themselves when what she's doing changes (auto_view, on by default)
+local function views(env)
+  local out = {}
+  for _, p in ipairs(env.posts) do
+    if p.name == 'chart' or p.name == 'lanes-view' then out[#out + 1] = p.name .. '=' .. tostring(p.data.on) end
+  end
+  return out
+end
+
+test('travelling switches the chart on, and stopping switches it off', function()
+  local env = boot()
+  local h = env.gmcp_handlers['Ship.Status']
+  h('Ship.Status', { name = 'Mule', docked = true, location = 'tiss' })
+  eq(views(env), {})
+  h('Ship.Status', { name = 'Mule', location = 'tiss' })
+  eq(views(env), {})
+  h('Ship.Status', { name = 'Mule', destination = 'orrin_station', progress = 0, eta = 60 })
+  eq(views(env), { 'chart=true' })
+  env.posts = {}
+  h('Ship.Status', { name = 'Mule', destination = 'orrin_station', progress = 50, eta = 30 })
+  eq(views(env), {})
+  h('Ship.Status', { name = 'Mule', location = 'orrin_station' })
+  eq(views(env), { 'chart=false' })
+end)
+
+test('a jump switches the lanes map on and the chart off', function()
+  local env = boot()
+  local h = env.gmcp_handlers['Ship.Status']
+  h('Ship.Status', { name = 'Mule', destination = 'mouth:petroc:maelor', progress = 0, eta = 60 })
+  h('Ship.Status', { name = 'Mule', location = 'mouth:petroc:maelor' })
+  env.posts = {}
+  h('Ship.Status', { name = 'Mule', destination = 'mouth:maelor:petroc', progress = 0, eta = 400,
+    status = 'in the Maelor lane 0%' })
+  eq(views(env), { 'lanes-view=true' })
+  env.posts = {}
+  h('Ship.Status', { name = 'Mule', destination = 'mouth:maelor:petroc', progress = 10, eta = 360,
+    status = 'in the Maelor lane 10%' })
+  eq(views(env), {})
+  h('Ship.Status', { name = 'Mule', destination = 'wenna_halt', progress = 0, eta = 60 })
+  eq(views(env), { 'lanes-view=false', 'chart=true' })
+end)
+
+test('a view picked by hand stays until what she is doing changes', function()
+  local env = boot()
+  local h = env.gmcp_handlers['Ship.Status']
+  h('Ship.Status', { name = 'Mule', docked = true, location = 'tiss' })
+  env.panel_handlers.chart({ on = true })
+  env.posts = {}
+  h('Ship.Status', { name = 'Mule', docked = true, location = 'tiss', fuel = 10 })
+  eq(views(env), {})
+  h('Ship.Status', { name = 'Mule', destination = 'orrin_station', progress = 0, eta = 60 })
+  env.panel_handlers.chart({ on = false })
+  env.posts = {}
+  h('Ship.Status', { name = 'Mule', destination = 'orrin_station', progress = 50, eta = 30 })
+  eq(views(env), {})
+end)
+
+test('with auto_view off nothing switches, and turning it on switches to fit', function()
+  local env = boot({ auto_view = false })
+  local h = env.gmcp_handlers['Ship.Status']
+  h('Ship.Status', { name = 'Mule', destination = 'orrin_station', progress = 0, eta = 60 })
+  eq(views(env), {})
+  env.setting_values.auto_view = true
+  env.settings_handlers.change('auto_view', true, false)
+  eq(views(env), { 'chart=true' })
+  eq(names(env)[#env.posts], 'chart') -- no settings post: the panel doesn't need it
+end)
+
+test('a disconnect switches nothing; the first status after it does', function()
+  local env = boot()
+  local h = env.gmcp_handlers['Ship.Status']
+  h('Ship.Status', { name = 'Mule', destination = 'orrin_station', progress = 0, eta = 60 })
+  env.panel_handlers.chart({ on = false })
+  env.posts = {}
+  env.world_handlers.disconnect()
+  eq(views(env), {})
+  h('Ship.Status', { name = 'Mule', destination = 'orrin_station', progress = 50, eta = 30 })
+  eq(views(env), { 'chart=true' })
 end)
 
 test('disconnect keeps the sightings, stamped', function()

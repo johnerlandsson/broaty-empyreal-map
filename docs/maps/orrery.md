@@ -11,9 +11,14 @@ mark is worked out from the clock, so it moves.
 
 It shows while the **◎** button is on. The button sits left of the band's
 + − ⌂ and appears once the game has sent the charts, docked or not, aboard a
-ship or not. It hides again when you disconnect, and the chart with it. The
-chart stays on or off as you left it through docking, undocking, walking about
-and a dropped connection, and a reopened panel gets the choice back. It doesn't
+ship or not. It hides again when you disconnect, and the chart with it. With
+the auto_view setting on (the default), the chart switches itself on when your
+ship starts travelling in a system and off when she stops (docks, parks, reaches
+a belt or a port, or you step off her). It switches only when what she's doing
+changes, so ◎ pressed in between holds until then; the first status after a
+login or a reconnect counts as a change. With the setting off, the chart stays
+on or off as you left it through docking, undocking, walking about and a dropped
+connection. Either way, a reopened panel gets the choice back. It doesn't
 outlive the session. The core lanes map's **⋈** (lanes.md) sits left of ◎,
 and switching either on switches the other off.
 

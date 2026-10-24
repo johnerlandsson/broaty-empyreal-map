@@ -29,3 +29,9 @@ type = "bool"
 default = true
 label = "Turn the station to face you"
 description = "Rotate the station model so your location faces the camera."
+
+[settings.auto_view]
+type = "bool"
+default = true
+label = "Switch views to fit what you're doing"
+description = "Show the system chart while your ship travels, the lanes map while she's in a lane, and the station or the view ahead while she's stopped. The buttons still switch views by hand."

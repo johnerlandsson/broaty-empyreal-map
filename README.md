@@ -86,7 +86,9 @@ gets a mark only if the game says where it faces: a stable lane's does, a wild
 lane's is only "somewhere on the edge". A branch lane's mouth is dashed and
 named "closed" while the lane is closed, which is most of the year; the chart
 doesn't say when it'll open, because the game doesn't. Press ◎ again for the
-station or the view ahead.
+station or the view ahead. Unless you've turned it off in the settings, the
+chart comes up by itself when your ship starts travelling and goes again
+when she stops.
 
 **The core lanes.** Beside ◎, a ⋈ button swaps the band for a map of the
 core's six systems: Petroc, Keyne, Senara, Maelor, Elowen and Mabyn, top to
@@ -99,7 +101,8 @@ mouths in the system you're in, and the map remembers what you saw across
 restarts. It never guesses when a branch will open. Your system has the
 amber ring; in a lane, the lane is lit and your ship moves along it with the
 time left. The spacing is even, not where the stars really are. ⋈ and ◎
-switch each other off.
+switch each other off. The map comes up by itself when your ship enters a
+lane, unless you've turned that off.
 
 **The deck plan (bottom).** A floor plan of the floor you're on:
 
@@ -188,6 +191,13 @@ Settings are in the Mallard plugin settings panel.
 **Turn the station to face you** — When on (the default), the wheel turns so
 your location faces the camera. When off, the model holds still with 12:00
 at the front, and your place still glows.
+
+**Switch views to fit what you're doing** — When on (the default), the top
+band switches to fit what your ship is doing: the chart while she travels in
+a system, the core lanes map while she's in a lane, and the station or the
+view ahead once she stops. It switches only when what she's doing changes, so
+a view you pick with ◎ or ⋈ stays until she next sets off, jumps or stops.
+When off, the band switches only when you press the buttons.
 
 ---
 

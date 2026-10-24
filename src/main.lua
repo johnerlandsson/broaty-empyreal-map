@@ -1,7 +1,8 @@
 -- Empyreal map (T.I.S.S., Orrin Station and Wenna Halt so far): folds GMCP location frames into one small message
 -- and pushes it to the "map" panel, and your ship's frames into the overview's scene, its docking and
 -- undocking (timed by Ship.Devices), the system chart, the
--- core lanes map and what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card. The lanes' states as last seen are kept in Mallard's storage, so they outlive a restart. All state lives here; the panel is a
+-- core lanes map (each switched on and off to fit what she's doing, unless the auto_view setting is
+-- off) and what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card. The lanes' states as last seen are kept in Mallard's storage, so they outlive a restart. All state lives here; the panel is a
 -- pure presentation layer that asks for a replay with "ready".
 --
 -- Mallard's require has no cache, so each module is required exactly once.
@@ -82,6 +83,37 @@ local function post_settings()
   panel:post('settings', { turn_model = settings.get('turn_model') ~= false })
 end
 
+-- What she's doing, as far as the top band cares: 'lane' (in one), 'travelling' (in a system)
+-- or 'stopped' (anything else, her off too).
+local function activity()
+  if N.message(lanes).transit then return 'lane' end
+  if S.scene(scene) == 'travelling' then return 'travelling' end
+  return 'stopped'
+end
+
+-- The chart and the lanes map each cover the top band: switching one on switches the other off.
+local function set_views(chart_on, lanes_on)
+  if not chart_on and C.set_on(chart, false) then post_chart_on() end
+  if not lanes_on and N.set_on(lanes, false) then post_lanes_on() end
+  if chart_on and C.set_on(chart, true) then post_chart_on() end
+  if lanes_on and N.set_on(lanes, true) then post_lanes_on() end
+end
+
+local function fit_views(now)
+  set_views(now == 'travelling', now == 'lane')
+end
+
+-- With auto_view on, the band switches to fit only when what she's doing changes, so a view
+-- picked by hand stays until then. Nil until the first status, and again after a disconnect.
+local doing_now = nil
+
+local function follow_activity()
+  local now = activity()
+  if now == doing_now then return end
+  doing_now = now
+  if settings.get('auto_view') ~= false then fit_views(now) end
+end
+
 -- gmcp.on matches by prefix and case-insensitively, and passes the server's
 -- original casing: key the reducers by lowercase name and dispatch on the
 -- exact (lowercased) package, so sub-packages never reach a reducer.
@@ -100,6 +132,7 @@ local function scene_ship(data)
   -- Always: the panel times a trip from the fresh `received`.
   post_chart_ship()
   if N.ship_status(lanes, data, os.time()) then post_lanes() end
+  follow_activity()
 end
 
 local function scene_charts(data)
@@ -159,6 +192,7 @@ world.on('disconnect', function()
   save_lanes()
   if W.reset(work) then post_work() end
   if A.reset(doing) then post_action() end
+  doing_now = nil -- the views stay as they are; the first status after it fits them
 end)
 
 panel:on_message('ready', function()
@@ -176,7 +210,6 @@ panel:on_message('ready', function()
   if A.message(doing).action then post_action() end
 end)
 
--- The chart and the lanes map each cover the top band: switching one on switches the other off.
 panel:on_message('chart', function(data)
   if type(data) ~= 'table' or type(data.on) ~= 'boolean' then return end
   if C.set_on(chart, data.on) then post_chart_on() end
@@ -191,4 +224,6 @@ end)
 
 settings.on('change', function(key)
   if key == 'turn_model' then post_settings() end
+  -- switched on, it fits the band to what she's doing now (once there's a status to go by)
+  if key == 'auto_view' and doing_now and settings.get('auto_view') ~= false then fit_views(doing_now) end
 end)
