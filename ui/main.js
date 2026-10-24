@@ -15,8 +15,11 @@ import { ActionCard } from "./action-card.js";
 import { BeltView } from "./belt-view.js";
 import { ChartView } from "./chart-view.js";
 import botallack from "./data/botallack.js";
+import caradon from "./data/caradon.js";
 import carrow from "./data/carrow.js";
+import garrow from "./data/garrow.js";
 import gwithian from "./data/gwithian.js";
+import kilmar from "./data/kilmar.js";
 import kynance from "./data/kynance.js";
 import lamorna from "./data/lamorna.js";
 import lanyon from "./data/lanyon.js";
@@ -99,6 +102,9 @@ const stations = {
   botallack: decks(botallack, DECKS.botallack),
   polperro: decks(polperro, DECKS.polperro),
   lamorna: decks(lamorna, DECKS.lamorna),
+  kilmar: decks(kilmar, DECKS.kilmar),
+  caradon: decks(caradon, DECKS.caradon),
+  garrow: decks(garrow, DECKS.garrow),
 };
 const ships = {}; // hull id -> the DeckView drawing that hull, built on first use
 const space = new SpaceView(modelEl);

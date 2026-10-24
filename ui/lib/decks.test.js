@@ -3,8 +3,11 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import botallack from "../data/botallack.js";
+import caradon from "../data/caradon.js";
 import carrow from "../data/carrow.js";
+import garrow from "../data/garrow.js";
 import gwithian from "../data/gwithian.js";
+import kilmar from "../data/kilmar.js";
 import kynance from "../data/kynance.js";
 import lamorna from "../data/lamorna.js";
 import lanyon from "../data/lanyon.js";
@@ -63,20 +66,22 @@ describe("parseAddress", () => {
 });
 
 // every station on decks, by its spec's key: its data, and its area file in the Empyreal source
-const STATIONS = { orrin, morvah, gwithian, carrow, lanyon, kynance, marazion, penwith, botallack, polperro, lamorna };
+const STATIONS = { orrin, morvah, gwithian, carrow, lanyon, kynance, marazion, penwith, botallack, polperro, lamorna, kilmar, caradon, garrow };
+// how many rooms each has: Orrin and the halts built as it is nine, the Mid's six
+const ROOMS = { ...Object.fromEntries(Object.keys(STATIONS).map((k) => [k, 9])), kilmar: 6, caradon: 6, garrow: 6 };
 
 describe.each(Object.entries(STATIONS))("%s's data", (key, data) => {
   const spec = DECKS[key];
   const index = indexDecks(data, spec);
   const room = (id) => index.byId.get(id);
 
-  it(`has the nine rooms of content/areas/${key}.yaml, each with an address on the grid`, () => {
-    expect(data.rooms.length).toBe(9);
+  it(`has the ${ROOMS[key]} rooms of content/areas/${key}.yaml, each with an address on the grid`, () => {
+    expect(data.rooms.length).toBe(ROOMS[key]);
     for (const r of data.rooms) {
       expect(r.id.startsWith(`${spec.prefix}.`), r.id).toBe(true);
       expect(parseAddress(r.address), r.id).not.toBe(null);
     }
-    expect(index.byId.size).toBe(9);
+    expect(index.byId.size).toBe(ROOMS[key]);
   });
 
   it("puts no two rooms in one cell", () => {
@@ -112,6 +117,36 @@ describe.each(Object.entries(STATIONS))("%s's data", (key, data) => {
         expect(apart, `${a} ${b}`).toBe(true);
       }
     }
+  });
+
+  it("draws every room on its own deck's plan, none overlapping, and no two hatches in one place", () => {
+    for (const deck of index.decks) {
+      const layout = decksLayout(index, deck);
+      for (const r of index.byId.values()) {
+        if (r.cell.z === deck) expect(decksShape(layout, { kind: "room", id: r.id }), r.id).not.toBe(null);
+      }
+      const boxes = layout.cells.map((c) => (c.kind === "blister" ? [c.cx - c.r, c.cy - c.r, c.cx + c.r, c.cy + c.r] : [c.cx - c.w / 2, c.cy - c.h / 2, c.cx + c.w / 2, c.cy + c.h / 2]));
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          const [a, b] = [boxes[i], boxes[j]];
+          expect(a[2] <= b[0] || b[2] <= a[0] || a[3] <= b[1] || b[3] <= a[1], `${layout.cells[i].room.id} ${layout.cells[j].room.id}`).toBe(true);
+        }
+      }
+      for (const [i, a] of layout.hatches.entries()) {
+        for (const b of layout.hatches.slice(i + 1)) expect(Math.hypot(a.cx - b.cx, a.cy - b.cy), `deck ${deck}`).toBeGreaterThanOrEqual(24);
+      }
+    }
+  });
+
+  it("hangs its blisters outside the hull's box, and stands its cradles on its decks, fore of the nose", () => {
+    const { hull } = index;
+    for (const id of spec.blisters) {
+      const { x, y, z } = room(id).cell;
+      expect(x < hull.x0 || x > hull.x1 || y < hull.y0 || y > hull.y1 || z < hull.z0 || z > hull.z1, id).toBe(true);
+    }
+    const nose = [...index.byId.values()].find((r) => r.flags.includes("berth")).cell;
+    expect(nose.y).toBe(hull.y1);
+    for (const c of spec.cradles) expect(c[1] >= hull.z0 && c[1] <= hull.z1, String(c)).toBe(true);
   });
 
   const yaml = join(homedir(), `dev/empyreal/content/areas/${key}.yaml`);
@@ -389,5 +424,68 @@ describe("decksLayout", () => {
 
   it("labels the hull's three frames, fore first", () => {
     expect(layouts[3].frames.map((f) => f.n)).toEqual([3, 2, 1]);
+  });
+});
+
+describe("the Mid's halts", () => {
+  const shapes = { kilmar, caradon, garrow };
+  const at = (key) => indexDecks(shapes[key], DECKS[key]);
+
+  it("are smaller boxes than Orrin's, each its own shape", () => {
+    expect(at("kilmar").hull).toEqual({ x0: -1, x1: 1, y0: 1, y1: 3, z0: 2, z1: 2 }); // one deck, three frames
+    expect(at("caradon").hull).toEqual({ x0: -1, x1: 1, y0: 1, y1: 2, z0: 2, z1: 3 });
+    expect(at("garrow").hull).toEqual({ x0: -1, x1: 1, y0: 1, y1: 2, z0: 1, z1: 2 });
+  });
+
+  it("put the top deck's plan first, Deck 1 last", () => {
+    expect(at("kilmar").decks).toEqual([2, 1]);
+    expect(at("caradon").decks).toEqual([3, 2, 1]);
+    expect(at("garrow").decks).toEqual([2, 1]);
+  });
+
+  it("hang Kilmar's and Caradon's Galleries under the hull, on a deck of their own", () => {
+    for (const key of ["kilmar", "caradon"]) {
+      const index = at(key);
+      expect(index.byId.get(`${key}.gallery`).blister).toBe(true);
+      expect(decksLayout(index, 1).onHull).toBe(false);
+      expect(decksLayout(index, 1).cells.map((c) => c.kind)).toEqual(["blister"]);
+    }
+  });
+
+  it("keep Garrow's Lookout as a room of the hull on Deck 1, fore of the Commons and under the Berths", () => {
+    const index = at("garrow");
+    const lookout = index.byId.get("garrow.lookout");
+    expect(lookout.blister).toBe(false);
+    expect(lookout.cell).toEqual({ x: 0, y: 2, z: 1 });
+    const deck1 = decksLayout(index, 1);
+    expect(deck1.onHull).toBe(true);
+    expect(deck1.cells.find((c) => c.room.id === "garrow.lookout").kind).toBe("room");
+    expect(deck1.links.length).toBe(1); // the Lookout to the Commons
+    const faces = buildDecksModel(index, DECKS.garrow);
+    expect(faces.some((f) => f.kind.startsWith("blister"))).toBe(false);
+    expect(faces.some((f) => f.kind === "cell" && f.key === "garrow.lookout")).toBe(true);
+  });
+
+  it("put Caradon's Shift Hall hatches up and down in different corners", () => {
+    const hall = decksLayout(at("caradon"), 2).hatches;
+    expect(hall.map((h) => h.dir).sort()).toEqual(["down", "up"]);
+    const [up, down] = ["up", "down"].map((d) => hall.find((h) => h.dir === d));
+    expect(down.cy).toBeGreaterThan(up.cy);
+  });
+
+  it("cut the model to the deck you're on", () => {
+    expect(decksCut(at("kilmar"), { kind: "room", id: "kilmar.kitchen" })).toBe(2);
+    expect(decksCut(at("caradon"), { kind: "room", id: "caradon.hall" })).toBe(2);
+    expect(decksCut(at("garrow"), { kind: "room", id: "garrow.lookout" })).toBe(1);
+  });
+
+  it("give the info line the room's address", () => {
+    const line = (key, id) => {
+      const index = at(key);
+      return infoLine(locateDecks(index, { roomId: id }), { roomId: id }, index);
+    };
+    expect(line("kilmar", "kilmar.kitchen")).toBe("KITCHEN · Deck 2, frame 2, starboard 1 · 0 g");
+    expect(line("caradon", "caradon.hall")).toBe("SHIFT HALL · Deck 2, frame 1 · 0 g");
+    expect(line("garrow", "garrow.deck-2-frame-1")).toBe("DECK 2, FRAME 1 · 0 g");
   });
 });

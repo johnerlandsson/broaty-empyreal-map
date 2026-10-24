@@ -1,7 +1,8 @@
 // Preview driver: replays a walk round T.I.S.S. (into a bunk and a workshop on the way), then flights to Orrin Station, Wenna Halt and the
-// ten halts on decks (Morvah Deep, Gwithian Reach, Carrow Yard, Lanyon High, and the ring's Kynance
-// Spindle, Marazion Quay, Penwith Vats, Botallack Head, Polperro Old Dock and Lamorna Light) and a
-// walk round each, a stop at Kilmar Steading, which has no plan, then down to Zennor on Tamsin and a walk round the town, through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
+// thirteen halts on decks (Morvah Deep, Gwithian Reach, Carrow Yard, Lanyon High, the ring's Kynance
+// Spindle, Marazion Quay, Penwith Vats, Botallack Head, Polperro Old Dock and Lamorna Light, and the
+// Mid's Kilmar Steading, Caradon Works and Garrow Stop) and a walk round each, a stop at a made-up
+// Pendeen Halt, which has no plan, then down to Zennor on Tamsin and a walk round the town, through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
 // (src/station_map/location.lua, src/station_map/scene.lua).
 //
 //   ?step=N   open on route step N, as a panel re-mounting mid-walk would (only step N is replayed)
@@ -38,8 +39,11 @@
 //             own charts from dev/sky-cases.json, shifted so a recorded moment of that sky is now; the bar's menu switches it
 
 import botallack from "../ui/data/botallack.js";
+import caradon from "../ui/data/caradon.js";
 import carrow from "../ui/data/carrow.js";
+import garrow from "../ui/data/garrow.js";
 import gwithian from "../ui/data/gwithian.js";
+import kilmar from "../ui/data/kilmar.js";
 import kynance from "../ui/data/kynance.js";
 import lamorna from "../ui/data/lamorna.js";
 import lanyon from "../ui/data/lanyon.js";
@@ -63,7 +67,7 @@ const DATA = [
   station.rooms,
   orrin.rooms,
   wenna.rooms,
-  ...[morvah, gwithian, carrow, lanyon, kynance, marazion, penwith, botallack, polperro, lamorna].map((d) => d.rooms),
+  ...[morvah, gwithian, carrow, lanyon, kynance, marazion, penwith, botallack, polperro, lamorna, kilmar, caradon, garrow].map((d) => d.rooms),
   town,
 ];
 const byId = new Map(DATA.flat().map((r) => [r.id, r]));
@@ -114,16 +118,20 @@ function freighter(key, name) {
   };
 }
 
-/** Fly to a halt laid out as Orrin is (`prefix`, its dock `place`), dock, and go round it once. */
-function halt(prefix, name, place) {
+/** Fly to a halt (`prefix`, its dock `place`), dock, and go round it once: by `walk`, its rooms'
+ *  keys, or as Orrin's are laid out. */
+function halt(prefix, name, place, walk = ORRIN_WALK) {
   const at = (key) => room(`${prefix}.${key}`);
   return [
     { label: `Flying to ${name}`, msg: COCKPIT, scene: { scene: "travelling" } },
     { label: `Docked at ${name}`, msg: COCKPIT, scene: { scene: "station", station: place } },
-    ...["berth", "deck-3-frame-2", "freight", "deck-3-frame-2", "charts", "deck-3-frame-2", "deck-3-frame-1"].map(at),
-    ...["concourse", "deck-2-frame-2", "market", "deck-2-frame-2", "gallery"].map(at),
+    ...walk.map(at),
   ];
 }
+const ORRIN_WALK = [
+  ...["berth", "deck-3-frame-2", "freight", "deck-3-frame-2", "charts", "deck-3-frame-2", "deck-3-frame-1"],
+  ...["concourse", "deck-2-frame-2", "market", "deck-2-frame-2", "gallery"],
+];
 
 const ROUTE = [
   room("tiss.rim-1100"), // Rim 11:00 -> Main Concourse: the wheel should turn one hour, not eleven
@@ -228,10 +236,13 @@ const ROUTE = [
   ...halt("botallack", "Botallack Head", "botallack_head"),
   ...halt("polperro", "Polperro Old Dock", "polperro_old_dock"),
   ...halt("lamorna", "Lamorna Light", "lamorna_light"),
-  // a halt there's no plan of: nothing shows, not Lamorna Light's
-  { label: "Flying to Kilmar Steading", msg: COCKPIT, scene: { scene: "travelling" } },
-  { label: "Docked at Kilmar Steading (no plan)", msg: COCKPIT, scene: { scene: "station", station: "kilmar_steading" } },
-  { label: "Berths (no plan)", msg: { roomId: "kilmar.berth", name: "Berths", area: "kilmar", areaName: "Kilmar Steading", address: "Deck 2, frame 3", gravity: 0 } },
+  ...halt("kilmar", "Kilmar Steading", "kilmar_steading", ["berth", "deck-2-frame-2", "market", "deck-2-frame-2", "kitchen", "deck-2-frame-2", "commons", "gallery"]),
+  ...halt("caradon", "Caradon Works", "caradon_works", ["berth", "deck-3-frame-1", "market", "deck-3-frame-1", "canteen", "deck-3-frame-1", "hall", "gallery"]),
+  ...halt("garrow", "Garrow Stop", "garrow_stop", ["berth", "deck-2-frame-1", "market", "deck-2-frame-1", "snug", "deck-2-frame-1", "commons", "lookout"]),
+  // a halt there's no plan of (made up, as the game has none now): nothing shows, not Garrow Stop's
+  { label: "Flying to Pendeen Halt", msg: COCKPIT, scene: { scene: "travelling" } },
+  { label: "Docked at Pendeen Halt (no plan)", msg: COCKPIT, scene: { scene: "station", station: "pendeen_halt" } },
+  { label: "Berths (no plan)", msg: { roomId: "pendeen.berth", name: "Berths", area: "pendeen", areaName: "Pendeen Halt", address: "Deck 2, frame 3", gravity: 0 } },
   { label: "Flying to Zennor", msg: COCKPIT, scene: { scene: "travelling" } },
   { label: "Landed at Zennor", msg: COCKPIT, scene: { scene: "station", station: "zennor" } },
   room("zennor.field"),

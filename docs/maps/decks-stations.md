@@ -1,8 +1,8 @@
 # Decks stations
 
 *Status: built for Orrin Station, Morvah Deep, Gwithian Reach, Carrow Yard, Lanyon High,
-Kynance Spindle, Marazion Quay, Penwith Vats, Botallack Head, Polperro Old Dock and Lamorna
-Light. Last updated 2026-10-24.*
+Kynance Spindle, Marazion Quay, Penwith Vats, Botallack Head, Polperro Old Dock, Lamorna
+Light, Kilmar Steading, Caradon Works and Garrow Stop. Last updated 2026-10-24.*
 
 ## What it is and when it shows
 
@@ -12,9 +12,9 @@ every room is a cell of one grid, and its address names the cell:
 `Deck 3, frame 2, port 1`. It shows while you're in one of its rooms or your
 ship is docked there.
 
-A station on decks the plugin has no plan of yet (the Mid's Kilmar Steading,
-Caradon Works and Garrow Stop, say) shows nothing: both bands stay empty and
-the info line says "No plan of Kilmar Steading". `pickStation()` in
+A station on decks the plugin has no plan of yet (none, since the Mid's three
+were added; one the game builds later) shows nothing: both bands stay empty and
+the info line says "No plan of" and its name. `pickStation()` in
 `ui/lib/stations.js` knows a station's room by the area the game puts it in
 (a ship's is `ship.<n>`), and a dock by its place id, so it doesn't keep the
 last station up in its place.
@@ -32,6 +32,9 @@ last station up in its place.
 | Botallack Head | 0 g | as Orrin | as Orrin |
 | Polperro Old Dock | 0 g | as Orrin | as Orrin |
 | Lamorna Light | 0 g | as Orrin | as Orrin |
+| Kilmar Steading | 0 g | one deck, a cross of five cells in a box three frames long, the Gallery in a glass blister on Deck 1, under the Commons | the Berths, Exchange, Kitchen and Commons round Deck 2's passage; a hatchway down from the Commons to the Gallery |
+| Caradon Works | 0 g | a box two frames long and two decks deep, the Gallery in a glass blister on Deck 1, under Deck 2 | the Berths, Exchange and Canteen off Deck 3's passage; a hatchway down to the Shift Hall, alone on Deck 2, and another down to the Gallery |
+| Garrow Stop | 0 g | a box two frames long and two decks deep, no blister | the Berths, Exchange and Snug off Deck 2's passage; a hatchway down to the Commons on Deck 1, and the Lookout fore of it, under the Berths |
 
 The four halts (empyreal bc71307) and the ring's six (empyreal 04978ca) are
 outposts of Orrin's class, laid out as it is room for room; only their
@@ -52,7 +55,26 @@ apart on the map is their tints and cradles, from their descriptions:
 | Polperro Old Dock | `commons` (faded enamel: no paint is named, so a colour no other station's passages wear) | `concourse` (the customs hall's brass) | `docks` | `midring` (empty mountings) | a wide well and five alike, more than it needs |
 | Lamorna Light | `concourse` (pale cream, lit warm) | `midring` (ration crates) | `docks` | `commons` (a clerk tallying the run) | three for stores tenders |
 
-The Berths and the Gallery are `docks` everywhere.
+The Mid's three halts (empyreal 925f15b) are smaller, six rooms each round one
+passage, with a berth that takes nothing bigger than a medium ship, and none is
+the Authority's, so they don't take Orrin's look. Their passages are grey, as
+written (Kilmar's felt, Caradon's company grey, Garrow's bare metal), and their
+rooms carry the colour:
+
+| Station | Exchange | The rest | Cradles |
+|---|---|---|---|
+| Kilmar Steading | `hydroponics` (grain and greens) | Kitchen `concourse` (bread, the stove), Commons `commons` (the quilts) | two even ones for the settlers' boats |
+| Caradon Works | `offices` (company prices behind a grille) | Canteen `concourse`, Shift Hall `industrial` (lockers, the time clock) | two long, matched ones for ore boats |
+| Garrow Stop | `industrial` (ore on the assay scale) | Snug `concourse` (the stove, the bar), Commons `residential` (hammocks) | two cramped ones that don't match |
+
+The Berths, the Gallery and Garrow's Lookout are `docks` everywhere.
+
+**Garrow's Lookout isn't drawn as a blister,** though its description calls it
+one ("at the station's fore end, below and ahead"). Its cell, Deck 1, frame 2,
+is inside the box the other rooms fill, under the Berths, and a blister here
+is a cell outside the hull, hung under it or on top. So it's a room of the
+hull, tinted as glass. (The user chose this over a dome on Deck 1's fore face
+or a chin dome, 2026-10-24.)
 
 Orrin Station was a drum until the game rebuilt it on decks (empyreal
 3833090, 772647b). Wenna Halt is still one (see
@@ -62,7 +84,7 @@ Orrin Station was a drum until the game rebuilt it on decks (empyreal
 
 `ui/data/orrin.js` (and `morvah.js`, `gwithian.js`, `carrow.js`,
 `lanyon.js`, `kynance.js`, `marazion.js`, `penwith.js`, `botallack.js`,
-`polperro.js`, `lamorna.js`), copied from `content/areas/orrin.yaml` (and the others) in the
+`polperro.js`, `lamorna.js`, `kilmar.js`, `caradon.js`, `garrow.js`), copied from `content/areas/orrin.yaml` (and the others) in the
 Empyreal source: each room's id, name, address, flags and exits, as the YAML has them
 (north fore, south aft, west port, east starboard), and the area's gravity.
 Nothing is placed by hand. `parseAddress()` in `ui/lib/decks.js` reads each
@@ -122,7 +144,8 @@ left, and the frames are labelled down the port side.
   don't already meet.
 - **Hatches** up and down (Orrin's hatchways): a round hatch on Fixture fill
   with a Ladder ring and a small "up" or "down". A passage's is in its middle,
-  a room's in its top-right corner, a blister's over its name.
+  a room's in its top-right corner, a blister's over its name. A room with
+  both, as Caradon's Shift Hall, has "down" in the corner below "up".
 - **A blister** is a round glass room with its dome's rings drawn in. The
   deck above it shows its outline, dashed in Glass, under the hatch down.
 - **The Berths** have airlock hatches with status lights on every wall that
@@ -158,8 +181,10 @@ Copy its rooms from the area's YAML into a data file: id, name, address,
 gravity, flags and exits. Add a spec to `DECKS`, choosing tints from the
 district colours. Add its prefix and dock id to `ui/lib/stations.js`, wire
 it with `decks()` in `ui/main.js`, and add it to the tests and the preview's
-walk. A shape other than a box (a cross, an L) would need the hull drawn from
-its cells rather than their bounding box. Signs and lifts on decks aren't in
+walk. The hull is always the cells' box: Kilmar's cross and Caradon's and Garrow's
+empty cells are drawn as hull, as Orrin's corners are. A hull drawn from its
+cells alone, and a blister set into a cell inside the box, were tried for the
+Mid's halts and not taken. Signs and lifts on decks aren't in
 the game yet, and nothing here draws them.
 
 ## Where it differs from the style guide

@@ -19,6 +19,9 @@ describe("stations", () => {
     expect(stationOfRoom("botallack.gallery")).toBe("botallack");
     expect(stationOfRoom("polperro.gallery")).toBe("polperro");
     expect(stationOfRoom("lamorna.gallery")).toBe("lamorna");
+    expect(stationOfRoom("kilmar.kitchen")).toBe("kilmar");
+    expect(stationOfRoom("caradon.hall")).toBe("caradon");
+    expect(stationOfRoom("garrow.lookout")).toBe("garrow");
     expect(stationOfRoom("senara.dock")).toBe(null);
     expect(stationOfRoom(undefined)).toBe(null);
   });
@@ -38,6 +41,9 @@ describe("stations", () => {
     expect(stationOfDock("botallack_head")).toBe("botallack");
     expect(stationOfDock("polperro_old_dock")).toBe("polperro");
     expect(stationOfDock("lamorna_light")).toBe("lamorna");
+    expect(stationOfDock("kilmar_steading")).toBe("kilmar");
+    expect(stationOfDock("caradon_works")).toBe("caradon");
+    expect(stationOfDock("garrow_stop")).toBe("garrow");
     expect(stationOfDock("belt.7")).toBe(null);
     expect(stationOfDock(null)).toBe(null);
   });
@@ -57,22 +63,23 @@ describe("stations", () => {
     expect(pickStation({ roomId: "bunk.3", door: 7, area: "wenna" }, "orrin_station", "tiss")).toBe("wenna");
   });
 
+  // every station the game has has a plan now, so these are a made-up one: Pendeen Halt
   it("shows nothing for a station it has no plan of, not the last one", () => {
     // standing in one: the game names its area, and it's no ship's
-    expect(pickStation({ roomId: "kilmar.commons", area: "kilmar" }, null, "lamorna")).toBe(null);
-    expect(pickStation({ roomId: "unit.9", door: "kilmar.commons", area: "kilmar" }, null, "tiss")).toBe(null);
-    expect(pickStation({ roomId: "kilmar.berth", area: "kilmar" }, "orrin_station", "orrin")).toBe(null);
+    expect(pickStation({ roomId: "pendeen.commons", area: "pendeen" }, null, "lamorna")).toBe(null);
+    expect(pickStation({ roomId: "unit.9", door: "pendeen.commons", area: "pendeen" }, null, "tiss")).toBe(null);
+    expect(pickStation({ roomId: "pendeen.berth", area: "pendeen" }, "orrin_station", "orrin")).toBe(null);
     // docked at one, aboard
-    expect(pickStation({ roomId: "ship.41", area: "ship.41" }, "kilmar_steading", "lamorna")).toBe(null);
-    expect(pickStation({ roomId: "ship.41.cockpit", area: "ship.41" }, "caradon_works", "tiss")).toBe(null);
+    expect(pickStation({ roomId: "ship.41", area: "ship.41" }, "pendeen_halt", "lamorna")).toBe(null);
+    expect(pickStation({ roomId: "ship.41.cockpit", area: "ship.41" }, "pendeen_halt", "tiss")).toBe(null);
     // and off the station again, out in the ship, the last one stays
     expect(pickStation({ roomId: "ship.41", area: "ship.41" }, null, null)).toBe(null);
     expect(pickStation({ roomId: "ship.41", area: "ship.41" }, null, "lamorna")).toBe("lamorna");
   });
 
   it("names the station there's no plan of, if the game does", () => {
-    expect(noPlanLine({ roomId: "kilmar.commons", area: "kilmar", areaName: "Kilmar Steading" })).toBe("No plan of Kilmar Steading");
-    expect(noPlanLine({ roomId: "kilmar.commons" })).toBe("");
+    expect(noPlanLine({ roomId: "pendeen.commons", area: "pendeen", areaName: "Pendeen Halt" })).toBe("No plan of Pendeen Halt");
+    expect(noPlanLine({ roomId: "pendeen.commons" })).toBe("");
     expect(noPlanLine(null)).toBe("");
   });
 });

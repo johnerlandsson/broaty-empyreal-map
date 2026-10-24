@@ -16,6 +16,9 @@ const ROOM_PREFIX = {
   botallack: "botallack",
   polperro: "polperro",
   lamorna: "lamorna",
+  kilmar: "kilmar",
+  caradon: "caradon",
+  garrow: "garrow",
   zennor: "zennor",
 };
 // Ship.Status `location` (a Space.Charts place id) while docked, or landed at a port
@@ -33,6 +36,9 @@ const DOCK = {
   botallack_head: "botallack",
   polperro_old_dock: "polperro",
   lamorna_light: "lamorna",
+  kilmar_steading: "kilmar",
+  caradon_works: "caradon",
+  garrow_stop: "garrow",
   zennor: "zennor",
 };
 
@@ -65,7 +71,7 @@ export function pickStation(msg, dock, current) {
   return current;
 }
 
-/** The info line where there's no plan: "No plan of Kilmar Steading", or "" if it's unnamed. */
+/** The info line where there's no plan: "No plan of Pendeen Halt", or "" if it's unnamed. */
 export function noPlanLine(msg) {
   const name = typeof msg?.areaName === "string" ? msg.areaName.trim() : "";
   return name ? `No plan of ${name}` : "";

@@ -293,6 +293,70 @@ export const DECKS = {
     ],
     masts: [[-1.25, 3.35, 1.65]], // the Light, at the nose's port corner, clear of the berths
   },
+
+  // The Mid's three halts are smaller than Orrin and laid out otherwise, six rooms each round one
+  // passage, with a berth for nothing bigger than a medium ship; none is the Authority's.
+
+  // A settlers' cooperative over a wet green moor: Deck 2 a cross of five cells, the passage's felt
+  // a worn grey, grain and greens at the exchange, a warm kitchen and quilts in the commons, and the
+  // Gallery a glass blister under the commons. Two even cradles for the settlers' own boats.
+  kilmar: {
+    prefix: "kilmar",
+    tints: {
+      "kilmar.berth": DISTRICT_COLOURS.docks,
+      "kilmar.deck-2-frame-2": DISTRICT_COLOURS.midring, // grey felt
+      "kilmar.market": DISTRICT_COLOURS.hydroponics, // grain and greens, Henwood mud on them
+      "kilmar.kitchen": DISTRICT_COLOURS.concourse, // bread, the stove
+      "kilmar.commons": DISTRICT_COLOURS.commons, // the quilts
+      "kilmar.gallery": DISTRICT_COLOURS.docks,
+    },
+    blisters: ["kilmar.gallery"],
+    cradles: [
+      [0, 2, 0.3, 0.3, 0.22], // the docking well's mouth
+      [-1, 2, 0.3, 0.26, 0.55], // the settlers' boats
+      [1, 2, 0.3, 0.26, 0.55],
+    ],
+  },
+  // A mining company's port: company grey, its prices behind a grille, a canteen, and the Shift Hall
+  // alone on Deck 2 over the Gallery's blister. Long, matched cradles for the company's ore boats.
+  caradon: {
+    prefix: "caradon",
+    tints: {
+      "caradon.berth": DISTRICT_COLOURS.docks,
+      "caradon.deck-3-frame-1": DISTRICT_COLOURS.midring, // company grey
+      "caradon.market": DISTRICT_COLOURS.offices, // the company's prices, behind a grille
+      "caradon.canteen": DISTRICT_COLOURS.concourse, // meals on trays
+      "caradon.hall": DISTRICT_COLOURS.industrial, // lockers and the time clock
+      "caradon.gallery": DISTRICT_COLOURS.docks,
+    },
+    blisters: ["caradon.gallery"],
+    cradles: [
+      [0, 3, 0.3, 0.3, 0.22], // the docking well's mouth
+      [-1, 3, 0.32, 0.3, 0.78], // ore boats, alike
+      [1, 3, 0.32, 0.3, 0.78],
+    ],
+  },
+  // The prospectors' last port before the Core: bare metal, ore on the assay scale, a warm snug,
+  // hammocks in the commons, and fore of it the Lookout. Its glass bulges from a cell inside the box,
+  // under the Berths, so it's drawn as a room of the hull, in glass's tint, not as a blister. Two
+  // cramped cradles that don't match.
+  garrow: {
+    prefix: "garrow",
+    tints: {
+      "garrow.berth": DISTRICT_COLOURS.docks,
+      "garrow.deck-2-frame-1": DISTRICT_COLOURS.midring, // scuffed bare to the metal
+      "garrow.market": DISTRICT_COLOURS.industrial, // ore on the assay scale
+      "garrow.snug": DISTRICT_COLOURS.concourse, // the stove and the bar
+      "garrow.commons": DISTRICT_COLOURS.residential, // hammocks
+      "garrow.lookout": DISTRICT_COLOURS.docks,
+    },
+    blisters: [],
+    cradles: [
+      [0, 2, 0.3, 0.3, 0.22], // the docking well's mouth
+      [-1, 2, 0.3, 0.28, 0.55],
+      [1, 2, 0.2, 0.18, 0.34], // smaller, and not its match
+    ],
+  },
 };
 
 // --- addresses and the index -----------------------------------------------------------------
@@ -590,8 +654,9 @@ export function decksLayout(index, deck) {
     }
   }
 
-  // hatches up and down: at a passage's centre, in a room box's corner, over a blister's name;
-  // `side` is where its "up" or "down" goes
+  // hatches up and down: at a passage's centre, in a room box's corner (a room with both, as
+  // Caradon's Shift Hall, has down in the corner below), over a blister's name; `side` is where its
+  // "up" or "down" goes
   const hatches = [];
   for (const c of cells) {
     for (const dir of ["up", "down"]) {
@@ -599,6 +664,7 @@ export function decksLayout(index, deck) {
       const [x, y] = centre(c.room.cell);
       if (c.kind === "passage") hatches.push({ dir, cx: x, cy: y, side: "below" });
       else if (c.kind === "blister") hatches.push({ dir, cx: x, cy: y - c.r / 2 + 2, side: "right" });
+      else if (dir === "down" && c.room.exits.up) hatches.push({ dir, cx: x + c.w / 2 - 14, cy: y + c.h / 2 - 30, side: "below" });
       else hatches.push({ dir, cx: x + c.w / 2 - 14, cy: y - c.h / 2 + 14, side: "below" });
     }
   }

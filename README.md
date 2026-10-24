@@ -1,16 +1,17 @@
 # Empyreal Map
 
-A [Mallard](https://mallard.vnsf.xyz) plugin for the MUD Empyreal: maps
-that follow you as you play. It maps thirteen stations: T.I.S.S., which it
-follows as you walk, ride the lifts and visit the docks, the small outpost
-Orrin Station, Wenna Halt, one lane over in Maelor's system, the four halts
+A [Mallard](https://mallard.vnsf.xyz) plugin for the MUD Empyreal: maps that
+follow you as you play. It maps sixteen stations: T.I.S.S., which it follows
+as you walk, ride the lifts and visit the docks, the small outpost Orrin
+Station, Wenna Halt, one lane over in Maelor's system, the four halts
 further out, Morvah Deep, Gwithian Reach, Carrow Yard and Lanyon High, and
 the six round the Shallows' ring, Kynance Spindle, Marazion Quay, Penwith
-Vats, Botallack Head, Polperro Old Dock and Lamorna Light. It also maps
-Zennor, the town on the planet Tamsin below T.I.S.S. The panel shows
-whichever place you're in, or the one your ship is docked or landed at, and
-charts the star system you're in and the lanes across the core. At a station
-it has no plan of, it shows none, and says so, rather than the last one.
+Vats, Botallack Head, Polperro Old Dock and Lamorna Light, and the Mid's
+three, Kilmar Steading, Caradon Works and Garrow Stop. It also maps Zennor,
+the town on the planet Tamsin below T.I.S.S. The panel shows whichever place
+you're in, or the one your ship is docked or landed at, and charts the star
+system you're in and the lanes across the core. At a station it has no plan
+of, it shows none, and says so, rather than the last one.
 
 ---
 
@@ -49,6 +50,15 @@ Head's grit grey, with heavy ore carriers sitting low; Polperro Old Dock's
 faded enamel, its wide well ringed with more cradles than it needs; and
 Lamorna Light's pale cream, with cradles for stores tenders and its old lamp
 burning on a mast at the nose.
+
+**Kilmar Steading, Caradon Works and Garrow Stop**, out in the Mid, are
+smaller, six rooms each round one grey passage, and laid out otherwise.
+Kilmar is one deck, a cross round the passage, with the green Exchange, the
+warm Kitchen and the quilted Commons, and its Gallery hangs below. Caradon
+has the company's Exchange and Canteen on Deck 3, the Shift Hall alone on
+Deck 2 and the Gallery under that, with long cradles for ore boats. Garrow
+has the Exchange and the Snug on Deck 2, and on Deck 1 the Commons with the
+Lookout fore of it, under the Berths; its two cradles don't match.
 
 **Wenna Halt** is a drum, spun to 0.6 g, with the kelp-green Concourse round
 it, a clean row of courier cradles outside the Berths, and the Lounge's wide
@@ -154,7 +164,7 @@ one, and stays when she stops, unless you've turned that off. The belt map,
   the Gallery, whose blister is outlined beneath it. Deck 1 is the Gallery
   alone, under the hull's outline. Each plan says its deck and 0 g, and the
   frames are numbered down the side. The ten halts' plans are the same,
-  in their own colours.
+  in their own colours, and the Mid's three are drawn the same way.
 - **Wenna Halt:** one plan for the whole outpost, laid out as its exits go:
   the Concourse across the middle, the Exchange north, the Freight Office
   south, the Chart Office west and the Berths east with their airlock
@@ -270,8 +280,8 @@ npm test            # vitest for the UI and data code, then the Lua tests
 **Preview.** Serve the repository root and open the preview, which runs the
 panel in a browser with a stand-in for Mallard and a **▶ Walk** button that
 replays a walk round T.I.S.S., then flights to Orrin Station, Wenna Halt and
-the ten halts and a walk round each, a stop at Kilmar Steading, which it has
-no plan of, then a landing at Zennor and a walk round the town:
+the thirteen halts and a walk round each, a stop at a made-up Pendeen Halt,
+which it has no plan of, then a landing at Zennor and a walk round the town:
 
 ```bash
 python3 -m http.server 8765
@@ -310,7 +320,8 @@ when `~/dev/empyreal` is there. What the addresses don't say (colours, the
 blister, cradles) is in `DECKS` in `ui/lib/decks.js`. The ten halts
 (`ui/data/morvah.js`, `gwithian.js`, `carrow.js`, `lanyon.js`, `kynance.js`,
 `marazion.js`, `penwith.js`, `botallack.js`, `polperro.js`, `lamorna.js`)
-are copied from their area files the same way, and checked the same way.
+are copied from their area files the same way, and checked the same way, and
+so are the Mid's three (`kilmar.js`, `caradon.js`, `garrow.js`).
 
 Wenna Halt's six rooms (`ui/data/wenna.js`) are written by hand from
 `content/areas/wenna.yaml`. The game gives that area no layout, so the rooms
