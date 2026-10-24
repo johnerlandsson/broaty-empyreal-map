@@ -86,8 +86,10 @@ would reach the zoom buttons.
 | Detail | 10 px, `#9aa7b7`: `stage 2 of 3`, `1 waiting`, or both joined with ` · `; hidden when empty |
 | Bar | 3 px, track `#2b3646`, fill the highlight's amber `#ffb347`; hidden with no known end |
 
-The bar drains by a linear CSS transition from where it is to empty at the
-action's end, set again on each frame. The seconds tick on a timer that wakes
+The bar drains by a linear Web Animation from where it is to empty at the
+action's end, started again on each frame. It isn't a CSS transition: that
+starts from the width last drawn, and a card just shown may have none drawn
+yet, so its bar sat empty until the next stage. The seconds tick on a timer that wakes
 as each whole second goes, and only while something's under way. Past its end
 and before the game's null, the card holds at `0 s` with an empty bar.
 
@@ -107,7 +109,7 @@ Unchanged: it says where you are, and the card says what you're doing.
   `ready` and clears it on disconnect; `tests/main_test.lua`.
 - `ui/lib/action.js`: `actionCard(msg, now)`, which gives the label, detail,
   seconds, fraction and milliseconds left for the moment; `ui/lib/action.test.js`.
-- `ui/action-card.js`: the card, its bar's transition and its timer.
+- `ui/action-card.js`: the card, its bar's animation and its timer.
 - `ui/map.css`: `.action-card`.
 - `dev/preview.js`: `?action=climbing-tiss`, `repair-skiff` and `drag-orrin`
   (and the bar's menu) play an action to its end. The repair goes through its

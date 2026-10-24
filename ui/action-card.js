@@ -1,8 +1,10 @@
 // What you're doing, as a card in the deck band's top-left corner, across from the zoom buttons:
 // the action's label, its stage of how many and what waits, the seconds left and a bar that drains
 // to its end. It sits in the panel's frame rather than on the plan, so it reads the same over a
-// ship's drawing as over a ring's corridor, at any zoom. The bar drains by a CSS transition and the
-// seconds tick on a timer only while something's under way; doing nothing hides it.
+// ship's drawing as over a ring's corridor, at any zoom. The bar drains by a Web Animation and the
+// seconds tick on a timer only while something's under way; doing nothing hides it. (Not a CSS
+// transition: that starts from the width last drawn, and a card just shown may have none drawn yet,
+// so its bar sat empty until the next stage.)
 // Screen readers aren't given it: the game tells them in text, without countdowns (actions.md §9).
 
 import { actionCard } from "./lib/action.js";
@@ -24,6 +26,7 @@ export class ActionCard {
     this.fillEl = div.querySelector(".bar i");
     this.msg = null;
     this.timer = 0;
+    this.drain = null;
   }
 
   /** The action message from the Lua side: { action } while something's under way, else {}. */
@@ -31,6 +34,8 @@ export class ActionCard {
     this.msg = msg;
     clearTimeout(this.timer);
     this.timer = 0;
+    this.drain?.cancel();
+    this.drain = null;
     const card = actionCard(msg, now);
     this.div.hidden = !card;
     if (!card) return;
@@ -39,13 +44,13 @@ export class ActionCard {
     this.detailEl.hidden = !card.detail;
     this.barEl.hidden = card.fraction === null;
     if (card.fraction !== null) {
-      // from where it is now, drain to empty by its end
-      const fill = this.fillEl;
-      fill.style.transition = "none";
-      fill.style.width = `${(card.fraction * 100).toFixed(2)}%`;
-      void fill.offsetWidth;
-      fill.style.transition = `width ${card.ms}ms linear`;
-      fill.style.width = "0%";
+      // from where it is now, drain to empty by its end, starting now rather than at the next frame
+      this.drain = this.fillEl.animate([{ width: `${(card.fraction * 100).toFixed(2)}%` }, { width: "0%" }], {
+        duration: card.ms,
+        easing: "linear",
+        fill: "forwards",
+      });
+      this.drain.startTime = document.timeline.currentTime;
     }
     this.tick(now);
   }
