@@ -2,8 +2,9 @@
 -- and pushes it to the "map" panel, and your ship's frames into the overview's scene, its docking and
 -- undocking (timed by Ship.Devices), the system chart, the
 -- lanes map, the belt map (each switched on and off to fit what she's doing, unless the auto_view setting is
--- off) and what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card. The lanes' states as last seen,
--- and each belt's log (her track and sweeps in it), are kept in Mallard's storage, so they outlive a restart. All state lives here; the panel is a
+-- off) and what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card. The lanes' states as last seen
+-- (each character's, by Char.Status's name), and each belt's log (her track and sweeps in it), are kept in Mallard's storage, so they
+-- outlive a restart. All state lives here; the panel is a
 -- pure presentation layer that asks for a replay with "ready".
 --
 -- Mallard's require has no cache, so each module is required exactly once.
@@ -27,16 +28,35 @@ local manoeuvre = M.new()
 local doing = A.new()
 local belt = B.new()
 
--- storage is per plugin and world; a bad stored value (or none) is no sightings
+-- storage is per plugin and world, but charts are per character, so the lanes' sightings are kept under
+-- `lanes:<name>`, loaded when Char.Status names her. `lanes` alone is the old record, before charts were per
+-- character: the first character named with none of her own takes it. A bad stored value (or none) is no sightings.
+local legacy_lanes = nil
 if storage then
   local ok, saved = pcall(storage.get, 'lanes')
-  if ok then N.load(lanes, saved) end
+  if ok and type(saved) == 'table' then legacy_lanes = saved end
   local ok2, logs = pcall(storage.get, 'belts')
   if ok2 then B.load(belt, logs) end
 end
 
+local function store_lanes(who, record)
+  if storage and who then pcall(storage.set, 'lanes:' .. who, record) end
+end
+
 local function save_lanes()
-  if storage then pcall(storage.set, 'lanes', N.saved(lanes)) end
+  store_lanes(N.who(lanes), N.saved(lanes))
+end
+
+-- Her stored sightings, or the old record if she has none and it's still unclaimed.
+local function stored_lanes(who)
+  if not storage then return nil end
+  local ok, saved = pcall(storage.get, 'lanes:' .. who)
+  if not ok then return nil end
+  if saved == nil and legacy_lanes then
+    saved, legacy_lanes = legacy_lanes, nil
+    pcall(storage.set, 'lanes', nil)
+  end
+  return saved
 end
 
 local function save_belts()
@@ -195,6 +215,16 @@ local function ship_devices(data)
   follow_belt()
 end
 
+-- Who's playing: another character's name swaps in her sightings, the one before's stored.
+local function char_status(data)
+  local who = N.who_of(data)
+  if not who or who == N.who(lanes) then return end
+  local was, record = N.become(lanes, who, stored_lanes(who), os.time())
+  store_lanes(was, record)
+  save_lanes()
+  post_lanes()
+end
+
 local scene_reducers = {
   ['ship.status'] = scene_ship,
   ['ship.devices'] = ship_devices,
@@ -206,6 +236,10 @@ local function on_gmcp(package, data)
   local reduce = reducers[name]
   if reduce then
     if reduce(state, data) then post_location() end
+    return
+  end
+  if name == 'char.status' then
+    char_status(data)
     return
   end
   if name == 'char.action' then
@@ -221,7 +255,7 @@ local function on_gmcp(package, data)
 end
 
 -- Subscribe with the names Mallard advertises (original casing).
-for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Char.Action' }) do
+for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Char.Status', 'Char.Action' }) do
   gmcp.on(prefix, on_gmcp)
 end
 
@@ -254,7 +288,7 @@ panel:on_message('ready', function()
   if C.charts(chart) then post_charts() end
   if C.ship(chart) then post_chart_ship() end
   if C.on(chart) then post_chart_on() end
-  if N.message(lanes).system or next(N.saved(lanes)) then post_lanes() end
+  if N.message(lanes).system or next(N.message(lanes).seen) then post_lanes() end
   if N.on(lanes) then post_lanes_on() end
   if B.message(belt).id then post_belt() end
   if B.on(belt) then post_belt_on() end

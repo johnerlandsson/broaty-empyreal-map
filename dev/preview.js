@@ -16,7 +16,7 @@
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
 //             docked-tiss, landed-zennor, none, maelor, maelor-lanes, edge, to-mouth, adrift or from-stop), emitting charts, chart-ship and
 //             chart { on: true }; the bar's menu switches it
-//   ?lanes=L  open the lanes map on scenario L (senara, in-trunk, in-mid, dozmary or petroc), emitting lanes and
+//   ?lanes=L  open the lanes map on scenario L (senara, in-trunk, in-mid, dozmary, petroc, new or partly), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it. &zoom=F opens it zoomed by F, &unfold with
 //             its key's card unfolded
 //   ?belt=B   open the belt map on scenario B (arriving, rcs-rim, sweeps or skiff), emitting belt messages as
@@ -460,8 +460,8 @@ if (q.has("zoom")) {
   }
 }
 
-// A visit's sightings, as the reducer makes them: every lane of the system, open if a trunk or listed
-// open, closed if off the charts, all as of `at`.
+// A visit's sightings, as the reducer makes them for a character with every mouth there on her charts:
+// every lane of the system, open if a trunk or listed open, closed if off the charts, all as of `at`.
 function visit(seen, system, open, at) {
   for (const l of lanesOf(system)) {
     const other = l.between.find((id) => id !== system);
@@ -504,6 +504,24 @@ function emitLanes(name) {
     },
     // at Morvah Deep, with only its trunks open and nothing seen before
     petroc: () => ({ system: "petroc", visible: lanesHere("petroc"), seen: visit({}, "petroc", [], now) }),
+    // a new character at T.I.S.S.: no lane mouth on her charts yet, so every lane not charted
+    new: () => ({ system: "senara", visible: [], uncharted: lanesHere("senara"), seen: {} }),
+    // at Wenna Halt, with Maelor's trunks and the Petroc branch (closed now) charted, and nothing else;
+    // the Senara–Elowen branch seen open from Senara an hour ago
+    partly: () => {
+      const known = ["elowen-maelor", "maelor-petroc", "maelor-senara"];
+      return {
+        system: "maelor",
+        visible: known,
+        uncharted: lanesHere("maelor").filter((id) => !known.includes(id)),
+        seen: {
+          "elowen-maelor": { open: true, at: now },
+          "maelor-senara": { open: true, at: now },
+          "maelor-petroc": { open: false, at: now },
+          "elowen-senara": { open: true, at: now - 3600 },
+        },
+      };
+    },
   };
   fp.emit("lanes", (SCENARIOS[name] ?? SCENARIOS.senara)());
   fp.emit("lanes-view", { on: true });

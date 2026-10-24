@@ -91,10 +91,34 @@ test('wires panel and requires each module once', function()
   eq(type(env.gmcp_handlers['Ship.Status']), 'function')
   eq(type(env.gmcp_handlers['Ship.Devices']), 'function')
   eq(type(env.gmcp_handlers['Space.Charts']), 'function')
+  eq(type(env.gmcp_handlers['Char.Status']), 'function')
   eq(type(env.gmcp_handlers['Char.Action']), 'function')
   eq(type(env.world_handlers.disconnect), 'function')
   eq(type(env.panel_handlers.ready), 'function')
   eq(type(env.settings_handlers.change), 'function')
+end)
+
+-- Mallard won't load a plugin that subscribes to a package plugin.toml doesn't grant, and the game
+-- sends only what's advertised: every package subscribed to must be in both.
+test('every package subscribed to is granted and advertised in plugin.toml', function()
+  local env = boot()
+  local toml = io.open('plugin.toml'):read('a')
+  local function list(key)
+    local out = {}
+    for item in toml:match(key .. '%s*=%s*(%b[])'):gmatch('"([^"]+)"') do
+      out[#out + 1] = item:lower():match('^(%S+)')
+    end
+    return out
+  end
+  local granted, advertised = {}, list('advertise')
+  for _, p in ipairs(list('gmcp_access')) do granted[p] = true end
+  for prefix in pairs(env.gmcp_handlers) do
+    local p = prefix:lower()
+    eq(granted[p], true, prefix .. ' granted')
+    local covered = false
+    for _, m in ipairs(advertised) do covered = covered or p == m or p:sub(1, #m + 1) == m .. '.' end
+    eq(covered, true, prefix .. ' advertised')
+  end
 end)
 
 test('room frame posts location', function()
@@ -353,30 +377,78 @@ local PETROC = { system = 'petroc', places = {
   { id = 'mouth:petroc:maelor', name = 'the Maelor lane mouth', kind = 'mouth', open = false },
 } }
 
-test('Space.Charts posts lanes and stores the sightings', function()
+local function login(env, name)
+  env.gmcp_handlers['Char.Status']('Char.Status', { name = name, credits = 0, location = 'tiss.berth', ship = nil, aboard = false })
+end
+
+test('Space.Charts posts lanes and stores the sightings under her name', function()
   local real = os.time
   os.time = function() return 500 end
   local env = boot()
+  login(env, 'Ann')
+  env.posts = {}
   env.gmcp_handlers['Space.Charts']('Space.Charts', PETROC)
   os.time = real
   local m = post_named(env, 'lanes').data
   eq(m.system, 'petroc')
-  eq(#m.visible, 19)
+  eq(m.visible, { 'feock-petroc', 'keyne-petroc', 'maelor-petroc' })
+  eq(#m.uncharted, 16)
   eq(m.seen['maelor-petroc'], { open = false, at = 500 })
   eq(m.seen['keyne-petroc'], { open = true, at = 500 })
-  eq(m.seen['dozmary-petroc'], { open = false, at = 500 }) -- off the charts
-  eq(env.stored.lanes['maelor-petroc'], { open = false, at = 500 })
+  eq(m.seen['dozmary-petroc'], nil) -- off her charts: not charted, not closed
+  eq(env.stored['lanes:ann'].seen['maelor-petroc'], { open = false, at = 500 })
+  eq(env.stored['lanes:ann'].charted['mouth:petroc:maelor'], true)
+  eq(env.stored.lanes, nil)
 end)
 
-test('stored sightings are loaded and replayed on ready', function()
-  local env = boot({ stored = { lanes = { ['keyne-mabyn'] = { open = true, at = 42 } } } })
+test('her stored sightings are loaded as she is named, and replayed on ready', function()
+  local env = boot({ stored = { ['lanes:ann'] = { seen = { ['keyne-mabyn'] = { open = true, at = 42 } }, charted = {} } } })
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings' }) -- no one's yet
+  login(env, 'Ann')
+  eq(post_named(env, 'lanes').data.seen, { ['keyne-mabyn'] = { open = true, at = 42 } })
+  env.posts = {}
+  login(env, 'Ann') -- the same name again changes nothing
+  eq(#env.posts, 0)
   env.panel_handlers.ready({})
   eq(names(env), { 'settings', 'lanes' })
+end)
+
+test('another character gets her own sightings, and the one before\'s are kept', function()
+  local real = os.time
+  os.time = function() return 500 end
+  local env = boot({ stored = { ['lanes:bea'] = { seen = { ['keyne-mabyn'] = { open = true, at = 42 } }, charted = {} } } })
+  login(env, 'Ann')
+  env.gmcp_handlers['Space.Charts']('Space.Charts', PETROC)
+  os.time = function() return 900 end
+  env.world_handlers.disconnect()
+  env.posts = {}
+  login(env, 'Bea')
+  os.time = real
   eq(post_named(env, 'lanes').data.seen, { ['keyne-mabyn'] = { open = true, at = 42 } })
+  eq(env.stored['lanes:ann'].seen['maelor-petroc'], { open = false, at = 900 })
+  -- Bea hasn't charted Petroc's Maelor mouth
+  env.gmcp_handlers['Space.Charts']('Space.Charts', { system = 'petroc', places = { PETROC.places[2], PETROC.places[3] } })
+  eq(env.stored['lanes:bea'].seen['maelor-petroc'], nil)
+  eq(env.stored['lanes:ann'].charted['mouth:petroc:maelor'], true)
+end)
+
+test('the old per-world record goes to the first character named, open sightings only', function()
+  local env = boot({ stored = { lanes = { ['keyne-mabyn'] = { open = true, at = 42 },
+    ['dozmary-petroc'] = { open = false, at = 42 } } } })
+  login(env, 'Ann')
+  eq(post_named(env, 'lanes').data.seen, { ['keyne-mabyn'] = { open = true, at = 42 } })
+  eq(env.stored['lanes:ann'].seen, { ['keyne-mabyn'] = { open = true, at = 42 } })
+  eq(env.stored.lanes, nil)
+  env.posts = {}
+  login(env, 'Bea')
+  eq(post_named(env, 'lanes').data.seen, {})
 end)
 
 test('storage that fails to read is no sightings', function()
   local env = boot({ bad_storage = true })
+  login(env, 'Ann')
+  env.posts = {}
   env.panel_handlers.ready({})
   eq(names(env), { 'settings' })
 end)
@@ -501,6 +573,7 @@ test('disconnect keeps the sightings, stamped', function()
   local real = os.time
   os.time = function() return 500 end
   local env = boot()
+  login(env, 'Ann')
   env.gmcp_handlers['Space.Charts']('Space.Charts', PETROC)
   os.time = function() return 900 end
   env.posts = {}
@@ -508,8 +581,9 @@ test('disconnect keeps the sightings, stamped', function()
   os.time = real
   local m = post_named(env, 'lanes').data
   eq(m.system, nil)
+  eq(m.uncharted, {})
   eq(m.seen['maelor-petroc'], { open = false, at = 900 })
-  eq(env.stored.lanes['maelor-petroc'], { open = false, at = 900 })
+  eq(env.stored['lanes:ann'].seen['maelor-petroc'], { open = false, at = 900 })
 end)
 
 -- Ship.Devices: what the sensors and laser are doing, with local times

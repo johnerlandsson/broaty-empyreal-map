@@ -101,9 +101,11 @@ export function cleanLanes(msg) {
     t && typeof t === "object" && LANE.has(t.lane) && typeof t.to === "string" && typeof t.from === "string"
       ? { lane: t.lane, from: t.from, to: t.to, progress: num(t.progress), eta: num(t.eta), received: num(t.received) }
       : null;
+  const strings = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string") : []);
   return {
     system: typeof m.system === "string" ? m.system : null,
-    visible: Array.isArray(m.visible) ? m.visible.filter((v) => typeof v === "string") : [],
+    visible: strings(m.visible),
+    uncharted: strings(m.uncharted),
     seen,
     transit,
   };
@@ -121,11 +123,12 @@ export function agoText(ms) {
 
 /**
  * A lane's state as you know it at wall-clock t (ms): `open` true or false as last seen, or null
- * never seen; `now` while one of its mouths is in your system; and the words for it.
+ * never seen; `now` while the charts in your system say it; and the words for it. A lane of your
+ * system whose mouth there isn't on your charts, never seen from elsewhere, is "not charted".
  */
 export function laneState(lanes, id, t) {
   const s = lanes.seen[id];
-  if (!s) return { open: null, now: false, words: "not seen" };
+  if (!s) return { open: null, now: false, words: lanes.uncharted.includes(id) ? "not charted" : "not seen" };
   const now = lanes.visible.includes(id);
   const state = s.open ? "open" : "closed";
   return { open: s.open, now, words: now ? `${state} · now` : `${state} · seen ${agoText(t - s.at * 1000)} ago` };
@@ -147,17 +150,22 @@ export function laneFix(transit, t) {
   return { k: Math.min(Math.max(k, 0), 1), left: Math.max(0, (arrive - t) / 1000) };
 }
 
-/** The lanes of your system open now, and how many are closed, as the charts last said. */
+/**
+ * The lanes of your system open now, how many are closed, as the charts last said, and those whose
+ * mouth here isn't on your charts, so the charts say nothing of them.
+ */
 export function openHere(lanes) {
   const open = [];
+  const uncharted = [];
   let closed = 0;
-  if (!lanes.system) return { open, closed };
+  if (!lanes.system) return { open, closed, uncharted };
   for (const l of lanesOf(lanes.system)) {
     const s = lanes.seen[l.id];
-    if (s?.open && lanes.visible.includes(l.id)) open.push(l);
+    if (lanes.uncharted.includes(l.id)) uncharted.push(l);
+    else if (s?.open && lanes.visible.includes(l.id)) open.push(l);
     else closed++;
   }
-  return { open, closed };
+  return { open, closed, uncharted };
 }
 
 /** Branches seen open from somewhere you're not now, newest first, each with how long ago (ms) at wall-clock t. */

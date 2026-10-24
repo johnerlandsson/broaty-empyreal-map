@@ -254,7 +254,7 @@ export class LanesView {
     const lanes = this.lanes;
     const tr = lanes.transit;
     const here = lanes.system;
-    const { open, closed } = openHere(lanes);
+    const { open, closed, uncharted } = openHere(lanes);
     const elsewhere = seenOpenElsewhere(lanes, t);
 
     const marks = document.createDocumentFragment();
@@ -354,14 +354,14 @@ export class LanesView {
     }
 
     marks.appendChild(ages); // over the stars, so a name never hides one
-    this.drawCard(t, { tr, fix, here, open, closed, elsewhere });
+    this.drawCard(t, { tr, fix, here, open, closed, uncharted, elsewhere });
 
     this.marks.replaceChildren(marks);
     this.lit.replaceChildren(lit);
   }
 
   /** The key's card, its HTML replaced only when it changes, so its scroll and its button stay put. */
-  drawCard(t, { tr, fix, here, open, closed, elsewhere }) {
+  drawCard(t, { tr, fix, here, open, closed, uncharted, elsewhere }) {
     const esc = (v) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
     const sw = (cls, opacity = 1) => `<span class="sw ${cls}" style="opacity:${opacity}"></span>`;
     const rows = [];
@@ -371,7 +371,11 @@ export class LanesView {
     }
     const fold = `<button type="button" title="${this.unfolded ? "Fold" : "Unfold"}">${this.unfolded ? "▾" : "▸"}</button>`;
     if (here) {
-      rows.push(`<div class="row"><span class="label">From ${esc(systemName(here))} · ${open.length} open · ${closed} closed</span>${fold}</div>`);
+      // a count of none is left out, but for open: a new character's are all "not charted"
+      const counts = [`${open.length} open`];
+      if (closed) counts.push(`${closed} closed`);
+      if (uncharted.length) counts.push(`${uncharted.length} not charted`);
+      rows.push(`<div class="row"><span class="label">From ${esc(systemName(here))} · ${counts.join(" · ")}</span>${fold}</div>`);
     } else if (elsewhere.length) {
       rows.push(`<div class="row"><span class="label">Lanes</span>${fold}</div>`);
     }
@@ -380,6 +384,13 @@ export class LanesView {
       for (const l of open) {
         const cls = l.class === "trunk" ? "trunk" : l.class === "mid" ? "mid" : "branch";
         list.push(`<div class="item">${sw(cls)}${esc(systemName(l.between.find((id) => id !== here)))}<span class="cls">${CLASS[l.class]}</span></div>`);
+      }
+      if (uncharted.length) {
+        // what plot says of them: "past lane mouths you haven't found"
+        list.push(`<div class="head">Not charted · scan lanes</div>`);
+        for (const l of uncharted) {
+          list.push(`<div class="item uncharted">${sw("none")}${esc(systemName(l.between.find((id) => id !== here)))}<span class="cls">${CLASS[l.class]}</span></div>`);
+        }
       }
       if (elsewhere.length) {
         list.push(`<div class="head">Seen open elsewhere</div>`);

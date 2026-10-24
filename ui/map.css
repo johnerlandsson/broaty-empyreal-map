@@ -126,3 +126,6 @@ body {
 .lanes-card .sw.trunk { border-top: 2px solid #7e8da3; }
 .lanes-card .sw.mid { border-top-style: dashed; }
 .lanes-card .sw.seen { border-top: 1.5px dotted #cfe3ff; }
+/* a lane not on your charts isn't drawn: no line, and its name dim */
+.lanes-card .sw.none { border-top-color: transparent; }
+.lanes-card .item.uncharted { color: #7d8a9a; }

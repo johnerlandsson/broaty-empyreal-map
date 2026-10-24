@@ -124,20 +124,22 @@ describe("cleanLanes", () => {
     const m = cleanLanes({
       system: "senara",
       visible: ["maelor-senara", 3],
+      uncharted: ["dozmary-senara", null],
       seen: { "maelor-petroc": { open: true, at: 5 }, "keyne-mabyn": { open: "y", at: 1 }, x: null },
       transit: { lane: "maelor-senara", from: "senara", to: "maelor", progress: 0.4, eta: 220, received: 100 },
     });
     expect(m).toEqual({
       system: "senara",
       visible: ["maelor-senara"],
+      uncharted: ["dozmary-senara"],
       seen: { "maelor-petroc": { open: true, at: 5 } },
       transit: { lane: "maelor-senara", from: "senara", to: "maelor", progress: 0.4, eta: 220, received: 100 },
     });
   });
 
   it("takes an empty table sent as an array, junk and nothing", () => {
-    const empty = { system: null, visible: [], seen: {}, transit: null };
-    expect(cleanLanes({ seen: [], visible: {} })).toEqual(empty);
+    const empty = { system: null, visible: [], uncharted: [], seen: {}, transit: null };
+    expect(cleanLanes({ seen: [], visible: {}, uncharted: {} })).toEqual(empty);
     expect(cleanLanes(null)).toEqual(empty);
     expect(cleanLanes({ transit: { lane: "nowhere", from: "a", to: "b" } }).transit).toBe(null);
   });
@@ -160,6 +162,13 @@ describe("laneState", () => {
   });
   it("says not seen for a lane never seen", () => {
     expect(laneState(cleanLanes({}), "keyne-mabyn", 0)).toEqual({ open: null, now: false, words: "not seen" });
+  });
+  it("says not charted for a lane of your system whose mouth isn't on your charts", () => {
+    const here = cleanLanes({ system: "senara", uncharted: ["keyne-senara", "maelor-senara"],
+      seen: { "maelor-senara": { open: true, at: 1000 } } });
+    expect(laneState(here, "keyne-senara", 0)).toEqual({ open: null, now: false, words: "not charted" });
+    // seen from the other end, it's what was seen there
+    expect(laneState(here, "maelor-senara", 1000_000 + 5 * 60_000).words).toBe("open · seen 5m ago");
   });
 });
 
@@ -200,10 +209,25 @@ describe("openHere and seenOpenElsewhere", () => {
     },
   });
   it("lists your system's open lanes and counts the rest closed", () => {
-    const { open, closed } = openHere(lanes);
+    const { open, closed, uncharted } = openHere(lanes);
     expect(open.map((l) => l.id)).toEqual(["keyne-senara", "maelor-senara", "garrow-senara"]);
     expect(closed).toBe(16);
-    expect(openHere(cleanLanes({}))).toEqual({ open: [], closed: 0 });
+    expect(uncharted).toEqual([]);
+    expect(openHere(cleanLanes({}))).toEqual({ open: [], closed: 0, uncharted: [] });
+  });
+  it("lists the lanes not on your charts apart, open nor closed", () => {
+    const fresh = cleanLanes({ system: "senara", visible: [], uncharted: lanesOf("senara").map((l) => l.id), seen: {} });
+    expect(openHere(fresh)).toEqual({ open: [], closed: 0, uncharted: lanesOf("senara") });
+    const some = cleanLanes({
+      system: "senara",
+      visible: ["maelor-senara", "elowen-senara"],
+      uncharted: lanesOf("senara").map((l) => l.id).filter((id) => id !== "maelor-senara" && id !== "elowen-senara"),
+      seen: { "maelor-senara": { open: true, at: 1 }, "elowen-senara": { open: false, at: 1 } },
+    });
+    const { open, closed, uncharted } = openHere(some);
+    expect(open.map((l) => l.id)).toEqual(["maelor-senara"]);
+    expect(closed).toBe(1);
+    expect(uncharted.length).toBe(17);
   });
   it("lists branches seen open elsewhere, newest first, and never a trunk", () => {
     expect(seenOpenElsewhere(lanes, 100_000).map((x) => [x.lane.id, x.ago])).toEqual([

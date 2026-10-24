@@ -34,6 +34,11 @@ them out:
 - **When a branch opens.** A branch's state is only what the charts in your
   system last said. The map never predicts an opening or a closing, and it
   says how old what it shows is.
+- **Mouths you haven't found.** The charts list only the mouths on your
+  character's charts, so a lane whose mouth isn't on them is "not charted",
+  never guessed open or closed. That's what the game says too: `plot` tells
+  you a place is "past lane mouths you haven't found", and to `scan lanes`
+  there.
 
 The galaxy has a third band, the Core, inward of the Mid, that the game
 doesn't have yet. The layout takes it from the star list: when stars with
@@ -63,24 +68,52 @@ Senara with the stations.
 **Where you are** is `Space.Charts`' `system`.
 
 **A branch's state** comes from the `mouth` places in `Space.Charts`. The
-charts list only the mouths in your system, and of those only the open ones
-(a trunk's is always open), plus a closed branch's while she's at its mouth
-or bound there, with `open` false (`SpaceSystem.listed`; `help lanes` says
-`charts` leaves a closed branch out). Every pair of stars has a lane, so
-`src/station_map/lanes.lua` has the stars' ids, and a lane of your system
-with no mouth listed is a closed branch, seen closed now. Each sighting is a
-lane id, from the mouth's id `mouth:<here>:<there>`, with its `open` and
-when. The reducer keeps them:
+charts list only the mouths in your system that are on your character's
+charts (`help charts`: you find a mouth by `scan`, at a chart office, or by
+coming out of it; a new character has none), and of those only the open
+ones (a trunk's is always open), plus a closed branch's while she's at its
+mouth or bound there, with `open` false (`SpaceSystem.listed`; `help lanes`
+says `charts` leaves a closed branch out). So a lane of your system with no
+mouth listed is either a closed branch or one whose mouth isn't on her
+charts. Every pair of stars has a lane, so `src/station_map/lanes.lua` has
+the stars' ids and which pairs are trunks, and keeps the mouths it's seen
+listed (`charted`). Charts are kept for good, so a mouth once listed is
+still on them, and only being closed leaves it out. A lane of your system
+with no mouth listed is then:
 
-- every Space.Charts stamps every lane of your system with now: what its
-  mouth says, or closed if it has none listed (a Space.Charts with no
-  `places`, or a system that's no star in the list, says only what's listed);
+- a **closed branch**, seen closed now, if it's a branch whose mouth here
+  has been listed before;
+- **not charted** otherwise: a trunk never closes, so one missing is a mouth
+  she hasn't found, and so is a branch never seen listed here. These are
+  `uncharted` in the message, and no sighting is made of them; what was
+  seen of one from its other end stays as it was.
+
+Each sighting is a lane id, from the mouth's id `mouth:<here>:<there>`,
+with its `open` and when. The reducer keeps them:
+
+- every Space.Charts stamps every lane of your system it can say anything
+  of with now: what its mouth says, or closed if it's a charted branch with
+  none listed (a Space.Charts with no `places`, or a system that's no star
+  in the list, says only what's listed);
 - crossing into another system, or disconnecting, stamps the lanes you could
   see till then with now, since you saw them that long;
-- `main.lua` stores the sightings in Mallard's `storage` (per plugin and
-  world) after each Space.Charts and each disconnect, and loads them at start,
-  so "last seen" survives a restart. A stored value that won't read is no
-  sightings.
+- `main.lua` stores the sightings and the mouths seen listed in Mallard's
+  `storage` after each Space.Charts and each disconnect, so "last seen"
+  survives a restart. Storage is per plugin and world, but charts are per
+  character, so each character's record is kept under `lanes:<name>`, her
+  name from `Char.Status` lowercased, as `{ seen, charted }`. Nothing is
+  loaded at start: her record is loaded when `Char.Status` first names her,
+  which the game sends before `Space.Charts` at login. A different name
+  stores the one before's (stamped as of then) and swaps in the new one's;
+  sightings made before any name came are the first one named's (as the
+  comms log files lines before its first `Char.Status`). A disconnect keeps
+  hers, so the same character reconnecting changes nothing. A stored value
+  that won't read is no sightings.
+- The old record, `lanes`, was the sightings alone, per world, from before
+  the game kept charts per character. The first character named with no
+  record of her own takes it and it's deleted. Only its open sightings are
+  kept: a closed one may only have been a mouth not on her charts. A trunk
+  is never loaded closed.
 
 **The lane she's in** comes from `Ship.Status`. In a lane her `destination`
 is the far mouth, `mouth:<far>:<near>`, in another system. A trip to a mouth
@@ -130,14 +163,21 @@ and a key in a card in the top-left corner
   - closed: not drawn. Your system's are counted in the key. With 178
     branches, mostly closed, every visit records about sixteen closed ones,
     and drawing them would bury the map.
+  - not charted: not drawn either, and counted in the key (the ring is
+    drawn whatever: it's the public topology). A new character's are all
+    not charted.
 - **The key**, a card in the top-left corner styled as the action card is
   (action-card.md) but with a Tone rim (`.lanes-card` in `map.css`).
   Folded, the default, it's one line, "From Senara · 4 open · 15 closed",
-  and a ▸ that unfolds it: the open lanes are on the map, and the ages of
-  the ones seen elsewhere are written on them. Unfolded (▾), it lists each
-  lane open from your system with its line, the star it goes to and its
-  class (trunk, branch, Mid branch), then "Seen open elsewhere", each with
-  its line, its name ("Petroc–Maelor") and "2h 10m ago". A list taller than
+  or "From Maelor · 2 open · 1 closed · 16 not charted" (a count of none is
+  left out, but for open: a new character's is "From Senara · 0 open · 19
+  not charted"), and a ▸ that unfolds it: the open lanes are on the map,
+  and the ages of the ones seen elsewhere are written on them. Unfolded
+  (▾), it lists each lane open from your system with its line, the star it
+  goes to and its class (trunk, branch, Mid branch), then "Not charted ·
+  scan lanes", each star in Dim with its class and no line, then "Seen open
+  elsewhere", each with its line, its name ("Petroc–Maelor") and "2h 10m
+  ago". A list taller than
   the band scrolls. It folds back with ▾, and stays as you left it while the
   panel's open. The key was first a 150 px column at the right, which
   took too much of a narrow panel; the options it was picked
@@ -173,19 +213,22 @@ Unchanged: it's the bottom band's.
 ## Code
 
 - `ui/lib/lanes.js`: the topology, the message's cleaning, your system's
-  open lanes (`openHere`), the branches seen open elsewhere
+  open, closed and not charted lanes (`openHere`), the branches seen open elsewhere
   (`seenOpenElsewhere`), the layout in units (`layout`), a lane's curve
   (`lanePath`), and her place in a lane (`laneFix`). Pure, tested in
   `lanes.test.js` along with the check against the game's content.
 - `ui/lanes-view.js`: the SVG, its zoom and the ⋈ button.
 - `ui/main.js`: the two toggles switching each other off, and the redraw loop
   shared with the chart.
-- `src/station_map/lanes.lua`: the reducer, the stars, its sightings and the
-  lane she's in; `tests/lanes_test.lua`.
+- `src/station_map/lanes.lua`: the reducer, the stars and trunks, its
+  sightings, the mouths seen listed, whose they are, and the lane she's in;
+  `tests/lanes_test.lua`.
 - `src/station_map/charts.lua` carries a mouth's `open` through to the chart.
-- `src/main.lua`: the `lanes` and `lanes-view` messages, and `storage`.
+- `src/main.lua`: the `lanes` and `lanes-view` messages, `Char.Status`'s
+  name, and `storage`.
 - `dev/preview.html?lanes=senara` (also `in-trunk`, `in-mid`, `dozmary`,
-  `petroc`) shows it without the game; `&zoom=0.5` opens it zoomed in, and
+  `petroc`; `new`, a new character with no mouths charted, and `partly`,
+  Maelor with its trunks and one branch charted) shows it without the game; `&zoom=0.5` opens it zoomed in, and
   `&unfold` with the key's card unfolded.
 - The options it was picked from: `docs/maps/reference/lanes-ring-options.png`
   (A, the ring; B a departures board; C the ring unrolled into a line), and
