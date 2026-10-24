@@ -16,7 +16,7 @@
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
 //             docked-tiss, landed-zennor, none, maelor, maelor-lanes, edge, to-mouth, adrift or from-stop), emitting charts, chart-ship and
 //             chart { on: true }; the bar's menu switches it
-//   ?lanes=L  open the core lanes map on scenario L (senara, in-trunk, in-branch or petroc), emitting lanes and
+//   ?lanes=L  open the lanes map on scenario L (senara, in-trunk, in-mid, dozmary or petroc), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it
 //   ?belt=B   open the belt map on scenario B (arriving, rcs-rim, sweeps or skiff), emitting belt messages as
 //             src/station_map/belt.lua posts them, a tick a second while she moves, and belt-view { on: true };
@@ -57,7 +57,9 @@ import wenna from "../ui/data/wenna.js";
 import zennor from "../ui/data/zennor.js";
 import skyCases from "./sky-cases.json" with { type: "json" };
 import { DeckView } from "../ui/deck-view.js";
+import { LanesView } from "../ui/lanes-view.js";
 import { ModelView } from "../ui/model-view.js";
+import { lanesOf } from "../ui/lib/lanes.js";
 import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts } from "./charts-fixture.js";
 
 const q = new URLSearchParams(location.search);
@@ -441,6 +443,30 @@ chartMenu.addEventListener("change", () => emitChart(chartMenu.value));
 // --- the core lanes map: what the Lua side's lanes reducer posts ----------------------------
 
 const lanesMenu = document.getElementById("lanes");
+// ?zoom=F: once the lanes map is drawn, zoom it by F about its middle (0.5 is twice as near), as + does
+if (q.has("zoom")) {
+  for (const name of ["setLanes", "setOn"]) {
+    const orig = LanesView.prototype[name];
+    LanesView.prototype[name] = function (...args) {
+      orig.apply(this, args);
+      if (!this.zoomed && this.shown) {
+        this.zoomed = true;
+        this.zoom(Number(q.get("zoom")));
+      }
+    };
+  }
+}
+
+// A visit's sightings, as the reducer makes them: every lane of the system, open if a trunk or listed
+// open, closed if off the charts, all as of `at`.
+function visit(seen, system, open, at) {
+  for (const l of lanesOf(system)) {
+    const other = l.between.find((id) => id !== system);
+    seen[l.id] = { open: l.class === "trunk" || open.includes(other), at };
+  }
+  return seen;
+}
+const lanesHere = (system) => lanesOf(system).map((l) => l.id).sort();
 
 function emitLanes(name) {
   if (!name) {
@@ -449,22 +475,34 @@ function emitLanes(name) {
   }
   const now = Math.floor(Date.now() / 1000);
   const SCENARIOS = {
-    // docked at T.I.S.S.: the Petroc branch seen open two hours ago, the Keyne branch never
-    senara: { system: "senara", visible: ["keyne-senara", "maelor-senara"],
-      seen: { "maelor-petroc": { open: true, at: now - 7800 }, "keyne-senara": { open: true, at: now }, "maelor-senara": { open: true, at: now } } },
+    // docked at T.I.S.S.: the Elowen and Garrow branches open now; Maelor two hours ago, Kilmar a day ago
+    senara: () => {
+      const seen = visit({}, "kilmar", ["mabyn", "caradon", "garrow"], now - 30 * 3600);
+      visit(seen, "maelor", ["petroc", "caradon"], now - 7800);
+      return { system: "senara", visible: lanesHere("senara"), seen: visit(seen, "senara", ["elowen", "garrow"], now) };
+    },
     // in the Senara–Maelor trunk, 40% through: the charts are Maelor's already
-    "in-trunk": { system: "maelor", visible: ["elowen-maelor", "maelor-petroc", "maelor-senara"],
-      seen: { "maelor-petroc": { open: false, at: now - 3 * 86400 }, "keyne-mabyn": { open: true, at: now - 1200 } },
-      transit: { lane: "maelor-senara", from: "senara", to: "maelor", progress: 0.4, eta: 220, received: now } },
-    // in the Keyne branch, out to Mabyn
-    "in-branch": { system: "mabyn", visible: ["elowen-mabyn", "keyne-mabyn"],
-      seen: { "keyne-mabyn": { open: true, at: now }, "maelor-petroc": { open: true, at: now - 5 * 3600 } },
-      transit: { lane: "keyne-mabyn", from: "keyne", to: "mabyn", progress: 0.3, eta: 300, received: now } },
-    // at Morvah Deep, the Maelor branch closed now
-    petroc: { system: "petroc", visible: ["keyne-petroc", "maelor-petroc"],
-      seen: { "maelor-petroc": { open: false, at: now } } },
+    "in-trunk": () => {
+      const seen = visit({}, "senara", ["elowen", "garrow"], now - 300);
+      return { system: "maelor", visible: lanesHere("maelor"), seen: visit(seen, "maelor", ["petroc", "caradon"], now),
+        transit: { lane: "maelor-senara", from: "senara", to: "maelor", progress: 0.4, eta: 220, received: now } };
+    },
+    // in the Garrow branch, into the Mid: the charts are Garrow's
+    "in-mid": () => {
+      const seen = visit({}, "senara", ["elowen", "garrow"], now - 200);
+      return { system: "garrow", visible: lanesHere("garrow"), seen: visit(seen, "garrow", ["senara", "dozmary", "kilmar"], now),
+        transit: { lane: "garrow-senara", from: "senara", to: "garrow", progress: 0.3, eta: 300, received: now } };
+    },
+    // at Dozmary, unsettled and deep, with only the Garrow branch open
+    dozmary: () => {
+      const seen = visit({}, "senara", ["elowen", "garrow"], now - 9000);
+      visit(seen, "garrow", ["senara", "dozmary", "kilmar"], now - 3600);
+      return { system: "dozmary", visible: lanesHere("dozmary"), seen: visit(seen, "dozmary", ["garrow"], now) };
+    },
+    // at Morvah Deep, with only its trunks open and nothing seen before
+    petroc: () => ({ system: "petroc", visible: lanesHere("petroc"), seen: visit({}, "petroc", [], now) }),
   };
-  fp.emit("lanes", SCENARIOS[name] ?? SCENARIOS.senara);
+  fp.emit("lanes", (SCENARIOS[name] ?? SCENARIOS.senara)());
   fp.emit("lanes-view", { on: true });
 }
 lanesMenu.addEventListener("change", () => emitLanes(lanesMenu.value));

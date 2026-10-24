@@ -1,11 +1,25 @@
-// The core lanes map: a schematic of the core's six systems over the top band, switched on and off
-// by a ⋈ button left of the chart's ◎ (docs/maps/lanes.md). A timetable, inner to outer down the
-// band: each system a stop on the trunk line with its stations beside it, the two branches as
-// brackets to the left, and a key with each branch's state as last seen. Nothing in it is placed
-// where the stars are; the spacing is even. Marks and colours are the style guide's §13.5.
+// The lanes map: the galaxy's twenty systems over the top band, switched on and off by a ⋈ button
+// left of the chart's ◎ (docs/maps/lanes.md). The Shallows a ring of trunks in ring order, the Mid a
+// disc inside it with its deep stars nearest the centre, as public as help lanes and help mid make
+// them; nothing is placed where the stars are. Drawn on it: the lanes of your system open now, and
+// branches you've seen open elsewhere, fading as the sighting ages; a key at the right says the rest.
+// Zooms and pans like the chart, the names staying their size as the stars spread. Marks and colours
+// are the style guide's §13.5.
 
-import { BRANCHES, LANES, SYSTEMS, cleanLanes, laneFix, laneName, laneState, systemName } from "./lib/lanes.js";
-import { el, glowFilter, stars } from "./lib/svg.js";
+import {
+  SYSTEMS,
+  agoText,
+  cleanLanes,
+  lane,
+  laneFix,
+  laneName,
+  lanePath,
+  layout,
+  openHere,
+  seenOpenElsewhere,
+  systemName,
+} from "./lib/lanes.js";
+import { attachPanZoom, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
 const HL_STROKE = "#fff3df";
@@ -17,16 +31,25 @@ const BG = "#04060c";
 const NAME = "#c3ccd8";
 const TEXT = "#e3eaf2";
 const TONES = ["#3a4556", "#58667b", "#7e8da3"];
+const DISC = { mid: "#0c1320", core: "#131b2b" };
 const FONT = "Inter, system-ui, sans-serif";
 
-const SPINE_X = 96; // the trunk line
-const BRACKET_X = { "maelor-petroc": 50, "keyne-mabyn": 22 }; // the inner and the outer bracket
-const TOP = 22; // px from the band's top to the first stop
-const BOTTOM = 18; // and from the last to its bottom
-const KEY_W = 140; // the key's width, at the band's right
-const CHAR_W = 5; // a guess at a 9 px name's width per character (there's no layout here)
+const KEY_W = 150; // the key's column at the band's right, clear of ⋈ and the zoom buttons' column
+const KEY_TOP = 44; // below ⋈
+const ZOOM_IN = 6; // as far in as six times the fit
+const STEPS = 32; // segments a lane's curve is drawn in
+const BY_ID = new Map(SYSTEMS.map((s) => [s.id, s]));
+const BANDS = Object.fromEntries(SYSTEMS.map((s) => [s.id, s.band]));
+const CLASS = { trunk: "trunk", branch: "branch", mid: "Mid branch" };
+const LAYOUT = layout();
+const PATHS = new Map(); // a lane's path, worked out once
 
 let instances = 0;
+
+function pathOf(l) {
+  if (!PATHS.has(l.id)) PATHS.set(l.id, lanePath(l, LAYOUT, BANDS));
+  return PATHS.get(l.id);
+}
 
 /** Seconds as "3m 40s", "1h 2m" or "40s". */
 function span(s) {
@@ -38,33 +61,11 @@ function span(s) {
   return `${s}s`;
 }
 
-/** A branch's line as last seen: solid Glass open, dashed closed, faint dots not seen. */
-function branchLine(open) {
-  if (open === true) return { stroke: GLASS, "stroke-width": 2, "stroke-dasharray": "none" };
-  if (open === false) return { stroke: TONES[1], "stroke-width": 1.5, "stroke-dasharray": "5 4" };
-  return { stroke: TONES[0], "stroke-width": 1.5, "stroke-dasharray": "1 4", "stroke-linecap": "round" };
-}
+/** A sighting's opacity: an hour old, a day old, older. Only its age; nothing about what's next. */
+const fade = (ms) => (ms < 3600_000 ? 0.75 : ms < 86400_000 ? 0.5 : 0.3);
 
-/** The point and heading k (0 to 1) of the way along a polyline. */
-function along(pts, k) {
-  const segs = [];
-  let total = 0;
-  for (let i = 1; i < pts.length; i++) {
-    const len = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-    segs.push(len);
-    total += len;
-  }
-  let d = Math.min(Math.max(k, 0), 1) * total;
-  for (let i = 0; i < segs.length; i++) {
-    if (d <= segs[i] || i === segs.length - 1) {
-      const f = segs[i] > 0 ? Math.min(d / segs[i], 1) : 0;
-      const [a, b] = [pts[i], pts[i + 1]];
-      return { p: [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], angle: Math.atan2(b[1] - a[1], b[0] - a[0]), i };
-    }
-    d -= segs[i];
-  }
-  return { p: pts[0], angle: 0, i: 0 };
-}
+/** A lane's look open: a trunk the ring's, a branch solid Glass, a Mid branch dashed Glass. */
+const openLine = (l) => ({ stroke: GLASS, "stroke-width": 1.8, "stroke-dasharray": l.class === "mid" ? "6 2.5" : "none" });
 
 export class LanesView {
   /**
@@ -103,10 +104,23 @@ export class LanesView {
     this.pulse = el("g", {}, hot);
     this.lit = el("g", {}, this.pulse);
     el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, this.pulse);
+    this.key = el("g", {}, svg); // over the map, so a map panned under it doesn't hide it
+
+    // the view, in layout units; fitted to the band until you zoom or pan, then yours until ⌂
+    this.vb = null;
+    this.touched = false;
+    this.zoom = attachPanZoom(div, () => this.vb ?? this.fit(), (v) => this.userView(v), {
+      minW: 0,
+      maxW: Infinity,
+    });
+    zoomButtons(div, "8px", (f) => {
+      if (f) this.zoom(f);
+      else this.home();
+    });
 
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.title = "Core lanes";
+    btn.title = "Lanes";
     Object.assign(btn.style, {
       position: "absolute",
       right: "64px",
@@ -175,61 +189,107 @@ export class LanesView {
     this.div.style.display = this.shown ? "" : "none";
   }
 
+  size() {
+    return [this.band.clientWidth || 1, this.band.clientHeight || 1];
+  }
+
+  /** The view that fits the map left of the key, the ring's names inside the band. */
+  fit() {
+    const [w, h] = this.size();
+    const mapW = Math.max(w - KEY_W, 120);
+    const px = Math.max(Math.min((h - 48) / 200, (mapW - 104) / 200), 0.2); // px a unit
+    const cx = mapW / 2 + 6;
+    const cy = h / 2 + 2;
+    return [-cx / px, -cy / px, w / px, h / px];
+  }
+
+  /** The user zoomed or panned: kept between six times in and the fit. */
+  userView(v) {
+    const fit = this.fit();
+    if (v[2] > fit[2]) {
+      if (!this.touched) return; // zoomed right out already
+      return this.home();
+    }
+    if (v[2] < fit[2] / ZOOM_IN) return;
+    this.vb = v;
+    this.touched = true;
+    this.draw(Date.now());
+  }
+
+  /** ⌂: back to the fit, following the band's size again. */
+  home() {
+    this.vb = null;
+    this.touched = false;
+    this.draw(Date.now());
+  }
+
   /** Redraw at wall-clock t (ms): the ages in the key and her place in a lane change with it. */
   draw(t) {
     if (!this.shown) return;
-    const w = this.band.clientWidth || 1;
-    const h = this.band.clientHeight || 1;
+    const [w, h] = this.size();
     this.svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    let vb = this.vb ?? this.fit();
+    if (this.vb) {
+      // the band's shape changed under a view of yours: keep its middle and scale
+      const k = vb[2] / w;
+      const cx = vb[0] + vb[2] / 2;
+      const cy = vb[1] + vb[3] / 2;
+      vb = this.vb = [cx - (w * k) / 2, cy - (h * k) / 2, w * k, h * k];
+    }
+    const u = vb[2] / w; // units a px
+    const X = (p) => [(p.x - vb[0]) / u, (p.y - vb[1]) / u];
+    const at = Object.fromEntries(SYSTEMS.map((s) => [s.id, X(LAYOUT.P[s.id])]));
     const lanes = this.lanes;
-    const dy = Math.max((h - TOP - BOTTOM) / (SYSTEMS.length - 1), 14);
-    const Y = Object.fromEntries(SYSTEMS.map((s, i) => [s.id, TOP + i * dy]));
-    const x = SPINE_X;
-
-    // each lane as a polyline from its first end to its second
-    const path = (lane) => {
-      const [a, b] = lane.between.map((id) => Y[id]);
-      if (lane.class === "trunk") return [[x, a], [x, b]];
-      const bx = BRACKET_X[lane.id];
-      return [[x, a], [bx, a], [bx, b], [x, b]];
-    };
-    const pathD = (lane) => {
-      if (lane.class === "trunk") return `M${x},${Y[lane.between[0]]} V${Y[lane.between[1]]}`;
-      const [a, b] = lane.between.map((id) => Y[id]);
-      const bx = BRACKET_X[lane.id];
-      const r = Math.min(6, (b - a) / 2);
-      return `M${x},${a} H${bx + r} Q${bx},${a} ${bx},${a + r} V${b - r} Q${bx},${b} ${bx + r},${b} H${x}`;
-    };
+    const tr = lanes.transit;
+    const here = lanes.system;
+    const { open, closed } = openHere(lanes);
+    const elsewhere = seenOpenElsewhere(lanes, t);
 
     const marks = document.createDocumentFragment();
     const lit = document.createDocumentFragment();
-    const text = (tx, ty, s, attrs = {}) =>
-      el("text", { x: tx, y: ty, "font-size": 9, fill: DIM, "font-family": FONT, ...attrs }, marks, s);
+    const key = document.createDocumentFragment();
+    const text = (parent, tx, ty, s, attrs = {}) =>
+      el("text", { x: tx, y: ty, "font-size": 9, fill: DIM, "font-family": FONT, ...attrs }, parent, s);
+    const points = (fn, from = 0, to = 1) =>
+      Array.from({ length: STEPS + 1 }, (_, i) => X(fn(from + ((to - from) * i) / STEPS)).join(",")).join(" ");
+    const [ox, oy] = X({ x: 0, y: 0 });
 
-    // the branches, outer first; the outer one's stub where the inner one crosses it is cut, a bridge
-    const states = Object.fromEntries(BRANCHES.map((b) => [b.id, laneState(lanes, b.id, t)]));
-    el("path", { d: pathD(LANES.find((l) => l.id === "keyne-mabyn")), fill: "none", ...branchLine(states["keyne-mabyn"].open) }, marks);
-    const inner = BRACKET_X["maelor-petroc"];
-    el("rect", { x: inner - 3, y: Y.keyne - 3, width: 6, height: 6, fill: BG }, marks);
-    el("path", { d: pathD(LANES.find((l) => l.id === "maelor-petroc")), fill: "none", ...branchLine(states["maelor-petroc"].open) }, marks);
-    // the trunks, which never close
-    for (const lane of LANES.filter((l) => l.class === "trunk")) {
-      el("path", { d: pathD(lane), fill: "none", stroke: TONES[2], "stroke-width": 2 }, marks);
+    // the Mid's disc, and a Core's inside it when there is one
+    for (const d of LAYOUT.discs) {
+      const r = d.r / u;
+      el("circle", { cx: ox, cy: oy, r, fill: DISC[d.band], stroke: TONES[d.band === "core" ? 1 : 0], "stroke-width": 0.8, "stroke-dasharray": "2 3" }, marks);
+      // named inside its rim, down and to the left, between the stars round it
+      const a = (2 * Math.PI) / 3;
+      text(marks, ox + (r - 9) * Math.cos(a), oy + (r - 9) * Math.sin(a), `THE ${d.band.toUpperCase()}`, {
+        "text-anchor": "middle",
+        "font-size": 7.5,
+        "letter-spacing": 1.5,
+        opacity: 0.7,
+        transform: `rotate(30 ${ox + (r - 9) * Math.cos(a)} ${oy + (r - 9) * Math.sin(a)})`,
+      });
+    }
+    // the trunks: the ring, which never closes
+    el("circle", { cx: ox, cy: oy, r: 100 / u, fill: "none", stroke: TONES[2], "stroke-width": 2 }, marks);
+    // branches seen open elsewhere, fading with the sighting's age
+    for (const { lane: l, ago } of elsewhere) {
+      el("polyline", { points: points(pathOf(l)), fill: "none", stroke: GLASS, "stroke-width": 1.2, "stroke-dasharray": "2 3", opacity: fade(ago) }, marks);
+    }
+    // your system's lanes open now; a trunk is the ring's already
+    for (const l of open) {
+      if (l.class !== "trunk") el("polyline", { points: points(pathOf(l)), fill: "none", ...openLine(l) }, marks);
     }
 
     // her lane: behind her solid, ahead dashed, and her chevron where her progress puts her
-    const tr = lanes.transit;
     const fix = laneFix(tr, t);
     if (tr && fix) {
-      const lane = LANES.find((l) => l.id === tr.lane);
-      let pts = path(lane);
-      if (tr.from !== lane.between[0]) pts = [...pts].reverse();
-      const at = along(pts, fix.k);
-      const behind = [...pts.slice(0, at.i + 1), at.p];
-      const ahead = [at.p, ...pts.slice(at.i + 1)];
-      const line = (p) => p.map((q) => q.join(",")).join(" ");
-      el("polyline", { points: line(behind), fill: "none", stroke: HL, "stroke-opacity": 0.3, "stroke-width": 3, "stroke-linejoin": "round" }, marks);
-      el("polyline", { points: line(ahead), fill: "none", stroke: HL, "stroke-opacity": 0.7, "stroke-width": 1.5, "stroke-dasharray": "4 4" }, marks);
+      const l = lane(tr.lane);
+      const fn = pathOf(l);
+      const go = l.between[0] === tr.from ? fn : (k) => fn(1 - k);
+      el("polyline", { points: points(go, 0, fix.k), fill: "none", stroke: HL, "stroke-opacity": 0.3, "stroke-width": 3, "stroke-linejoin": "round" }, marks);
+      el("polyline", { points: points(go, fix.k, 1), fill: "none", stroke: HL, "stroke-opacity": 0.7, "stroke-width": 1.5, "stroke-dasharray": "4 4" }, marks);
+      const p = X(go(fix.k));
+      const a = X(go(Math.max(fix.k - 0.01, 0)));
+      const b = X(go(Math.min(fix.k + 0.01, 1)));
       el(
         "path",
         {
@@ -238,42 +298,83 @@ export class LanesView {
           stroke: HL_STROKE,
           "stroke-width": 0.8,
           "stroke-linejoin": "round",
-          transform: `translate(${at.p[0]} ${at.p[1]}) rotate(${(at.angle * 180) / Math.PI})`,
+          transform: `translate(${p[0]} ${p[1]}) rotate(${(Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI})`,
         },
         lit,
       );
     }
 
-    // the stops: a star, its name, its stations as Glass diamonds
-    const here = tr ? null : lanes.system;
+    // the stars: a dot, relays as a pair of arcs either side, a Glass diamond over a settled one, its name outward
+    const reach = new Set(open.map((l) => l.between.find((id) => id !== here)));
     for (const s of SYSTEMS) {
-      const y = Y[s.id];
-      if (s.id === here) el("circle", { cx: x, cy: y, r: 8.5, fill: "none", stroke: HL, "stroke-width": 2 }, lit);
-      el("circle", { cx: x, cy: y, r: 4.5, fill: STAR, opacity: 0.95 }, marks);
-      text(x + 16, y + 3.5, s.name, { "font-size": 11, fill: s.id === here ? TEXT : NAME });
-      let sx = x + 66;
-      for (const st of s.stations) {
-        el("path", { d: `M${sx},${y - 2.5} L${sx + 2.5},${y} L${sx},${y + 2.5} L${sx - 2.5},${y} Z`, fill: GLASS }, marks);
-        text(sx + 6, y + 3, st.name);
-        sx += 6 + st.name.length * CHAR_W + 12;
+      const [x, y] = at[s.id];
+      const r = s.band === "shallows" ? 4 : 3.2;
+      if (s.id === here && !tr) el("circle", { cx: x, cy: y, r: r + 4.5, fill: "none", stroke: HL, "stroke-width": 2 }, lit);
+      if (s.relay) {
+        const rr = r + 3.5;
+        for (const sx of [-1, 1]) {
+          el("path", { d: `M${x + sx * rr * 0.7},${y - rr * 0.7} A${rr},${rr} 0 0 ${sx > 0 ? 1 : 0} ${x + sx * rr * 0.7},${y + rr * 0.7}`, fill: "none", stroke: TONES[2], "stroke-width": 0.9 }, marks);
+        }
       }
+      el("circle", { cx: x, cy: y, r, fill: STAR, opacity: s.band === "shallows" ? 0.95 : 0.8 }, marks);
+      if (s.stations.length) el("path", { d: `M${x},${y - r - 7.5} l2.2,2.2 l-2.2,2.2 l-2.2,-2.2 Z`, fill: GLASS, opacity: 0.9 }, marks);
+      const a = LAYOUT.P[s.id].a;
+      const c = Math.cos(a);
+      const side = Math.abs(c) < 0.3;
+      const d = s.band === "shallows" ? 12 : 9;
+      const known = s.id === here || reach.has(s.id);
+      text(marks, x + c * d, y + Math.sin(a) * d + (side ? (Math.sin(a) > 0 ? 7 : -1) : 3), s.name, {
+        "text-anchor": side ? "middle" : c > 0 ? "start" : "end",
+        "font-size": s.band === "shallows" ? 10 : 8.5,
+        fill: s.id === here ? TEXT : known ? NAME : DIM,
+        opacity: known ? 1 : 0.75,
+        "font-style": s.deep ? "italic" : "normal",
+      });
     }
 
-    // the key, at the right of the last stops: her lane, then each branch as last seen
-    const kx = Math.max(x + 144, w - KEY_W);
+    // the key: where you are, her lane, what's open from here, and what you've seen open elsewhere
+    const kx = w - KEY_W + 4;
+    const kr = w - 40; // its right edge, clear of the zoom buttons
+    let ky = KEY_TOP;
+    const rows = [];
+    const row = (dy, fn) => {
+      rows.push([ky, fn]);
+      ky += dy;
+    };
     if (tr && fix) {
-      const left = fix.left === null ? "" : ` · ${span(fix.left)}`;
-      text(kx, Y.maelor + 3, `in the ${systemName(tr.to)} lane${left}`, { fill: HL });
+      row(fix.left === null ? 16 : 11, (y) => text(key, kx, y, `in the ${systemName(tr.to)} lane`, { fill: HL }));
+      if (fix.left !== null) row(16, (y) => text(key, kx, y, `${span(fix.left)} to go`, { fill: HL, "font-size": 8.5 }));
     }
-    const keyRows = [Y.elowen, Y.mabyn];
-    BRANCHES.forEach((b, i) => {
-      const ky = keyRows[i];
-      el("line", { x1: kx, y1: ky - 3, x2: kx + 16, y2: ky - 3, ...branchLine(states[b.id].open) }, marks);
-      text(kx + 22, ky, laneName(b.id));
-      text(kx + 22, ky + 9, states[b.id].words, { "font-size": 8, opacity: 0.85 });
-    });
+    if (here) {
+      row(14, (y) => text(key, kx, y, `From ${systemName(here)}`, { fill: TEXT, "font-size": 9.5 }));
+      for (const l of open) {
+        row(11, (y) => {
+          el("line", { x1: kx, y1: y - 3, x2: kx + 12, y2: y - 3, ...openLine(l), "stroke-width": l.class === "trunk" ? 2 : 1.6, stroke: l.class === "trunk" ? TONES[2] : GLASS }, key);
+          text(key, kx + 17, y, systemName(l.between.find((id) => id !== here)), { fill: NAME });
+          text(key, kr, y, CLASS[l.class], { "text-anchor": "end", "font-size": 8 });
+        });
+      }
+      row(17, (y) => text(key, kx + 17, y, `${closed} closed · as of now`, { "font-size": 8, opacity: 0.8 }));
+    }
+    if (elsewhere.length) {
+      row(14, (y) => text(key, kx, y, "Seen open elsewhere", { fill: TEXT, "font-size": 9.5 }));
+      const room = Math.max(0, Math.floor((h - 8 - ky) / 21));
+      const shown = elsewhere.length > room ? elsewhere.slice(0, Math.max(room - 1, 0)) : elsewhere;
+      for (const { lane: l, ago } of shown) {
+        row(21, (y) => {
+          el("line", { x1: kx, y1: y - 3, x2: kx + 12, y2: y - 3, stroke: GLASS, "stroke-width": 1.3, "stroke-dasharray": "2 3", opacity: fade(ago) }, key);
+          text(key, kx + 17, y, laneName(l.id), { fill: NAME });
+          text(key, kx + 17, y + 9, `seen ${agoText(ago)} ago`, { "font-size": 8, opacity: 0.85 });
+        });
+      }
+      if (shown.length < elsewhere.length) row(11, (y) => text(key, kx + 17, y, `and ${elsewhere.length - shown.length} more`, { "font-size": 8, opacity: 0.8 }));
+    }
+    // a backdrop behind the key, so a map zoomed or panned under it stays readable
+    if (rows.length) el("rect", { x: kx - 8, y: KEY_TOP - 14, width: kr - kx + 14, height: ky - KEY_TOP + 8, rx: 6, fill: BG, opacity: 0.8 }, key);
+    for (const [y, fn] of rows) fn(y);
 
     this.marks.replaceChildren(marks);
     this.lit.replaceChildren(lit);
+    this.key.replaceChildren(key);
   }
 }

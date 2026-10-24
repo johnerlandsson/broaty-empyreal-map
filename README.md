@@ -115,19 +115,20 @@ station or the view ahead. Unless you've turned it off in the settings, the
 chart comes up by itself when your ship starts travelling and goes again
 when she stops.
 
-**The core lanes.** Beside ◎, a ⋈ button swaps the band for a map of the
-core's six systems: Petroc, Keyne, Senara, Maelor, Elowen and Mabyn, top to
-bottom, inner to outer, each with its stations. The trunks run down a line
-between them. The two branches, Petroc–Maelor and Keyne–Mabyn, are brackets
-beside it: solid when you last saw them open, dashed when closed, dotted if
-you've never been where they start. A key says how long ago you saw each
-one ("open · now", "closed · seen 3d 4h ago"). You only find out from the
-mouths in the system you're in, and the map remembers what you saw across
-restarts. It never guesses when a branch will open. Your system has the
-amber ring; in a lane, the lane is lit and your ship moves along it with the
-time left. The spacing is even, not where the stars really are. ⋈ and ◎
-switch each other off. The map comes up by itself when your ship enters a
-lane, unless you've turned that off.
+**The lanes.** Beside ◎, a ⋈ button swaps the band for a map of the
+galaxy's twenty systems: the Shallows' twelve round a ring of trunks, in
+order from Petroc, and the Mid's eight on a disc inside it, Dozmary and
+Garrow deepest. The lanes open now from your system are drawn, solid (a Mid
+branch dashed), and branches you've seen open elsewhere are dotted, fainter
+the longer ago you saw them. A key lists what's open from here, how many are
+closed, and what you've seen open elsewhere and when ("seen 2h 10m ago").
+You only find out from the charts of the system you're in, and the map
+remembers what you saw across restarts. It never guesses when a branch will
+open. Your system has the amber ring; in a lane, the lane is lit and your
+ship moves along it with the time left. The spacing is even, not where the
+stars really are. Zoom in with the wheel or + to spread the stars apart.
+⋈ and ◎ switch each other off. The map comes up by itself when your ship
+enters a lane, unless you've turned that off.
 
 **The belt map.** At a belt, a third button beside ⋈ swaps the band for the
 belt she's in: its disc as far as its rocks reach, the core, and a ring of
@@ -237,7 +238,7 @@ at the front, and your place still glows.
 
 **Switch views to fit what you're doing** — When on (the default), the top
 band switches to fit what your ship is doing: the chart while she travels in
-a system, the core lanes map while she's in a lane, and the station or the
+a system, the lanes map while she's in a lane, and the station or the
 view ahead once she stops. It switches only when what she's doing changes, so
 a view you pick with ◎ or ⋈ stays until she next sets off, jumps or stops.
 When off, the band switches only when you press the buttons.

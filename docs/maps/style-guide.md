@@ -23,7 +23,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | Space scenes | top | you're out in a ship you own or crew, undocked | [space-scenes.md](space-scenes.md) |
 | Ship plans | bottom | you're aboard any ship, docked or not | [ship-plans.md](ship-plans.md) |
 | Orrery (the system chart) | top | the ◎ toggle is on | [orrery.md](orrery.md) |
-| Core lanes map | top | the ⋈ toggle is on | [lanes.md](lanes.md) |
+| Lanes map | top | the ⋈ toggle is on | [lanes.md](lanes.md) |
 | Belt map | top | its toggle is on, at a belt | [belt.md](belt.md) |
 | What you're doing (a card, not a map) | bottom, top-left corner | you're doing something that takes time | [action-card.md](action-card.md) |
 
@@ -468,23 +468,31 @@ what it draws and how.
 - **Live:** redrawn at least once a second while it's shown and the panel
   is visible, never otherwise.
 
-### 13.5 The core lanes map
+### 13.5 The lanes map
 
-A schematic of the core's systems and lanes (see lanes.md), behind the **⋈**
-toggle left of ◎, styled and shown like it. It shares the chart's colours:
+A schematic of the galaxy's systems and lanes (see lanes.md), behind the
+**⋈** toggle left of ◎, styled and shown like it. It shares the chart's colours:
 
-- **Stops:** Star dots on a vertical line, inner to outer, evenly spaced,
-  never placed where the stars are. Names in 11 (yours in Text, the rest
-  `#c3ccd8`), stations as Glass diamonds named in Dim, 9.
-- **Trunks:** 2 px in the lightest Tone.
-- **Branches**, as last seen: open solid Glass 2 px; closed dashed `5 4` in
-  the middle Tone; never seen dotted `1 4` in the darkest Tone. A key names
-  each with its state and how old it is ("closed · seen 3d 4h ago", "open ·
-  now"). Nothing predicts a branch opening.
+- **Stars:** the Shallows as Star dots (4 px) evenly round a ring, in ring
+  order from Petroc at the top, clockwise; the Mid's (3.2 px, at .8) on a
+  disc inside it (`#0c1320`, its rim dashed `2 3` in the darkest Tone),
+  Dozmary and Garrow, the deepest, nearest the centre. Never placed where
+  the stars are. Names outward, 10 for the Shallows and 8.5 for the Mid,
+  the deep ones in italics: yours in Text, those an open lane reaches
+  `#c3ccd8`, the rest Dim at .75. A Glass diamond over a settled star; two
+  short arcs either side of one with relays, in the lightest Tone.
+- **Trunks:** the ring itself, 2 px in the lightest Tone.
+- **Branches:** only your system's open now, solid Glass 1.8 px (a Mid
+  branch dashed `6 2.5`), and those seen open elsewhere, dotted `2 3`, at
+  .75 under an hour old, .5 under a day, .3 older. Each is bowed toward
+  the centre. Closed ones aren't drawn; the key counts them. Nothing
+  predicts a branch opening.
 - **You are here:** the amber ring of the highlight (§6) round your system.
   **In a lane:** the lane lit amber, behind her solid at .3 and ahead dashed
-  `4 4` at .7, with her amber chevron, and "in the Maelor lane · 3m 40s" in
-  amber in the key.
+  `4 4` at .7, with her amber chevron, and "in the Maelor lane", "3m 40s to
+  go" in amber in the key.
+- **Zoom:** wheel, drag and the + − ⌂ buttons, from the fit to six times
+  in. The stars spread; names, marks and the key stay their size.
 
 ### 13.6 The belt map
 

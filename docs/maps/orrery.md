@@ -19,7 +19,7 @@ changes, so ◎ pressed in between holds until then; the first status after a
 login or a reconnect counts as a change. With the setting off, the chart stays
 on or off as you left it through docking, undocking, walking about and a dropped
 connection. Either way, a reopened panel gets the choice back. It doesn't
-outlive the session. The core lanes map's **⋈** (lanes.md) sits left of ◎,
+outlive the session. The lanes map's **⋈** (lanes.md) sits left of ◎,
 and the belt map's toggle (belt.md) left of that; switching any of the three
 on switches the others off.
 

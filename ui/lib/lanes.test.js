@@ -2,37 +2,89 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { BRANCHES, LANES, SYSTEMS, agoText, cleanLanes, laneFix, laneName, laneState } from "./lanes.js";
+import {
+  BRANCHES, LANES, MID, R, RING, SYSTEMS, agoText, cleanLanes, lane, laneFix, laneName, lanePath, lanesOf, laneState, layout, openHere,
+  seenOpenElsewhere,
+} from "./lanes.js";
 
 const GAME = join(homedir(), "dev/empyreal/content/game");
 const galaxy = join(GAME, "galaxy.yaml");
 const system = join(GAME, "system.yaml");
+const help = join(homedir(), "dev/empyreal/content/help/lanes.md");
 
 describe("the topology", () => {
-  it("has six systems, five trunks in a chain and two branches", () => {
-    expect(SYSTEMS.map((s) => s.id)).toEqual(["petroc", "keyne", "senara", "maelor", "elowen", "mabyn"]);
+  it("has the Shallows' twelve round the ring, then the Mid's eight", () => {
+    expect(RING.map((s) => s.id)).toEqual([
+      "petroc", "keyne", "senara", "maelor", "elowen", "mabyn", "piran", "breage", "euny", "madron", "germoe", "feock",
+    ]);
+    expect(MID.map((s) => s.id)).toEqual(["hensbarrow", "goonhilly", "dozmary", "godolphin", "trencrom", "kilmar", "garrow", "caradon"]);
+    expect(SYSTEMS).toEqual([...RING, ...MID]);
+    expect(SYSTEMS.filter((s) => s.deep).map((s) => s.id)).toEqual(["dozmary", "garrow"]);
+    expect(SYSTEMS.filter((s) => !s.relay).map((s) => s.id)).toEqual(["hensbarrow", "goonhilly", "dozmary", "godolphin", "trencrom"]);
+  });
+
+  it("has a lane for every pair: twelve trunks round the ring, and 178 branches", () => {
+    expect(LANES).toHaveLength((20 * 19) / 2);
     const trunks = LANES.filter((l) => l.class === "trunk");
-    expect(trunks).toHaveLength(5);
-    for (let i = 0; i < 5; i++) expect(trunks[i].between).toEqual([SYSTEMS[i].id, SYSTEMS[i + 1].id]);
-    expect(BRANCHES.map((b) => b.id)).toEqual(["maelor-petroc", "keyne-mabyn"]);
+    expect(trunks).toHaveLength(12);
+    for (let i = 0; i < 12; i++) expect(trunks.map((l) => l.id)).toContain([RING[i].id, RING[(i + 1) % 12].id].sort().join("-"));
+    expect(BRANCHES).toHaveLength(178);
+    expect(LANES.filter((l) => l.class === "branch")).toHaveLength(66 - 12);
+    expect(lane("dozmary-senara").class).toBe("mid");
+    expect(lane("dozmary-garrow").class).toBe("mid");
+    expect(lane("maelor-petroc").class).toBe("branch");
+    expect(lane("nope")).toBe(undefined);
+    expect(lanesOf("senara")).toHaveLength(19);
   });
 
   it("names every lane by its two stars sorted, as the Lua side does from a mouth", () => {
     for (const l of LANES) expect(l.id).toBe([...l.between].sort().join("-"));
+    expect(new Set(LANES.map((l) => l.id)).size).toBe(LANES.length);
   });
 
-  it.skipIf(!existsSync(galaxy))("matches galaxy.yaml's lanes, ids, classes and ends, and its stars inner to outer", () => {
+  it("has the same stars as the Lua side", () => {
+    const lua = readFileSync(new URL("../../src/station_map/lanes.lua", import.meta.url), "utf8");
+    const block = /N\.STARS = \{([^}]*)\}/.exec(lua)[1];
+    expect([...block.matchAll(/'(\w+)'/g)].map((m) => m[1])).toEqual(SYSTEMS.map((s) => s.id));
+  });
+
+  it.skipIf(!existsSync(galaxy))("matches galaxy.yaml's stars, bands and relays, its trunks, and a branch for every other pair", () => {
     const text = readFileSync(galaxy, "utf8");
-    const lanes = [...text.matchAll(/- \{ id: ([\w-]+), class: (\w+), between: \[(\w+), (\w+)\]/g)].map((m) => ({
+    const stars = [...text.matchAll(/^ {4}- \{ id: (\w+), a: [^}]*\}/gm)].map((m) => ({
+      id: m[1],
+      band: /band: (\w+)/.exec(m[0])?.[1] ?? "shallows",
+      relay: /relay: true/.test(m[0]),
+    }));
+    expect(SYSTEMS.map((s) => ({ id: s.id, band: s.band, relay: s.relay }))).toEqual(stars);
+    const trunks = [...text.matchAll(/- \{ id: ([\w-]+), class: (\w+), between: \[(\w+), (\w+)\]/g)].map((m) => ({
       id: m[1],
       class: m[2],
       between: [m[3], m[4]].sort(),
     }));
-    const ours = LANES.map((l) => ({ id: l.id, class: l.class, between: [...l.between].sort() }));
+    expect(trunks.every((l) => l.class === "trunk")).toBe(true);
+    const ours = (cls) => LANES.filter((l) => l.class === cls).map((l) => ({ id: l.id, class: l.class, between: [...l.between].sort() }));
     const byId = (a, b) => a.id.localeCompare(b.id);
-    expect(ours.sort(byId)).toEqual(lanes.sort(byId));
-    const stars = [...text.matchAll(/- \{ id: (\w+), a: ([\d.]+)/g)].map((m) => ({ id: m[1], a: Number(m[2]) }));
-    expect(SYSTEMS.map((s) => s.id)).toEqual(stars.sort((x, y) => x.a - y.a).map((s) => s.id));
+    expect(ours("trunk").sort(byId)).toEqual(trunks.sort(byId));
+    const band = Object.fromEntries(stars.map((s) => [s.id, s.band]));
+    const trunkIds = new Set(trunks.map((l) => l.id));
+    const want = [];
+    for (let i = 0; i < stars.length; i++) {
+      for (let j = i + 1; j < stars.length; j++) {
+        const [a, b] = [stars[i].id, stars[j].id];
+        const id = [a, b].sort().join("-");
+        if (!trunkIds.has(id)) want.push({ id, class: band[a] === "mid" || band[b] === "mid" ? "mid" : "branch" });
+      }
+    }
+    expect(BRANCHES.map((l) => ({ id: l.id, class: l.class })).sort(byId)).toEqual(want.sort(byId));
+    expect(text).toMatch(/\n {4}mid:\n/); // the class the Mid's branches are
+  });
+
+  it.skipIf(!existsSync(help))("goes round the ring as help lanes does, with the Mid that help mid names", () => {
+    const text = readFileSync(help, "utf8");
+    const ring = /^ {2}(Petroc \(.*)$/m.exec(text)[1];
+    expect([...ring.matchAll(/(\w+) \(/g)].map((m) => m[1])).toEqual(RING.map((s) => s.name));
+    expect(text).toContain(MID.map((s) => s.name).slice(0, -1).join(", ") + " and Caradon");
+    expect(text).toContain("only Kilmar, Garrow and Caradon have relays");
   });
 
   it.skipIf(!existsSync(system))("matches system.yaml's stations and ports, star by star", () => {
@@ -60,8 +112,9 @@ describe("the topology", () => {
 });
 
 describe("laneName", () => {
-  it("joins its stars inner first", () => {
+  it("joins its stars ring first, then the Mid", () => {
     expect(laneName("maelor-petroc")).toBe("Petroc–Maelor");
+    expect(laneName("garrow-senara")).toBe("Senara–Garrow");
     expect(laneName("nope")).toBe("nope");
   });
 });
@@ -128,5 +181,94 @@ describe("laneFix", () => {
   it("holds at her progress with no eta, and is nothing with no transit", () => {
     expect(laneFix({ progress: 0.3, eta: null, received: null }, 0)).toEqual({ k: 0.3, left: null });
     expect(laneFix(null, 0)).toBe(null);
+  });
+});
+
+describe("openHere and seenOpenElsewhere", () => {
+  const lanes = cleanLanes({
+    system: "senara",
+    visible: lanesOf("senara").map((l) => l.id),
+    seen: {
+      "keyne-senara": { open: true, at: 100 },
+      "maelor-senara": { open: true, at: 100 },
+      "garrow-senara": { open: true, at: 100 },
+      "elowen-senara": { open: false, at: 100 },
+      "maelor-petroc": { open: true, at: 50 },
+      "kilmar-mabyn": { open: true, at: 90 },
+      "elowen-maelor": { open: true, at: 50 },
+      "caradon-maelor": { open: false, at: 50 },
+    },
+  });
+  it("lists your system's open lanes and counts the rest closed", () => {
+    const { open, closed } = openHere(lanes);
+    expect(open.map((l) => l.id)).toEqual(["keyne-senara", "maelor-senara", "garrow-senara"]);
+    expect(closed).toBe(16);
+    expect(openHere(cleanLanes({}))).toEqual({ open: [], closed: 0 });
+  });
+  it("lists branches seen open elsewhere, newest first, and never a trunk", () => {
+    expect(seenOpenElsewhere(lanes, 100_000).map((x) => [x.lane.id, x.ago])).toEqual([
+      ["kilmar-mabyn", 10_000],
+      ["maelor-petroc", 50_000],
+    ]);
+  });
+});
+
+describe("layout", () => {
+  const near = (a, b) => expect(Math.abs(a - b)).toBeLessThan(1e-9);
+  it("puts the ring round from Petroc at the top, clockwise, evenly", () => {
+    const { P } = layout();
+    near(P.petroc.x, 0);
+    near(P.petroc.y, -R);
+    expect(P.keyne.x).toBeGreaterThan(0); // clockwise, y down
+    for (const s of RING) near(Math.hypot(P[s.id].x, P[s.id].y), R);
+    near(P.piran.y, R); // halfway round
+  });
+  it("puts the Mid inside, the deep two nearest the centre", () => {
+    const { P, discs } = layout();
+    const r = (id) => Math.hypot(P[id].x, P[id].y);
+    for (const s of MID) expect(r(s.id)).toBeLessThan(discs[0].r);
+    for (const s of MID.filter((x) => !x.deep)) expect(r(s.id)).toBeGreaterThan(r("dozmary"));
+    expect(P.dozmary.x).toBeLessThan(0);
+    expect(P.garrow.x).toBeGreaterThan(0);
+    expect(discs.map((d) => d.band)).toEqual(["mid"]);
+  });
+  it("takes a Core in the middle, the Mid a band round it", () => {
+    const core = [1, 2, 3].map((n) => ({ id: `c${n}`, name: `C${n}`, band: "core", relay: false, deep: false, stations: [] }));
+    const { P, discs } = layout([...SYSTEMS, ...core]);
+    expect(discs.map((d) => d.band)).toEqual(["mid", "core"]);
+    const r = (id) => Math.hypot(P[id].x, P[id].y);
+    for (const c of core) expect(r(c.id)).toBeLessThan(discs[1].r);
+    for (const s of MID) expect(r(s.id)).toBeGreaterThan(discs[1].r);
+  });
+});
+
+describe("lanePath", () => {
+  const at = (id, k, l = layout()) => lanePath(lane(id), l)(k);
+  it("runs from its first star to its second", () => {
+    const { P } = layout();
+    const p0 = at("maelor-petroc", 0);
+    const p1 = at("maelor-petroc", 1);
+    expect(p0.x).toBeCloseTo(P[lane("maelor-petroc").between[0]].x);
+    expect(p1.y).toBeCloseTo(P[lane("maelor-petroc").between[1]].y);
+  });
+  it("keeps a trunk on the ring, Feock back to Petroc included", () => {
+    for (const id of ["keyne-petroc", "feock-petroc"]) {
+      const p = at(id, 0.5);
+      expect(Math.hypot(p.x, p.y)).toBeCloseTo(R);
+    }
+  });
+  it("bows a branch toward the centre", () => {
+    const { P } = layout();
+    const mid = at("elowen-senara", 0.5);
+    const chordMid = Math.hypot((P.elowen.x + P.senara.x) / 2, (P.elowen.y + P.senara.y) / 2);
+    expect(Math.hypot(mid.x, mid.y)).toBeLessThan(chordMid);
+  });
+  it("takes a Mid lane round the Core when there is one, and straight across when there isn't", () => {
+    const core = [{ id: "c1", name: "C1", band: "core", relay: false, deep: false, stations: [] }];
+    const l = layout([...SYSTEMS, ...core]);
+    const p = lanePath(lane("dozmary-garrow"), l)(0.5);
+    expect(Math.hypot(p.x, p.y)).toBeGreaterThan(l.discs[1].r);
+    const q = at("dozmary-garrow", 0.5);
+    expect(Math.hypot(q.x, q.y)).toBeLessThan(1e-9);
   });
 });

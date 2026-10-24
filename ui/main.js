@@ -5,7 +5,7 @@
 // plan instead, one view per hull drawing, built on first use.
 // The Lua side holds all state and replays it when we post "ready", so this file keeps only the
 // last location, the docked station, and the level each plan last showed (a lift between floors
-// keeps the plan where it was). The system chart (◎), the core lanes map (⋈) or the belt map can cover the
+// keeps the plan where it was). The system chart (◎), the lanes map (⋈) or the belt map can cover the
 // top band, one at a time; while one does, the space scene doesn't draw. Docking and undocking, the station
 // model shows through the space scene, drawing near or falling away on the game's clock. What you're
 // doing (Char.Action) is a card in the deck band's corner, over whichever plan shows; the overview is

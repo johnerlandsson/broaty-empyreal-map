@@ -1,7 +1,7 @@
 -- Empyreal map (T.I.S.S., Orrin Station and Wenna Halt so far): folds GMCP location frames into one small message
 -- and pushes it to the "map" panel, and your ship's frames into the overview's scene, its docking and
 -- undocking (timed by Ship.Devices), the system chart, the
--- core lanes map, the belt map (each switched on and off to fit what she's doing, unless the auto_view setting is
+-- lanes map, the belt map (each switched on and off to fit what she's doing, unless the auto_view setting is
 -- off) and what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card. The lanes' states as last seen,
 -- and each belt's log (her track and sweeps in it), are kept in Mallard's storage, so they outlive a restart. All state lives here; the panel is a
 -- pure presentation layer that asks for a replay with "ready".
