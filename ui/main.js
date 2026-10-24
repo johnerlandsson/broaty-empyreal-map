@@ -329,6 +329,7 @@ panel.on("belt-view", (msg) => {
 });
 
 panel.on("action", (msg) => doing.set(msg));
+panel.on("course", (msg) => chart.setCourse(msg));
 
 panel.on("location", (msg) => {
   last = msg;

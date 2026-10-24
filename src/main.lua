@@ -2,7 +2,7 @@
 -- and pushes it to the "map" panel, and your ship's frames into the overview's scene, its docking and
 -- undocking (timed by Ship.Devices), the system chart, the
 -- lanes map, the belt map (each switched on and off to fit what she's doing, unless the auto_view setting is
--- off) and what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card. The lanes' states as last seen
+-- off), the course she has plotted, what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card. The lanes' states as last seen
 -- (each character's, by Char.Status's name), and each belt's log (her track and sweeps in it), are kept in Mallard's storage, so they
 -- outlive a restart. All state lives here; the panel is a
 -- pure presentation layer that asks for a replay with "ready".
@@ -16,6 +16,7 @@ local N = require('station_map.lanes')
 local W = require('station_map.work')
 local M = require('station_map.manoeuvre')
 local A = require('station_map.action')
+local K = require('station_map.course')
 local B = require('station_map.belt')
 
 local panel = mud.panel('map')
@@ -26,6 +27,7 @@ local lanes = N.new()
 local work = W.new()
 local manoeuvre = M.new()
 local doing = A.new()
+local course = K.new()
 local belt = B.new()
 
 -- storage is per plugin and world, but charts are per character, so the lanes' sightings are kept under
@@ -115,6 +117,10 @@ end
 
 local function post_action()
   panel:post('action', A.message(doing))
+end
+
+local function post_course()
+  panel:post('course', K.message(course))
 end
 
 local function post_settings()
@@ -247,6 +253,10 @@ local function on_gmcp(package, data)
     if A.char_action(doing, data, os.time()) then post_action() end
     return
   end
+  if name == 'ship.course' then
+    if K.ship_course(course, data) then post_course() end
+    return
+  end
   local both = scene_reducers[name]
   if both then
     both(data)
@@ -256,7 +266,7 @@ local function on_gmcp(package, data)
 end
 
 -- Subscribe with the names Mallard advertises (original casing).
-for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Char.Status', 'Char.Action' }) do
+for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Ship.Course', 'Char.Status', 'Char.Action' }) do
   gmcp.on(prefix, on_gmcp)
 end
 
@@ -274,6 +284,7 @@ world.on('disconnect', function()
   save_lanes()
   if W.reset(work) then post_work() end
   if A.reset(doing) then post_action() end
+  if K.reset(course) then post_course() end
   if B.reset(belt) then post_belt() end
   save_belts()
   doing_now = nil -- the views stay as they are; the first status after it fits them
@@ -295,6 +306,7 @@ panel:on_message('ready', function()
   if B.on(belt) then post_belt_on() end
   if next(W.message(work)) then post_work() end
   if A.message(doing).action then post_action() end
+  if K.message(course).course then post_course() end
 end)
 
 panel:on_message('chart', function(data)

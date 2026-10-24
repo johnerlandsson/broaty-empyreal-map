@@ -107,6 +107,9 @@ the star system you're in: the star, planets and stations, each where it is now
 and moving, the belts drawn as arcs as wide as the game's doubt about them
 (wider the longer since they were seen, and a ring once lost), the lane mouths
 at the edge, and your ship in amber with her route when she's under way.
+With a course plotted and her stopped or docked, a faint dotted line runs to
+where it aims and a card in the corner gives where to, the distance, time and
+fuel, whether the plot came out ragged, and how long ago you plotted it.
 Zoom and drag as on a plan, ⌂ to frame. It shows only what you know: while she
 searches for a belt the arc lights up instead of her path, and a lane mouth
 gets a mark only if the game says where it faces: a stable lane's does, a wild

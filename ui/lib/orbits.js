@@ -280,6 +280,31 @@ export function shipFix(index, ship, t) {
   return { kind: "none" };
 }
 
+// The course she has plotted (Ship.Course, gmcp.md §8.6) while she's at rest: a line from where
+// she is to where it aims, the destination's place at wall-clock ms `at` plus its `seconds`, when
+// she'd arrive had she left as it was plotted. The game works the aim out once and doesn't send it,
+// so this does the same: fixed in the frame of the nearest body that holds both ends, it rides with
+// that body and never follows the destination round. `from` and `to` in km from the star at t (ms),
+// or null: under way (her trip line has it), for a ship (the charts don't place her), or where
+// either end can't be placed.
+export function courseLine(index, ship, course, t) {
+  const to = typeof course?.to === "string" ? course.to : null;
+  const at = num(course?.at);
+  const seconds = num(course?.seconds);
+  if (!to || at === null || seconds === null) return null;
+  const fix = shipFix(index, ship, t);
+  if (fix.kind !== "at" || !fix.pos?.every(Number.isFinite)) return null;
+  const here = fix.place ?? stopFix(index, ship.stop)?.frame ?? null;
+  const frame = here === null ? null : frameOf(index, here, to);
+  if (frame === null) return null;
+  const arrive = at + seconds * 1000;
+  const d = positionOf(index, to, arrive);
+  const fa = positionOf(index, frame, arrive);
+  const f = positionOf(index, frame, t);
+  if (!d || !fa || !f) return null;
+  return { from: fix.pos, to: [f[0] + d[0] - fa[0], f[1] + d[1] - fa[1]], frame, arrive };
+}
+
 const apo = (orbit) => (num(orbit?.a) ?? 0) * (1 + Math.min(Math.max(num(orbit?.e) ?? 0, 0), 0.95));
 
 // Km from the star to the edge of what is charted: the lane mouths' distance, else the
@@ -303,8 +328,20 @@ export function systemRadius(index) {
   return far > 0 ? far : 1000;
 }
 
-// The km box [minX, minY, maxX, maxY] to open the chart on.
-export function homeBox(index, ship, t) {
+// The km box [minX, minY, maxX, maxY] to open the chart on; at rest with a course plotted, it
+// takes in where the course aims too.
+export function homeBox(index, ship, t, course = null) {
+  const box = restBox(index, ship, t);
+  const line = course ? courseLine(index, ship, course, t) : null;
+  if (!line) return box;
+  const xs = [box[0], box[2], line.from[0], line.to[0]];
+  const ys = [box[1], box[3], line.from[1], line.to[1]];
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const pad = 0.1 * Math.max(Math.abs(line.to[0] - line.from[0]), Math.abs(line.to[1] - line.from[1]));
+  return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
+}
+
+function restBox(index, ship, t) {
   const whole = () => {
     const r = 1.08 * systemRadius(index);
     return [-r, -r, r, r];

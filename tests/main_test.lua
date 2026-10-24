@@ -42,13 +42,14 @@ local function boot(opts)
   package.loaded['station_map.work'] = nil
   package.loaded['station_map.manoeuvre'] = nil
   package.loaded['station_map.action'] = nil
+  package.loaded['station_map.course'] = nil
   package.loaded['station_map.belt'] = nil
   local real_require = require
   _G.require = function(name)
     if name == 'station_map.location' or name == 'station_map.scene'
         or name == 'station_map.charts' or name == 'station_map.lanes' or name == 'station_map.work'
         or name == 'station_map.manoeuvre'
-        or name == 'station_map.action' or name == 'station_map.belt' then
+        or name == 'station_map.action' or name == 'station_map.course' or name == 'station_map.belt' then
       env.requires[#env.requires + 1] = name
       package.loaded[name] = nil
     end
@@ -84,7 +85,7 @@ test('wires panel and requires each module once', function()
   local env = boot()
   eq(env.panel_id, 'map')
   eq(env.requires, { 'station_map.location', 'station_map.scene', 'station_map.charts', 'station_map.lanes',
-    'station_map.work', 'station_map.manoeuvre', 'station_map.action', 'station_map.belt' })
+    'station_map.work', 'station_map.manoeuvre', 'station_map.action', 'station_map.course', 'station_map.belt' })
   eq(type(env.gmcp_handlers['mudstd.room.info']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Room']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Vehicle']), 'function')
@@ -93,6 +94,7 @@ test('wires panel and requires each module once', function()
   eq(type(env.gmcp_handlers['Space.Charts']), 'function')
   eq(type(env.gmcp_handlers['Char.Status']), 'function')
   eq(type(env.gmcp_handlers['Char.Action']), 'function')
+  eq(type(env.gmcp_handlers['Ship.Course']), 'function')
   eq(type(env.world_handlers.disconnect), 'function')
   eq(type(env.panel_handlers.ready), 'function')
   eq(type(env.settings_handlers.change), 'function')
@@ -786,6 +788,43 @@ test('disconnect posts doing nothing, if something was under way', function()
   env.posts = {}
   env.world_handlers.disconnect()
   eq(post_named(env, 'action').data, {})
+end)
+
+local COURSE = { to = 'cinders', name = 'The Cinders', km = 2000, seconds = 231, fuel = 6.4, ragged = false, at = 1792828800000 }
+
+test('Ship.Course posts the course she has plotted, and null posts none, once', function()
+  local env = boot()
+  local h = env.gmcp_handlers['Ship.Course']
+  h('Ship.Course', COURSE)
+  eq(names(env), { 'course' })
+  eq(env.posts[1].data, { course = COURSE })
+  env.posts = {}
+  h('Ship.Course', COURSE)
+  eq(#env.posts, 0)
+  h('Ship.Course', nil)
+  h('Ship.Course', nil)
+  eq(names(env), { 'course' })
+  eq(env.posts[1].data, {})
+end)
+
+test('ready replays a course, and not none', function()
+  local env = boot()
+  env.panel_handlers.ready({})
+  eq(post_named(env, 'course'), nil)
+  env.gmcp_handlers['Ship.Course']('Ship.Course', COURSE)
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(post_named(env, 'course').data.course.name, 'The Cinders')
+end)
+
+test('disconnect posts no course, if there was one', function()
+  local env = boot()
+  env.world_handlers.disconnect()
+  eq(post_named(env, 'course'), nil)
+  env.gmcp_handlers['Ship.Course']('Ship.Course', COURSE)
+  env.posts = {}
+  env.world_handlers.disconnect()
+  eq(post_named(env, 'course').data, {})
 end)
 
 -- The belt map (src/station_map/belt.lua).

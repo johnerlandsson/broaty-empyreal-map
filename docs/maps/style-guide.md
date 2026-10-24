@@ -398,6 +398,12 @@ what it draws and how.
   the stretch behind solid in amber at .25, and a 5 px amber ring at where
   the destination will be when she arrives. Bound somewhere she can't be
   placed from, only the ring.
+- **Her plotted course** (at rest, with one stored): amber dotted `1 4` at
+  .45 from her chevron to where it aims, fixed when plotted, with a 4 px
+  amber ring at .5 there; and a card top left, rimmed amber as the action
+  card is, saying where to, its km, time and fuel, "ragged" in amber, and
+  how long ago it was plotted. The scale bar goes under the card. Under way,
+  her route takes over and both go.
 - **Searching for a belt:** no chevron and no route. The belt's arc (a lost
   belt's whole dashed ring) is lit amber and pulses.
 
@@ -433,7 +439,7 @@ what it draws and how.
   ring and so has no one place to point at, nor a body whose disc reaches into
   the band (the star's, out to 1.6 times its radius, where its glow is still
   half as bright), since you can see it.
-- **Scale bar:** top left, Dim, a 1, 2 or 5 × 10ⁿ km bar with end ticks and
+- **Scale bar:** top left (under the course card when it's there), Dim, a 1, 2 or 5 × 10ⁿ km bar with end ticks and
   its length above it, 9.
 
 ### 13.4 Behaviour

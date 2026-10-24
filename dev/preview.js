@@ -19,6 +19,9 @@
 //             docked-tiss, landed-zennor, none, maelor, maelor-lanes, edge, to-mouth, adrift, from-stop, to-tamsin,
 //             high-orbit or high-orbit-unknown), emitting charts, chart-ship and
 //             chart { on: true }; the bar's menu switches it
+//   ?course=K open the system chart with a plotted course (cinders-tiss, ragged-orrin, contact, from-orbit or
+//             under-way, where the trip line has taken over), emitting course too; the bar's menu
+//             switches it
 //   ?lanes=L  open the lanes map on scenario L (senara, in-trunk, in-mid, dozmary, petroc, new or partly), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it. &zoom=F opens it zoomed by F, &unfold with
 //             its key's card unfolded
@@ -469,6 +472,35 @@ function emitChart(name) {
 }
 chartMenu.addEventListener("change", () => emitChart(chartMenu.value));
 
+// --- the course she has plotted: what the Lua side's course reducer posts --------------------
+
+const courseMenu = document.getElementById("course");
+const COURSES = {
+  // docked at T.I.S.S., plotted for the Cinders four minutes ago
+  "cinders-tiss": ["docked-tiss", { to: "cinders", name: "The Cinders", km: 2000, seconds: 231, fuel: 6.4, ragged: false, ago: 4 * 60000 }],
+  // parked at Gannet, a failed plot for Orrin Station over an hour ago
+  "ragged-orrin": ["parked-gannet", { to: "orrin_station", name: "Orrin Station", km: 9840, seconds: 1265, fuel: 31.2, ragged: true, ago: 72 * 60000 }],
+  // a ship on the sweep, seen only by her signature: the charts can't place her, so the card alone
+  contact: ["at-point", { to: "contact-2", name: "contact-2", km: 610, seconds: 95, fuel: 1.8, ragged: false, ago: 20000 }],
+  // in high orbit over Tamsin, plotted for the Cinders: the line from her place on the ring
+  "from-orbit": ["high-orbit", { to: "cinders", name: "The Cinders", km: 1400, seconds: 170, fuel: 4.6, ragged: false, ago: 90000 }],
+  // flying the course: her trip line has it, and the card goes
+  "under-way": ["under-way-orrin", { to: "orrin_station", name: "Orrin Station", km: 6900, seconds: 420, fuel: 20, ragged: false, ago: 3 * 60000 }],
+};
+
+function emitCourse(name) {
+  const c = COURSES[name];
+  if (!c) {
+    fp.emit("course", {});
+    return;
+  }
+  const [scenario, { ago, ...course }] = c;
+  chartMenu.value = scenario;
+  emitChart(scenario);
+  fp.emit("course", { course: { ...course, at: Date.now() - ago } });
+}
+courseMenu.addEventListener("change", () => emitCourse(courseMenu.value));
+
 // --- the core lanes map: what the Lua side's lanes reducer posts ----------------------------
 
 const lanesMenu = document.getElementById("lanes");
@@ -777,6 +809,10 @@ function start() {
   if (q.has("chart")) {
     chartMenu.value = q.get("chart");
     emitChart(chartMenu.value);
+  }
+  if (q.has("course")) {
+    courseMenu.value = q.get("course");
+    emitCourse(courseMenu.value);
   }
   if (q.has("lanes")) {
     lanesMenu.value = q.get("lanes");

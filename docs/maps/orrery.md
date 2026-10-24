@@ -6,8 +6,9 @@
 
 A true-scale chart of the star system you're in, drawn over the top band: the
 star, the planets, the stations, the belts with how sure the game is of where
-they are, the lane mouths, your ship, and her route when she's under way. Every
-mark is worked out from the clock, so it moves.
+they are, the lane mouths, your ship, her route when she's under way, and the
+course she has plotted while she's stopped or docked. Every mark is worked out
+from the clock, so it moves.
 
 It shows while the **◎** button is on. The button sits left of the band's
 + − ⌂ and appears once the game has sent the charts, docked or not, aboard a
@@ -107,6 +108,25 @@ that ring, not at the planet's centre, and her next trip starts from the ring
 course was plotted, a little before she sets out if she plotted at the berth,
 so the side can be a few degrees off.)
 
+**The course she has plotted.** Since 2026-10-24 (Empyreal cbcc84f and
+664c662) `plot` stores a course, and `Ship.Course` carries it (gmcp.md §8.6):
+`to` (a location id, or for a ship her vessel key or `contact-N`), `name`,
+`km`, `seconds`, `fuel` from where she'd be when it was done, `ragged` (a
+failed plot, ×1.15 time and fuel) and `at`, wall-clock ms it was plotted. It's
+null with no course, or no ship. The game sends it as a plot finishes, and
+null as she arrives or `plot clear` drops it; a plot still being worked out
+isn't sent. It comes under the `Ship 1` the plugin already advertises, and
+`Ship.Course` is in `gmcp_access`.
+
+The game aims a course at a fixed point: where the place would be on arriving,
+in the frame it rides in. That point isn't sent, so the chart works out the
+same one, once: the destination's position at `at` plus `seconds`, fixed in the
+frame of the nearest body that holds her and it (the trip line's frame). It
+rides with that body and **never follows the destination round**: an old plot's
+line ends where the place was going to be, which may be well behind it now, as
+flying it would find. The game adds the undock's few seconds to a course
+plotted at a berth; the chart doesn't, which moves the point by a few km.
+
 Out of a lane, the game sends her status at the far mouth before the new
 system's charts. Crossing into a new system forgets only what isn't one of its
 bodies or places, so her first trip from the mouth still has its start.
@@ -161,13 +181,33 @@ Everything the style guide's §13 draws:
   still shows.
 - **Your ship** as an amber chevron, and **her route** dashed ahead, solid
   behind, with a ring where she'll arrive. Nothing else on the chart is amber
-  except a belt she's searching, and the ring of a high orbit she's in.
+  except a belt she's searching, the ring of a high orbit she's in, and the
+  course she has plotted.
 - **In high orbit**, an amber dashed ring round the planet at 1.5 times its
   disc as drawn (so it stays outside a disc drawn bigger than it is), her
   chevron on it on the side she came in from, and the ring named "high orbit
   over Tamsin" above it. With her side unknown it's the ring alone, a little
   stronger, as the neutral mark; hovered, "high orbit over Tamsin, which side
   not known". ⌂ frames the planet out to its furthest satellite.
+- **The course she has plotted**, while she's docked, landed, parked or
+  stopped: a line from her chevron to where it aims, amber dotted `1 4` at
+  .45, fainter than a trip's line, with a 4 px amber ring at .5 at the aim.
+  In high orbit it starts from her chevron on the ring. It isn't drawn for a
+  course to a ship (the charts don't place her), to a wild lane's mouth (no
+  bearing), in high orbit with her side not known, or where her place can't
+  be worked out; the card still shows. Its destination is never folded into its parent. Once
+  she's under way her route takes over, and the line goes.
+- **The course card**, top left over the chart, while she's at rest with a
+  course: "Course for The Cinders", then "2,000 km · 3m 51s · 7 fuel" as the
+  game words them, then "plotted 4m ago" ("just now" under a minute), with
+  "ragged" in amber before it for a failed plot. The scale bar moves down
+  under it. It goes once she's under way.
+
+  ```
+  ┌ Course for Orrin Station       ┐
+  │ 9,840 km · 21m 5s · 32 fuel    │
+  └ ragged · plotted 1h 12m ago    ┘
+  ```
 - **Names** are small and Dim. A planet's satellite is named only once its
   orbit is 80 px across (it is drawn, and hoverable, before). A satellite whose
   orbit is under 8 px across folds into its parent, unless it's where she is or
@@ -182,7 +222,7 @@ Everything the style guide's §13 draws:
   and markers within 48 px whose names would overlap stack them as one, a line
   each. A name that still overlaps one already placed goes on the other side of
   its own chevron if there's room; bigger stacks are placed first.
-- **A scale bar**, top left.
+- **A scale bar**, top left, under the course card when there is one.
 - **Hover** any mark for its name; a belt's error and when it was seen; a
   port's planet; where she's bound and when she'll arrive, or where she's
   docked or landed; "closed" under a closed mouth's name.
@@ -191,10 +231,11 @@ Everything the style guide's §13 draws:
 in to 1,000 km across and out to 2.3 times the system's radius, times the band's
 width over its height when that's more than 1, so the whole system always fits a
 wide band. ⌂ frames her line and her when she's under way, else the body she's
-nearest with its satellites, else the whole system. The view reframes itself
-only when the chart is turned on, when the system changes (and again on the
-first ship status after it), and when a trip starts or ends while you haven't
-zoomed or panned since. Until you pan or zoom, it also follows her, keeping the
+nearest with its satellites (and the course's aim, when one is drawn), else
+the whole system. The view reframes itself only when the chart is turned on,
+when the system changes (and again on the first ship status after it), and
+when a trip starts or ends, or a course is plotted or cleared, while you
+haven't zoomed or panned since. Until you pan or zoom, it also follows her, keeping the
 zoom, when she drifts out from where ⌂ or a resize left her by more than 35% of
 the view. Once you pan or zoom, it holds still until ⌂.
 
@@ -218,15 +259,25 @@ Unchanged: it says where you are aboard.
   state (`name`, `from`, the held point, `searching`, `received`, `depart`,
   `stop`, the high orbit she's `over` and the one a trip left, `from_over`)
   and the chart's on/off, which a disconnect leaves as it was. Pure; tests in `tests/charts_test.lua`.
+- `src/station_map/course.lua`: the course reducer. Cleans `Ship.Course` into
+  `{ course = { to, name, km, seconds, fuel, ragged, at } }`, or `{}` for none:
+  no `to` is no course, no name falls back to `to`, and a figure that isn't a
+  finite number of 0 or more is left out. Tests in `tests/course_test.lua`.
 - `src/main.lua`: posts `charts`, `chart-ship` and `chart` `{on}` to the panel
   when they change, takes the choice back from the panel, and replays all three
-  on `ready`.
+  on `ready`; posts `course` as it changes, replays it on `ready` and clears it
+  on disconnect (`tests/main_test.lua`).
 - `ui/lib/orbits.js`: pure maths with no DOM. Kepler's equation, positions at a
   time, the transit line and her position, error growth, framing boxes, the
-  off-view markers and folding, and spreading crowded mouths and stacking
-  crowded markers. Tests in `ui/lib/orbits.test.js`.
+  off-view markers and folding, spreading crowded mouths and stacking
+  crowded markers, and the course's line (`courseLine`). Tests in
+  `ui/lib/orbits.test.js`.
+- `ui/lib/course.js`: `courseCard(msg, ship, now)`, the card's words for the
+  moment, or null under way or with no course. Tests in `ui/lib/course.test.js`.
 - `ui/chart-view.js`: the SVG, the ◎ button, zoom and pan (`attachPanZoom` and
-  `zoomButtons` from `ui/lib/svg.js`), following her, the tooltips.
+  `zoomButtons` from `ui/lib/svg.js`), following her, the tooltips, the course's
+  line and its card (`.course-card` in `ui/map.css`), which updates on each
+  redraw, so its age needs no timer of its own.
 - `ui/main.js`: wires the messages to the chart and keeps the redraw timer.
   `setCovered` in `ui/space-view.js` stops the scene drawing while the chart is
   over it.
@@ -236,7 +287,14 @@ Unchanged: it says where you are aboard.
   `at-point`, `docked-tiss`, `landed-zennor`, `none`, `maelor`, `maelor-lanes` for Maelor's
   three mouths with the Petroc branch closed, `edge` for Senara's mouth with
   its bearing, `to-tamsin` under way to high orbit, or `high-orbit` and
-  `high-orbit-unknown` up there with her side known or not). The bar's menu switches between them.
+  `high-orbit-unknown` up there with her side known or not). The bar's menu switches between them. `?course=` opens it with
+  a course: `cinders-tiss` (docked, plotted 4m ago), `ragged-orrin` (parked at
+  Gannet, a ragged plot over an hour old, its aim fallen behind the station),
+  `contact` (a ship seen by her signature: the card alone), `from-orbit`
+  (in high orbit over Tamsin, the line from her place on the ring) or `under-way` (her
+  trip line has it, and the card goes).
+  `docs/maps/reference/course-options.png` has the three looks weighed for the
+  course; the amber dotted one was picked.
   `docs/maps/reference/closed-mouth-mockup.html` has the three looks weighed
   for a closed mouth; the dashed one was picked.
 
@@ -245,5 +303,11 @@ Unchanged: it says where you are aboard.
 - Drawn as SVG, but redrawn from scratch every second (and about ten times a
   second while she's under way) rather than animated, because every position
   comes from the clock.
-- Amber marks something that isn't a model highlight: her route, and a belt
-  she's searching for.
+- Amber marks something that isn't a model highlight: her route, a belt
+  she's searching for, and the course she has plotted, which is her route
+  before she flies it.
+- **The course card is chrome over the chart**, as the action card is over a
+  plan (style guide §3, action-card.md): the same size at any zoom, rimmed in
+  its amber, ignoring the pointer. It has no bar and no seconds, since
+  nothing's counting down; its age ticks with the chart's own redraws. It
+  pushes the scale bar down rather than covering it.

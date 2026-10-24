@@ -9,6 +9,7 @@ import {
   HIGH_ORBIT,
   ago,
   clusters,
+  courseLine,
   edgeMarker,
   errorAt,
   fitBox,
@@ -30,6 +31,7 @@ import {
   spreadOnEdge,
   systemRadius,
 } from "./lib/orbits.js";
+import { courseCard } from "./lib/course.js";
 import { attachPanZoom, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
@@ -96,6 +98,7 @@ export class ChartView {
     this.onToggle = opts.onToggle ?? (() => {});
     this.index = null;
     this.ship = null;
+    this.course = null; // the course message from the Lua side: { course } or {}
     this.on = false;
     this.touched = false; // zoomed or panned since the view was last framed
     this.vb = [-EDGE_KM, -EDGE_KM, 2 * EDGE_KM, 2 * EDGE_KM];
@@ -152,6 +155,15 @@ export class ChartView {
     this.lit = el("g", {}, this.pulse);
     el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, this.pulse);
     this.over = el("g", { "pointer-events": "none" }, svg); // edge markers and the scale bar
+
+    // the course she has plotted, while she's at rest: a card in the corner, as the action card is
+    const card = document.createElement("div");
+    card.className = "course-card";
+    card.setAttribute("aria-hidden", "true");
+    card.hidden = true;
+    card.innerHTML = '<div class="label"></div><div class="figures"></div><div class="detail"><span class="ragged">ragged</span><span class="age"></span></div>';
+    div.appendChild(card);
+    this.card = card;
 
     this.zoom = attachPanZoom(div, () => this.vb, (v) => this.userView(v), { minW: 1000, maxW: Infinity });
     zoomButtons(div, "8px", (f) => {
@@ -238,6 +250,15 @@ export class ChartView {
     else this.draw(t);
   }
 
+  /** The course message from the Lua side: { course } while one is stored, else {}. */
+  setCourse(msg) {
+    const was = this.course?.course?.at ?? null;
+    this.course = msg && typeof msg === "object" ? msg : null;
+    // a course plotted or cleared reframes a view you haven't touched, as a trip starting does
+    if (!this.touched && (this.course?.course?.at ?? null) !== was) this.home();
+    else this.draw(Date.now());
+  }
+
   /** Switch the chart on or off (from the Lua side's replay or the ◎ button). */
   setOn(on) {
     on = !!on;
@@ -272,7 +293,7 @@ export class ChartView {
     const t = Date.now();
     const [w, h] = this.size();
     safe(() => {
-      const vb = fitBox(homeBox(this.index, this.ship, t), w, h);
+      const vb = fitBox(homeBox(this.index, this.ship, t, this.course?.course), w, h);
       if (vb.every(Number.isFinite)) this.vb = this.clamp(vb);
     });
     this.draw(t);
@@ -384,7 +405,9 @@ export class ChartView {
     };
 
     const items = [...index.items.values()];
-    const keep = new Set([fix.place, this.ship?.destination].filter(Boolean));
+    let line = null;
+    safe(() => (line = courseLine(index, this.ship, this.course?.course, t)));
+    const keep = new Set([fix.place, this.ship?.destination, line && this.course.course.to].filter(Boolean));
     // folded into its parent (style guide §13.2), or the satellite of something folded
     const foldedParent = (it) => {
       const p = index.items.get(it.orbit.parent);
@@ -622,12 +645,17 @@ export class ChartView {
         tip(g, "orbit", shipName, fix.orbit.angle === null ? `${where}, which side not known` : where);
         if (fix.orbit.angle !== null) {
           const a = fix.orbit.angle;
-          tip(chevron(lit, [x + Math.cos(a) * r, y - Math.sin(a) * r], -Math.PI / 2), "ship", shipName, where);
+          const me = [x + Math.cos(a) * r, y - Math.sin(a) * r];
+          // her course from her place on the ring; with her side not known, the card alone
+          if (line) courseMark(marks, me, P(line.to));
+          tip(chevron(lit, me, -Math.PI / 2), "ship", shipName, where);
         }
       } else if (fix.kind === "at" && herPos) {
         // at a port, on its dome: the planet's disc may be drawn bigger than it is
         const at = fix.place ? ground(fix.place) : null;
-        const c = chevron(lit, at ? [at.x, at.y] : P(herPos), -Math.PI / 2);
+        const me = at ? [at.x, at.y] : P(herPos);
+        if (line) courseMark(marks, me, P(line.to));
+        const c = chevron(lit, me, -Math.PI / 2);
         const docked = at ? "landed at" : "docked at";
         // at no place: stopped mid-trip, at rest where she was
         const where = fix.place ? `${this.ship?.docked ? docked : at ? "over" : "at"} ${nameOf(fix.place)}` : "adrift";
@@ -722,12 +750,14 @@ export class ChartView {
       });
     }
 
-    // the scale bar, top left
+    // the course card, and the scale bar top left (under the card when it's there)
+    let below = 0;
+    safe(() => (below = this.drawCard(t)));
     safe(() => {
       const km = scaleKm(s, 90);
       const L = km / s;
       const x = 16;
-      const y = 18;
+      const y = 18 + below;
       el("line", { x1: x, y1: y, x2: x + L, y2: y, stroke: DIM, "stroke-width": 1 }, over);
       for (const xx of [x, x + L]) el("line", { x1: xx, y1: y - 3, x2: xx, y2: y + 3, stroke: DIM, "stroke-width": 1 }, over);
       const tx = el("text", { x: x + L / 2, y: y - 6, "font-size": 9, fill: DIM, "text-anchor": "middle", "font-family": FONT });
@@ -741,6 +771,21 @@ export class ChartView {
     this.over.replaceChildren(over);
     this.tips = tips;
     this.refreshTip();
+  }
+
+  /** Fill the course card for t (ms), or hide it; the px it takes at the top left, if it's there. */
+  drawCard(t) {
+    const card = courseCard(this.course, this.ship, t);
+    this.card.hidden = !card;
+    if (!card) return 0;
+    this.card.querySelector(".label").textContent = card.label;
+    const figures = this.card.querySelector(".figures");
+    figures.textContent = card.figures;
+    figures.hidden = !card.figures;
+    this.card.querySelector(".ragged").hidden = !card.ragged;
+    this.card.querySelector(".age").textContent = card.ragged && card.age ? ` · ${card.age}` : card.age;
+    this.card.querySelector(".detail").hidden = !card.ragged && !card.age;
+    return this.card.offsetHeight + 8;
   }
 
   hoverAt(target) {
@@ -776,6 +821,14 @@ export class ChartView {
     this.tipKey = null;
     this.tipShown = null;
   }
+}
+
+/** The plotted course from her at a (px) to its aim at b: her route in waiting, amber, dotted and
+ *  fainter than a trip's, with a smaller ring where it aims. Under her chevron. */
+function courseMark(g, a, b) {
+  const off = { "pointer-events": "none" };
+  el("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: HL, "stroke-opacity": 0.45, "stroke-width": 1.2, "stroke-dasharray": "1 4", "stroke-linecap": "round", ...off }, g);
+  el("circle", { cx: b[0], cy: b[1], r: 4, fill: "none", stroke: HL, "stroke-opacity": 0.5, "stroke-width": 1, ...off }, g);
 }
 
 /** An amber chevron at p (px), pointing `angle` (radians, screen), into the pulse group. */

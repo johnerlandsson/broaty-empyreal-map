@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  EDGE_KM, ago, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
+  EDGE_KM, ago, courseLine, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
   HIGH_ORBIT, clusters, daylit, followStep, highOrbit, isClosed, orbitLit, markOf, mouthLabel, offCentre, offsetOn, onSurface, overlapping, parentOf,
   parsePoint, positionOf, scaleKm, shipFix, spreadOnEdge, stopFix, systemRadius,
 } from "./orbits.js";
@@ -335,6 +335,19 @@ describe("homeBox", () => {
     expect(x1).toBeGreaterThan(Math.max(...xs));
     expect(Math.min(...xs) - x0).toBeGreaterThanOrEqual(0.15 * span - 1e-6);
     expect(y1).toBeGreaterThan(y0);
+  });
+  it("at rest with a course plotted, takes in where it aims as well", () => {
+    const ship = { docked: true, location: "gannet" };
+    const course = { to: "orrin_station", seconds: 600, at: T };
+    const plain = homeBox(idx, ship, T);
+    const b = homeBox(idx, ship, T, course);
+    const aim = courseLine(idx, ship, course, T).to;
+    expect(b[0]).toBeLessThanOrEqual(Math.min(plain[0], aim[0]));
+    expect(b[1]).toBeLessThanOrEqual(Math.min(plain[1], aim[1]));
+    expect(b[2]).toBeGreaterThanOrEqual(Math.max(plain[2], aim[0]));
+    expect(b[3]).toBeGreaterThanOrEqual(Math.max(plain[3], aim[1]));
+    // a ship's course, which the charts can't place, frames as no course
+    expect(homeBox(idx, ship, T, { ...course, to: "contact-2" })).toEqual(plain);
   });
   it("never throws or returns NaN on junk", () => {
     const b = homeBox(indexCharts(null), { docked: true, location: "x" }, T);
@@ -757,5 +770,62 @@ describe("stops mid-trip", () => {
       expect(p[1]).toBeGreaterThan(box[1]);
       expect(p[1]).toBeLessThan(box[3]);
     }
+  });
+});
+
+describe("courseLine", () => {
+  const near = (a, b) => {
+    expect(a[0]).toBeCloseTo(b[0], 6);
+    expect(a[1]).toBeCloseTo(b[1], 6);
+  };
+  const docked = { docked: true, location: "tiss" };
+  const course = { to: "gannet", name: "Gannet", km: 2000, seconds: 300, fuel: 6, ragged: false, at: 1000000 };
+
+  it("runs from her to where the destination will be as she'd arrive, in the frame both share", () => {
+    const line = courseLine(idx, docked, course, T);
+    expect(line.frame).toBe("tamsin");
+    expect(line.arrive).toBe(1300000);
+    near(line.from, positionOf(idx, "tiss", T));
+    const f = positionOf(idx, "tamsin", T);
+    const off = offsetOn(idx.items.get("gannet").orbit, 0, 1300000);
+    near(line.to, [f[0] + off[0], f[1] + off[1]]);
+  });
+
+  it("doesn't follow the destination round: later, the end has moved only with the frame", () => {
+    const a = courseLine(idx, docked, course, T);
+    const b = courseLine(idx, docked, course, T + 600000);
+    const fa = positionOf(idx, "tamsin", T);
+    const fb = positionOf(idx, "tamsin", T + 600000);
+    near([b.to[0] - fb[0], b.to[1] - fb[1]], [a.to[0] - fa[0], a.to[1] - fa[1]]);
+    expect(Math.hypot(b.to[0] - positionOf(idx, "gannet", T + 600000)[0], b.to[1] - positionOf(idx, "gannet", T + 600000)[1])).toBeGreaterThan(100);
+  });
+
+  it("from a point or a stop mid-trip as from a place", () => {
+    const p = courseLine(idx, { docked: false, point: "pt:tamsin:1500:-2000" }, course, T);
+    expect(p.frame).toBe("tamsin");
+    near(p.from, positionOf(idx, "pt:tamsin:1500:-2000", T));
+    const stop = { from: "tiss", destination: "gannet", depart: 900, arrive: 1100, at: 1000 };
+    const s = courseLine(idx, { docked: false, stop }, course, T);
+    expect(s.frame).toBe("tamsin");
+    near(s.from, shipFix(idx, { docked: false, stop }, T).pos);
+  });
+
+  it("across frames, in the star's", () => {
+    const line = courseLine(idx, docked, { ...course, to: "orrin_station" }, T);
+    expect(line.frame).toBe("senara");
+    near(line.to, positionOf(idx, "orrin_station", 1300000));
+  });
+
+  it("is none under way, for a ship, an unplaced end or a course with no time", () => {
+    const moving = { docked: false, from: "tiss", destination: "gannet", progress: 0.5, eta: 100, received: 1000 };
+    expect(courseLine(idx, moving, course, 1050000)).toBe(null);
+    expect(courseLine(idx, docked, { ...course, to: "contact-2" }, T)).toBe(null);
+    expect(courseLine(idx, docked, { ...course, to: "mouth" }, T)).not.toBe(null);
+    const wild = indexCharts(charts(null));
+    expect(courseLine(wild, docked, { ...course, to: "mouth" }, T)).toBe(null);
+    expect(courseLine(idx, null, course, T)).toBe(null);
+    expect(courseLine(idx, docked, null, T)).toBe(null);
+    expect(courseLine(idx, docked, { ...course, seconds: undefined }, T)).toBe(null);
+    expect(courseLine(idx, docked, { ...course, at: undefined }, T)).toBe(null);
   });
 });
