@@ -17,7 +17,8 @@
 //             docked-tiss, landed-zennor, none, maelor, maelor-lanes, edge, to-mouth, adrift or from-stop), emitting charts, chart-ship and
 //             chart { on: true }; the bar's menu switches it
 //   ?lanes=L  open the lanes map on scenario L (senara, in-trunk, in-mid, dozmary or petroc), emitting lanes and
-//             lanes-view { on: true }; the bar's menu switches it
+//             lanes-view { on: true }; the bar's menu switches it. &zoom=F opens it zoomed by F, &unfold with
+//             its key's card unfolded
 //   ?belt=B   open the belt map on scenario B (arriving, rcs-rim, sweeps or skiff), emitting belt messages as
 //             src/station_map/belt.lua posts them, a tick a second while she moves, and belt-view { on: true };
 //             the bar's menu switches it
@@ -443,7 +444,9 @@ chartMenu.addEventListener("change", () => emitChart(chartMenu.value));
 // --- the core lanes map: what the Lua side's lanes reducer posts ----------------------------
 
 const lanesMenu = document.getElementById("lanes");
-// ?zoom=F: once the lanes map is drawn, zoom it by F about its middle (0.5 is twice as near), as + does
+// ?zoom=F: once the lanes map is drawn, zoom it by F about its middle (0.5 is twice as near), as + does;
+// ?unfold: open it with its key's card unfolded
+if (q.has("unfold")) LanesView.prototype.unfolded = true;
 if (q.has("zoom")) {
   for (const name of ["setLanes", "setOn"]) {
     const orig = LanesView.prototype[name];

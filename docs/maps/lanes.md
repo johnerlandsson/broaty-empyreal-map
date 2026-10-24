@@ -100,7 +100,8 @@ are "now".
 
 ## Top band
 
-The ring, with the Mid inside it and a key at the right
+The ring, with the Mid inside it, across the band left of the zoom buttons,
+and a key in a card in the top-left corner
 (`docs/maps/reference/lanes-ring-options.png`, option A):
 
 - **The Shallows:** a Star dot (4 px radius) for each of the twelve, evenly
@@ -123,26 +124,34 @@ The ring, with the Mid inside it and a key at the right
     `6 2.5`;
   - seen open elsewhere, and not one of your system's: dotted `2 3` in
     Glass, at .75 seen under an hour ago, .5 under a day, .3 older. Its age
-    is all the fading says;
+    is all the fading says. While the key is folded, the age is written on
+    it too ("2h", "1d", in Glass 8 on a dark tab), at its middle or nudged
+    along it to where it's clearest of the stars;
   - closed: not drawn. Your system's are counted in the key. With 178
     branches, mostly closed, every visit records about sixteen closed ones,
     and drawing them would bury the map.
-- **The key**, at the right, below ⋈, on a backdrop so a map panned under
-  it stays readable: "From Senara", then each lane open from your system,
-  its line, the star it goes to and its class (trunk, branch, Mid branch),
-  then "15 closed · as of now"; then "Seen open elsewhere", each with its
-  line, its name ("Petroc–Maelor") and "seen 2h 10m ago", as many as fit,
-  then "and 3 more".
+- **The key**, a card in the top-left corner styled as the action card is
+  (action-card.md) but with a Tone rim (`.lanes-card` in `map.css`).
+  Folded, the default, it's one line, "From Senara · 4 open · 15 closed",
+  and a ▸ that unfolds it: the open lanes are on the map, and the ages of
+  the ones seen elsewhere are written on them. Unfolded (▾), it lists each
+  lane open from your system with its line, the star it goes to and its
+  class (trunk, branch, Mid branch), then "Seen open elsewhere", each with
+  its line, its name ("Petroc–Maelor") and "2h 10m ago". A list taller than
+  the band scrolls. It folds back with ▾, and stays as you left it while the
+  panel's open. The key was first a 150 px column at the right, which
+  took too much of a narrow panel; the options it was picked
+  from are `docs/maps/reference/lanes-key-options.png` (C).
 - **You are here:** an amber ring round your system's dot, with the glow,
   pulsing (§6). Not drawn while she's in a lane.
 - **In a lane:** the lane is lit amber, solid at .3 behind her, dashed `4 4`
   at .7 ahead. Her amber chevron sits at her progress, pointing the way she's
-  going. The key's top lines say "in the Maelor lane" and "3m 40s to go" in
-  amber, naming the far star as the game does. Her system is the far one
+  going. The card's top line says "in the Maelor lane" in amber, naming
+  the far star as the game does, with the time left at its right. Her system is the far one
   already (the game moves her there as she goes in), so the key's lanes are
   its.
-- **Zoom and pan:** the wheel, a drag, and the + − ⌂ buttons below ⋈'s row
-  at the right, as on the chart. It's fitted to the band until you zoom or
+- **Zoom and pan:** the wheel, a drag (not one starting on the card), and the
+  + − ⌂ buttons at the right, as on the chart. It's fitted to the band until you zoom or
   pan, then yours until ⌂; it zooms from the fit to six times in, and no
   further out than the fit. Zooming spreads the stars: the names, dots and
   key stay their size, so names that crowd at the fit come apart.
@@ -176,7 +185,8 @@ Unchanged: it's the bottom band's.
 - `src/station_map/charts.lua` carries a mouth's `open` through to the chart.
 - `src/main.lua`: the `lanes` and `lanes-view` messages, and `storage`.
 - `dev/preview.html?lanes=senara` (also `in-trunk`, `in-mid`, `dozmary`,
-  `petroc`) shows it without the game; `&zoom=0.5` opens it zoomed in.
+  `petroc`) shows it without the game; `&zoom=0.5` opens it zoomed in, and
+  `&unfold` with the key's card unfolded.
 - The options it was picked from: `docs/maps/reference/lanes-ring-options.png`
   (A, the ring; B a departures board; C the ring unrolled into a line), and
   `lanes-ring-core-option.png`, A with a Core. The six-system timetable
@@ -189,4 +199,5 @@ Unchanged: it's the bottom band's.
   it's a diagram with even spacing, as a transit map is.
 - **Zoom keeps the text its size** (§8.3): it spreads the stars rather than
   magnifying the drawing, since what crowds at the fit is the names.
-- **No tooltips** (§13.4): every mark is named, and the key says the rest.
+- **No tooltips** (§13.4): every mark is named, and the key's card says the
+  rest.

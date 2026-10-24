@@ -120,8 +120,9 @@ galaxy's twenty systems: the Shallows' twelve round a ring of trunks, in
 order from Petroc, and the Mid's eight on a disc inside it, Dozmary and
 Garrow deepest. The lanes open now from your system are drawn, solid (a Mid
 branch dashed), and branches you've seen open elsewhere are dotted, fainter
-the longer ago you saw them. A key lists what's open from here, how many are
-closed, and what you've seen open elsewhere and when ("seen 2h 10m ago").
+the longer ago you saw them, each with its age on it ("2h"). A card in the
+corner says how many are open and closed from here; ▸ unfolds it to list
+them, and what you've seen open elsewhere and when ("2h 10m ago").
 You only find out from the charts of the system you're in, and the map
 remembers what you saw across restarts. It never guesses when a branch will
 open. Your system has the amber ring; in a lane, the lane is lit and your

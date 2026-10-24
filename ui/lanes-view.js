@@ -34,11 +34,9 @@ const TONES = ["#3a4556", "#58667b", "#7e8da3"];
 const DISC = { mid: "#0c1320", core: "#131b2b" };
 const FONT = "Inter, system-ui, sans-serif";
 
-const KEY_W = 150; // the key's column at the band's right, clear of ⋈ and the zoom buttons' column
-const KEY_TOP = 44; // below ⋈
+const ZOOM_COL = 40; // the zoom buttons' column at the band's right
 const ZOOM_IN = 6; // as far in as six times the fit
 const STEPS = 32; // segments a lane's curve is drawn in
-const BY_ID = new Map(SYSTEMS.map((s) => [s.id, s]));
 const BANDS = Object.fromEntries(SYSTEMS.map((s) => [s.id, s.band]));
 const CLASS = { trunk: "trunk", branch: "branch", mid: "Mid branch" };
 const LAYOUT = layout();
@@ -104,7 +102,21 @@ export class LanesView {
     this.pulse = el("g", {}, hot);
     this.lit = el("g", {}, this.pulse);
     el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, this.pulse);
-    this.key = el("g", {}, svg); // over the map, so a map panned under it doesn't hide it
+
+    // the key: a card in the top-left corner, folded to a line or two, unfolded to the lists
+    this.unfolded ??= false; // the preview's ?unfold sets it on the prototype
+    const card = document.createElement("div");
+    card.className = "lanes-card";
+    // a press on it is the card's, not the start of a pan
+    card.addEventListener("pointerdown", (e) => e.stopPropagation());
+    card.addEventListener("click", (e) => {
+      if (!e.target.closest("button")) return;
+      this.unfolded = !this.unfolded;
+      this.draw(Date.now());
+    });
+    div.appendChild(card);
+    this.card = card;
+    this.cardHtml = "";
 
     // the view, in layout units; fitted to the band until you zoom or pan, then yours until ⌂
     this.vb = null;
@@ -193,13 +205,13 @@ export class LanesView {
     return [this.band.clientWidth || 1, this.band.clientHeight || 1];
   }
 
-  /** The view that fits the map left of the key, the ring's names inside the band. */
+  /** The view that fits the map left of the zoom buttons, the ring's names inside the band. */
   fit() {
     const [w, h] = this.size();
-    const mapW = Math.max(w - KEY_W, 120);
+    const mapW = Math.max(w - ZOOM_COL, 120);
     const px = Math.max(Math.min((h - 48) / 200, (mapW - 104) / 200), 0.2); // px a unit
-    const cx = mapW / 2 + 6;
-    const cy = h / 2 + 2;
+    const cx = mapW / 2;
+    const cy = h / 2;
     return [-cx / px, -cy / px, w / px, h / px];
   }
 
@@ -247,7 +259,6 @@ export class LanesView {
 
     const marks = document.createDocumentFragment();
     const lit = document.createDocumentFragment();
-    const key = document.createDocumentFragment();
     const text = (parent, tx, ty, s, attrs = {}) =>
       el("text", { x: tx, y: ty, "font-size": 9, fill: DIM, "font-family": FONT, ...attrs }, parent, s);
     const points = (fn, from = 0, to = 1) =>
@@ -270,9 +281,19 @@ export class LanesView {
     }
     // the trunks: the ring, which never closes
     el("circle", { cx: ox, cy: oy, r: 100 / u, fill: "none", stroke: TONES[2], "stroke-width": 2 }, marks);
-    // branches seen open elsewhere, fading with the sighting's age
+    // branches seen open elsewhere, fading with the sighting's age, which the folded card leaves
+    // written at each one's middle
+    const ages = document.createDocumentFragment();
     for (const { lane: l, ago } of elsewhere) {
       el("polyline", { points: points(pathOf(l)), fill: "none", stroke: GLASS, "stroke-width": 1.2, "stroke-dasharray": "2 3", opacity: fade(ago) }, marks);
+      if (this.unfolded) continue;
+      // along it where it's farthest from a star, so the age doesn't sit on one's name
+      // (a name runs sideways, so a star counts as nearer across than along)
+      const clear = ([x, y]) => Math.min(...Object.values(at).map(([sx, sy]) => Math.hypot((sx - x) / 2, sy - y)));
+      const [x, y] = [0.5, 0.4, 0.6, 0.3, 0.7].map((k) => X(pathOf(l)(k))).reduce((best, p) => (clear(p) > clear(best) + 4 ? p : best));
+      const age = agoText(ago).split(" ")[0];
+      el("rect", { x: x - age.length * 2.6 - 3, y: y - 6, width: age.length * 5.2 + 6, height: 11, rx: 3, fill: BG, opacity: 0.85 }, ages);
+      text(ages, x, y + 3, age, { "text-anchor": "middle", "font-size": 8, fill: GLASS, opacity: Math.max(fade(ago), 0.6) });
     }
     // your system's lanes open now; a trunk is the ring's already
     for (const l of open) {
@@ -332,49 +353,50 @@ export class LanesView {
       });
     }
 
-    // the key: where you are, her lane, what's open from here, and what you've seen open elsewhere
-    const kx = w - KEY_W + 4;
-    const kr = w - 40; // its right edge, clear of the zoom buttons
-    let ky = KEY_TOP;
-    const rows = [];
-    const row = (dy, fn) => {
-      rows.push([ky, fn]);
-      ky += dy;
-    };
-    if (tr && fix) {
-      row(fix.left === null ? 16 : 11, (y) => text(key, kx, y, `in the ${systemName(tr.to)} lane`, { fill: HL }));
-      if (fix.left !== null) row(16, (y) => text(key, kx, y, `${span(fix.left)} to go`, { fill: HL, "font-size": 8.5 }));
-    }
-    if (here) {
-      row(14, (y) => text(key, kx, y, `From ${systemName(here)}`, { fill: TEXT, "font-size": 9.5 }));
-      for (const l of open) {
-        row(11, (y) => {
-          el("line", { x1: kx, y1: y - 3, x2: kx + 12, y2: y - 3, ...openLine(l), "stroke-width": l.class === "trunk" ? 2 : 1.6, stroke: l.class === "trunk" ? TONES[2] : GLASS }, key);
-          text(key, kx + 17, y, systemName(l.between.find((id) => id !== here)), { fill: NAME });
-          text(key, kr, y, CLASS[l.class], { "text-anchor": "end", "font-size": 8 });
-        });
-      }
-      row(17, (y) => text(key, kx + 17, y, `${closed} closed · as of now`, { "font-size": 8, opacity: 0.8 }));
-    }
-    if (elsewhere.length) {
-      row(14, (y) => text(key, kx, y, "Seen open elsewhere", { fill: TEXT, "font-size": 9.5 }));
-      const room = Math.max(0, Math.floor((h - 8 - ky) / 21));
-      const shown = elsewhere.length > room ? elsewhere.slice(0, Math.max(room - 1, 0)) : elsewhere;
-      for (const { lane: l, ago } of shown) {
-        row(21, (y) => {
-          el("line", { x1: kx, y1: y - 3, x2: kx + 12, y2: y - 3, stroke: GLASS, "stroke-width": 1.3, "stroke-dasharray": "2 3", opacity: fade(ago) }, key);
-          text(key, kx + 17, y, laneName(l.id), { fill: NAME });
-          text(key, kx + 17, y + 9, `seen ${agoText(ago)} ago`, { "font-size": 8, opacity: 0.85 });
-        });
-      }
-      if (shown.length < elsewhere.length) row(11, (y) => text(key, kx + 17, y, `and ${elsewhere.length - shown.length} more`, { "font-size": 8, opacity: 0.8 }));
-    }
-    // a backdrop behind the key, so a map zoomed or panned under it stays readable
-    if (rows.length) el("rect", { x: kx - 8, y: KEY_TOP - 14, width: kr - kx + 14, height: ky - KEY_TOP + 8, rx: 6, fill: BG, opacity: 0.8 }, key);
-    for (const [y, fn] of rows) fn(y);
+    marks.appendChild(ages); // over the stars, so a name never hides one
+    this.drawCard(t, { tr, fix, here, open, closed, elsewhere });
 
     this.marks.replaceChildren(marks);
     this.lit.replaceChildren(lit);
-    this.key.replaceChildren(key);
+  }
+
+  /** The key's card, its HTML replaced only when it changes, so its scroll and its button stay put. */
+  drawCard(t, { tr, fix, here, open, closed, elsewhere }) {
+    const esc = (v) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+    const sw = (cls, opacity = 1) => `<span class="sw ${cls}" style="opacity:${opacity}"></span>`;
+    const rows = [];
+    if (tr && fix) {
+      const left = fix.left === null ? "" : `<span class="secs">${span(fix.left)}</span>`;
+      rows.push(`<div class="row lane"><span class="label">in the ${esc(systemName(tr.to))} lane</span>${left}</div>`);
+    }
+    const fold = `<button type="button" title="${this.unfolded ? "Fold" : "Unfold"}">${this.unfolded ? "▾" : "▸"}</button>`;
+    if (here) {
+      rows.push(`<div class="row"><span class="label">From ${esc(systemName(here))} · ${open.length} open · ${closed} closed</span>${fold}</div>`);
+    } else if (elsewhere.length) {
+      rows.push(`<div class="row"><span class="label">Lanes</span>${fold}</div>`);
+    }
+    if (this.unfolded) {
+      const list = [];
+      for (const l of open) {
+        const cls = l.class === "trunk" ? "trunk" : l.class === "mid" ? "mid" : "branch";
+        list.push(`<div class="item">${sw(cls)}${esc(systemName(l.between.find((id) => id !== here)))}<span class="cls">${CLASS[l.class]}</span></div>`);
+      }
+      if (elsewhere.length) {
+        list.push(`<div class="head">Seen open elsewhere</div>`);
+        for (const { lane: l, ago } of elsewhere) {
+          list.push(`<div class="item">${sw("seen", fade(ago))}${esc(laneName(l.id))}<span class="cls">${agoText(ago)} ago</span></div>`);
+        }
+      }
+      if (list.length) rows.push(`<div class="list">${list.join("")}</div>`);
+    }
+    const html = rows.join("");
+    this.card.hidden = !html;
+    if (html !== this.cardHtml) {
+      const scroll = this.card.querySelector(".list")?.scrollTop ?? 0;
+      this.card.innerHTML = html;
+      this.cardHtml = html;
+      const list = this.card.querySelector(".list");
+      if (list) list.scrollTop = scroll;
+    }
   }
 }

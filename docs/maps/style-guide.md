@@ -487,10 +487,14 @@ A schematic of the galaxy's systems and lanes (see lanes.md), behind the
   .75 under an hour old, .5 under a day, .3 older. Each is bowed toward
   the centre. Closed ones aren't drawn; the key counts them. Nothing
   predicts a branch opening.
+- **The key:** a card in the top-left corner, as the action card
+  ([action-card.md](action-card.md)) but rimmed in the darkest Tone: folded to "From Senara · 4 open ·
+  15 closed" and a ▸, with each branch seen elsewhere's age written on it
+  in Glass 8; unfolded, the lanes listed, scrolling if it must.
 - **You are here:** the amber ring of the highlight (§6) round your system.
   **In a lane:** the lane lit amber, behind her solid at .3 and ahead dashed
-  `4 4` at .7, with her amber chevron, and "in the Maelor lane", "3m 40s to
-  go" in amber in the key.
+  `4 4` at .7, with her amber chevron, and "in the Maelor lane" and the
+  time left in amber at the top of the key.
 - **Zoom:** wheel, drag and the + − ⌂ buttons, from the fit to six times
   in. The stars spread; names, marks and the key stay their size.
 
