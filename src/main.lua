@@ -91,6 +91,10 @@ local function post_chart_ship()
   panel:post('chart-ship', C.ship(chart))
 end
 
+local function post_chart_contacts()
+  panel:post('chart-contacts', C.contacts(chart))
+end
+
 local function post_chart_on()
   panel:post('chart', { on = C.on(chart) })
 end
@@ -232,10 +236,15 @@ local function char_status(data)
   post_lanes()
 end
 
+local function space_contacts(data)
+  if C.space_contacts(chart, data) then post_chart_contacts() end
+end
+
 local scene_reducers = {
   ['ship.status'] = scene_ship,
   ['ship.devices'] = ship_devices,
   ['space.charts'] = scene_charts,
+  ['space.contacts'] = space_contacts,
 }
 
 local function on_gmcp(package, data)
@@ -266,7 +275,7 @@ local function on_gmcp(package, data)
 end
 
 -- Subscribe with the names Mallard advertises (original casing).
-for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Ship.Course', 'Char.Status', 'Char.Action' }) do
+for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Ship.Course', 'Space.Contacts', 'Char.Status', 'Char.Action' }) do
   gmcp.on(prefix, on_gmcp)
 end
 
@@ -276,9 +285,11 @@ world.on('disconnect', function()
   if S.reset(scene) then post_scene() end
   if M.reset(manoeuvre) then post_manoeuvre() end
   -- The chart stays on: the panel hides it, and its ◎, with no charts.
+  local had_contacts = C.contacts(chart) ~= nil
   if C.reset(chart) then
     post_charts()
     post_chart_ship()
+    if had_contacts then post_chart_contacts() end
   end
   if N.reset(lanes, os.time()) then post_lanes() end
   save_lanes()
@@ -299,6 +310,7 @@ panel:on_message('ready', function()
   if manoeuvre.verb then post_manoeuvre() end -- what's left of it now: the panel starts part-way
   if C.charts(chart) then post_charts() end
   if C.ship(chart) then post_chart_ship() end
+  if C.contacts(chart) then post_chart_contacts() end
   if C.on(chart) then post_chart_on() end
   if N.message(lanes).system or next(N.message(lanes).seen) then post_lanes() end
   if N.on(lanes) then post_lanes_on() end

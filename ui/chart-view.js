@@ -2,7 +2,9 @@
 // on and off by a ◎ button left of the band's zoom buttons. Everything is worked out from the clock
 // on each draw (lib/orbits.js); this file only projects km to px and draws. The view is a viewBox
 // in km with y flipped (svg y = -km y), zoomed and panned like the plans; the svg itself is in px.
-// Marks and their colours are the style guide's §13 (docs/maps/style-guide.md).
+// Marks and their colours are the style guide's §13 (docs/maps/style-guide.md). The last sweep
+// (lib/contacts.js) adds its ships where it saw them and notes what it had behind a body or missed,
+// with its age in a card in the bottom-left corner.
 
 import {
   EDGE_KM,
@@ -33,6 +35,7 @@ import {
 } from "./lib/orbits.js";
 import { courseCard } from "./lib/course.js";
 import { attachPanZoom, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
+import { card as sweepText, chased, isDark, markText, nameOf as contactName, shipLine, shipTip, sweepOf } from "./lib/contacts.js";
 
 const HL = "#ffb347";
 const HL_STROKE = "#fff3df";
@@ -58,6 +61,7 @@ const TOP_CLEAR = 22; // px kept clear at the top for the scale bar and the butt
 const MOUTH_GAP = 18; // px: mouths nearer than this on the edge are spread apart, their names stacked
 const MARKER_GAP = 12; // px: off-view markers nearer than this are one chevron, a line each
 const STACK_GAP = 48; // px: off-view markers nearer than this whose names would overlap stack them
+const SEEN_DIM = 0.35; // a station or mouth the sweep had behind a body or missed, as drawn
 
 let instances = 0;
 
@@ -99,6 +103,8 @@ export class ChartView {
     this.index = null;
     this.ship = null;
     this.course = null; // the course message from the Lua side: { course } or {}
+    this.contacts = null; // the last sweep, as charts.lua cleaned it
+    this.sweep = null; // it, indexed, while it's of the charts' system
     this.on = false;
     this.touched = false; // zoomed or panned since the view was last framed
     this.vb = [-EDGE_KM, -EDGE_KM, 2 * EDGE_KM, 2 * EDGE_KM];
@@ -204,6 +210,22 @@ export class ChartView {
     bandEl.appendChild(btn);
     this.btn = btn;
 
+    // the sweep: a card in the bottom-left corner, folded to its age, unfolded to what it saw
+    this.unfolded ??= false; // the preview's ?unfold sets it on the prototype
+    const sweepCard = document.createElement("div");
+    sweepCard.className = "sweep-card";
+    sweepCard.hidden = true;
+    // a press on it is the card's, not the start of a pan
+    sweepCard.addEventListener("pointerdown", (e) => e.stopPropagation());
+    sweepCard.addEventListener("click", (e) => {
+      if (!e.target.closest("button")) return;
+      this.unfolded = !this.unfolded;
+      this.draw(Date.now());
+    });
+    div.appendChild(sweepCard);
+    this.sweepCard = sweepCard;
+    this.sweepHtml = "";
+
     div.addEventListener("pointermove", (e) => this.hoverAt(e.target));
     div.addEventListener("pointerdown", () => this.hideTip());
     div.addEventListener("pointerleave", () => this.hideTip());
@@ -228,6 +250,7 @@ export class ChartView {
   setCharts(charts) {
     const was = this.index?.system ?? null;
     this.index = charts && typeof charts === "object" ? indexCharts(charts) : null;
+    this.attachSweep();
     this.btn.style.display = this.index ? "" : "none";
     this.sync();
     if (this.index && this.index.system !== was) {
@@ -257,6 +280,20 @@ export class ChartView {
     // a course plotted or cleared reframes a view you haven't touched, as a trip starting does
     if (!this.touched && (this.course?.course?.at ?? null) !== was) this.home();
     else this.draw(Date.now());
+  }
+
+  /** The last sweep's picture from the Lua side (Space.Contacts, cleaned), or null for none. */
+  setContacts(contacts) {
+    this.contacts = contacts && typeof contacts === "object" ? contacts : null;
+    this.attachSweep();
+    this.draw(Date.now());
+  }
+
+  /** Index the sweep against the charts: only a sweep of their system is drawn, and its ships'
+   *  positions go on the index so a chase's line can end where she was seen. */
+  attachSweep() {
+    this.sweep = this.index ? sweepOf(this.contacts, this.index.system) : null;
+    if (this.index) this.index.seen = this.sweep?.seen ?? null;
   }
 
   /** Switch the chart on or off (from the Lua side's replay or the ◎ button). */
@@ -408,6 +445,7 @@ export class ChartView {
     let line = null;
     safe(() => (line = courseLine(index, this.ship, this.course?.course, t)));
     const keep = new Set([fix.place, this.ship?.destination, line && this.course.course.to].filter(Boolean));
+    const sweep = this.sweep;
     // folded into its parent (style guide §13.2), or the satellite of something folded
     const foldedParent = (it) => {
       const p = index.items.get(it.orbit.parent);
@@ -532,6 +570,7 @@ export class ChartView {
           if (!p) return;
           const [x, y] = P(p);
           const d = el("rect", { x: x - 2.6, y: y - 2.6, width: 5.2, height: 5.2, fill: GLASS, transform: `rotate(45 ${x} ${y})` }, marks);
+          if (sweep?.marks.has(it.id)) d.setAttribute("opacity", SEEN_DIM);
           tip(d, `body:${it.id}`, it.name);
         }
       });
@@ -546,7 +585,7 @@ export class ChartView {
         if (!at) return;
         const { x, y, u } = at;
         const deg = (Math.atan2(u[1], u[0]) * 180) / Math.PI;
-        const g = el("g", {}, marks);
+        const g = el("g", sweep?.marks.has(it.id) ? { opacity: SEEN_DIM } : {}, marks);
         el("path", { d: "M0,-3.6 A3.6,3.6 0 0 1 0,3.6 Z", fill: GLASS, transform: `translate(${x} ${y}) rotate(${deg})` }, g);
         el("circle", { cx: x, cy: y, r: 6, fill: "transparent" }, g);
         if (!crowded(it)) {
@@ -572,7 +611,7 @@ export class ChartView {
         const a = (angles[i] * Math.PI) / 180;
         const [x, y] = P([r * Math.cos(a), r * Math.sin(a)]);
         const closed = isClosed(m);
-        const g = el("g", {}, marks);
+        const g = el("g", sweep?.marks.has(m.id) ? { opacity: SEEN_DIM + 0.1 } : {}, marks);
         el("path", {
           d: "M-5,-6 L3,0 L-5,6 M-1,-6 L7,0 L-1,6",
           fill: "none",
@@ -602,14 +641,71 @@ export class ChartView {
       }
     });
 
+    // what the sweep had behind a body or missed, noted by it as the sweep saw it: dimmed above,
+    // named here in italics, with a faint line to the limb of the body that hid it or struck through
+    const bodyName = (id) => index.items.get(id)?.name ?? sweep?.byId.get(id)?.name ?? String(id);
+    for (const c of sweep?.marks.values() ?? []) {
+      safe(() => {
+        const it = index.items.get(c.id);
+        if (it && hidden(it)) return; // folded into its parent at this zoom
+        const at = it && markOf(it.kind) === "port" ? ground(c.id) : null;
+        const p = at ? [at.x, at.y] : P(pos(c.id) ?? [c.x, c.y]);
+        const [x, y] = p;
+        if (!it) el("rect", { x: x - 2.6, y: y - 2.6, width: 5.2, height: 5.2, fill: GLASS, opacity: SEEN_DIM, transform: `rotate(45 ${x} ${y})` }, marks);
+        if (c.hidden) {
+          const b = pos(c.hidden);
+          const body = index.items.get(c.hidden);
+          if (b) {
+            const [bx, by] = P(b);
+            const r = body?.kind === "star" ? Math.max(5, (Number(body.radius) || 0) / s) : body ? discR(body) : 0;
+            const d = Math.hypot(bx - x, by - y);
+            if (d > r + 6) {
+              const k = (d - r - 2) / d;
+              el("line", { x1: x, y1: y, x2: x + (bx - x) * k, y2: y + (by - y) * k, stroke: DIM, "stroke-dasharray": "1 3", opacity: 0.7, "pointer-events": "none" }, marks);
+            }
+          }
+        } else {
+          el("line", { x1: x - 6, y1: y + 6, x2: x + 6, y2: y - 6, stroke: DIM, "stroke-width": 1.2, "pointer-events": "none" }, marks);
+        }
+        label(x - 8, y + 12, markText(c, bodyName), "end", [x, y + 16]).setAttribute("font-style", "italic");
+        const hit = el("circle", { cx: x, cy: y, r: 7, fill: "transparent" }, marks);
+        tip(hit, `seen:${c.id}`, it?.name ?? contactName(c), c.hidden ? `behind ${bodyName(c.hidden)} at the last sweep` : "no return at the last sweep");
+      });
+    }
+
+    // ships where the sweep saw her, in a target's brackets, never moved on: Glass with a dot and
+    // her name and hull for one named, the brackets ticked at the sides under drive; dim and empty,
+    // her contact number alone, for a dark one
+    for (const c of sweep?.ships ?? []) {
+      safe(() => {
+        const [x, y] = P([c.x, c.y]);
+        const dark = isDark(c);
+        const col = dark ? DIM : GLASS;
+        const g = el("g", {}, marks);
+        el("path", { d: brackets(x, y, 5, 2.6), fill: "none", stroke: col, "stroke-width": 1.2 }, g);
+        if (!dark) el("circle", { cx: x, cy: y, r: 1.3, fill: GLASS }, g);
+        if (!dark && c.moving) el("path", { d: `M${x - 8},${y} H${x - 6} M${x + 6},${y} H${x + 8}`, stroke: col, "stroke-width": 1 }, g);
+        el("circle", { cx: x, cy: y, r: 8, fill: "transparent" }, g);
+        const { title, body } = shipTip(c);
+        tip(g, `ship:${c.id}`, title, body);
+        label(x + 10, y + 1, contactName(c), "start", [x, y - 9]).setAttribute("fill", dark ? DIM : "#aebccc");
+        const line = shipLine(c);
+        if (line) label(x + 10, y + 11, line, "start", [x, y - 19]).setAttribute("font-size", 9);
+        offView.push([contactName(c), [c.x, c.y]]);
+      });
+    }
+
     // her route and her chevron
     safe(() => {
       const shipName = this.ship?.name ?? "Your ship";
       const nameOf = (id) => {
         const pt = parsePoint(id);
         if (pt) return `a point off ${index.items.get(pt.body)?.name ?? pt.body}`;
+        const c = sweep?.byId.get(id);
+        if (c) return `${contactName(c)}, where the sweep saw her`;
         return index.items.get(id)?.name ?? String(id);
       };
+      const ringR = chased(sweep, this.ship) ? 8 : 5; // round her brackets, after a ship
       if (fix.kind === "moving") {
         const f = pos(fix.leg.frame);
         if (!f) return;
@@ -618,7 +714,7 @@ export class ChartView {
         const me = P(fix.pos);
         el("line", { x1: a[0], y1: a[1], x2: me[0], y2: me[1], stroke: HL, "stroke-opacity": 0.25, "stroke-width": 1.2, "pointer-events": "none" }, marks);
         el("line", { x1: me[0], y1: me[1], x2: b[0], y2: b[1], stroke: HL, "stroke-opacity": 0.55, "stroke-width": 1.2, "stroke-dasharray": "4 4", "pointer-events": "none" }, marks);
-        el("circle", { cx: b[0], cy: b[1], r: 5, fill: "none", stroke: HL, "stroke-opacity": 0.7, "stroke-width": 1.2, "pointer-events": "none" }, marks);
+        el("circle", { cx: b[0], cy: b[1], r: ringR, fill: "none", stroke: HL, "stroke-opacity": 0.7, "stroke-width": 1.2, "pointer-events": "none" }, marks);
         const c = chevron(lit, me, -fix.heading);
         tip(c, "ship", shipName, `bound for ${nameOf(fix.place)}, ${span((fix.leg.arrive - t) / 1000)}`);
       } else if (fix.kind === "bound") {
@@ -628,7 +724,7 @@ export class ChartView {
         const d = positionOf(index, fix.place, at) ?? pos(fix.place);
         if (!d) return;
         const b = P(d);
-        el("circle", { cx: b[0], cy: b[1], r: 5, fill: "none", stroke: HL, "stroke-opacity": 0.7, "stroke-width": 1.2, "pointer-events": "none" }, marks);
+        el("circle", { cx: b[0], cy: b[1], r: ringR, fill: "none", stroke: HL, "stroke-opacity": 0.7, "stroke-width": 1.2, "pointer-events": "none" }, marks);
       } else if (fix.kind === "at" && herPos && fix.orbit) {
         // in high orbit: a ring HIGH_ORBIT times the planet's disc as drawn (it may be drawn bigger
         // than it is), her on it on the side she came in from, or the ring alone when that's not known
@@ -765,6 +861,7 @@ export class ChartView {
       over.appendChild(tx);
     });
 
+    this.drawSweepCard(t);
     marks.appendChild(labels);
     this.marks.replaceChildren(marks);
     this.lit.replaceChildren(lit);
@@ -786,6 +883,33 @@ export class ChartView {
     this.card.querySelector(".age").textContent = card.ragged && card.age ? ` · ${card.age}` : card.age;
     this.card.querySelector(".detail").hidden = !card.ragged && !card.age;
     return this.card.offsetHeight + 8;
+  }
+
+  /** The sweep's card, its HTML replaced only when it changes (its age is to the minute), so its
+   *  button stays put. */
+  drawSweepCard(t) {
+    const esc = (v) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+    let html = "";
+    if (this.sweep) {
+      const body = (id) => this.index.items.get(id)?.name ?? this.sweep.byId.get(id)?.name ?? id;
+      const c = sweepText(this.sweep, this.ship, t, body);
+      const rows = [];
+      if (c.chase) rows.push(`<div class="row chase"><span class="label">${esc(c.chase)}</span></div>`);
+      const fold = c.rows.length ? `<button type="button" title="${this.unfolded ? "Fold" : "Unfold"}">${this.unfolded ? "▾" : "▸"}</button>` : "";
+      rows.push(`<div class="row"><span class="label">${esc(c.head)}</span>${fold}</div>`);
+      if (this.unfolded && c.rows.length) {
+        rows.push(`<div class="list">${c.rows.map(([name, what]) => `<div class="item">${esc(name)}<span class="cls">${esc(what)}</span></div>`).join("")}</div>`);
+      }
+      html = rows.join("");
+    }
+    this.sweepCard.hidden = !html;
+    if (html !== this.sweepHtml) {
+      const scroll = this.sweepCard.querySelector(".list")?.scrollTop ?? 0;
+      this.sweepCard.innerHTML = html;
+      this.sweepHtml = html;
+      const list = this.sweepCard.querySelector(".list");
+      if (list) list.scrollTop = scroll;
+    }
   }
 
   hoverAt(target) {
@@ -845,6 +969,16 @@ function chevron(parent, p, angle) {
     },
     parent,
   );
+}
+
+/** A target's four corner brackets round (x, y), half-width r, each arm k long (px). */
+function brackets(x, y, r, k) {
+  return [
+    `M${x - r},${y - r + k} V${y - r} H${x - r + k}`,
+    `M${x + r - k},${y - r} H${x + r} V${y - r + k}`,
+    `M${x + r},${y + r - k} V${y + r} H${x + r - k}`,
+    `M${x - r + k},${y + r} H${x - r} V${y + r - k}`,
+  ].join(" ");
 }
 
 /** Km from the parent on an orbit, at polar angle phi (radians, from the parent, y up). */

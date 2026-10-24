@@ -17,8 +17,9 @@
 //   ?hull=H   aboard a ship, send hull H (skiff, courier or freighter) as the server will; the bar's menu switches it
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
 //             docked-tiss, landed-zennor, none, maelor, maelor-lanes, edge, to-mouth, adrift, from-stop, to-tamsin,
-//             high-orbit or high-orbit-unknown), emitting charts, chart-ship and
-//             chart { on: true }; the bar's menu switches it
+//             high-orbit or high-orbit-unknown; sweep: Space.Contacts at Gannet Belt, chase: after contact-1 from it),
+//             emitting charts, chart-ship, chart-contacts and chart { on: true }; the bar's menu switches it. &unfold
+//             opens the sweep's card unfolded
 //   ?course=K open the system chart with a plotted course (cinders-tiss, ragged-orrin, contact, from-orbit or
 //             under-way, where the trip line has taken over), emitting course too; the bar's menu
 //             switches it
@@ -67,8 +68,9 @@ import { DeckView } from "../ui/deck-view.js";
 import { LanesView } from "../ui/lanes-view.js";
 import { ModelView } from "../ui/model-view.js";
 import { lanesOf } from "../ui/lib/lanes.js";
+import { ChartView } from "../ui/chart-view.js";
 import { indexCharts, positionOf } from "../ui/lib/orbits.js";
-import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts } from "./charts-fixture.js";
+import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts, senaraContacts } from "./charts-fixture.js";
 
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
@@ -464,12 +466,23 @@ function emitChart(name) {
   } else if (MOUTH_TRIPS[name]) {
     fp.emit("charts", senaraCharts(now, EDGE(now)));
     fp.emit("chart-ship", name === "to-mouth" || name === "to-tamsin" ? stamp(MOUTH_TRIPS[name]) : MOUTH_TRIPS[name]);
+  } else if (name === "sweep" || name === "chase") {
+    // a sweep at Gannet Belt 4 minutes back; chasing contact-1 from the belt, set off 2 minutes later
+    const charts = senaraCharts(now);
+    fp.emit("charts", charts);
+    fp.emit("chart-contacts", senaraContacts(now, positionOf, indexCharts(charts)));
+    fp.emit("chart-ship", name === "sweep"
+      ? stamp(SHIPS["parked-gannet"])
+      : { name: "Mule", docked: false, from: "gannet", destination: "contact-1", progress: 0.4, eta: 180, depart: s - 120, received: s });
   } else {
     fp.emit("charts", senaraCharts(now, name === "edge" ? EDGE(now) : null));
     fp.emit("chart-ship", stamp(name === "edge" ? SHIPS["parked-gannet"] : SHIPS[name]));
   }
+  if (name !== "sweep" && name !== "chase") fp.emit("chart-contacts", null);
   fp.emit("chart", { on: true });
 }
+// ?unfold also opens the chart with its sweep's card unfolded
+if (q.has("unfold")) ChartView.prototype.unfolded = true;
 chartMenu.addEventListener("change", () => emitChart(chartMenu.value));
 
 // --- the course she has plotted: what the Lua side's course reducer posts --------------------

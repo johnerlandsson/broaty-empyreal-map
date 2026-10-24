@@ -628,4 +628,75 @@ test('the next trip starts from the high orbit the status gave', function()
   eq(C.ship(s).from_over, { planet = 'tamsin' })
 end)
 
+-- Space.Contacts, as gmcp.md §8.5 has it
+local function sweep(extra)
+  local d = { at = 5000, system = 'sol', contacts = {
+    { kind = 'station', id = 'tiss', name = 'T.I.S.S.', km = 900, x = 1, y = 2, hidden = 'tamsin', missed = false,
+      moving = nil, size = nil, hull = nil, owner = nil },
+    { kind = 'ship', id = 'ship.42', name = 'the Mule', km = 35, x = 3, y = 4, hidden = nil, missed = false,
+      moving = false, size = 1, hull = 'skiff', owner = "Dilbo's" },
+    { kind = 'unknown', id = 'contact-1', name = 'contact-1', km = 2400, x = 5, y = 6, hidden = nil, missed = false,
+      moving = true, size = 1, hull = 'skiff', owner = 'Dilbo' },
+  } }
+  for k, v in pairs(extra or {}) do d[k] = v end
+  return d
+end
+
+test('keeps the sweep as it was', function()
+  local s = fresh()
+  eq(C.space_contacts(s, sweep()), true)
+  local c = C.contacts(s)
+  eq(c.at, 5000)
+  eq(c.system, 'sol')
+  eq(c.contacts[1], { kind = 'station', id = 'tiss', name = 'T.I.S.S.', km = 900, x = 1, y = 2, hidden = 'tamsin', missed = false })
+  eq(c.contacts[2], { kind = 'ship', id = 'ship.42', name = 'the Mule', km = 35, x = 3, y = 4, missed = false,
+    moving = false, size = 1, hull = 'skiff', owner = "Dilbo's" })
+end)
+
+test('a dark ship is only her contact number and where she was', function()
+  local s = fresh()
+  C.space_contacts(s, sweep())
+  eq(C.contacts(s).contacts[3], { kind = 'unknown', id = 'contact-1', name = 'contact-1', km = 2400, x = 5, y = 6, missed = false })
+end)
+
+test('the same sweep again is no change; a new one is', function()
+  local s = fresh()
+  C.space_contacts(s, sweep())
+  eq(C.space_contacts(s, sweep()), false)
+  eq(C.space_contacts(s, sweep({ at = 6000 })), true)
+end)
+
+test('drops contacts it cannot place, and a sweep with no time or system', function()
+  local s = fresh()
+  C.space_contacts(s, sweep({ contacts = {
+    { kind = 'ship', id = 'ship.1', x = 'far', y = 0 },
+    { kind = 'comet', id = 'c', x = 0, y = 0 },
+    { kind = 'belt', id = 'gannet', x = 0, y = 0, missed = 'yes' },
+    'junk',
+  } }))
+  eq(#C.contacts(s).contacts, 1)
+  eq(C.contacts(s).contacts[1].missed, false)
+  eq(C.space_contacts(s, { system = 'sol', contacts = {} }), true)
+  eq(C.contacts(s), nil)
+end)
+
+test('null clears the sweep, and so does a disconnect', function()
+  local s = fresh()
+  C.space_contacts(s, sweep())
+  eq(C.space_contacts(s, nil), true)
+  eq(C.contacts(s), nil)
+  C.space_contacts(s, sweep())
+  eq(C.reset(s), true)
+  eq(C.contacts(s), nil)
+end)
+
+test('a chase keeps where she left from', function()
+  local s = fresh()
+  C.ship_status(s, { location = 'gannet' }, 0)
+  C.ship_status(s, { destination = 'contact-1', progress = 0, eta = 300 }, 1)
+  eq(C.ship(s).from, 'gannet')
+  eq(C.ship(s).destination, 'contact-1')
+  eq(C.ship(s).depart, 1)
+end)
+
 t.done()

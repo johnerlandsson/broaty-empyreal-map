@@ -289,6 +289,11 @@ panel.on("charts", (msg) => {
   runChart();
 });
 
+panel.on("chart-contacts", (msg) => {
+  chart.setContacts(msg);
+  runChart(); // a chase she couldn't be placed on may be placed now
+});
+
 panel.on("chart-ship", (msg) => {
   chart.setShip(msg);
   space.setShip(msg);

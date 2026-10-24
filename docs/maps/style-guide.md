@@ -404,6 +404,14 @@ what it draws and how.
   card is, saying where to, its km, time and fuel, "ragged" in amber, and
   how long ago it was plotted. The scale bar goes under the card. Under way,
   her route takes over and both go.
+- **The last sweep's ships** (contacts.md): a target's four corner brackets,
+  10 px across with 2.6 px arms, at where the sweep saw her, never moved on.
+  Named, they're in Glass round a 1.3 px Glass dot, ticked out of each side
+  under drive. A dark ship's are in Dim and empty. Chasing one, the route's ring
+  is 8 px, round the brackets.
+- **Behind a body, or missed:** the station's, port's or mouth's own mark at
+  .35. Behind a body, a line dotted `1 3` in Dim runs from it to the body's limb;
+  missed, a Dim stroke strikes through it.
 - **Searching for a belt:** no chevron and no route. The belt's arc (a lost
   belt's whole dashed ring) is lit amber and pulses.
 
@@ -414,7 +422,12 @@ what it draws and how.
   face: "Maelor"; a closed one "Petroc · closed"). Spread mouths' names are
   stacked, a line each in bearing order, stacked up from the edge below the
   star and down from it above.
-- Stations are named on hover only.
+- Stations are named on hover only, unless the last sweep had one behind a
+  body or missed: then it's named below left in italics, "T.I.S.S., behind
+  Tamsin", "Orrin Station, missed".
+- A sweep's ship is named beside her brackets in Dim, 10. A named one also gets
+  her hull's last word, with "· under drive" if she was moving, in 9 below. A
+  dark one is named only by her contact number.
 - A port is named outward from its planet, beside the dome, or centred on the
   line under the planet's name when the dome is on the bottom of the disc,
   where the two would meet.
@@ -441,6 +454,10 @@ what it draws and how.
   half as bright), since you can see it.
 - **Scale bar:** top left (under the course card when it's there), Dim, a 1, 2 or 5 × 10ⁿ km bar with end ticks and
   its length above it, 9.
+- **The sweep's card:** bottom left, the lanes card's look (§13.5). Folded, it
+  shows the sweep's age to the minute; unfolded, what the sweep saw. While she
+  chases a ship, an amber "After …" line goes above the age. It's the only
+  place the age shows: nothing on the plan is dated.
 
 ### 13.4 Behaviour
 

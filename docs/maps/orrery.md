@@ -179,6 +179,10 @@ Everything the style guide's §13 draws:
   bottom of the disc, by the satellites' rule; hovered, "on Tamsin's surface".
 - **A body of a kind the chart doesn't know** as a station's diamond, so it
   still shows.
+- **The last sweep** (`Space.Contacts`): its ships where it saw them, notes on
+  what it had behind a body or missed, and its age in a card in the bottom-left
+  corner. See [contacts.md](contacts.md). A chase's route ends where the sweep
+  saw the ship.
 - **Your ship** as an amber chevron, and **her route** dashed ahead, solid
   behind, with a ring where she'll arrive. Nothing else on the chart is amber
   except a belt she's searching, the ring of a high orbit she's in, and the
@@ -274,6 +278,7 @@ Unchanged: it says where you are aboard.
   `ui/lib/orbits.test.js`.
 - `ui/lib/course.js`: `courseCard(msg, ship, now)`, the card's words for the
   moment, or null under way or with no course. Tests in `ui/lib/course.test.js`.
+- `ui/lib/contacts.js`: the last sweep, for the chart (contacts.md).
 - `ui/chart-view.js`: the SVG, the ◎ button, zoom and pan (`attachPanZoom` and
   `zoomButtons` from `ui/lib/svg.js`), following her, the tooltips, the course's
   line and its card (`.course-card` in `ui/map.css`), which updates on each
@@ -286,8 +291,9 @@ Unchanged: it says where you are aboard.
   its scenarios (`parked-gannet`, `under-way-orrin`, `searching-cinders`,
   `at-point`, `docked-tiss`, `landed-zennor`, `none`, `maelor`, `maelor-lanes` for Maelor's
   three mouths with the Petroc branch closed, `edge` for Senara's mouth with
-  its bearing, `to-tamsin` under way to high orbit, or `high-orbit` and
-  `high-orbit-unknown` up there with her side known or not). The bar's menu switches between them. `?course=` opens it with
+  its bearing, `to-tamsin` under way to high orbit, `high-orbit` and
+  `high-orbit-unknown` up there with her side known or not, or `sweep` and `chase` for the last
+  sweep, contacts.md). The bar's menu switches between them. `?course=` opens it with
   a course: `cinders-tiss` (docked, plotted 4m ago), `ragged-orrin` (parked at
   Gannet, a ragged plot over an hour old, its aim fallen behind the station),
   `contact` (a ship seen by her signature: the card alone), `from-orbit`

@@ -125,3 +125,28 @@ export const SHIPS = {
 };
 
 export const MAELOR_SHIP = { name: "Mule", docked: true, location: "wenna_halt" };
+
+/** Space.Contacts as C.contacts would post it (gmcp.md §8.5): a sweep at Gannet Belt `ago` ms back.
+ *  The Mule, named and at rest; Old Faithful, named, under drive; contact-1, dark; T.I.S.S. behind
+ *  Tamsin; Orrin Station missed. Ships are placed off where the charts put Gannet Belt then. */
+export function senaraContacts(now, positionOf, index, ago = 4 * 60 * 1000) {
+  const at = now - ago;
+  const g = positionOf(index, "gannet", at);
+  const off = (dx, dy) => ({ x: Math.round(g[0] + dx), y: Math.round(g[1] + dy), km: Math.round(Math.hypot(dx, dy)) });
+  const place = (id) => {
+    const p = positionOf(index, id, at);
+    return { x: Math.round(p[0]), y: Math.round(p[1]), km: Math.round(Math.hypot(p[0] - g[0], p[1] - g[1])) };
+  };
+  const none = { hidden: null, missed: false, moving: null, size: null, hull: null, owner: null };
+  return {
+    at,
+    system: "senara",
+    contacts: [
+      { kind: "station", id: "tiss", name: "T.I.S.S.", ...place("tiss"), ...none, hidden: "tamsin" },
+      { kind: "station", id: "orrin_station", name: "Orrin Station", ...place("orrin_station"), ...none, missed: true },
+      { kind: "ship", id: "ship.42", name: "the Mule", ...off(300, 260), ...none, moving: false, size: 1, hull: "skiff", owner: "Dilbo's" },
+      { kind: "ship", id: "ship.17", name: "Old Faithful", ...off(1900, -1300), ...none, moving: true, size: 3, hull: "freighter", owner: "Annet's" },
+      { kind: "unknown", id: "contact-1", name: "contact-1", ...off(2300, -3600), ...none },
+    ],
+  };
+}

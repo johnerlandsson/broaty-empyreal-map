@@ -14,6 +14,8 @@
 -- (a 3 s hop can fall between two statuses), and `name` in place of `planet` until the charts
 -- name it. Her next trip starts from there, `from_over`.
 -- She reads from `host` when set, as scene.lua does.
+-- It also keeps the last sweep's picture, Space.Contacts, cleaned: what was seen where, as of the
+-- sweep, never moved on. A dark ship (`unknown`) keeps only her contact number and where she was.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 
 local C = {}
@@ -32,7 +34,7 @@ local function num(v)
 end
 
 function C.new()
-  return { charts = nil, ship = nil, prev = nil, on = false }
+  return { charts = nil, ship = nil, prev = nil, contacts = nil, on = false }
 end
 
 local function clean_orbit(o)
@@ -137,6 +139,37 @@ function C.space_charts(state, data)
   local old = state.charts
   if old and old.system ~= new.system then drop_memory(state, new) end
   state.charts = new
+  return not same(old, new)
+end
+
+local KINDS = { body = true, station = true, mouth = true, belt = true, ship = true, unknown = true }
+
+local function clean_contact(c)
+  local kind, id, x, y = str(c.kind), str(c.id), num(c.x), num(c.y)
+  if not (kind and KINDS[kind] and id and x and y) then return nil end
+  local out = { kind = kind, id = id, name = str(c.name) or id, km = num(c.km), x = x, y = y,
+    hidden = str(c.hidden), missed = c.missed == true }
+  if kind == 'ship' then
+    out.moving, out.size, out.hull, out.owner = bool(c.moving), num(c.size), str(c.hull), str(c.owner)
+  elseif kind == 'unknown' then
+    out.name = id -- her contact number, and nothing more of her
+  end
+  return out
+end
+
+function C.space_contacts(state, data)
+  local old = state.contacts
+  local new = nil
+  if type(data) == 'table' and num(data.at) and str(data.system) then
+    new = { at = num(data.at), system = str(data.system), contacts = {} }
+    if type(data.contacts) == 'table' then
+      for _, c in ipairs(data.contacts) do
+        local clean = type(c) == 'table' and clean_contact(c)
+        if clean then new.contacts[#new.contacts + 1] = clean end
+      end
+    end
+  end
+  state.contacts = new
   return not same(old, new)
 end
 
@@ -307,16 +340,17 @@ function C.set_on(state, on)
   return true
 end
 
--- A disconnect: the charts and the ship go, but the chart stays on (the client outlives a
+-- A disconnect: the charts, the ship and the sweep go, but the chart stays on (the client outlives a
 -- dropped connection); with no charts the panel hides it and its ◎ anyway.
 function C.reset(state)
-  local changed = state.charts ~= nil or state.ship ~= nil
-  state.charts, state.ship, state.prev = nil, nil, nil
+  local changed = state.charts ~= nil or state.ship ~= nil or state.contacts ~= nil
+  state.charts, state.ship, state.prev, state.contacts = nil, nil, nil, nil
   return changed
 end
 
 function C.charts(state) return state.charts end
 function C.ship(state) return state.ship end
+function C.contacts(state) return state.contacts end
 function C.on(state) return state.on end
 
 return C

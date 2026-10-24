@@ -66,11 +66,11 @@ local function names(env)
   return out
 end
 
--- The posts that are not the orrery's (charts, chart-ship, chart).
+-- The posts that are not the orrery's (charts, chart-ship, chart-contacts, chart).
 local function core(env)
   local out = {}
   for _, p in ipairs(env.posts) do
-    if p.name ~= 'charts' and p.name ~= 'chart-ship' and p.name ~= 'chart' then out[#out + 1] = p end
+    if p.name ~= 'charts' and p.name ~= 'chart-ship' and p.name ~= 'chart-contacts' and p.name ~= 'chart' then out[#out + 1] = p end
   end
   return out
 end
@@ -93,6 +93,7 @@ test('wires panel and requires each module once', function()
   eq(type(env.gmcp_handlers['Ship.Devices']), 'function')
   eq(type(env.gmcp_handlers['Space.Charts']), 'function')
   eq(type(env.gmcp_handlers['Char.Status']), 'function')
+  eq(type(env.gmcp_handlers['Space.Contacts']), 'function')
   eq(type(env.gmcp_handlers['Char.Action']), 'function')
   eq(type(env.gmcp_handlers['Ship.Course']), 'function')
   eq(type(env.world_handlers.disconnect), 'function')
@@ -953,6 +954,37 @@ test('disconnect at a belt posts her nowhere and keeps the log', function()
   env.world_handlers.disconnect()
   eq(post_named(env, 'belt').data.id, nil)
   eq(env.stored.belts['gannet-3'] ~= nil, true)
+end)
+
+local SWEEP = { at = 5000, system = 'sol', contacts = {
+  { kind = 'unknown', id = 'contact-1', name = 'contact-1', km = 2400, x = 5, y = 6, missed = false },
+} }
+
+test('Space.Contacts posts chart-contacts when the sweep changes', function()
+  local env = boot()
+  env.gmcp_handlers['Space.Contacts']('Space.Contacts', SWEEP)
+  eq(names(env), { 'chart-contacts' })
+  eq(post_named(env, 'chart-contacts').data.contacts[1].id, 'contact-1')
+  env.posts = {}
+  env.gmcp_handlers['Space.Contacts']('Space.Contacts', SWEEP)
+  eq(#env.posts, 0)
+  env.gmcp_handlers['Space.Contacts']('Space.Contacts', nil)
+  eq(names(env), { 'chart-contacts' })
+  eq(post_named(env, 'chart-contacts').data, nil)
+end)
+
+test('the sweep is replayed on ready and cleared on disconnect', function()
+  local env = boot()
+  env.gmcp_handlers['Space.Contacts']('Space.Contacts', SWEEP)
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings', 'chart-contacts' })
+  env.posts = {}
+  env.world_handlers.disconnect()
+  eq(post_named(env, 'chart-contacts').data, nil)
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(post_named(env, 'chart-contacts'), nil)
 end)
 
 t.done()

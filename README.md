@@ -120,6 +120,14 @@ station or the view ahead. Unless you've turned it off in the settings, the
 chart comes up by itself when your ship starts travelling and goes again
 when she stops.
 
+**Contacts.** After a sweep, the chart marks the ships it picked out at the
+spot where it saw them: a named ship in brackets with her name and hull, a dark
+one only as "contact-1". It also notes what was behind a planet ("T.I.S.S.,
+behind Tamsin") and what a noisy sweep missed. Nothing moves on from where it
+was seen. A card in the bottom-left corner says how long ago the sweep was; ▸
+unfolds it to the list. While you chase a ship, your route runs to where the
+sweep last saw her.
+
 **The lanes.** Beside ◎, a ⋈ button swaps the band for a map of the
 galaxy's twenty systems: the Shallows' twelve round a ring of trunks, in
 order from Petroc, and the Mid's eight on a disc inside it, Dozmary and

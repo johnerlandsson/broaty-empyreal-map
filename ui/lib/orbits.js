@@ -60,7 +60,8 @@ export function parentOf(index, id) {
   return index.items.get(id)?.orbit?.parent ?? null;
 }
 
-// Km from the star at wall-clock t (ms), or null when the data can't place it.
+// Km from the star at wall-clock t (ms), or null when the data can't place it. A ship on the last
+// sweep (`index.seen`, set by the chart) is where it saw her, whatever t: she isn't moved on.
 export function positionOf(index, id, t, depth = 0) {
   if (depth > DEPTH) return null;
   const pt = parsePoint(id);
@@ -69,7 +70,7 @@ export function positionOf(index, id, t, depth = 0) {
     return base && [base[0] + pt.x, base[1] + pt.y];
   }
   const it = index.items.get(id);
-  if (!it) return null;
+  if (!it) return index.seen?.get(id) ?? null; // a ship where the last sweep saw her, in the star's frame
   if (it.orbit) {
     const base = positionOf(index, it.orbit.parent, t, depth + 1);
     if (!base) return null;
@@ -111,7 +112,7 @@ export function orbitLit(index, ship, t) {
 // ends at the system's star, as the game's locationFrame has it: a lane mouth, with no orbit,
 // rides with its star.
 export function frameOf(index, a, b) {
-  const known = (id) => parsePoint(id) || index.items.has(id);
+  const known = (id) => parsePoint(id) || index.items.has(id) || !!index.seen?.has(id);
   if (!known(a) || !known(b)) return null;
   const star = index.items.get(index.system)?.kind === "star" ? index.system : null;
   const above = (id) => {
