@@ -1,0 +1,120 @@
+<!doctype html>
+<!-- Throwaway mockup: three looks for the ship moving within a belt (rcs, closing on a rock).
+     Serve the repo root (python3 -m http.server) and open docs/maps/reference/belt-motion-mockup.html. -->
+<meta charset="utf-8">
+<title>Belt motion: options</title>
+<style>
+  body { background: #0b0f15; color: #c9d3df; font: 13px Inter, system-ui, sans-serif; margin: 18px; }
+  h1 { font-size: 16px; margin: 0 0 4px; }
+  p.note { margin: 0 0 14px; color: #8b97a7; max-width: 1150px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 380px); gap: 16px 18px; }
+  .opt h2 { font-size: 13px; margin: 0 0 4px; color: #e3eaf2; }
+  .opt .why { font-size: 11px; color: #8b97a7; margin: 0 0 6px; min-height: 30px; }
+  .row-label { grid-column: 1 / -1; font-size: 11px; color: #ffb347; margin: 6px 0 -8px; }
+  canvas { display: block; width: 380px; height: 170px; border-radius: 4px; }
+  .deck { position: relative; width: 380px; height: 70px; margin-top: 4px; border-radius: 4px; background: #121a24; }
+  .deck .plan { position: absolute; inset: 0; opacity: .25; background: repeating-linear-gradient(90deg, #2b3646 0 1px, transparent 1px 22px), repeating-linear-gradient(0deg, #2b3646 0 1px, transparent 1px 22px); }
+  .action-card { position: absolute; left: 8px; top: 8px; min-width: 150px; box-sizing: border-box; padding: 5px 8px 7px; border-radius: 6px; background: rgba(14,19,26,.92); border: 1px solid rgba(255,179,71,.55); box-shadow: 0 2px 10px rgba(0,0,0,.65); font: 600 12px Inter, system-ui, sans-serif; color: #e3eaf2; }
+  .action-card .row { display: flex; gap: 8px; align-items: baseline; white-space: nowrap; }
+  .action-card .secs { margin-left: auto; font-weight: 400; font-size: 11px; color: #9aa7b7; }
+  .action-card .detail { margin-top: 1px; font-weight: 400; font-size: 10px; color: #9aa7b7; }
+  .action-card .bar { height: 3px; margin-top: 5px; border-radius: 2px; background: #2b3646; overflow: hidden; }
+  .action-card .bar i { display: block; height: 100%; width: 70%; border-radius: 2px; background: #ffb347; }
+  .arrow { position: absolute; right: 8px; bottom: 6px; font-size: 10px; color: #6b7787; }
+</style>
+<h1>Moving within a belt: three looks</h1>
+<p class="note">Each scene uses the same decorative rocks. Screen up is <b>out from the core</b>, so <code>rcs out</code> always streams the rocks down and <code>rcs in</code> streams them up. A bearing across the belt streams them sideways, turned by how far it runs from straight out. (The alternative is bearing 0° always up. Those bearings mean nothing outside the belt, so I'd go with core-up.) The rocks never stand for real ones. The countdown goes in the deck band's corner card (below each), never in the scene. While closing on a rock there's no beam. The beam comes on once she stops beside it.</p>
+<div class="grid" id="grid"></div>
+<script type="module">
+import { makeRock, rockFaces } from "../../../ui/lib/space.js";
+import { rng } from "../../../ui/lib/svg.js";
+
+const BG = "#04060c", TONES = ["#3a4556", "#58667b", "#7e8da3"], EDGE = "#0d1218", STAR = "223,231,241";
+const W = 380, H = 170;
+
+const OPTS = [
+  { key: "A", name: "A · Glide", why: "The rocks slide past opposite her heading, near ones faster than far ones. Nothing else changes. It's the quietest." },
+  { key: "B", name: "B · Glide with wakes", why: "As A, with a faint wake behind each rock, like the travelling scene's streaks but short. The backdrop dots creep too, so speed reads in a still frame." },
+  { key: "C", name: "C · Glide with thruster glow", why: "As A, with a soft blue-white glow where the beam comes from (her, under the view) leaning back along her heading while the thrusters fire." },
+];
+const ROWS = [
+  { label: "rcs out: thrusters firing, 14 s left", head: [0, -1], card: { label: "thrusters, out from the core", secs: "14 s", bar: 0.7 } },
+  { label: "closing on rock-12 across the belt (no beam yet)", head: [-0.8, -0.6], card: { label: "closing on rock-12", secs: "", bar: null } },
+];
+
+function scene(cv, opt, head, seed) {
+  const k = 2; cv.width = W * k; cv.height = H * k;
+  const g = cv.getContext("2d"); g.setTransform(k, 0, 0, k, 0, 0);
+  const r = rng(seed);
+  const far = Array.from({ length: 90 }, () => [r() * W, r() * H, 0.2 + r() * 0.5]);
+  const spawn = (x, y) => { const d = 0.2 + r() * 0.8; return { shape: makeRock(r), d, x, y, size: 6 + d * d * 34, a: r() * 6, b: r() * 6, wa: r() * 1.2 - 0.6, wb: r() * 1.2 - 0.6 }; };
+  let rocks = Array.from({ length: 14 }, () => spawn(-40 + r() * (W + 80), 10 + r() * (H - 20)));
+  const v = (k) => 30 + k.d * 110; // px/s while moving, by nearness
+  const step = (dt) => {
+    for (const p of far) if (opt.key === "B") { p[0] = (p[0] - head[0] * 3 * dt + W) % W; p[1] = (p[1] - head[1] * 3 * dt + H) % H; }
+    rocks = rocks.map((k) => {
+      const x = k.x - head[0] * v(k) * dt, y = k.y - head[1] * v(k) * dt;
+      const m = k.size * 2;
+      if (x < -m || x > W + m || y < -m || y > H + m) {
+        // back in from the edge she's heading for
+        const ax = Math.abs(head[0]), ay = Math.abs(head[1]);
+        if (r() * (ax + ay) < ax) return spawn(head[0] > 0 ? W + m * 0.9 : -m * 0.9, r() * H);
+        return spawn(r() * W, head[1] > 0 ? H + m * 0.9 : -m * 0.9);
+      }
+      return { ...k, x, y, a: k.a + k.wa * dt, b: k.b + k.wb * dt };
+    });
+    rocks.sort((p, q) => p.d - q.d);
+  };
+  let clock = 0;
+  const draw = () => {
+    g.globalAlpha = 1; g.fillStyle = BG; g.fillRect(0, 0, W, H);
+    for (const [x, y, a] of far) { g.fillStyle = `rgba(${STAR},${a})`; g.fillRect(x, y, 1, 1); }
+    if (opt.key === "C") {
+      const ox = W / 2 + 40, oy = H + 10;
+      const flick = 0.8 + 0.2 * Math.sin(clock * 23);
+      const tx = ox - head[0] * 60, ty = oy - head[1] * 30 - 26;
+      const grd = g.createRadialGradient(ox, oy, 0, tx, ty, 70);
+      grd.addColorStop(0, `rgba(207,227,255,${0.35 * flick})`);
+      grd.addColorStop(1, "rgba(207,227,255,0)");
+      g.fillStyle = grd; g.fillRect(0, 0, W, H);
+    }
+    g.strokeStyle = EDGE; g.lineWidth = 0.8; g.lineJoin = "round";
+    for (const k of rocks) {
+      if (opt.key === "B") {
+        const len = v(k) * 0.35;
+        const grd = g.createLinearGradient(k.x, k.y, k.x + head[0] * len, k.y + head[1] * len);
+        grd.addColorStop(0, `rgba(126,141,163,${0.28 * (0.45 + k.d * 0.55)})`);
+        grd.addColorStop(1, "rgba(126,141,163,0)");
+        g.strokeStyle = grd; g.lineWidth = k.size * 1.1; g.lineCap = "round";
+        g.beginPath(); g.moveTo(k.x, k.y); g.lineTo(k.x + head[0] * len, k.y + head[1] * len); g.stroke();
+        g.strokeStyle = EDGE; g.lineWidth = 0.8;
+      }
+      g.globalAlpha = 0.45 + k.d * 0.55;
+      for (const f of rockFaces(k.shape, k.a, k.b)) {
+        g.fillStyle = TONES[f.tone]; g.beginPath();
+        f.pts.forEach(([px, py], i) => (i ? g.lineTo(k.x + px * k.size, k.y - py * k.size) : g.moveTo(k.x + px * k.size, k.y - py * k.size)));
+        g.closePath(); g.fill(); g.stroke();
+      }
+      g.globalAlpha = 1;
+    }
+  };
+  for (let i = 0; i < 120; i++) { step(1 / 60); clock += 1 / 60; }
+  draw();
+  let last = performance.now();
+  const loop = (t) => { const dt = Math.min(0.05, (t - last) / 1000); last = t; clock += dt; step(dt); draw(); requestAnimationFrame(loop); };
+  if (!new URLSearchParams(location.search).has("still")) requestAnimationFrame(loop);
+}
+
+const grid = document.getElementById("grid");
+ROWS.forEach((row, ri) => {
+  const lab = document.createElement("div"); lab.className = "row-label"; lab.textContent = row.label; grid.appendChild(lab);
+  OPTS.forEach((opt, oi) => {
+    const el = document.createElement("div"); el.className = "opt";
+    el.innerHTML = (ri === 0 ? `<h2>${opt.name}</h2><p class="why">${opt.why}</p>` : "") +
+      `<canvas></canvas><div class="deck"><div class="plan"></div><div class="action-card"><div class="row"><span>${row.card.label}</span><span class="secs">${row.card.secs}</span></div>` +
+      (row.card.bar === null ? "" : `<div class="bar"><i></i></div>`) + `</div><span class="arrow">deck band (bottom)</span></div>`;
+    grid.appendChild(el);
+    scene(el.querySelector("canvas"), opt, row.head, 42 + oi * 7 + ri * 3);
+  });
+});
+</script>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Belt, Starfield, Town, approach, awayAt, awayLook, rockFaces, makeRock, targets, work, workLines } from "./space.js";
+import { Belt, Starfield, Town, approach, awayAt, awayLook, heading, moveCard, rockFaces, makeRock, targets, work, workLines } from "./space.js";
 import { rng } from "./svg.js";
 
 describe("targets", () => {
@@ -121,6 +121,65 @@ describe("rocks", () => {
   });
 });
 
+describe("Belt moving", () => {
+  const w = 360;
+  const h = 220;
+  const run = (b, dir, secs) => {
+    for (let i = 0; i < secs * 10; i++) b.step(0.1, w, h, dir);
+  };
+
+  it("eases into a drift opposite her heading, near rocks faster", () => {
+    const b = new Belt(12, rng(5));
+    b.step(0, w, h);
+    run(b, [0, -1], 3); // straight out: up the view
+    const before = new Map(b.rocks.map((r) => [r.id, r]));
+    b.step(0.1, w, h, [0, -1]);
+    const moved = b.rocks.filter((r) => before.has(r.id));
+    for (const r of moved) {
+      const was = before.get(r.id);
+      expect(r.y).toBeGreaterThan(was.y);
+      expect(Math.abs(r.x - was.x)).toBeLessThan(0.05); // the idle drift all but gone
+    }
+    const near = moved.reduce((a, c) => (c.d > a.d ? c : a));
+    const far = moved.reduce((a, c) => (c.d < a.d ? c : a));
+    expect(near.y - before.get(near.id).y).toBeGreaterThan(far.y - before.get(far.id).y);
+  });
+
+  it("starts from the idle drift, not at full speed", () => {
+    const b = new Belt(12, rng(5));
+    b.step(0, w, h);
+    const y0 = new Map(b.rocks.map((r) => [r.id, r.y]));
+    b.step(0.05, w, h, [0, -1]);
+    for (const r of b.rocks) if (y0.has(r.id)) expect(r.y - y0.get(r.id)).toBeLessThan(2);
+  });
+
+  it("keeps the view full, coming in from the edge she heads for", () => {
+    for (const dir of [[0, -1], [0, 1], [1, 0], [-0.6, 0.8]]) {
+      const b = new Belt(12, rng(7));
+      b.step(0, w, h);
+      run(b, dir, 60);
+      expect(b.rocks).toHaveLength(12);
+      const inside = b.rocks.filter((r) => r.x > 0 && r.x < w && r.y > 0 && r.y < h);
+      expect(inside.length).toBeGreaterThan(4);
+    }
+  });
+
+  it("settles back into the idle drift when she stops", () => {
+    const b = new Belt(12, rng(5));
+    b.step(0, w, h);
+    run(b, [0, -1], 3);
+    run(b, null, 5);
+    const before = new Map(b.rocks.map((r) => [r.id, r]));
+    b.step(0.1, w, h, null);
+    for (const r of b.rocks) {
+      const was = before.get(r.id);
+      if (!was) continue;
+      expect(r.x).toBeLessThan(was.x);
+      expect(Math.abs(r.y - was.y)).toBeLessThan(0.01);
+    }
+  });
+});
+
 describe("Belt hold", () => {
   const w = 360;
   const h = 220;
@@ -183,7 +242,7 @@ describe("Belt hold", () => {
 
 describe("work", () => {
   it("is nothing with no message or nothing under way", () => {
-    const idle = { sweep: null, assay: null, cut: false };
+    const idle = { sweep: null, assay: null, cut: false, moving: null };
     expect(work(null, 0)).toEqual(idle);
     expect(work({}, 0)).toEqual(idle);
     expect(work("x", 0)).toEqual(idle);
@@ -221,7 +280,81 @@ describe("work", () => {
   });
 
   it("any other verb on the sensors shows nothing", () => {
-    expect(work({ sensors: { busy: "repair", since: 0, ends: 30 } }, 1)).toEqual({ sweep: null, assay: null, cut: false });
+    expect(work({ sensors: { busy: "repair", since: 0, ends: 30 } }, 1)).toEqual({ sweep: null, assay: null, cut: false, moving: null });
+  });
+});
+
+describe("work: moving in the belt", () => {
+  it("the thrusters under way are her moving, the way she goes as the place says", () => {
+    expect(work({ nav: { busy: "rcs", since: 0, ends: 20 }, belt: { moved: 3, way: 0 } }, 4).moving).toEqual({ way: 0, closing: false });
+    expect(work({ nav: { busy: "rcs", since: 0, ends: 20 }, belt: {} }, 0.5).moving).toEqual({ way: null, closing: false }); // not moved yet
+  });
+
+  it("a halted move stops her at once, however lately the place changed", () => {
+    expect(work({ belt: { moved: 10, way: 0 } }, 10.5).moving).toBe(null);
+  });
+
+  it("mining, the place changing since it began is closing on the rock: no beam", () => {
+    const m = { laser: { busy: "mine", since: 100 }, belt: { moved: 104, way: 90, target: "rock-12" } };
+    expect(work(m, 105)).toEqual({ sweep: null, assay: null, cut: false, moving: { way: 90, closing: true } });
+  });
+
+  it("beside it, the place still, the beam cuts", () => {
+    const m = { laser: { busy: "mine", since: 100 }, belt: { moved: 104, way: 90 } };
+    expect(work(m, 106.4).cut).toBe(false);
+    expect(work(m, 106.6)).toEqual({ sweep: null, assay: null, cut: true, moving: null });
+  });
+
+  it("a cut just begun holds the beam a beat, in case she's to close on it first", () => {
+    const m = { laser: { busy: "mine", since: 100 }, belt: { moved: 50, way: 0 } };
+    expect(work(m, 101)).toEqual({ sweep: null, assay: null, cut: false, moving: null });
+    expect(work(m, 102.6).cut).toBe(true);
+  });
+
+  it("mine stopping an rcs closes on from where she'd got to", () => {
+    const m = { laser: { busy: "mine", since: 102 }, belt: { moved: 103, way: 90 } };
+    expect(work(m, 103.5).moving).toEqual({ way: 90, closing: true });
+  });
+
+  it("a move just before the cut began isn't closing", () => {
+    const m = { laser: { busy: "mine", since: 102 }, belt: { moved: 101, way: 0 } };
+    expect(work(m, 102.5).moving).toBe(null);
+  });
+});
+
+describe("heading", () => {
+  it("is up for straight out from the core, down for in, sideways round it", () => {
+    const close = (v, x, y) => {
+      expect(v[0]).toBeCloseTo(x);
+      expect(v[1]).toBeCloseTo(y);
+    };
+    close(heading(0), 0, -1);
+    close(heading(180), 0, 1);
+    close(heading(90), 1, 0);
+    close(heading(-90), -1, 0);
+  });
+});
+
+describe("moveCard", () => {
+  const S = 1000;
+  it("the thrusters, which way, the seconds left and the bar", () => {
+    const m = { nav: { busy: "rcs", since: 100, ends: 120 }, belt: { moved: 105, way: 4 } };
+    expect(moveCard(m, 105 * S)).toEqual({ label: "thrusters, out from the core", detail: "", seconds: 15, fraction: 0.75, ms: 15000, recheck: null });
+    expect(moveCard({ ...m, belt: { moved: 105, way: -170 } }, 105 * S).label).toBe("thrusters, in toward the core");
+    expect(moveCard({ ...m, belt: { moved: 105, way: 100 } }, 105 * S).label).toBe("thrusters, on a new heading");
+    expect(moveCard({ ...m, belt: {} }, 100 * S).label).toBe("thrusters");
+  });
+
+  it("closing on a rock names it, with no seconds: the game gives none", () => {
+    const m = { laser: { busy: "mine", since: 100 }, belt: { moved: 104, way: 90, target: "rock-12" } };
+    expect(moveCard(m, 104.5 * S)).toEqual({ label: "closing on rock-12", detail: "", seconds: null, fraction: null, ms: null, recheck: 2000 });
+    expect(moveCard({ ...m, belt: { moved: 104, way: 90 } }, 104.5 * S).label).toBe("closing on the rock");
+  });
+
+  it("is nothing while she's still", () => {
+    expect(moveCard({}, 0)).toBe(null);
+    expect(moveCard(null, 0)).toBe(null);
+    expect(moveCard({ laser: { busy: "mine", since: 0 }, belt: { moved: 1, way: 0 } }, 9 * S)).toBe(null);
   });
 });
 

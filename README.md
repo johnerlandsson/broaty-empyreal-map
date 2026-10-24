@@ -61,7 +61,11 @@ the day side or the night side as it is in the game. At a belt you see the
 ship's work: the sensors' green line crossing the view as she sweeps for
 rocks, brackets and a filling ring round a rock while she assays one, and
 the laser's beam on a rock while she mines, with the seconds left in the
-corner. A program's work shows the same as yours. The rocks themselves stay
+corner. When her thrusters move her across the belt, or she closes on a
+rock before cutting it, the rocks flow past the other way (out from the core
+is up the view), the beam waits until she's beside the rock, and a card in
+the bottom band's corner, under your own, says where she's heading and the
+seconds left. A program's work shows the same as yours. The rocks themselves stay
 scenery: the map never shows what a scan found. There are no controls; docking brings
 the station back. Undocking and docking take as long as the game's do: as
 your ship backs out of the berth the station falls away into the stars,
@@ -247,7 +251,9 @@ python3 -m http.server 8765
 
 `?step=N` jumps to step N of the walk, `?scene=belt` (or `parked`, `travelling`, `port-day`, `port-night`) opens on a
 space scene, and the menu in the bar switches it. `?work=scanning` (or `assaying`, `mining`, `idle`)
-opens on the belt with the ship at that work. `?manoeuvre=undock-tiss` (or `dock-orrin`) runs an
+opens on the belt with the ship at that work. `?move=rcs-out` (or `closing-cut`, `halted`) plays her
+moving in the belt, the thrusters out from the core, closing on a rock then cutting it, or a move
+halted partway. `?manoeuvre=undock-tiss` (or `dock-orrin`) runs an
 undock from T.I.S.S. or a dock at Orrin Station on the game's clock, `&left=N` opening it N seconds
 from the end and `&stop=N` stopping it N seconds in. `?action=climbing-tiss` (or `repair-skiff`,
 `drag-orrin`) plays an action to its end, from the bar's menu too. `?debug` shows how often the model

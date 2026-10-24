@@ -158,6 +158,11 @@ export function rockFaces(rock, a, b) {
  * Rocks tumbling right to left; d is nearness (0 far .. 1 near), kept sorted far to near. One may
  * be held still (hold()) while the ship works it: she's come alongside, so it stops drifting.
  */
+const MOVE_PX = 30; // px a second the farthest rocks flow past at her full pace
+const MOVE_PX_NEAR = 110; // and how much faster the nearest go
+const GO_RATE = 1.6; // per second: easing into and out of the flow
+const TURN_RATE = 2; // per second: the flow turning to a new heading
+
 export class Belt {
   constructor(n, rnd) {
     this.rnd = rnd;
@@ -165,9 +170,11 @@ export class Belt {
     this.rocks = null;
     this.ids = 0;
     this.held = null; // the held rock's id
+    this.go = 0; // 0 drifting idly, 1 her moving at the thrusters' pace; eases between
+    this.dir = [0, -1]; // her heading in the view, a unit vector (y down), eased round
   }
 
-  spawn(x, h) {
+  spawn(x, h, y = 10 + this.rnd() * Math.max(0, h - 20)) {
     const r = this.rnd;
     const d = 0.2 + r() * 0.8;
     return {
@@ -175,7 +182,7 @@ export class Belt {
       shape: makeRock(r),
       d,
       x,
-      y: 10 + r() * Math.max(0, h - 20),
+      y,
       size: 6 + d * d * 34,
       a: r() * 6,
       b: r() * 6,
@@ -184,13 +191,46 @@ export class Belt {
     };
   }
 
-  /** Advance dt seconds in a w×h view; the first call scatters the rocks across it. */
-  step(dt, w, h) {
+  /** A rock's px a second: the idle drift leftward, giving way to the flow opposite her heading. */
+  flow(d) {
+    const idle = 6 + d * 22;
+    const fast = MOVE_PX + d * MOVE_PX_NEAR;
+    return [-idle * (1 - this.go) - this.dir[0] * fast * this.go, -this.dir[1] * fast * this.go];
+  }
+
+  /** A rock coming into a w×h view from the edge she's heading for, as the rocks flow now. */
+  enter(w, h) {
+    const [fx, fy] = this.flow(0.6);
+    const r = this.rnd;
+    if (r() * (Math.abs(fx) + Math.abs(fy)) < Math.abs(fx)) return this.spawn(fx < 0 ? w + 60 : -60, h);
+    const k = this.spawn(-40 + r() * (w + 80), h);
+    return { ...k, y: fy < 0 ? h + k.size + 4 : -k.size - 4 }; // just out of sight: the band is short
+  }
+
+  /**
+   * Advance dt seconds in a w×h view; the first call scatters the rocks across it. `heading`, a unit
+   * vector in the view (y down), is her moving that way: the rocks ease into flowing past the other
+   * way; null eases them back to the idle drift. A held rock stays put.
+   */
+  step(dt, w, h, heading = null) {
     if (!this.rocks) this.rocks = Array.from({ length: this.n }, () => this.spawn(-40 + this.rnd() * (w + 80), h));
+    this.go = approach(this.go, heading ? 1 : 0, dt, GO_RATE);
+    if (heading) {
+      const t = 1 - Math.exp(-TURN_RATE * Math.max(0, dt));
+      const x = this.dir[0] + (heading[0] - this.dir[0]) * t;
+      const y = this.dir[1] + (heading[1] - this.dir[1]) * t;
+      const n = Math.hypot(x, y);
+      this.dir = n > 1e-6 ? [x / n, y / n] : [heading[0], heading[1]];
+    }
     this.rocks = this.rocks.map((k) => {
-      const x = k.id === this.held ? k.x : k.x - (6 + k.d * 22) * dt;
-      if (x < -k.size * 2) return this.spawn(w + 60, h);
-      return { ...k, x, a: k.a + k.wa * dt, b: k.b + k.wb * dt };
+      if (k.id === this.held) return { ...k, a: k.a + k.wa * dt, b: k.b + k.wb * dt };
+      const [vx, vy] = this.flow(k.d);
+      const x = k.x + vx * dt;
+      const y = k.y + vy * dt;
+      const m = k.size * 2;
+      // gone past an edge and not coming back: in again from the edge ahead
+      if ((x < -m && vx <= 0) || (x > w + m && vx >= 0) || (y < -m && vy <= 0) || (y > h + m && vy >= 0)) return this.enter(w, h);
+      return { ...k, x, y, a: k.a + k.wa * dt, b: k.b + k.wb * dt };
     });
     this.rocks.sort((p, q) => p.d - q.d);
   }
@@ -219,6 +259,10 @@ export class Belt {
 // --- the ship's work at a belt -------------------------------------------------------------
 
 const PAR = { scan: 10, assay: 20 }; // actions.yaml's, for a sweep with no end given
+// Closing on a rock has no verb of its own: the laser is busy `mine` from the order, and only the
+// place changing says she's moving. Lua stamps it in whole seconds and the game sends it a tick
+// apart (one may be skipped when the tenth-km rounding stalls), so she's still this long after.
+const SETTLE = 2.5;
 
 function timed(a, now) {
   const since = Number(a.since);
@@ -232,17 +276,63 @@ function timed(a, now) {
 /**
  * What the belt scene shows of the work message (src/station_map/work.lua) at local time `now`,
  * in seconds: the sensors' sweep or assay, each { p: 0..1 through, left: whole seconds or null },
- * and whether the laser is cutting. Only that the work is happening and how long is left.
+ * whether the laser is cutting, and whether she's moving in the belt, { way, closing }: the
+ * thrusters under way, or closing on the rock she's to cut (no beam until she's beside it). `way`
+ * is degrees from straight out from the core, null until the place first changes. Only that the
+ * work is happening and how long is left: nothing here places a rock.
  */
 export function work(msg, now) {
   const s = msg?.sensors;
   const scanning = s?.busy === "scan" || s?.busy === "assay";
   const t = scanning ? timed(s, now) : null;
+  const mine = msg?.laser?.busy === "mine";
+  const since = num(msg?.laser?.since);
+  const moved = num(msg?.belt?.moved);
+  // the place changed since the cut was ordered, and lately: she's still closing on the rock
+  const closing = mine && since !== null && moved !== null && moved >= since && now - moved < SETTLE;
+  // the order just in: hold the beam until it's clear whether she's to close on the rock first
+  const settling = mine && !closing && since !== null && now - since < SETTLE;
+  const rcs = msg?.nav?.busy === "rcs";
   return {
     sweep: s?.busy === "scan" ? t : null,
     assay: s?.busy === "assay" ? t : null,
-    cut: msg?.laser?.busy === "mine",
+    cut: mine && !closing && !settling,
+    moving: rcs || closing ? { way: num(msg?.belt?.way), closing } : null,
   };
+}
+
+function num(v) {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/** Her heading in the view for a way in degrees from straight out from the core: out is up (y down). */
+export function heading(way) {
+  const a = (way * Math.PI) / 180;
+  return [Math.sin(a), -Math.cos(a)];
+}
+
+/**
+ * The ship's move for the deck band's corner card, as actionCard() gives a card, at `now` in ms:
+ * the thrusters under way, which way and the seconds left, or closing on a rock with no seconds
+ * (the game gives none), with `recheck` the ms until she may have stopped; null while she's still.
+ */
+export function moveCard(msg, now) {
+  const m = work(msg, now / 1000).moving;
+  if (!m) return null;
+  if (m.closing) {
+    const t = msg.belt?.target;
+    const label = typeof t === "string" && t ? `closing on ${t}` : "closing on the rock";
+    return { label, detail: "", seconds: null, fraction: null, ms: null, recheck: Math.max(0, (msg.belt.moved + SETTLE) * 1000 - now) };
+  }
+  const w = m.way;
+  const label = w === null ? "thrusters" : Math.abs(w) <= 30 ? "thrusters, out from the core" : Math.abs(w) >= 150 ? "thrusters, in toward the core" : "thrusters, on a new heading";
+  const since = num(msg.nav.since);
+  const ends = num(msg.nav.ends);
+  if (since === null || ends === null) return { label, detail: "", seconds: null, fraction: null, ms: null, recheck: null };
+  const ms = Math.max(0, ends * 1000 - now);
+  const total = ends - since;
+  const fraction = total > 0 ? Math.min(1, ms / (total * 1000)) : 0;
+  return { label, detail: "", seconds: Math.ceil(ms / 1000), fraction, ms, recheck: null };
 }
 
 /** The dim lines in the scene's corner, top to bottom: "cutting", "sweeping · 6 s", "assaying · 8 s". */

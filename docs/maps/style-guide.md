@@ -327,6 +327,11 @@ A new map type says in its doc what its line shows.
   in the bottom-right corner, Dim, 10, one line each, the laser's first:
   `cutting`, `sweeping · 6 s`, `assaying · 8 s`. A program's work looks the
   same as yours: it's the device that's busy.
+- **Her moving in a belt** (the thrusters, or closing on a rock) is the rocks
+  flowing past opposite her heading, near ones faster, eased in, out and
+  round; nothing else is drawn for it. Up the band is straight out from the
+  core. No beam until she's beside the rock. The move's seconds go in the
+  deck band's corner card, under yours, not in the scene (§3).
 - **The rocks stay scenery.** The work never draws, counts, names or places
   a rock the game hasn't told the player about: a sweep finds nothing on
   screen, and the rock an assay or the laser holds is any near one in the

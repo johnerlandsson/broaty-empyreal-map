@@ -136,4 +136,149 @@ test('reset clears it and says whether anything was under way', function()
   eq(W.message(s), {})
 end)
 
+-- --- moving in the belt: nav's rcs and the belt place --------------------------------------
+
+local function moving(nav, laser)
+  return { devices = {
+    { id = 'nav', busy = nav and nav[1], left = nav and nav[2] },
+    { id = 'laser', busy = laser and laser[1], left = laser and laser[2] },
+  } }
+end
+
+local function status(x, y, target)
+  return { name = 'Sparrow', belt = { x = x, y = y, radius = 16, core_km = 0, core_bearing = 0 }, laser = { target = target } }
+end
+
+test('the thrusters under way keep nav with its end', function()
+  local s = W.new()
+  eq(W.ship_devices(s, moving({ 'rcs', 20 }), 100), true)
+  eq(W.message(s), { nav = { busy = 'rcs', since = 100, ends = 120 } })
+end)
+
+test('nav doing anything but rcs is left out', function()
+  for _, verb in ipairs({ 'dock', 'undock', 'travel', 'hold', 'repair' }) do
+    local s = W.new()
+    W.ship_devices(s, moving({ verb, 10 }), 100)
+    eq(W.message(s), {})
+  end
+end)
+
+test('halting the move clears nav', function()
+  local s = W.new()
+  W.ship_devices(s, moving({ 'rcs', 20 }), 100)
+  eq(W.ship_devices(s, moving(nil), 108), true)
+  eq(W.message(s), {})
+end)
+
+test('the first place seen in a belt has not moved', function()
+  local s = W.new()
+  eq(W.ship_status(s, status(0, 10), 100), true)
+  eq(W.message(s), { belt = {} })
+end)
+
+test('a change of place stamps when, and the way she went against straight out', function()
+  local s = W.new()
+  W.ship_status(s, status(0, 10), 100)
+  eq(W.ship_status(s, status(0, 10.3), 101), true)
+  eq(W.message(s).belt, { moved = 101, way = 0 }) -- out
+  W.ship_status(s, status(0, 10.1), 102)
+  eq(W.message(s).belt, { moved = 102, way = 180 }) -- in
+  W.ship_status(s, status(0.2, 10.1), 103)
+  eq(W.message(s).belt, { moved = 103, way = 90 }) -- clockwise round the core
+  W.ship_status(s, status(0, 10.1), 104)
+  eq(W.message(s).belt, { moved = 104, way = -91 }) -- out from (0.2, 10.1) leans a degree clockwise
+end)
+
+test('the way is against straight out from where she was, wherever in the belt', function()
+  local s = W.new()
+  W.ship_status(s, status(-6, -8), 100) -- bearing 217°
+  W.ship_status(s, status(-6.3, -8.4), 101) -- further out along it
+  eq(W.message(s).belt.way, 0)
+  W.ship_status(s, status(-6, -8), 102)
+  eq(W.message(s).belt.way, 180)
+end)
+
+test('at the core there is no out: the last way holds', function()
+  local s = W.new()
+  W.ship_status(s, status(0, 0.8), 100)
+  W.ship_status(s, status(0, 0.4), 101)
+  eq(W.message(s).belt, { moved = 101, way = 180 })
+  W.ship_status(s, status(0.2, 0.4), 102)
+  eq(W.message(s).belt, { moved = 102, way = 180 })
+end)
+
+test('the same place again, as other fields change, is no change', function()
+  local s = W.new()
+  W.ship_status(s, status(0, 10), 100)
+  W.ship_status(s, status(0, 10.3), 101)
+  eq(W.ship_status(s, status(0, 10.3), 105), false)
+  eq(W.message(s).belt, { moved = 101, way = 0 })
+end)
+
+test('the laser target is kept for the card', function()
+  local s = W.new()
+  eq(W.ship_status(s, status(0, 10, 'rock-12'), 100), true)
+  eq(W.message(s).belt, { target = 'rock-12' })
+  eq(W.ship_status(s, status(0, 10, 'rock-12'), 101), false)
+  eq(W.ship_status(s, status(0, 10), 102), true)
+  eq(W.message(s).belt, {})
+end)
+
+test('closing on a rock: mine busy as the place changes, then still beside it', function()
+  local s = W.new()
+  W.ship_status(s, status(0, 10, 'rock-12'), 100)
+  W.ship_devices(s, moving(nil, { 'mine', nil }), 100)
+  W.ship_status(s, status(0.2, 10, 'rock-12'), 101)
+  eq(W.message(s).belt.way, 90)
+  W.ship_status(s, status(0.4, 10, 'rock-12'), 102)
+  eq(W.message(s), { laser = { busy = 'mine', since = 100 }, belt = { moved = 102, way = 89, target = 'rock-12' } })
+  -- beside it: the place stays, so `moved` stays where it was
+  eq(W.ship_status(s, status(0.4, 10, 'rock-12'), 110), false)
+  eq(W.message(s).belt.moved, 102)
+end)
+
+test('mine stopping an rcs: nav clears, the laser takes over and she keeps moving', function()
+  local s = W.new()
+  W.ship_status(s, status(0, 10), 100)
+  W.ship_devices(s, moving({ 'rcs', 20 }), 100)
+  W.ship_status(s, status(0, 10.3), 101)
+  W.ship_devices(s, moving(nil, { 'mine', nil }), 102)
+  W.ship_status(s, status(0.2, 10.3, 'rock-12'), 103)
+  eq(W.message(s), { laser = { busy = 'mine', since = 102 }, belt = { moved = 103, way = 90, target = 'rock-12' } })
+end)
+
+test('a halted move stops the place changing and clears nav', function()
+  local s = W.new()
+  W.ship_status(s, status(0, 10), 100)
+  W.ship_devices(s, moving({ 'rcs', 20 }), 100)
+  W.ship_status(s, status(0, 10.3), 101)
+  W.ship_devices(s, moving(nil), 104)
+  eq(W.message(s), { belt = { moved = 101, way = 0 } })
+end)
+
+test('out of the belt, or off her, the place goes', function()
+  for _, off in ipairs({ { name = 'Sparrow', belt = nil }, { belt = 'x' }, { belt = { x = 'a', y = 1 } }, 'x', nil }) do
+    local s = W.new()
+    W.ship_status(s, status(0, 10), 100)
+    W.ship_status(s, status(0, 10.3), 101)
+    eq(W.ship_status(s, off, 102), true)
+    eq(W.message(s), {})
+  end
+end)
+
+test('a new belt is a first place, not a move', function()
+  local s = W.new()
+  W.ship_status(s, status(0, 10), 100)
+  W.ship_status(s, { belt = nil }, 101)
+  W.ship_status(s, status(5, 5), 200)
+  eq(W.message(s), { belt = {} })
+end)
+
+test('reset clears the place too', function()
+  local s = W.new()
+  W.ship_status(s, status(0, 10), 100)
+  eq(W.reset(s), true)
+  eq(W.message(s), {})
+end)
+
 t.done()

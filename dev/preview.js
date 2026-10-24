@@ -19,6 +19,10 @@
 //   ?work=W   at a belt, the ship's work W (scanning, assaying, mining or idle) as the work message has it
 //             (src/station_map/work.lua): a scan or assay starts now and starts again a second after it
 //             ends, as a program at par would; the bar's menu switches it
+//   ?move=M   at a belt, her moving in it (rcs-out: the thrusters out from the core for 20 s; closing-cut: `mine`
+//             on rock-12 closing for 6 s, then the beam; halted: `rcs in` stopped 7 s in) as the work message
+//             has it, the place changing each second as Ship.Status does; it plays over and over; the bar's
+//             menu switches it
 //   ?manoeuvre=M  aboard the Magpie, undock from T.I.S.S. (undock-tiss, 10 s) or dock at Orrin Station
 //             (dock-orrin, 20 s), with the manoeuvre and scene messages the Lua side posts, the scene
 //             changing as the run ends; ?left=N opens it with N s left, as a panel opened mid-run;
@@ -537,6 +541,38 @@ function emitWork(name) {
 }
 workMenu.addEventListener("change", () => emitWork(workMenu.value));
 
+// --- her moving in a belt: the work message, the place changing each second ----------------------
+
+const moveMenu = document.getElementById("move");
+// Each a timeline of seconds from its start, the work message at that second (null: as it was),
+// and when it plays again.
+const MOVE = {
+  "rcs-out": { again: 24, at: (t, t0) => (t <= 20 ? { nav: { busy: "rcs", since: t0, ends: t0 + 20 }, belt: t ? { moved: t0 + t, way: 0 } : {} } : t === 21 ? { belt: { moved: t0 + 20, way: 0 } } : null) },
+  "closing-cut": {
+    again: 18,
+    at: (t, t0) => (t <= 6 ? { laser: { busy: "mine", since: t0 }, belt: { ...(t ? { moved: t0 + t, way: 70 } : {}), target: "rock-12" } } : null),
+  },
+  halted: { again: 12, at: (t, t0) => (t < 7 ? { nav: { busy: "rcs", since: t0, ends: t0 + 20 }, belt: t ? { moved: t0 + t, way: 180 } : {} } : t === 7 ? { belt: { moved: t0 + 6, way: 180 } } : null) },
+};
+let moveTimer = 0;
+
+function emitMove(name) {
+  clearTimeout(moveTimer);
+  const m = MOVE[name];
+  if (!m) return;
+  sceneMenu.value = "belt";
+  emitScene("belt");
+  const t0 = Math.floor(Date.now() / 1000);
+  const tick = (t) => {
+    if (t >= m.again) return emitMove(name);
+    const msg = m.at(t, t0);
+    if (msg) fp.emit("work", msg);
+    moveTimer = setTimeout(() => tick(t + 1), (t0 + t + 1) * 1000 - Date.now());
+  };
+  tick(0);
+}
+moveMenu.addEventListener("change", () => emitMove(moveMenu.value));
+
 function start() {
   fp.emit("settings", { turn_model: !q.has("still") });
   if (q.has("scene")) {
@@ -555,6 +591,10 @@ function start() {
   if (q.has("work")) {
     workMenu.value = q.get("work");
     emitWork(workMenu.value);
+  }
+  if (q.has("move")) {
+    moveMenu.value = q.get("move");
+    emitMove(moveMenu.value);
   }
   if (q.has("manoeuvre")) {
     manoeuvreMenu.value = q.get("manoeuvre");

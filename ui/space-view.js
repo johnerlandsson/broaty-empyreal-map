@@ -1,6 +1,7 @@
 // The overview away from the station: a canvas over the station model showing the starfield, the
 // belt with the ship's work in it (the sensors' sweep, an assay held on a rock, the laser cutting
-// one, and the seconds left), or over a port the town on its planet's face below, lit or dark as
+// one, and the seconds left; the rocks flowing past while her thrusters move her or she closes on
+// the rock to cut, out from the core up the view), or over a port the town on its planet's face below, lit or dark as
 // its star is up or not; no controls. It fades in over the model (hiding its zoom buttons),
 // eases the stars' speed and cross-fades stars and rocks; the frame loop runs only while
 // something is on screen, and pauses while the panel is hidden or the system chart covers it.
@@ -9,7 +10,7 @@
 // early eases back to the scene's own picture.
 
 import { daylit } from "./lib/orbits.js";
-import { Belt, Starfield, Town, approach, awayAt, awayLook, rockFaces, targets, work, workLines } from "./lib/space.js";
+import { Belt, Starfield, Town, approach, awayAt, awayLook, heading, rockFaces, targets, work, workLines } from "./lib/space.js";
 import { rng } from "./lib/svg.js";
 
 const BG = "#04060c";
@@ -62,7 +63,7 @@ export class SpaceView {
     this.litTarget = 1;
     this.looked = -Infinity;
     this.clock = 0; // seconds, for the beacons' blink and the beam's flicker
-    this.work = null; // the work message: what the sensors and laser are doing, with local times
+    this.work = null; // the work message: what the sensors, laser and thrusters are doing, with local times
 
     this.target = targets("station");
     this.space = 0;
@@ -230,7 +231,10 @@ export class SpaceView {
         g.fillStyle = `rgba(${STAR},${a * this.rocks})`;
         g.fillRect(x * w, y * h, 1, 1);
       }
-      this.belt.step(dt, w, h);
+      const shown = work(this.work, Date.now() / 1000);
+      // moving, the rocks flow past the other way, once the place has changed to say which way
+      const way = shown.moving?.way ?? null;
+      this.belt.step(dt, w, h, way === null ? null : heading(way));
       g.strokeStyle = EDGE;
       g.lineWidth = 0.8;
       g.lineJoin = "round";
@@ -246,7 +250,7 @@ export class SpaceView {
         }
       }
       g.globalAlpha = 1;
-      this.drawWork();
+      this.drawWork(shown);
     }
 
     if (this.ground > 0) this.drawGround();
@@ -255,12 +259,11 @@ export class SpaceView {
   /**
    * The ship's work at the belt, over the rocks: the sensors' line crossing the band over a scan's
    * time, brackets and a filling ring on the held rock during an assay, the beam on it while the
-   * laser cuts, and the seconds left in the corner. Nothing here places or counts a rock.
+   * laser cuts (not while she closes on it), and the seconds left in the corner. Nothing here
+   * places or counts a rock.
    */
-  drawWork() {
+  drawWork(shown) {
     const { g, w, h } = this;
-    const now = Date.now() / 1000;
-    const shown = work(this.work, now);
     const k = this.belt.hold(!!shown.assay || shown.cut, w, h);
     const lines = workLines(shown);
     if (!lines.length) return;

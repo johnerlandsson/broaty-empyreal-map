@@ -29,6 +29,7 @@ import { DECKS, buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } f
 import { DRUMS, buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
 import { hullOf, isShipRoom, shipInfo } from "./lib/hulls.js";
 import { indexStation, infoLine, locate } from "./lib/locate.js";
+import { moveCard } from "./lib/space.js";
 import { pickStation, stationOfDock } from "./lib/stations.js";
 import { TOWNS, indexTown, locateTown, townInfo } from "./lib/town.js";
 import { ModelView } from "./model-view.js";
@@ -90,6 +91,7 @@ const ships = {}; // hull id -> the DeckView drawing that hull, built on first u
 const space = new SpaceView(modelEl);
 space.onAway = (away) => stations[current]?.model.setAway?.(away);
 const doing = new ActionCard(deckEl);
+const moving = new ActionCard(deckEl, moveCard); // her thrusters, or closing on a rock, under yours
 const info = document.getElementById("info");
 const panel = window.panel;
 
@@ -218,7 +220,10 @@ panel.on("scene", (msg) => {
   runSky();
 });
 
-panel.on("work", (msg) => space.setWork(msg));
+panel.on("work", (msg) => {
+  space.setWork(msg);
+  moving.set(msg);
+});
 
 // A dock or an undock, timed from now by what's left of it; the station it's about must be one we draw.
 panel.on("manoeuvre", (msg) => {

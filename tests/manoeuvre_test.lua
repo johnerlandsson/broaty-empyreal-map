@@ -149,4 +149,28 @@ test('reset clears it, true only if there was one', function()
   eq(M.message(m, 100), { verb = nil })
 end)
 
+test('the thrusters in a belt, or any nav verb but dock and undock, are not a manoeuvre', function()
+  for _, verb in ipairs({ 'rcs', 'travel', 'hold' }) do
+    local m = M.new()
+    eq(M.ship_devices(m, devices(nav(verb, 20)), 100, at('tiss')), false)
+    eq(M.message(m, 100), { verb = nil })
+  end
+  local m = M.new()
+  M.ship_devices(m, devices(nav('undock', 10)), 100, at('tiss'))
+  eq(M.ship_devices(m, devices(nav('rcs', 20)), 105, at('tiss')), true)
+  eq(M.message(m, 105), { verb = nil })
+end)
+
+test('the thrusters in a belt, or any nav verb but dock and undock, are not a manoeuvre', function()
+  for _, verb in ipairs({ 'rcs', 'travel', 'hold' }) do
+    local m = M.new()
+    eq(M.ship_devices(m, devices(nav(verb, 20)), 100, at('tiss')), false)
+    eq(M.message(m, 100), { verb = nil })
+  end
+  local m = M.new()
+  M.ship_devices(m, devices(nav('undock', 10)), 100, at('tiss'))
+  eq(M.ship_devices(m, devices(nav('rcs', 20)), 105, at('tiss')), true)
+  eq(M.message(m, 105), { verb = nil })
+end)
+
 t.done()

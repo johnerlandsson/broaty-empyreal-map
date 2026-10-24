@@ -12,7 +12,7 @@ again when you dock.
 |---|---|---|
 | parked | undocked, not travelling, not at a belt | a starfield, barely drifting |
 | travelling | on the way somewhere | the stars streaming past as streaks |
-| belt | at an asteroid belt | low-poly rocks tumbling past on a faint backdrop, with the ship's sensors sweeping, an assay held on a rock or the laser cutting one while she's at it |
+| belt | at an asteroid belt | low-poly rocks tumbling past on a faint backdrop, with the ship's sensors sweeping, an assay held on a rock or the laser cutting one while she's at it, and the rocks flowing past the other way while she moves across the belt |
 | port | parked over a port (Zennor), not landed | the planet's face across the lower band with the town on it, lit or dark, under the still stars |
 | station | docked at a station, or not aboard a ship you own or crew | nothing: the station model shows |
 
@@ -54,6 +54,38 @@ no `ends`). The same verb again after the last one ended is a fresh start.
 you leave her, so the last frame stays until the next, but it's only drawn
 in the belt scene. The panel works out how far through and how many seconds
 are left from the wall clock (`work()` in `ui/lib/space.js`).
+
+**Moving in the belt** (mining.md §2.3 in `~/dev/empyreal`, 8eb5113 and
+d731230, 2026-10-23). Since then a belt has a frame: Ship.Status's `belt` is
+`{ x, y, radius, core_km, core_bearing }` in km from its core, to a tenth,
+null outside one, and two things move her across it at the thrusters' pace
+(0.25 km/s at full drive, eased with it):
+
+- **`rcs`**, a nav activity: `busy: 'rcs'` with `left` to the move's end
+  (5 km in about 20 s). `halt` or `stop` leaves her where she's got to.
+- **Closing on a rock.** `mine` on a rock beyond 0.5 km moves her there
+  before it cuts. The laser is `busy: 'mine'` all the way, with `left` null as
+  ever, and nothing in GMCP marks the approach: only her `belt` x/y changing
+  each second says she's moving. It cuts once she's beside the rock. `mine`
+  while an `rcs` is under way stops the move and closes from where she is.
+
+`work.lua` keeps nav only while it's `rcs` (dock and undock are
+`manoeuvre.lua`'s) and folds Ship.Status's `belt` in too: when her place last
+changed, as a local time, and the way she went between her last two places,
+in degrees from straight out from the core where she was (0 out, 180 in, 90
+round it clockwise), held over from the last move within 0.5 km of the core,
+where there's no out. Her laser target comes with it, for the card. The `work`
+message gains `nav = { busy = 'rcs', since, ends }` and `belt = { moved, way,
+target }`, the latter while she's in a belt. A first place in a belt (arriving,
+undocking) isn't a move.
+
+The panel's `work()` calls her moving while nav is busy with `rcs`, or while
+the laser is busy with `mine` and her place has changed since the cut was
+ordered and within the last 2.5 s (the game sends it a tick apart, Lua
+stamps it in whole seconds, and the tenth-km rounding can skip a tick). A cut
+just ordered holds its beam for those 2.5 s until it's clear whether she's
+closing first. So a rock within reach starts cutting a couple of seconds after
+the order, and one further off once she's stopped beside it.
 
 A scan or assay run by a cartridge program shows the same as one by hand:
 `busy` is the device's, whoever started it. The plugin doesn't ask for or
@@ -180,16 +212,30 @@ fades with them:
 - **Mining:** the laser's beam from below the band, where the ship is, onto
   the rock's near face: a Glass glow, a Glass beam and a white core,
   flickering, with a white-hot glow and sparks where it bites.
+- **Moving** (`rcs`, or closing on a rock): the rocks flow past opposite her
+  heading, the near ones faster (30 px/s for the farthest to 140 for the
+  nearest), easing in and out (1.6 per second) and turning to a new heading
+  (2 per second) in place of the idle drift. Up the band is straight out from
+  the core, so `rcs out` streams the rocks down, `rcs in` up, and a bearing
+  round the core sideways; a belt's own bearings mean nothing outside it.
+  Until her place first changes (a second into a move) the rocks drift as
+  ever. Closing on a rock, there's no beam: it comes on once she's beside it.
+  Nothing else marks it: no wakes, no thruster glow (option A of
+  `docs/maps/reference/belt-motion-mockup.html`). The move's seconds go in the
+  deck band's corner card ([action-card.md](action-card.md)), not here.
 - **The countdown** is in the bottom-right corner, Dim, 10: `cutting` over
   `sweeping · 6 s` or `assaying · 8 s`, with the seconds dropped when there
   are none left (the game is about to say it's done). Mining has no seconds:
   it has no end.
 
 The rock an assay or the laser works is a near one nearest the middle of the
-band, held still while the work goes on (she's come alongside, and the game
-moves her to the rock to cut it) and let go when it ends. It's not the
+band, held still while the work goes on (she's come alongside) and let go
+when it ends. While she closes on a rock no rock is held, so the one the beam
+finds when she stops is whichever is near the middle then. It's not the
 game's rock: the rocks are scenery, and a sweep never adds, counts or places
-any. The work shows only that it's happening and how long is left.
+any. The work shows only that it's happening and how long is left, and the
+flow only that she's moving and which way, from her own place, which the game
+tells her.
 
 ## Bottom band
 
@@ -209,17 +255,22 @@ Unchanged: it says where you are aboard.
 
 `ui/space-view.js` (the canvas and frame loop, and the ground below a port),
 `ui/lib/space.js` (scene targets, easing, starfield, belt, rocks, the held
-rock, `work()` and `workLines()`, the town's layout, a dock's or an undock's
+rock and the flow while she moves, `work()`, `heading()`, `moveCard()` and
+`workLines()`, the town's layout, a dock's or an undock's
 distance), `ui/lib/orbits.js` (`daylit`), `ui/model-view.js` (`setAway`),
 `src/station_map/scene.lua`, `src/station_map/work.lua`,
 `src/station_map/manoeuvre.lua`. The preview's `?scene=port-day` and
 `?scene=port-night` put Zennor's town on the day or night side.
 `?work=scanning` (or `assaying`, `mining`, `idle`) opens on the belt with the
 ship at that work, a scan or assay starting again a second after it ends, as
-a program at par would. `?manoeuvre=undock-tiss` and `?manoeuvre=dock-orrin`
+a program at par would. `?move=rcs-out` plays the thrusters out from the core for 20 s,
+`?move=closing-cut` `mine` closing on rock-12 for 6 s and then cutting, and
+`?move=halted` an `rcs in` halted 7 s in, each over and over. `?manoeuvre=undock-tiss` and `?manoeuvre=dock-orrin`
 run an undock from T.I.S.S. and a dock at Orrin Station, `&left=N` opening
 part-way and `&stop=N` stopping early. The options for how to draw it are in
-`reference/dock-approach-mockup.html`.
+`reference/dock-approach-mockup.html`, and for her moving in a belt in
+`reference/belt-motion-mockup.html` (A, the plain flow, was picked, with out
+from the core up).
 
 ## Where it differs from the style guide
 

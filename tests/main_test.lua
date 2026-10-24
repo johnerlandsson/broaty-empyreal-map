@@ -554,6 +554,22 @@ test('disconnect posts no work', function()
   eq(m.data, {})
 end)
 
+test('Ship.Status at a belt posts where she is in it, and her moving through it', function()
+  local real = os.time
+  local env = boot()
+  local at = function(x, y)
+    return { name = 'Sparrow', docked = false, location = 'cinders', belt = { x = x, y = y, radius = 16, core_km = 10, core_bearing = 0 } }
+  end
+  os.time = function() return 1000 end
+  env.gmcp_handlers['Ship.Status']('Ship.Status', at(0, 10))
+  eq(post_named(env, 'work').data, { belt = {} })
+  env.posts = {}
+  os.time = function() return 1001 end
+  env.gmcp_handlers['Ship.Status']('Ship.Status', at(0, 10.3))
+  os.time = real
+  eq(post_named(env, 'work').data, { belt = { moved = 1001, way = 0 } })
+end)
+
 -- Docking and undocking, timed by Ship.Devices.
 
 local function nav_busy(busy, left)

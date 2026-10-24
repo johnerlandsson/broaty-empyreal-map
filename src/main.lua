@@ -132,6 +132,8 @@ local function scene_ship(data)
   -- Always: the panel times a trip from the fresh `received`.
   post_chart_ship()
   if N.ship_status(lanes, data, os.time()) then post_lanes() end
+  -- Where she is in a belt, so the scene can tell her moving through it.
+  if W.ship_status(work, data, os.time()) then post_work() end
   follow_activity()
 end
 

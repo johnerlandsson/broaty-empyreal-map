@@ -34,6 +34,26 @@ already draws the sweep from `Ship.Devices` ([space-scenes.md](space-scenes.md))
 and it's left as it is: the card stays in the bottom band and adds nothing to
 the top.
 
+**The ship's move in a belt** is a second card under the first, stacked in
+the same corner with 6 px between them: `thrusters, out from the core` (`in
+toward the core` within 30° of straight in, `on a new heading` otherwise,
+plain `thrusters` until her place first changes) with the move's seconds and
+bar, or `closing on rock-12` (her laser target, `closing on the rock` with
+none) with neither, since the game gives the approach no end. Your own
+action stays on top. The ship's comes from the `work` message
+([space-scenes.md](space-scenes.md)), not `Char.Action`: `rcs` and `mine` are
+the ship's devices at work, not something you're doing. It goes as she stops,
+the card checking again 2.5 s after her last move, since a stop
+while closing comes with no message.
+
+```
+┌ repairing the mining laser   29 s ┐
+│ stage 1 of 3 · 1 waiting          │
+└ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬────────────────── ┘
+┌ thrusters, out from the core 17 s ┐
+└ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬──────── ┘
+```
+
 ## Where its data comes from
 
 GMCP `Char.Action` (`~/dev/empyreal`, docs/actions.md §9 and §13 step 4,
@@ -109,11 +129,15 @@ Unchanged: it says where you are, and the card says what you're doing.
   `ready` and clears it on disconnect; `tests/main_test.lua`.
 - `ui/lib/action.js`: `actionCard(msg, now)`, which gives the label, detail,
   seconds, fraction and milliseconds left for the moment; `ui/lib/action.test.js`.
-- `ui/action-card.js`: the card, its bar's animation and its timer.
-- `ui/map.css`: `.action-card`.
+- `ui/action-card.js`: the card, its bar's animation and its timer; given
+  `moveCard` (`ui/lib/space.js`, tested in `ui/lib/space.test.js`) it's the
+  ship's move, which also wakes at `recheck` to go when she's stopped.
+- `ui/map.css`: `.action-cards` (the stack in the corner) and `.action-card`.
 - `dev/preview.js`: `?action=climbing-tiss`, `repair-skiff` and `drag-orrin`
   (and the bar's menu) play an action to its end. The repair goes through its
   three stages with a line waiting, and a move lands you in the next room.
+  `?move=rcs-out`, `closing-cut` and `halted` show the ship's card; with
+  `&action=repair-skiff` too, both stack.
 
 ## Where it differs from the style guide
 
