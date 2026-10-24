@@ -1,6 +1,7 @@
 // Preview driver: replays a walk round T.I.S.S. (into a bunk and a workshop on the way), then flights to Orrin Station, Wenna Halt and the
-// four halts on decks (Morvah Deep, Gwithian Reach, Carrow Yard, Lanyon High) and a walk round
-// each, then down to Zennor on Tamsin and a walk round the town, through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
+// ten halts on decks (Morvah Deep, Gwithian Reach, Carrow Yard, Lanyon High, and the ring's Kynance
+// Spindle, Marazion Quay, Penwith Vats, Botallack Head, Polperro Old Dock and Lamorna Light) and a
+// walk round each, a stop at Kilmar Steading, which has no plan, then down to Zennor on Tamsin and a walk round the town, through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
 // (src/station_map/location.lua, src/station_map/scene.lua).
 //
 //   ?step=N   open on route step N, as a panel re-mounting mid-walk would (only step N is replayed)
@@ -36,11 +37,17 @@
 //   ?sky=S    stand in Zennor's Square under sky S (night, dusk, dawn, low, overhead or tiss-overhead): the game's
 //             own charts from dev/sky-cases.json, shifted so a recorded moment of that sky is now; the bar's menu switches it
 
+import botallack from "../ui/data/botallack.js";
 import carrow from "../ui/data/carrow.js";
 import gwithian from "../ui/data/gwithian.js";
+import kynance from "../ui/data/kynance.js";
+import lamorna from "../ui/data/lamorna.js";
 import lanyon from "../ui/data/lanyon.js";
+import marazion from "../ui/data/marazion.js";
 import morvah from "../ui/data/morvah.js";
 import orrin from "../ui/data/orrin.js";
+import penwith from "../ui/data/penwith.js";
+import polperro from "../ui/data/polperro.js";
 import station from "../ui/data/station.js";
 import wenna from "../ui/data/wenna.js";
 import zennor from "../ui/data/zennor.js";
@@ -52,14 +59,20 @@ import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts } from "./charts-f
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
 const town = zennor.rooms.map((r) => ({ ...r, gravity: zennor.area.gravity })); // the area's gravity, as the game sends it
-const DATA = [station.rooms, orrin.rooms, wenna.rooms, morvah.rooms, gwithian.rooms, carrow.rooms, lanyon.rooms, town];
+const DATA = [
+  station.rooms,
+  orrin.rooms,
+  wenna.rooms,
+  ...[morvah, gwithian, carrow, lanyon, kynance, marazion, penwith, botallack, polperro, lamorna].map((d) => d.rooms),
+  town,
+];
 const byId = new Map(DATA.flat().map((r) => [r.id, r]));
 
 // --- the route -------------------------------------------------------------------------------
 
 const room = (id) => {
   const r = byId.get(id);
-  return { label: r.name, msg: { roomId: id, name: r.name, address: r.address ?? undefined, gravity: r.gravity } };
+  return { label: r.name, msg: { roomId: id, name: r.name, area: id.split(".")[0], address: r.address ?? undefined, gravity: r.gravity } };
 };
 
 /** Board lift `hour` at fromId, ride to toId; messages as Empyreal.Room + Empyreal.Vehicle fold them. */
@@ -209,6 +222,16 @@ const ROUTE = [
   ...halt("gwithian", "Gwithian Reach", "gwithian_reach"),
   ...halt("carrow", "Carrow Yard", "carrow_yard"),
   ...halt("lanyon", "Lanyon High", "lanyon_high"),
+  ...halt("kynance", "Kynance Spindle", "kynance_spindle"),
+  ...halt("marazion", "Marazion Quay", "marazion_quay"),
+  ...halt("penwith", "Penwith Vats", "penwith_vats"),
+  ...halt("botallack", "Botallack Head", "botallack_head"),
+  ...halt("polperro", "Polperro Old Dock", "polperro_old_dock"),
+  ...halt("lamorna", "Lamorna Light", "lamorna_light"),
+  // a halt there's no plan of: nothing shows, not Lamorna Light's
+  { label: "Flying to Kilmar Steading", msg: COCKPIT, scene: { scene: "travelling" } },
+  { label: "Docked at Kilmar Steading (no plan)", msg: COCKPIT, scene: { scene: "station", station: "kilmar_steading" } },
+  { label: "Berths (no plan)", msg: { roomId: "kilmar.berth", name: "Berths", area: "kilmar", areaName: "Kilmar Steading", address: "Deck 2, frame 3", gravity: 0 } },
   { label: "Flying to Zennor", msg: COCKPIT, scene: { scene: "travelling" } },
   { label: "Landed at Zennor", msg: COCKPIT, scene: { scene: "station", station: "zennor" } },
   room("zennor.field"),

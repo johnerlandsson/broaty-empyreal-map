@@ -19,6 +19,7 @@ const EDGE = "#0d1218";
 const LABEL_FG = "#dfe7f1"; // ring names: light, so they read over the grey faces
 const TONES = ["#3a4556", "#58667b", "#7e8da3"];
 const GLASS = "#cfe3ff";
+const LAMP = "#fff4d6"; // a lamp, burning: lit the same from every side
 const DIM = "#7d8a9a"; // a cut-away deck's outline
 const LIGHT = (() => {
   const v = [-0.5, 0.75, 0.45];
@@ -53,6 +54,7 @@ function normalOf([a, b, c]) {
 
 /** Flat colour for a face given the cosine of its angle to the light. */
 function fillOf(f, lit) {
+  if (f.kind === "lamp") return LAMP;
   const tone = lit > 0.66 ? 2 : lit > 0.33 ? 1 : 0;
   let fill = TONES[tone];
   if (f.kind === "fore" && f.tint) fill = mix(fill, f.tint, 0.7);

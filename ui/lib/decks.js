@@ -13,7 +13,9 @@ import { DISTRICT_COLOURS } from "./geometry.js";
 /**
  * What the addresses don't say. `prefix` is the rooms' id prefix; `tints` a district colour per
  * room; `blisters` the rooms that are glass blisters outside the hull, not cells of it; `cradles`
- * the blocks fore of the nose, each [side, deck, half-width, half-height, length] in cells.
+ * the blocks fore of the nose, each [side, deck, half-width, half-height, length] in cells; and
+ * `masts`, if it has any, each stood up off the roof with a lamp at its top, [side, frame, height]
+ * in cells (the height in decks).
  */
 export const DECKS = {
   // A foundry port: orange paint inside, a docking well at the nose with big cradles for ore tugs
@@ -43,8 +45,8 @@ export const DECKS = {
       [1, 2, 0.18, 0.16, 0.36],
     ],
   },
-  // The four halts below are laid out as Orrin is, room for room; only their paint and their
-  // cradles differ.
+  // The halts below are laid out as Orrin is, room for room; only their paint and their cradles
+  // differ.
 
   // A gas giant's skimmer port: passages in scuffed hazard yellow, a weather office for charts,
   // and squat, scoop-mouthed skimmers in short cradles round the well.
@@ -143,6 +145,153 @@ export const DECKS = {
       [1, 3, 0.44, 0.3, 0.8],
       [0, 2, 0.44, 0.3, 0.8],
     ],
+  },  // An ice world's port, and very bright: passages lagged and felted in white, blue water tanks and
+  // white ice crates in the freight office, a narrow docking well, and long ice haulers in the cradles.
+  kynance: {
+    prefix: "kynance",
+    tints: {
+      "kynance.berth": DISTRICT_COLOURS.docks,
+      "kynance.deck-3-frame-2": DISTRICT_COLOURS.docks, // white lagging, very bright
+      "kynance.deck-3-frame-1": DISTRICT_COLOURS.docks,
+      "kynance.freight": DISTRICT_COLOURS.residential, // blue water tanks
+      "kynance.charts": DISTRICT_COLOURS.residential, // the floes being worked, marked in blue
+      "kynance.concourse": DISTRICT_COLOURS.docks,
+      "kynance.deck-2-frame-2": DISTRICT_COLOURS.docks,
+      "kynance.market": DISTRICT_COLOURS.concourse, // small and warm
+      "kynance.gallery": DISTRICT_COLOURS.docks,
+    },
+    blisters: ["kynance.gallery"],
+    cradles: [
+      [0, 3, 0.24, 0.26, 0.22], // the docking well's mouth: narrow
+      [-1, 3, 0.32, 0.3, 0.9], // ice haulers: long
+      [1, 3, 0.32, 0.3, 0.9],
+      [0, 2, 0.32, 0.3, 0.9],
+    ],
+  },
+  // A spice world's port, warm and close: berth numbers in green on gold, handlines in plaited fibre,
+  // crates of greens and sacks of spice in the freight office, and the growers' traders in the cradles.
+  marazion: {
+    prefix: "marazion",
+    tints: {
+      "marazion.berth": DISTRICT_COLOURS.docks,
+      "marazion.deck-3-frame-2": DISTRICT_COLOURS.concourse, // green on gold, and pepper
+      "marazion.deck-3-frame-1": DISTRICT_COLOURS.concourse,
+      "marazion.freight": DISTRICT_COLOURS.hydroponics, // greens and spice
+      "marazion.charts": DISTRICT_COLOURS.offices, // Marazion's weather, redrawn by hand
+      "marazion.concourse": DISTRICT_COLOURS.concourse,
+      "marazion.deck-2-frame-2": DISTRICT_COLOURS.concourse,
+      "marazion.market": DISTRICT_COLOURS.commons, // factors in bright shirts
+      "marazion.gallery": DISTRICT_COLOURS.docks,
+    },
+    blisters: ["marazion.gallery"],
+    cradles: [
+      [0, 3, 0.3, 0.3, 0.22], // the docking well's mouth
+      [-1, 3, 0.34, 0.3, 0.6], // traders
+      [1, 3, 0.34, 0.3, 0.6],
+      [-1, 2, 0.34, 0.3, 0.6],
+      [0, 2, 0.34, 0.3, 0.6],
+      [1, 2, 0.34, 0.3, 0.6],
+    ],
+  },
+  // The domed towns' port: a faded green touched up by hand, white vat drums and ice tanks in the
+  // freight office, wide cargo collars at the hatches, the towns' carriers and an ice hauler in the
+  // cradles.
+  penwith: {
+    prefix: "penwith",
+    tints: {
+      "penwith.berth": DISTRICT_COLOURS.docks,
+      "penwith.deck-3-frame-2": DISTRICT_COLOURS.hydroponics, // faded green, touched up
+      "penwith.deck-3-frame-1": DISTRICT_COLOURS.hydroponics,
+      "penwith.freight": DISTRICT_COLOURS.midring, // vat drums and ice tanks
+      "penwith.charts": DISTRICT_COLOURS.docks,
+      "penwith.concourse": DISTRICT_COLOURS.hydroponics,
+      "penwith.deck-2-frame-2": DISTRICT_COLOURS.hydroponics,
+      "penwith.market": DISTRICT_COLOURS.offices, // a clerk with a town's crest
+      "penwith.gallery": DISTRICT_COLOURS.docks,
+    },
+    blisters: ["penwith.gallery"],
+    cradles: [
+      [0, 3, 0.3, 0.3, 0.22], // the docking well's mouth
+      [-1, 3, 0.42, 0.3, 0.65], // the towns' carriers: wide
+      [1, 3, 0.42, 0.3, 0.65],
+      [0, 2, 0.3, 0.3, 0.9], // an ice hauler
+    ],
+  },
+  // An old mining town lifted into orbit: grey grit in every seam, ore bins in the freight office, a
+  // lamp from the old workings in the concourse, and heavy ore carriers low in their cradles, with
+  // prospectors' skiffs at the corners.
+  botallack: {
+    prefix: "botallack",
+    tints: {
+      "botallack.berth": DISTRICT_COLOURS.docks,
+      "botallack.deck-3-frame-2": DISTRICT_COLOURS.midring, // grey grit
+      "botallack.deck-3-frame-1": DISTRICT_COLOURS.midring,
+      "botallack.freight": DISTRICT_COLOURS.industrial, // ore bins
+      "botallack.charts": DISTRICT_COLOURS.docks,
+      "botallack.concourse": DISTRICT_COLOURS.industrial, // stained coveralls, the old workings' lamp
+      "botallack.deck-2-frame-2": DISTRICT_COLOURS.midring,
+      "botallack.market": DISTRICT_COLOURS.concourse, // the assay board
+      "botallack.gallery": DISTRICT_COLOURS.docks,
+    },
+    blisters: ["botallack.gallery"],
+    cradles: [
+      [0, 3, 0.3, 0.3, 0.22], // the docking well's mouth
+      [-1, 3, 0.42, 0.22, 0.8], // ore carriers: low and heavy
+      [1, 3, 0.42, 0.22, 0.8],
+      [0, 2, 0.42, 0.22, 0.8],
+      [-1, 2, 0.18, 0.16, 0.36], // prospectors' skiffs, at the corners
+      [1, 2, 0.18, 0.16, 0.36],
+    ],
+  },
+  // An old colony's dock, built for far more traffic than comes now: faded enamel signs, a customs
+  // hall with a brass bell for the freight office, and a wide well with cradles in rows, most of them
+  // empty. (No paint is named, so its passages wear a colour no other station's do.)
+  polperro: {
+    prefix: "polperro",
+    tints: {
+      "polperro.berth": DISTRICT_COLOURS.docks,
+      "polperro.deck-3-frame-2": DISTRICT_COLOURS.commons, // faded enamel
+      "polperro.deck-3-frame-1": DISTRICT_COLOURS.commons,
+      "polperro.freight": DISTRICT_COLOURS.concourse, // the old customs hall's brass
+      "polperro.charts": DISTRICT_COLOURS.docks,
+      "polperro.concourse": DISTRICT_COLOURS.commons,
+      "polperro.deck-2-frame-2": DISTRICT_COLOURS.commons,
+      "polperro.market": DISTRICT_COLOURS.midring, // the empty mountings capped
+      "polperro.gallery": DISTRICT_COLOURS.docks,
+    },
+    blisters: ["polperro.gallery"],
+    cradles: [
+      [0, 3, 0.36, 0.32, 0.22], // the docking well's mouth: wide
+      [-1, 3, 0.3, 0.28, 0.6], // more cradles than it needs
+      [1, 3, 0.3, 0.28, 0.6],
+      [-1, 2, 0.3, 0.28, 0.6],
+      [0, 2, 0.3, 0.28, 0.6],
+      [1, 2, 0.3, 0.28, 0.6],
+    ],
+  },
+  // A stores depot at the inner edge, lit warm and low: passages in a pale cream, ration crates in the
+  // freight office, stores tenders in the cradles, and the Light, an old lamp on a mast at the nose.
+  lamorna: {
+    prefix: "lamorna",
+    tints: {
+      "lamorna.berth": DISTRICT_COLOURS.docks,
+      "lamorna.deck-3-frame-2": DISTRICT_COLOURS.concourse, // pale cream, lit warm
+      "lamorna.deck-3-frame-1": DISTRICT_COLOURS.concourse,
+      "lamorna.freight": DISTRICT_COLOURS.midring, // ration crates in tidy columns
+      "lamorna.charts": DISTRICT_COLOURS.docks,
+      "lamorna.concourse": DISTRICT_COLOURS.concourse,
+      "lamorna.deck-2-frame-2": DISTRICT_COLOURS.concourse,
+      "lamorna.market": DISTRICT_COLOURS.commons, // a clerk tallying the run
+      "lamorna.gallery": DISTRICT_COLOURS.docks,
+    },
+    blisters: ["lamorna.gallery"],
+    cradles: [
+      [0, 3, 0.3, 0.3, 0.22], // the docking well's mouth
+      [-1, 3, 0.34, 0.3, 0.6], // stores tenders
+      [1, 3, 0.34, 0.3, 0.6],
+      [0, 2, 0.34, 0.3, 0.6],
+    ],
+    masts: [[-1.25, 3.35, 1.65]], // the Light, at the nose's port corner, clear of the berths
   },
 };
 
@@ -347,8 +496,24 @@ export function buildDecksModel(index, spec) {
     }
   }
 
+  // masts up off the roof, each a lamp at its top, burning whatever the light; they go with the top
+  // deck when it's cut away, as the cradles do
+  const roof = at(0, 0, hull.z1)[1] + half[1];
+  const box = (c, h, kind, layer) => {
+    for (const { c: signs } of CUBE) add(signs.map((s) => c.map((v, k) => v + s[k] * h[k])), kind, null, { layer, deck: hull.z1 });
+  };
+  for (const [x, y, height] of spec.masts ?? []) {
+    const [cx, , cz] = at(x, y, 0);
+    const tall = height * CELL.deck;
+    box([cx, roof + tall / 2, cz], [MAST, tall / 2, MAST], "mast", 1);
+    box([cx, roof + tall, cz], [LAMP, LAMP, LAMP], "lamp", 2);
+  }
+
   return faces;
 }
+
+const MAST = 3.5; // a mast's half-width, in model units
+const LAMP = 11; // its lamp's
 
 /** pts wound so their normal points away from `from`. */
 function outward(pts, from) {

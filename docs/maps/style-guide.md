@@ -18,7 +18,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 |---|---|---|---|
 | T.I.S.S. model and deck plans | top, bottom | you're on T.I.S.S., or your ship is docked there | [tiss.md](tiss.md) |
 | Drum station models and plans (Wenna Halt) | top, bottom | you're on that station, or your ship is docked there | [drum-stations.md](drum-stations.md) |
-| Decks station models and plans (Orrin Station and the four halts) | top, bottom | you're on that station, or your ship is docked there | [decks-stations.md](decks-stations.md) |
+| Decks station models and plans (Orrin Station and the ten halts) | top, bottom | you're on that station, or your ship is docked there | [decks-stations.md](decks-stations.md) |
 | Town sky and plan (Zennor) | top, bottom | you're in the town, or your ship is landed there | [town.md](town.md) |
 | Space scenes | top | you're out in a ship you own or crew, undocked | [space-scenes.md](space-scenes.md) |
 | Ship plans | bottom | you're aboard any ship, docked or not | [ship-plans.md](ship-plans.md) |

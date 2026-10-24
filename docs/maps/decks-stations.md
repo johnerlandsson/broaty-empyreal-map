@@ -1,7 +1,8 @@
 # Decks stations
 
-*Status: built for Orrin Station, Morvah Deep, Gwithian Reach, Carrow Yard and Lanyon High.
-Last updated 2026-10-23.*
+*Status: built for Orrin Station, Morvah Deep, Gwithian Reach, Carrow Yard, Lanyon High,
+Kynance Spindle, Marazion Quay, Penwith Vats, Botallack Head, Polperro Old Dock and Lamorna
+Light. Last updated 2026-10-24.*
 
 ## What it is and when it shows
 
@@ -11,6 +12,13 @@ every room is a cell of one grid, and its address names the cell:
 `Deck 3, frame 2, port 1`. It shows while you're in one of its rooms or your
 ship is docked there.
 
+A station on decks the plugin has no plan of yet (the Mid's Kilmar Steading,
+Caradon Works and Garrow Stop, say) shows nothing: both bands stay empty and
+the info line says "No plan of Kilmar Steading". `pickStation()` in
+`ui/lib/stations.js` knows a station's room by the area the game puts it in
+(a ship's is `ship.<n>`), and a dock by its place id, so it doesn't keep the
+last station up in its place.
+
 | Station | Gravity | Shape | Rooms |
 |---|---|---|---|
 | Orrin Station | 0 g | a box three frames long and two decks deep, the Gallery in a glass blister on Deck 1, under Deck 2 | the Berths, Freight Office and Chart Office off Deck 3's passage; a hatchway down to the Concourse on Deck 2, the Exchange off its passage, and a hatch down to the Gallery |
@@ -18,9 +26,16 @@ ship is docked there.
 | Gwithian Reach | 0 g | as Orrin | as Orrin |
 | Carrow Yard | 0 g | as Orrin | as Orrin |
 | Lanyon High | 0 g | as Orrin | as Orrin |
+| Kynance Spindle | 0 g | as Orrin | as Orrin |
+| Marazion Quay | 0 g | as Orrin | as Orrin |
+| Penwith Vats | 0 g | as Orrin | as Orrin |
+| Botallack Head | 0 g | as Orrin | as Orrin |
+| Polperro Old Dock | 0 g | as Orrin | as Orrin |
+| Lamorna Light | 0 g | as Orrin | as Orrin |
 
-The four halts (empyreal bc71307) are outposts of Orrin's class, laid out as
-it is room for room; only their prefixes and prose differ. What sets them
+The four halts (empyreal bc71307) and the ring's six (empyreal 04978ca) are
+outposts of Orrin's class, laid out as it is room for room; only their
+prefixes and prose differ. What sets them
 apart on the map is their tints and cradles, from their descriptions:
 
 | Station | Passages and Concourse | Freight Office | Chart Office | Exchange | Cradles |
@@ -30,6 +45,12 @@ apart on the map is their tints and cradles, from their descriptions:
 | Gwithian Reach | `industrial` (rust red) | `midring` (ingots) | `docks` | `concourse` | ore barges, a long water tanker, skiffs' at the corners |
 | Carrow Yard | `midring` (sensible grey) | `industrial` (ships' parts) | `docks` | `offices` (the yards' bids) | five alike, in even rows |
 | Lanyon High | `hydroponics` (green cord, vines) | `concourse` (grain) | `docks` | `commons` | three broad ones for grain ships |
+| Kynance Spindle | `docks` (white lagging, very bright) | `residential` (blue water tanks) | `residential` (the floes marked in blue) | `concourse` (small and warm) | a narrow well, three long ones for ice haulers |
+| Marazion Quay | `concourse` (green on gold, pepper) | `hydroponics` (greens and spice) | `offices` (the weather map) | `commons` (factors in bright shirts) | five alike for the growers' traders |
+| Penwith Vats | `hydroponics` (faded green, touched up) | `midring` (vat drums, ice tanks) | `docks` | `offices` (a clerk with a crest) | two wide ones for the towns' carriers, a long one for an ice hauler |
+| Botallack Head | `midring` (grey grit); the Concourse `industrial` (coveralls, the old workings' lamp) | `industrial` (ore bins) | `docks` | `concourse` (the assay board) | three low, heavy ones for ore carriers, prospectors' skiffs at the corners |
+| Polperro Old Dock | `commons` (faded enamel: no paint is named, so a colour no other station's passages wear) | `concourse` (the customs hall's brass) | `docks` | `midring` (empty mountings) | a wide well and five alike, more than it needs |
+| Lamorna Light | `concourse` (pale cream, lit warm) | `midring` (ration crates) | `docks` | `commons` (a clerk tallying the run) | three for stores tenders |
 
 The Berths and the Gallery are `docks` everywhere.
 
@@ -40,7 +61,8 @@ Orrin Station was a drum until the game rebuilt it on decks (empyreal
 ## Where its data comes from
 
 `ui/data/orrin.js` (and `morvah.js`, `gwithian.js`, `carrow.js`,
-`lanyon.js`), copied from `content/areas/orrin.yaml` (and the others) in the
+`lanyon.js`, `kynance.js`, `marazion.js`, `penwith.js`, `botallack.js`,
+`polperro.js`, `lamorna.js`), copied from `content/areas/orrin.yaml` (and the others) in the
 Empyreal source: each room's id, name, address, flags and exits, as the YAML has them
 (north fore, south aft, west port, east starboard), and the area's gravity.
 Nothing is placed by hand. `parseAddress()` in `ui/lib/decks.js` reads each
@@ -50,8 +72,8 @@ checks each station's data against its YAML whenever `~/dev/empyreal` is
 there.
 
 What the addresses don't say is in `DECKS` in `ui/lib/decks.js`: the room id
-prefix, a district tint per room, which rooms are blisters, and the cradles at
-the nose.
+prefix, a district tint per room, which rooms are blisters, the cradles at
+the nose, and any masts on the roof.
 
 From the addresses and the exits:
 
@@ -66,7 +88,10 @@ The hull as a box of cells: X starboard, Y up (deck), Z fore (frame), in
 the same frame and camera as every other station. Each cell's outer faces take
 the tint of the room behind them. Edges are drawn only where the box has
 them. A blister hangs off the hull as a glass dome, capped top and bottom.
-Cradles stand fore of the nose. Nothing turns.
+Cradles stand fore of the nose. A mast (`masts` in the spec; only Lamorna
+Light has one) stands up off the roof with its lamp at the top, the lamp a
+warm white lit the same from every side, so it reads as burning. Nothing
+turns.
 
 **Cut away above your deck.** From the fixed camera, a room on a lower deck
 lies under the deck above it. Lit through the hull, it would land where the
@@ -74,7 +99,8 @@ next cell aft does, and look like it's on the wrong deck. So the decks above
 yours are lifted off and drawn only as a dashed outline in Dim. Your deck's
 top shows its cells tinted, like a floor plan, with your room's cell standing
 on it. In the Gallery both decks are outlined, so the blister under them
-shows. Off the station the box is whole.
+shows. The cradles and a mast belong to the top deck and go with it. Off the
+station the box is whole.
 
 Lit: your room's cell, as a box the size of the cell, or the blister's glass.
 
@@ -148,6 +174,9 @@ the game yet, and nothing here draws them.
   of its own.
 - **Changing deck doesn't re-centre the plan** (§8.3), because every deck
   shares one frame.
+- **The lamp ignores the light** (§11: every face one of three Tones by its angle), being a light itself:
+  Lamorna Light's, the "lamp on a mast at the nose" of its area file, stood
+  up at the nose's port corner, clear of the Berths when they're lit.
 - **No thruster bells**, though Orrin's description has stationkeeping
   thrusters aft of Deck 3 (§7 suggests flared bells). Under the plan's aft
   wall they looked like a ship's stern, as on the ship plans, so they're

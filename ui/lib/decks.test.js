@@ -2,11 +2,17 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import botallack from "../data/botallack.js";
 import carrow from "../data/carrow.js";
 import gwithian from "../data/gwithian.js";
+import kynance from "../data/kynance.js";
+import lamorna from "../data/lamorna.js";
 import lanyon from "../data/lanyon.js";
+import marazion from "../data/marazion.js";
 import morvah from "../data/morvah.js";
 import orrin from "../data/orrin.js";
+import penwith from "../data/penwith.js";
+import polperro from "../data/polperro.js";
 import {
   CELL,
   DECKS,
@@ -57,7 +63,7 @@ describe("parseAddress", () => {
 });
 
 // every station on decks, by its spec's key: its data, and its area file in the Empyreal source
-const STATIONS = { orrin, morvah, gwithian, carrow, lanyon };
+const STATIONS = { orrin, morvah, gwithian, carrow, lanyon, kynance, marazion, penwith, botallack, polperro, lamorna };
 
 describe.each(Object.entries(STATIONS))("%s's data", (key, data) => {
   const spec = DECKS[key];
@@ -261,6 +267,54 @@ describe("buildDecksModel", () => {
     const { x0, x1, y0, y1, z0, z1 } = index.hull;
     const [nx, ny, nz] = [x1 - x0 + 1, y1 - y0 + 1, z1 - z0 + 1];
     expect(pieces).toBe(2 * 4 * (nx + ny + nz));
+  });
+
+  it("has no mast unless its spec gives it one", () => {
+    for (const [key, data] of Object.entries(STATIONS)) {
+      if (DECKS[key].masts) continue;
+      const fs = buildDecksModel(indexDecks(data, DECKS[key]), DECKS[key]);
+      expect(fs.some((f) => f.kind === "mast" || f.kind === "lamp"), key).toBe(false);
+    }
+  });
+});
+
+describe("Lamorna Light's lamp", () => {
+  const spec = DECKS.lamorna;
+  const index = indexDecks(lamorna, spec);
+  const faces = buildDecksModel(index, spec);
+  const of = (kind) => faces.filter((f) => f.kind === kind);
+  const span = (fs, k) => {
+    const v = fs.flatMap((f) => f.pts.map((p) => p[k]));
+    return [Math.min(...v), Math.max(...v)];
+  };
+  const hull = faces.filter((f) => f.outline);
+
+  it("stands a mast up off the roof at the nose, the lamp at its top", () => {
+    const mast = of("mast");
+    const lamp = of("lamp");
+    expect(mast.length).toBe(6);
+    expect(lamp.length).toBe(6);
+    const roof = span(hull, 1)[1];
+    expect(span(mast, 1)[0]).toBeCloseTo(roof);
+    expect(span(lamp, 1)[0]).toBeGreaterThan(roof);
+    expect(span(lamp, 1)[1]).toBeCloseTo(span(mast, 1)[1] + (span(lamp, 1)[1] - span(lamp, 1)[0]) / 2);
+    // forward of the hull's middle, and to port
+    expect(span(mast, 2)[0]).toBeGreaterThan(0);
+    expect(span(mast, 0)[1]).toBeLessThan(0);
+    for (const f of [...mast, ...lamp]) expect(f.key).toBe(null);
+  });
+
+  it("goes with the top deck when it's cut away, as the cradles do, the lamp drawn over the mast", () => {
+    for (const f of [...of("mast"), ...of("lamp")]) expect(f.deck).toBe(index.hull.z1);
+    expect(Math.min(...of("lamp").map((f) => f.layer))).toBeGreaterThan(Math.max(...of("mast").map((f) => f.layer)));
+  });
+
+  it("winds the mast and the lamp outward", () => {
+    for (const kind of ["mast", "lamp"]) {
+      const fs = of(kind);
+      const mid = centroid(fs.flatMap((f) => f.pts));
+      for (const f of fs) expect(dot(normal(f.pts), sub(centroid(f.pts), mid)), kind).toBeGreaterThan(0);
+    }
   });
 });
 

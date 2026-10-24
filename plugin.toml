@@ -1,7 +1,7 @@
 id = "broaty.empyreal-map"
 name = "Empyreal Map"
 version = "0.1.0"
-description = "Maps for Empyreal's stations, T.I.S.S., Orrin Station and Wenna Halt: a turning station model over a deck plan of your floor."
+description = "Maps for Empyreal's stations, T.I.S.S., Orrin Station, Wenna Halt and the Shallows' ten halts: a turning station model over a deck plan of your floor."
 language = "lua"
 entry = "src/main.lua"
 mallard_api_version = "1.0"

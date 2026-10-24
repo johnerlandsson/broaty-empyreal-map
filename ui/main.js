@@ -14,11 +14,17 @@
 import { ActionCard } from "./action-card.js";
 import { BeltView } from "./belt-view.js";
 import { ChartView } from "./chart-view.js";
+import botallack from "./data/botallack.js";
 import carrow from "./data/carrow.js";
 import gwithian from "./data/gwithian.js";
+import kynance from "./data/kynance.js";
+import lamorna from "./data/lamorna.js";
 import lanyon from "./data/lanyon.js";
+import marazion from "./data/marazion.js";
 import morvah from "./data/morvah.js";
 import orrin from "./data/orrin.js";
+import penwith from "./data/penwith.js";
+import polperro from "./data/polperro.js";
 import station from "./data/station.js";
 import wenna from "./data/wenna.js";
 import zennor from "./data/zennor.js";
@@ -31,7 +37,7 @@ import { DRUMS, buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
 import { hullOf, isShipRoom, shipInfo } from "./lib/hulls.js";
 import { indexStation, infoLine, locate } from "./lib/locate.js";
 import { moveCard } from "./lib/space.js";
-import { pickStation, stationOfDock } from "./lib/stations.js";
+import { noPlanLine, pickStation, stationOfDock } from "./lib/stations.js";
 import { TOWNS, indexTown, locateTown, townInfo } from "./lib/town.js";
 import { ModelView } from "./model-view.js";
 import { SpaceView } from "./space-view.js";
@@ -87,6 +93,12 @@ const stations = {
   gwithian: decks(gwithian, DECKS.gwithian),
   carrow: decks(carrow, DECKS.carrow),
   lanyon: decks(lanyon, DECKS.lanyon),
+  kynance: decks(kynance, DECKS.kynance),
+  marazion: decks(marazion, DECKS.marazion),
+  penwith: decks(penwith, DECKS.penwith),
+  botallack: decks(botallack, DECKS.botallack),
+  polperro: decks(polperro, DECKS.polperro),
+  lamorna: decks(lamorna, DECKS.lamorna),
 };
 const ships = {}; // hull id -> the DeckView drawing that hull, built on first use
 const space = new SpaceView(modelEl);
@@ -176,9 +188,9 @@ function runSky() {
   skyTimer = setInterval(() => sky.draw(Date.now()), 1000);
 }
 
-let current = null;
-let docked = null; // the station your ship is docked at, from the scene message
-let approaching = null; // the station a dock under way is drawing near, from the manoeuvre message
+let current; // the station showing: undefined till the first render, null for one there's no plan of
+let docked = null; // where your ship is docked (a place id), from the scene message
+let approaching = null; // the station a dock under way is drawing near (its place id), from the manoeuvre message
 let last = null; // the last location message
 
 /** Show the station model for key; the bottom band is render()'s, since a ship can take it. */
@@ -189,11 +201,12 @@ function show(key) {
   for (const [k, s] of Object.entries(stations)) s.model.div.style.display = k === key ? "" : "none";
 }
 
-/** Show only this deck in the bottom band (a station's or a ship's); true if it was hidden. */
+/** Show only this deck in the bottom band (a station's or a ship's), or none; true if it was hidden. */
 function showDeck(view) {
   for (const d of [...Object.values(stations).map((s) => s.deck), ...Object.values(ships)]) {
     if (d !== view) d.div.style.display = "none";
   }
+  if (!view) return false;
   const hidden = view.div.style.display === "none";
   view.div.style.display = "";
   return hidden;
@@ -208,13 +221,15 @@ function shipView(id) {
 }
 
 function render() {
-  show(pickStation(last, docked ?? approaching, current ?? "tiss"));
-  const s = stations[current];
-  const where = (s.locate ?? locate)(s.index, last, s.lastLevel);
-  if (where.kind !== "off") s.lastLevel = where.level;
-  s.model.set(where);
-  s.deck.set(where);
-  s.deck.dim(where.kind === "off");
+  show(pickStation(last, docked ?? approaching, current === undefined ? "tiss" : current));
+  const s = stations[current]; // none at a station there's no plan of: nothing shows, not the last one
+  const where = s ? (s.locate ?? locate)(s.index, last, s.lastLevel) : null;
+  if (s) {
+    if (where.kind !== "off") s.lastLevel = where.level;
+    s.model.set(where);
+    s.deck.set(where);
+    s.deck.dim(where.kind === "off");
+  }
   if (isShipRoom(last?.roomId)) {
     const view = shipView(hullOf(last.hull).id);
     if (showDeck(view)) view.home();
@@ -223,8 +238,8 @@ function render() {
     info.textContent = shipInfo(last);
     return;
   }
-  showDeck(s.deck);
-  info.textContent = (s.info ?? infoLine)(where, last, s.index);
+  showDeck(s?.deck ?? null);
+  info.textContent = s ? (s.info ?? infoLine)(where, last, s.index) : noPlanLine(last);
 }
 
 panel.on("settings", (msg) => {
@@ -234,7 +249,7 @@ panel.on("settings", (msg) => {
 panel.on("scene", (msg) => {
   space.set(msg?.scene, msg?.port ?? null);
   scene = msg?.scene ?? null;
-  docked = stationOfDock(msg?.station);
+  docked = typeof msg?.station === "string" ? msg.station : null;
   render();
   runSky();
 });
@@ -251,7 +266,7 @@ panel.on("manoeuvre", (msg) => {
   const left = Number(msg?.left);
   const total = Number(msg?.total);
   const timed = (verb === "dock" || verb === "undock") && key && Number.isFinite(left) && Number.isFinite(total);
-  approaching = timed && verb === "dock" ? key : null;
+  approaching = timed && verb === "dock" ? msg.at : null;
   if (timed) {
     const end = Date.now() + left * 1000;
     space.setManoeuvre({ verb, start: end - Math.max(total, left) * 1000, end });

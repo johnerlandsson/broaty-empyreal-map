@@ -1,0 +1,112 @@
+<!doctype html>
+<!-- Lamorna Light's lamp, 2026-10-24: three ways to draw "a lamp on a mast at the nose" on the decks
+     model. Each option is drawn at the Berths (Deck 3 lit) and on the Concourse (Deck 3 cut away).
+     The lamp is a face tinted warm white; built in, it would be a face kind of its own that ignores
+     the light, so it reads as burning. Uses the real model; serve the repo root over http to open it.
+     A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Lamorna Light's lamp: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:16px 20px; }
+  h2 { color:#e3eaf2; font-size:15px; margin:14px 0 2px; }
+  h2 small { color:#7d8a9a; font-weight:400; font-size:12px; margin-left:8px; }
+  .row { display:flex; gap:10px; margin:6px 0 2px; }
+  figure { margin:0; text-align:center; }
+  figcaption { font:11px "DejaVu Sans Mono", monospace; margin-top:3px; }
+  .f { position:relative; width:300px; height:230px; background:#04060c; border-radius:6px; overflow:hidden; outline:1px solid #18202b; }
+  .f .m { position:absolute; inset:0; }
+  .f .m button { display:none; }
+</style></head><body>
+<script type="module">
+import lamorna from "../../../ui/data/lamorna.js";
+import { ModelView } from "../../../ui/model-view.js";
+import { CELL, DECKS, buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "../../../ui/lib/decks.js";
+
+const spec = DECKS.lamorna;
+const index = indexDecks(lamorna, spec);
+const LAMP = "#fff4d6";
+
+// Lamorna's hull spans x -1..1, frames 1..3, decks 2..3; model space as buildDecksModel has it
+const fore = CELL.frame * 1.5; // the nose
+const top = CELL.deck; // Deck 3's top
+
+const sub = (a, b) => a.map((v, i) => v - b[i]);
+const add = (a, b) => a.map((v, i) => v + b[i]);
+const mul = (a, k) => a.map((v) => v * k);
+const unit = (a) => mul(a, 1 / Math.hypot(...a));
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const CUBE = [
+  [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]],
+  [[-1, 1, -1], [1, 1, -1], [1, -1, -1], [-1, -1, -1]],
+  [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]],
+  [[-1, 1, 1], [1, 1, 1], [1, 1, -1], [-1, 1, -1]],
+  [[1, -1, -1], [1, 1, -1], [1, 1, 1], [1, -1, 1]],
+  [[-1, -1, 1], [-1, 1, 1], [-1, 1, -1], [-1, -1, -1]],
+];
+
+/** A box from a to b, `w` either side of the line, as model faces (right-handed basis, so wound outward). */
+function strut(a, b, w, extra) {
+  const d = unit(sub(b, a));
+  const u = unit(Math.abs(d[1]) > 0.9 ? cross([0, 0, 1], d) : cross([0, 1, 0], d));
+  const v = cross(d, u);
+  const c = mul(add(a, b), 0.5);
+  const half = Math.hypot(...sub(b, a)) / 2;
+  return CUBE.map((signs) => ({
+    pts: signs.map(([s0, s1, s2]) => add(c, add(mul(u, s0 * w), add(mul(v, s1 * w), mul(d, s2 * half))))),
+    kind: "dock", key: null, tint: null, edges: [true, true, true, true], turns: false, cull: true, layer: 1, deck: 3, ...extra,
+  }));
+}
+const lamp = (at, r) => strut(sub(at, [0, 0, r]), add(at, [0, 0, r]), r, { kind: "fore", tint: LAMP, layer: 2 });
+
+const OPTIONS = [
+  {
+    title: "A · straight out fore",
+    note: "a thin mast from the top of the nose, on the centreline, reaching past the cradles; the lamp at its tip",
+    faces() {
+      const a = [0, top - 6, fore], b = [0, top - 6, fore + 1.3 * CELL.frame];
+      return [...strut(a, b, 3.5), ...lamp(b, 11)];
+    },
+  },
+  {
+    title: "B · standing up at the nose",
+    note: "a mast stood up off Deck 3's roof at the nose's port corner, like a lighthouse; the lamp at its top",
+    faces() {
+      const a = [-80, top, fore - 14], b = [-80, top + 85, fore - 14];
+      return [...strut(a, b, 3.5), ...lamp(b, 11)];
+    },
+  },
+  {
+    title: "C · raked up and fore",
+    note: "a mast raked up and out from the nose's port corner, so the lamp stands clear above and ahead of the cradles",
+    faces() {
+      const a = [-80, top - 4, fore - 6], b = [-80, top + 60, fore + 0.9 * CELL.frame];
+      return [...strut(a, b, 3.5), ...lamp(b, 11)];
+    },
+  },
+];
+
+const places = [
+  ["at the Berths", { roomId: "lamorna.berth" }],
+  ["on the Concourse", { roomId: "lamorna.concourse" }],
+];
+
+for (const opt of OPTIONS) {
+  const h = document.body.appendChild(document.createElement("h2"));
+  h.innerHTML = `${opt.title}<small>${opt.note}</small>`;
+  const row = document.body.appendChild(document.createElement("div"));
+  row.className = "row";
+  for (const [caption, msg] of places) {
+    const fig = row.appendChild(document.createElement("figure"));
+    const f = fig.appendChild(document.createElement("div"));
+    f.className = "f";
+    const m = f.appendChild(document.createElement("div"));
+    m.className = "m";
+    const view = new ModelView(m, index, {
+      faces: [...buildDecksModel(index, spec), ...opt.faces()],
+      keyOf: decksKey, hourOf: () => null, cutOf: (w) => decksCut(index, w), labels: false,
+    });
+    view.set(locateDecks(index, msg));
+    fig.appendChild(document.createElement("figcaption")).textContent = caption;
+  }
+}
+</script>
+</body></html>
