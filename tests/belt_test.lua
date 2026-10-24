@@ -35,11 +35,6 @@ local function sensors(busy, left, kinds)
   } }
 end
 
-local function nav(busy, left)
-  return { devices = { { id = 'nav', busy = busy, left = left, attachments = {} },
-    { id = 'sensors', busy = nil, attachments = {} } } }
-end
-
 test('a fresh state is nowhere, knows no belts and is off', function()
   local s = B.new()
   eq(B.message(s), { log = { track = {}, sweeps = {} } })
@@ -129,35 +124,16 @@ test('each visit is its own stretch of track', function()
   eq(B.message(s).log.track, { { { 1, 1 } }, { { -4, 6 } } })
 end)
 
-test('arriving cues the view; a move starting cues it, and not each tick of it', function()
+test('arriving cues the view, once; moving within the belt does not', function()
   local s = B.new()
   B.ship_status(s, at('gannet-3', 0, 0), 100)
   eq(B.take_cue(s), 'arrived')
   eq(B.take_cue(s), nil)
   B.ship_status(s, at('gannet-3', 0.2, 0), 110)
-  eq(B.take_cue(s), 'moved')
-  B.ship_status(s, at('gannet-3', 0.4, 0), 111)
-  B.ship_status(s, at('gannet-3', 0.6, 0), 113) -- a stalled tick
   eq(B.take_cue(s), nil)
-  B.ship_status(s, at('gannet-3', 0.8, 0), 140) -- a new move
-  eq(B.take_cue(s), 'moved')
-end)
-
-test('the thrusters starting cue a move before she has moved', function()
-  local s = B.new()
-  B.ship_status(s, at('gannet-3', 0, 0), 100)
-  B.take_cue(s)
-  B.ship_devices(s, nav('rcs', 20), 105)
-  eq(B.take_cue(s), 'moved')
-  B.ship_devices(s, nav('rcs', 19), 106)
-  B.ship_status(s, at('gannet-3', 0.2, 0), 106)
-  eq(B.take_cue(s), nil)
-end)
-
-test('rcs away from a belt cues nothing', function()
-  local s = B.new()
-  B.ship_devices(s, nav('rcs', 20), 105)
-  eq(B.take_cue(s), nil)
+  B.ship_status(s, { location = nil, destination = 'tiss' }, 120)
+  B.ship_status(s, at('cinders-2', 1, 1), 200)
+  eq(B.take_cue(s), 'arrived')
 end)
 
 test('a sweep run to its end is logged where she is as it ends, with the stock range', function()

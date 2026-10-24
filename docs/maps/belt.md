@@ -21,9 +21,12 @@ appears once she's at a belt whose size the plugin knows. The chart, the
 lanes map and the belt map each cover the top band, so switching one on
 switches the others off. With the auto_view setting on:
 
-- it comes up as she **arrives at a belt**, and as **a move in it starts**:
-  an `rcs` (Ship.Devices' nav busy `rcs`), or her place changing after three
-  seconds or more still (`mine` closing on a rock, or a program's move);
+- it comes up as she **arrives at a belt**, and as **a move in it starts**,
+  by the same rule the space scene moves her by (`W.moving` in
+  `src/station_map/work.lua`, `work()` in `ui/lib/space.js`): the thrusters
+  under way (Ship.Devices' nav busy `rcs`, yours or a program's), or the
+  laser busy `mine` with her place changed since it was ordered and within
+  the last 2.5 seconds (closing on a rock);
 - it **stays** when she comes to rest, so the view ahead and its laser come
   back only when you pick them;
 - it goes, and the chart comes up, when she **travels** away.
@@ -138,9 +141,12 @@ Unchanged: it's the bottom band's.
 
 - `src/station_map/belt.lua`: the reducer: her place, the belt's id and
   name, the host she's docked at, whether a sensor array is fitted, the logs,
-  and the cues for the band. `tests/belt_test.lua`.
+  and the cue as she arrives. `tests/belt_test.lua`.
+- `src/station_map/work.lua`: `W.moving`, whether she's moving in the belt,
+  shared with the space scene. `tests/work_test.lua`.
 - `src/main.lua`: the `belt` and `belt-view` messages, the three views
-  switching each other off, auto_view's cues (`follow_belt`), and `storage`.
+  switching each other off, auto_view's arrival and move starts
+  (`follow_belt`), and `storage`.
 - `ui/lib/belt.js`: the message's cleaning, `placeText`, the disc's framing,
   and `Glide`, her place between ticks. Pure, tested in `belt.test.js`.
 - `ui/belt-view.js`: the SVG and the button.

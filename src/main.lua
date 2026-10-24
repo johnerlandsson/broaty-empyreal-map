@@ -138,9 +138,17 @@ local function follow_activity()
   if settings.get('auto_view') ~= false then fit_views(now) end
 end
 
--- With auto_view on, the belt map comes up as she arrives at a belt and as a move in it starts.
+-- With auto_view on, the belt map comes up as she arrives at a belt and as a move in it starts
+-- (the thrusters, or closing on a rock: work.lua's W.moving, as the scene has it), and stays as she
+-- comes to rest. Nil after a disconnect, so a move under way then isn't a start.
+local moving_now = nil
+
 local function follow_belt()
-  if B.take_cue(belt) and settings.get('auto_view') ~= false then set_views(false, false, true) end
+  local arrived = B.take_cue(belt) ~= nil
+  local moving = W.moving(work, os.time())
+  local started = moving and moving_now == false
+  moving_now = moving
+  if (arrived or started) and settings.get('auto_view') ~= false then set_views(false, false, true) end
 end
 
 -- gmcp.on matches by prefix and case-insensitively, and passes the server's
@@ -234,6 +242,7 @@ world.on('disconnect', function()
   if B.reset(belt) then post_belt() end
   save_belts()
   doing_now = nil -- the views stay as they are; the first status after it fits them
+  moving_now = nil
 end)
 
 panel:on_message('ready', function()

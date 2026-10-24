@@ -719,17 +719,30 @@ test('a move in the belt switches the belt map back on; coming to rest leaves it
   os.time = function() return now end
   local env = boot()
   local h = env.gmcp_handlers['Ship.Status']
+  local dev = function(nav, laser)
+    return { devices = { { id = 'nav', busy = nav, left = nav and 20 or nil, attachments = {} },
+      { id = 'laser', busy = laser, left = nil, attachments = {} } } }
+  end
   h('Ship.Status', at_belt(3, 4))
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', dev(nil, nil))
   env.panel_handlers['belt-view']({ on = false }) -- the view ahead, by hand
   env.posts = {}
   now = 1010
-  h('Ship.Status', at_belt(3.2, 4))
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', dev('rcs', nil)) -- `rcs out`
   eq(belt_on(env), true)
   env.panel_handlers['belt-view']({ on = false })
   env.posts = {}
   now = 1011
-  h('Ship.Status', at_belt(3.4, 4))
+  h('Ship.Status', at_belt(3.2, 4)) -- still moving: not a new start
   eq(belt_on(env), nil)
+  now = 1030
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', dev(nil, nil)) -- at rest: the view stays
+  eq(belt_on(env), nil)
+  now = 1040
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', dev(nil, 'mine'))
+  now = 1041
+  h('Ship.Status', at_belt(3.4, 4)) -- closing on a rock
+  eq(belt_on(env), true)
   os.time = real
 end)
 

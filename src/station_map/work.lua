@@ -21,6 +21,7 @@ local DEVICES = { 'sensors', 'laser', 'nav' }
 local KEEP = { nav = { rcs = true } } -- of nav, only the thrusters; any verb of the others
 local SLACK = 1 -- seconds: a re-send's now + left rounds a second either way
 local CORE = 0.5 -- km: nearer the core than this there's no straight out (rcs.ts)
+local SETTLE = 2.5 -- seconds: still closing on a rock this long after her place last changed (space.js)
 
 function W.new()
   return {}
@@ -112,6 +113,16 @@ function W.ship_status(state, data, now)
     changed = true
   end
   return changed
+end
+
+-- Whether she's moving in the belt at local time `now`, as the scene has it (work() in
+-- ui/lib/space.js): the thrusters under way, or the laser busy 'mine' with her place changed since
+-- it was ordered, and lately (closing on the rock).
+function W.moving(state, now)
+  if state.nav and state.nav.busy == 'rcs' then return true end
+  local laser, p = state.laser, state.place
+  if not (laser and laser.busy == 'mine' and p and p.moved and type(now) == 'number') then return false end
+  return p.moved >= laser.since and now - p.moved < SETTLE
 end
 
 -- { sensors = { busy, since, ends }, laser = { busy, since }, nav = { busy, since, ends },

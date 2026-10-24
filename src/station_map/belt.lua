@@ -6,8 +6,8 @@
 -- what's been worked to players ("players keep track of that themselves"); this is that, never game
 -- data. main.lua keeps the logs in Mallard's storage; a belt's log goes once its system's charts
 -- no longer list it (it's closed, and its id never comes back).
--- It also cues the top band: 'arrived' as she reaches a belt, 'moved' as a move in it starts (the
--- thrusters, or her place changing after a still spell, as `mine` closes on a rock).
+-- It also cues the top band as she reaches a belt (`take_cue`); a move in it starting is
+-- work.lua's (W.moving).
 -- Pure and cheap; never errors on missing or odd-typed fields.
 
 local B = {}
@@ -15,7 +15,6 @@ local B = {}
 B.MAX_POINTS = 600 -- a belt's track keeps its newest points
 B.MAX_SWEEPS = 200
 B.SENSOR_KM = 5 -- help mining: "sensor range (5 km; more with a sensor array)"
-local STILL = 3 -- seconds: a place changing after this long still is a new move (a tick may stall)
 local SLACK = 1 -- seconds: a re-send's now + left rounds a second either way
 local BEND = 0.15 -- km: a point this near the line from the one before to the next is on it
 
@@ -101,7 +100,7 @@ function B.ship_status(state, data, now)
   local before_id, before_place, before_host = state.id, state.place, state.host
   local logged = false
   if type(data) ~= 'table' then
-    state.id, state.place, state.host, state.scan, state.nav, state.moved = nil, nil, nil, nil, nil, nil
+    state.id, state.place, state.host, state.scan = nil, nil, nil, nil
     return before_id ~= nil or before_place ~= nil or before_host ~= nil
   end
   local host = type(data.host) == 'table' and data.host or nil
@@ -116,10 +115,7 @@ function B.ship_status(state, data, now)
   end
   local host_name = host and (str(host.name) or 'host') or nil
 
-  if id and id ~= before_id then
-    state.cue = 'arrived'
-    state.moved = nil
-  end
+  if id and id ~= before_id then state.cue = 'arrived' end
   if place then
     local log = log_for(state, id)
     log.radius = place.radius
@@ -131,10 +127,6 @@ function B.ship_status(state, data, now)
     end
     local fresh = before_place == nil or before_id ~= id
     if add_point(log, place.x, place.y, fresh) then logged = true end
-    if not fresh and (place.x ~= before_place.x or place.y ~= before_place.y) then
-      if not state.moved or now - state.moved > STILL then state.cue = 'moved' end
-      state.moved = now
-    end
   elseif id and host_name then
     local log = state.logs[id]
     if log and log.left and log.left.name == host_name then
@@ -168,13 +160,13 @@ local function has_array(d)
   return false
 end
 
--- Fold Ship.Devices at local time `now`: a scan run to its end logs a sweep where she is, and the
--- thrusters starting cue a move. True if what the belt map draws changed.
+-- Fold Ship.Devices at local time `now`: a scan run to its end logs a sweep where she is. True if
+-- what the belt map draws changed.
 function B.ship_devices(state, data, now)
   now = num(now) or 0
   local devs = by_id(data)
   local changed = false
-  local sensors, nav = devs.sensors, devs.nav
+  local sensors = devs.sensors
   local array = nil
   if sensors then array = has_array(sensors) end
   if array ~= state.array then
@@ -202,13 +194,6 @@ function B.ship_devices(state, data, now)
     end
   end
   state.scan = scan
-
-  local rcs = nav and nav.busy == 'rcs' or false
-  if rcs and not state.nav and state.id and state.place then
-    state.cue = 'moved'
-    state.moved = now
-  end
-  state.nav = rcs or nil
   return changed
 end
 
@@ -251,7 +236,7 @@ function B.space_charts(state, data)
   return changed
 end
 
--- 'arrived' or 'moved' if the band should switch to the belt map since last asked, else nil.
+-- 'arrived' if she's reached a belt since last asked (the band switches to the belt map), else nil.
 function B.take_cue(state)
   local cue = state.cue
   state.cue = nil
@@ -306,7 +291,7 @@ function B.saved(state) return state.logs end
 -- A disconnect: she's nowhere; the logs stay.
 function B.reset(state)
   local changed = state.id ~= nil or state.place ~= nil or state.host ~= nil
-  state.id, state.place, state.host, state.scan, state.nav, state.moved, state.cue = nil, nil, nil, nil, nil, nil, nil
+  state.id, state.place, state.host, state.scan, state.cue = nil, nil, nil, nil, nil
   state.system, state.belts = nil, {}
   return changed
 end
