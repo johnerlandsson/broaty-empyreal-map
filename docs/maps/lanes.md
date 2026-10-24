@@ -11,8 +11,8 @@ branch's state as you last saw it. It answers "which way round?" before a
 
 It shows while the **⋈** button is on. The button sits left of the chart's
 ◎, styled like it, and appears when ◎ does: once the game has sent the
-charts. ⋈ and ◎ each cover the top band, so switching one on switches the
-other off. With the auto_view setting on, the map switches itself on when
+charts. ⋈, ◎ and the belt map's toggle (belt.md) each cover the top band,
+so switching one on switches the others off. With the auto_view setting on, the map switches itself on when
 your ship enters a lane and off when she leaves it, as the chart does when
 she travels and stops (orrery.md); ⋈ pressed in between holds until what she's
 doing changes again. A disconnect hides the button and the map, and leaves it on or off

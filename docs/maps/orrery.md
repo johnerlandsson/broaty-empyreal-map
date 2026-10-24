@@ -20,7 +20,8 @@ login or a reconnect counts as a change. With the setting off, the chart stays
 on or off as you left it through docking, undocking, walking about and a dropped
 connection. Either way, a reopened panel gets the choice back. It doesn't
 outlive the session. The core lanes map's **⋈** (lanes.md) sits left of ◎,
-and switching either on switches the other off.
+and the belt map's toggle (belt.md) left of that; switching any of the three
+on switches the others off.
 
 While it's on, + −, the wheel and drag act on the chart, and the station model
 or space scene underneath keeps its state but doesn't draw. The chart shows the

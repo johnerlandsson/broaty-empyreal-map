@@ -24,6 +24,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | Ship plans | bottom | you're aboard any ship, docked or not | [ship-plans.md](ship-plans.md) |
 | Orrery (the system chart) | top | the ◎ toggle is on | [orrery.md](orrery.md) |
 | Core lanes map | top | the ⋈ toggle is on | [lanes.md](lanes.md) |
+| Belt map | top | its toggle is on, at a belt | [belt.md](belt.md) |
 | What you're doing (a card, not a map) | bottom, top-left corner | you're doing something that takes time | [action-card.md](action-card.md) |
 
 ## 2. Principles
@@ -121,7 +122,7 @@ On a town's plan (the ground, not a deck; see town.md):
 | Dusk glow | `#e8925a` at .35 | the horizon where the star went down, at dusk |
 | Dawn glow | `#b8c8dc` at .3 | the horizon where the star will come up, at dawn |
 | Dawn sky | `#8fa2bd` at .7 → `#4a5a74` at .3 → none, radius 190 | the sky rising from that horizon at dawn, behind the skyline, so it shows above the ridge |
-| Sensors | `#59d18a`, the ok status light (§4.2), at .05 to .85 | at a belt, the sensors' sweep line and the wash behind it, and an assay's brackets and ring (§12) |
+| Sensors | `#59d18a`, the ok status light (§4.2), at .05 to .85 | at a belt, the sensors' sweep line and the wash behind it, and an assay's brackets and ring (§12); on the belt map, each sweep's ground and her sensors' reach (§13.6) |
 | Beam | Glass round a `#fff` core | at a belt, the mining laser's beam and the glow where it bites (§12) |
 
 ### 4.4 District colours
@@ -186,7 +187,8 @@ Your place is lit, never marked with a dot:
 - **Pulse:** opacity 1 → .55 → 1 over 1.8 s, forever. A repeated frame for the
   same place doesn't restart it.
 - **One place.** Only your place is lit: never other players, never where
-  you've been.
+  you've been. The belt map draws where you've been in a belt, as the
+  player's own log (§13.6), but quietly and never lit.
 - **At a door:** in a room the map doesn't have but whose door it does (a
   workshop or bunk), the door room is lit dimly (fill .12, stroke 2 at .7, no
   pulse) and a small amber tab on its far edge pulses for the door. Only the
@@ -441,7 +443,7 @@ what it draws and how.
   chart, but leaves the chart on or off as it was. While the chart is on it has a Dim
   border, the band's + − ⌂, wheel and drag act on the chart, and what's
   under it keeps its state without drawing. Switching it on switches the
-  lanes map (§13.5) off, and the other way round.
+  lanes map (§13.5) and the belt map (§13.6) off, and the other way round.
 - **Hover** any mark for a Mallard tooltip: its name; for a belt, its error
   and when it was seen ("±2,600 km, seen 2d 4h ago"); for a port, its planet
   ("on Tamsin's surface"); for your ship, where she's bound and when she'll
@@ -483,6 +485,33 @@ toggle left of ◎, styled and shown like it. It shares the chart's colours:
   **In a lane:** the lane lit amber, behind her solid at .3 and ahead dashed
   `4 4` at .7, with her amber chevron, and "in the Maelor lane · 3m 40s" in
   amber in the key.
+
+### 13.6 The belt map
+
+Where she is in the belt she's at (see belt.md), behind a toggle left of ⋈,
+styled and shown like it, and drawn as the chart is:
+
+- **The disc:** the rim at the belt's radius in the middle Tone, 1.2 px;
+  rings every 5 km dotted `1 4` in Orbit, labelled in Dim, 8; ticks outside
+  the rim every 10°, longer and lighter every 30°, with 0°, 90°, 180° and
+  270° in Dim, 8. The belt's 0° is up and the disc never turns.
+- **The core:** a small Star cross.
+- **Her:** the amber chevron (§13.1), pointing the way she last moved.
+  Between the game's ticks she glides, never jumps.
+- **The player's log**, which the game leaves to them, drawn quietly under
+  her: her track solid amber at .3, 2 px (the chart's stretch behind); each
+  sweep the 5 km disc it covered in Sensors at .08, stroked at .3, or a small
+  Sensors ring where the range isn't known; where she left her host a Glass
+  diamond in its dashed `3 3` Glass ring at .45, the 5 km she needs to be
+  within to dock, named "where you left the Full Measure · last seen 14m ago"
+  in Dim.
+- **Her sensors' reach:** dashed `4 3` in Sensors at .5, drawn only when the
+  game has told the player the range (5 km, with no sensor array fitted).
+- **Words:** the belt's name in capitals and where she is in the game's
+  words ("11 km out from the core, bearing 210°"), top left in Text, with a
+  Background halo.
+- **Never:** rocks, worked-out ground, other ships, or a range the game
+  hasn't given.
 
 ## 14. Adding a map
 

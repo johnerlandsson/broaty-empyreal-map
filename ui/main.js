@@ -5,13 +5,14 @@
 // plan instead, one view per hull drawing, built on first use.
 // The Lua side holds all state and replays it when we post "ready", so this file keeps only the
 // last location, the docked station, and the level each plan last showed (a lift between floors
-// keeps the plan where it was). The system chart (◎) or the core lanes map (⋈) can cover the top band,
-// one at a time; while one does, the space scene doesn't draw. Docking and undocking, the station
+// keeps the plan where it was). The system chart (◎), the core lanes map (⋈) or the belt map can cover the
+// top band, one at a time; while one does, the space scene doesn't draw. Docking and undocking, the station
 // model shows through the space scene, drawing near or falling away on the game's clock. What you're
 // doing (Char.Action) is a card in the deck band's corner, over whichever plan shows; the overview is
 // left as it is.
 
 import { ActionCard } from "./action-card.js";
+import { BeltView } from "./belt-view.js";
 import { ChartView } from "./chart-view.js";
 import carrow from "./data/carrow.js";
 import gwithian from "./data/gwithian.js";
@@ -95,18 +96,34 @@ const moving = new ActionCard(deckEl, moveCard); // her thrusters, or closing on
 const info = document.getElementById("info");
 const panel = window.panel;
 
-// switching one of the chart and the lanes map on switches the other off; the Lua side does too
+// switching one of the chart, the lanes map and the belt map on switches the others off; the Lua side does too
 const chart = new ChartView(modelEl, {
   onToggle(on) {
     panel.post("chart", { on });
-    if (on) lanes.setOn(false);
+    if (on) {
+      lanes.setOn(false);
+      belt.setOn(false);
+    }
     runChart();
   },
 });
 const lanes = new LanesView(modelEl, {
   onToggle(on) {
     panel.post("lanes-view", { on });
-    if (on) chart.setOn(false);
+    if (on) {
+      chart.setOn(false);
+      belt.setOn(false);
+    }
+    runChart();
+  },
+});
+const belt = new BeltView(modelEl, {
+  onToggle(on) {
+    panel.post("belt-view", { on });
+    if (on) {
+      chart.setOn(false);
+      lanes.setOn(false);
+    }
     runChart();
   },
 });
@@ -115,11 +132,12 @@ let chartRaf = 0;
 let chartLast = 0;
 const CHART_SMOOTH = 100; // ms between redraws while she's under way
 
-/** Redraw the chart or the lanes map once a second while it's shown and the panel visible, more
- *  often while she moves, and not at all otherwise; and keep the space scene from drawing under it. */
+/** Redraw the chart, the lanes map or the belt map once a second while it's shown and the panel
+ *  visible, more often while she moves, and not at all otherwise; and keep the space scene from
+ *  drawing under it. */
 function runChart() {
   runSky();
-  const view = chart.shown ? chart : lanes.shown ? lanes : null;
+  const view = chart.shown ? chart : lanes.shown ? lanes : belt.shown ? belt : null;
   space.setCovered(!!view);
   clearInterval(chartTimer);
   cancelAnimationFrame(chartRaf);
@@ -129,6 +147,7 @@ function runChart() {
   view.draw(Date.now());
   if (view.moving) {
     const step = (now) => {
+      if (!view.moving) return runChart(); // she's stopped: back to once a second
       if (now - chartLast >= CHART_SMOOTH) {
         chartLast = now;
         view.draw(Date.now());
@@ -152,7 +171,7 @@ function runSky() {
   clearInterval(skyTimer);
   skyTimer = 0;
   const sky = stations.zennor.model;
-  if (current !== "zennor" || !sky.live || chart.shown || lanes.shown || document.hidden || (scene && scene !== "station")) return;
+  if (current !== "zennor" || !sky.live || chart.shown || lanes.shown || belt.shown || document.hidden || (scene && scene !== "station")) return;
   sky.draw(Date.now());
   skyTimer = setInterval(() => sky.draw(Date.now()), 1000);
 }
@@ -266,7 +285,24 @@ panel.on("lanes", (msg) => {
 
 panel.on("lanes-view", (msg) => {
   lanes.setOn(msg?.on);
-  if (lanes.on) chart.setOn(false);
+  if (lanes.on) {
+    chart.setOn(false);
+    belt.setOn(false);
+  }
+  runChart();
+});
+
+panel.on("belt", (msg) => {
+  belt.setBelt(msg);
+  runChart();
+});
+
+panel.on("belt-view", (msg) => {
+  belt.setOn(msg?.on);
+  if (belt.on) {
+    chart.setOn(false);
+    lanes.setOn(false);
+  }
   runChart();
 });
 

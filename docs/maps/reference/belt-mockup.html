@@ -1,0 +1,94 @@
+<!doctype html>
+<!-- The belt map, 2026-10-24: three ways to draw where she is in a belt (mining.md §2.3) with her
+     track, three sweeps and where she left her freighter. Picked: A (the plotter, as the chart) with
+     B's sweep discs; auto_view opens it on arriving at a belt and as a move in it starts. -->
+<html><head><meta charset="utf-8"><style>
+body{background:#11151c;color:#dfe7f1;font-family:Inter,system-ui,sans-serif;margin:16px}
+.row{display:flex;gap:18px;flex-wrap:wrap}
+.opt{width:380px}
+h2{font-size:14px;margin:0 0 6px}
+p{font-size:12px;color:#9fb0c3;margin:6px 0 0;line-height:1.4}
+.band{width:380px;height:252px;background:#04060c;position:relative;border:1px solid #2b3646}
+.btns{position:absolute;right:8px;top:8px;display:flex;gap:4px}
+.btns span{width:22px;height:22px;border:1px solid #2b3646;border-radius:5px;font-size:11px;display:flex;align-items:center;justify-content:center;color:#dfe7f1}
+.btns span.on{border-color:#7d8a9a}
+</style></head><body><div class="row" id="row"></div>
+<script>
+const HL="#ffb347",HLS="#fff3df",DIM="#7d8a9a",ORBIT="#2b3646",STAR="#fffaf0",GLASS="#cfe3ff",TEXT="#e3eaf2",GREEN="#59d18a",TONES=["#3a4556","#58667b","#7e8da3"];
+const R=18,W=380,H=252;
+const P=[[7.2,5.1],[9.7,0.8],[6.0,-4.0],[-5.5,-9.5]]; // arrival (host), sweep 2, mined (sweep 3), now
+const SW=[0,1,2]; const HOST=P[0];
+function stars(n,seed){let s=seed,o="";const r=()=>(s=(s*16807)%2147483647)/2147483647;for(let i=0;i<n;i++)o+=`<circle cx="${r()*W}" cy="${r()*H}" r="${0.4+r()*0.6}" fill="#fff" opacity="${0.12+r()*0.5}"/>`;return o}
+function frame(cx,cy,k){return ([x,y])=>[cx+x*k,cy-y*k]}
+function chev(p,deg,s=1){return `<g filter="url(#g)"><path d="M0,-8 L5,6 L0,3 L-5,6 Z" transform="translate(${p[0]} ${p[1]}) rotate(${deg}) scale(${s})" fill="${HL}" stroke="${HLS}" stroke-width=".8" stroke-linejoin="round"><animate attributeName="opacity" values="1;.55;1" dur="1.8s" repeatCount="indefinite"/></path></g>`}
+function heading(a,b){return Math.atan2(b[0]-a[0],b[1]-a[1])*180/Math.PI}
+function ticks(cx,cy,r,every,long,labels,size=8){let o="";for(let d=0;d<360;d+=every){const L=d%long===0?5:2.5,a=d*Math.PI/180;o+=`<line x1="${cx+Math.sin(a)*r}" y1="${cy-Math.cos(a)*r}" x2="${cx+Math.sin(a)*(r+L)}" y2="${cy-Math.cos(a)*(r+L)}" stroke="${d%long===0?TONES[2]:TONES[0]}" stroke-width="1"/>`}
+for(const d of labels){const a=d*Math.PI/180,rr=r+12;o+=`<text x="${cx+Math.sin(a)*rr}" y="${cy-Math.cos(a)*rr+3}" font-size="${size}" fill="${DIM}" text-anchor="middle">${d}°</text>`}return o}
+const defs=`<defs><filter id="g" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><radialGradient id="disc"><stop offset="0" stop-color="#58667b" stop-opacity=".22"/><stop offset=".8" stop-color="#3a4556" stop-opacity=".14"/><stop offset="1" stop-color="#3a4556" stop-opacity=".05"/></radialGradient></defs>`;
+const btns=`<div class="btns"><span>⋈</span><span>◎</span><span class="on">✳</span><span>+</span><span>−</span><span>⌂</span></div>`;
+
+// A: plotter, like the chart
+function A(){const cx=170,cy=132,k=100/R,f=frame(cx,cy,k);const pts=P.map(f);let o=defs+stars(70,7);
+o+=`<circle cx="${cx}" cy="${cy}" r="${R*k}" fill="none" stroke="${TONES[1]}" stroke-width="1.2"/>`;
+for(const km of [5,10,15])o+=`<circle cx="${cx}" cy="${cy}" r="${km*k}" fill="none" stroke="${ORBIT}" stroke-dasharray="1 4"/>`;
+o+=`<text x="${cx+3}" y="${cy-15*k+10}" font-size="8" fill="${DIM}" opacity=".8">15</text><text x="${cx+3}" y="${cy-10*k+10}" font-size="8" fill="${DIM}" opacity=".8">10</text><text x="${cx+3}" y="${cy-5*k+10}" font-size="8" fill="${DIM}" opacity=".8">5 km</text>`;
+o+=ticks(cx,cy,R*k,10,30,[0,90,180,270]);
+o+=`<path d="M${cx-4},${cy}H${cx+4}M${cx},${cy-4}V${cy+4}" stroke="${STAR}" stroke-width="1.2"/>`;
+// host ring
+const h=f(HOST);o+=`<circle cx="${h[0]}" cy="${h[1]}" r="${5*k}" fill="none" stroke="${GLASS}" stroke-opacity=".45" stroke-dasharray="3 3"/><path d="M${h[0]},${h[1]-4}L${h[0]+3},${h[1]}L${h[0]},${h[1]+4}L${h[0]-3},${h[1]}Z" fill="none" stroke="${GLASS}" stroke-width="1.1"/>`;
+o+=`<text x="${h[0]+8}" y="${h[1]-6}" font-size="8.5" fill="${DIM}">where you left the Full Measure</text><text x="${h[0]+8}" y="${h[1]+4}" font-size="8" fill="${DIM}" opacity=".75">last seen 14m ago</text>`;
+o+=`<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${HL}" stroke-opacity=".3" stroke-width="2" stroke-linejoin="round"/>`;
+SW.forEach((i,n)=>{const p=pts[i];o+=`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="#04060c" stroke="${GREEN}" stroke-width="1.2"/><text x="${p[0]-9}" y="${p[1]+3}" font-size="8" fill="${GREEN}" text-anchor="end" opacity=".85">${n+1}</text>`});
+const s=pts[3];o+=`<circle cx="${s[0]}" cy="${s[1]}" r="${5*k}" fill="none" stroke="${GREEN}" stroke-opacity=".5" stroke-dasharray="4 3"/>`;
+o+=chev(s,heading(P[2],P[3]));
+o+=`<text x="12" y="20" font-size="9.5" fill="${TEXT}" letter-spacing="1">GANNET BELT</text><text x="12" y="33" font-size="10" fill="${TEXT}">11 km out from the core,</text><text x="12" y="45" font-size="10" fill="${TEXT}">bearing 210°</text>`;
+o+=`<text x="${W-10}" y="${H-10}" font-size="9" fill="${DIM}" text-anchor="end">3 sweeps logged</text>`;
+return o}
+
+// B: coverage
+function B(){const cx=190,cy=124,k=96/R,f=frame(cx,cy,k);const pts=P.map(f);let o=defs+stars(70,11);
+o+=`<circle cx="${cx}" cy="${cy}" r="${R*k}" fill="url(#disc)" stroke="${TONES[2]}" stroke-opacity=".55" stroke-width="1"/>`;
+o+=ticks(cx,cy,R*k,30,90,[0,90,180,270]);
+o+=`<circle cx="${cx}" cy="${cy}" r="2.6" fill="${STAR}"/><text x="${cx+6}" y="${cy+3}" font-size="8" fill="${DIM}">core</text>`;
+SW.forEach(i=>{const p=pts[i];o+=`<circle cx="${p[0]}" cy="${p[1]}" r="${5*k}" fill="${GREEN}" fill-opacity=".08" stroke="${GREEN}" stroke-opacity=".3" stroke-width="1"/>`});
+const h=f(HOST);o+=`<circle cx="${h[0]}" cy="${h[1]}" r="${5*k}" fill="none" stroke="${GLASS}" stroke-opacity=".5" stroke-dasharray="2 3"/><path d="M${h[0]-4},${h[1]+3}L${h[0]},${h[1]-5}L${h[0]+4},${h[1]+3}Z" fill="none" stroke="${GLASS}" stroke-width="1.1"/>`;
+o+=`<text x="${h[0]+5*k+4}" y="${h[1]-8}" font-size="8.5" fill="${DIM}">the Full Measure</text><text x="${h[0]+5*k+4}" y="${h[1]+2}" font-size="8" fill="${DIM}" opacity=".75">last seen 14m ago</text>`;
+o+=`<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${DIM}" stroke-width="1.2" stroke-dasharray="1 3" stroke-linecap="round"/>`;
+pts.slice(0,3).forEach(p=>o+=`<circle cx="${p[0]}" cy="${p[1]}" r="1.6" fill="${DIM}"/>`);
+const s=pts[3];o+=`<circle cx="${s[0]}" cy="${s[1]}" r="${5*k}" fill="none" stroke="${GREEN}" stroke-opacity=".55" stroke-dasharray="4 3"/>`;
+o+=chev(s,heading(P[2],P[3]));
+o+=`<rect x="0" y="${H-22}" width="${W}" height="22" fill="#04060c" opacity=".7"/><text x="10" y="${H-8}" font-size="10" fill="${TEXT}"><tspan letter-spacing="1" font-size="9.5">GANNET BELT</tspan><tspan fill="${DIM}"> · </tspan>11 km out from the core, bearing 210°</text>`;
+return o}
+
+// C: instrument
+function C(){const cx=190,cy=128,k=88/R,f=frame(cx,cy,k);const pts=P.map(f);let o=defs+stars(60,5);
+o+=`<circle cx="${cx}" cy="${cy}" r="${R*k}" fill="#0a0e15" stroke="${TONES[0]}" stroke-width="1"/>`;
+o+=`<circle cx="${cx}" cy="${cy}" r="${R*k+9}" fill="none" stroke="${ORBIT}" stroke-width="10" stroke-opacity=".6"/>`;
+for(let d=0;d<360;d+=5){const a=d*Math.PI/180,L=d%30===0?6:d%10===0?3.5:1.8,r0=R*k+4;o+=`<line x1="${cx+Math.sin(a)*r0}" y1="${cy-Math.cos(a)*r0}" x2="${cx+Math.sin(a)*(r0+L)}" y2="${cy-Math.cos(a)*(r0+L)}" stroke="${d%30===0?TONES[2]:TONES[1]}" stroke-width="${d%30===0?1.1:.8}"/>`}
+for(let d=0;d<360;d+=30){const a=d*Math.PI/180,rr=R*k+21;o+=`<text x="${cx+Math.sin(a)*rr}" y="${cy-Math.cos(a)*rr+3}" font-size="7.5" fill="${DIM}" text-anchor="middle">${d}</text>`}
+// her bearing on the ring
+const b=210*Math.PI/180,r0=R*k+3;o+=`<path d="M${cx+Math.sin(b)*r0},${cy-Math.cos(b)*r0} l${Math.sin(b-0.07)*9},${-Math.cos(b-0.07)*9} l${Math.sin(b+0.07)*0},0" />`;
+o+=`<line x1="${cx+Math.sin(b)*(r0)}" y1="${cy-Math.cos(b)*(r0)}" x2="${cx+Math.sin(b)*(r0+10)}" y2="${cy-Math.cos(b)*(r0+10)}" stroke="${HL}" stroke-width="2.5"/>`;
+const s=pts[3];o+=`<line x1="${cx}" y1="${cy}" x2="${s[0]}" y2="${s[1]}" stroke="${HL}" stroke-opacity=".35" stroke-dasharray="2 3"/>`;
+o+=`<text x="${(cx+s[0])/2-8}" y="${(cy+s[1])/2}" font-size="8" fill="${HL}" opacity=".8" text-anchor="end">11 km</text>`;
+o+=`<circle cx="${cx}" cy="${cy}" r="3" fill="none" stroke="${STAR}" stroke-width="1.2"/><circle cx="${cx}" cy="${cy}" r=".8" fill="${STAR}"/>`;
+const h=f(HOST);o+=`<circle cx="${h[0]}" cy="${h[1]}" r="${5*k}" fill="none" stroke="${GLASS}" stroke-opacity=".4" stroke-dasharray="3 3"/><path d="M${h[0]},${h[1]-4}L${h[0]+3},${h[1]}L${h[0]},${h[1]+4}L${h[0]-3},${h[1]}Z" fill="${GLASS}" opacity=".6"/>`;
+// fading dots of the track
+const seg=(a,b,n)=>Array.from({length:n},(_,i)=>[a[0]+(b[0]-a[0])*i/n,a[1]+(b[1]-a[1])*i/n]);
+const dots=[...seg(pts[0],pts[1],6),...seg(pts[1],pts[2],7),...seg(pts[2],pts[3],10)];
+dots.forEach((p,i)=>o+=`<circle cx="${p[0]}" cy="${p[1]}" r="1.2" fill="${HL}" opacity="${0.12+0.45*i/dots.length}"/>`);
+const age=["31m","22m","9m"];
+SW.forEach((i,n)=>{const p=pts[i];o+=`<path d="M${p[0]-4},${p[1]}H${p[0]+4}M${p[0]},${p[1]-4}V${p[1]+4}" stroke="${GREEN}" stroke-width="1.1" opacity=".8"/><text x="${p[0]+5}" y="${p[1]-4}" font-size="7.5" fill="${GREEN}" opacity=".75">${age[n]}</text>`});
+o+=`<circle cx="${s[0]}" cy="${s[1]}" r="${5*k}" fill="${GREEN}" fill-opacity=".04" stroke="${GREEN}" stroke-opacity=".45" stroke-dasharray="4 3"/>`;
+o+=chev(s,heading(P[2],P[3]));
+o+=`<text x="10" y="18" font-size="9" fill="${DIM}" letter-spacing="1">GANNET BELT</text>`;
+o+=`<text x="10" y="${H-22}" font-size="10" fill="${TEXT}">11 km out from the core,</text><text x="10" y="${H-10}" font-size="10" fill="${TEXT}">bearing 210°</text>`;
+o+=`<text x="${W-10}" y="${H-10}" font-size="8.5" fill="${DIM}" text-anchor="end">◇ Full Measure, last seen 14m ago</text>`;
+return o}
+
+const opts=[["A · Plotter, as the chart",A,"Rim, dotted rings at 5/10/15 km, 10° ticks with 0/90/180/270. Track amber at .3 (the chart's \"behind\"). Sweeps as small numbered green rings. The place text sits top-left under the belt's name. The host is a Glass diamond with a dashed 5 km ring and a label beside it."],
+["B · Coverage",B,"Soft-filled disc, 30° ticks. Each sweep is the 5 km disc it covered, faint green, so overlaps show the ground you've swept. Track as dim dots. The host is a hull glyph with a dashed ring. The place text is a caption strip along the bottom."],
+["C · Instrument",C,"A compass bezel with 5° ticks and numerals every 30°. Her bearing is an amber tick on the bezel and a dashed radial from the core, with \"11 km\" on it. Track as amber dots fading with age. Sweeps as green crosses with their age. The place text is bottom-left, the host in a corner key."]];
+const row=document.getElementById("row");
+for(const [t,fn,d] of opts){const o=document.createElement("div");o.className="opt";o.innerHTML=`<h2>${t}</h2><div class="band"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${fn()}</svg>${btns}</div><p>${d}</p>`;row.appendChild(o)}
+</script></body></html>

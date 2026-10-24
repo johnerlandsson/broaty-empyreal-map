@@ -16,6 +16,9 @@
 //             chart { on: true }; the bar's menu switches it
 //   ?lanes=L  open the core lanes map on scenario L (senara, in-trunk, in-branch or petroc), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it
+//   ?belt=B   open the belt map on scenario B (arriving, rcs-rim, sweeps or skiff), emitting belt messages as
+//             src/station_map/belt.lua posts them, a tick a second while she moves, and belt-view { on: true };
+//             the bar's menu switches it
 //   ?work=W   at a belt, the ship's work W (scanning, assaying, mining or idle) as the work message has it
 //             (src/station_map/work.lua): a scan or assay starts now and starts again a second after it
 //             ends, as a program at par would; the bar's menu switches it
@@ -432,6 +435,76 @@ function emitLanes(name) {
 }
 lanesMenu.addEventListener("change", () => emitLanes(lanesMenu.value));
 
+// --- the belt map: what the Lua side's belt reducer posts (src/station_map/belt.lua) ---------------
+
+const beltMenu = document.getElementById("belt");
+let beltTimer = 0;
+
+/** A belt message, its place worked out as gmcp.ts beltGmcp does. */
+function beltMsg(id, name, radius, x, y, log, extra = {}) {
+  const tenth = (n) => Math.round(n * 10) / 10;
+  const place = x === null ? null : {
+    x: tenth(x), y: tenth(y), km: tenth(Math.hypot(x, y)),
+    bearing: (Math.round((Math.atan2(x, y) * 180) / Math.PI) + 360) % 360,
+  };
+  return { id, name, radius, place, host: null, array: false, log: { track: [], sweeps: [], ...log }, ...extra };
+}
+
+/** km along a bearing from (x, y). */
+const along = (x, y, bearing, km) => {
+  const a = (bearing * Math.PI) / 180;
+  return [x + Math.sin(a) * km, y + Math.cos(a) * km];
+};
+
+function emitBelt(name) {
+  clearInterval(beltTimer);
+  if (!name) {
+    fp.emit("belt-view", { on: false });
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  sceneMenu.value = "belt";
+  emitScene("belt");
+  if (name === "arriving") {
+    // just in at Gannet, mid-belt: one place, nothing logged yet
+    fp.emit("belt", beltMsg("gannet-3", "Gannet Belt", 18, 6.1, -3.4, { track: [[[6.1, -3.4]]] }));
+  } else if (name === "rcs-rim") {
+    // `rcs out` from 7 km out in the Cinders, a tick a second at full drive, to the outer edge
+    const start = [4.5, 5.4];
+    const out = (Math.atan2(start[0], start[1]) * 180) / Math.PI;
+    const track = [[[2, 1], start]];
+    const sweeps = [{ x: start[0], y: start[1], r: 5 }];
+    let km = 0;
+    const tick = () => {
+      const [x, y] = along(...start, out, km);
+      const rim = Math.hypot(x, y) >= 16;
+      const p = rim ? along(0, 0, out, 16) : [x, y];
+      const pt = [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10];
+      track[0] = [...track[0].slice(0, 2), pt];
+      fp.emit("belt", beltMsg("cinders-2", "The Cinders", 16, p[0], p[1], { track: track.map((s) => [...s]), sweeps }));
+      km += 0.25;
+      if (rim) clearInterval(beltTimer);
+    };
+    tick();
+    beltTimer = setInterval(tick, 1000);
+  } else if (name === "sweeps") {
+    // three sweeps across Gannet, the last after closing on a rock, then out to 11 km at 210°
+    fp.emit("belt", beltMsg("gannet-3", "Gannet Belt", 18, -5.5, -9.5, {
+      track: [[[7.2, 5.1], [9.7, 0.8], [6.0, -4.0], [-5.5, -9.5]]],
+      sweeps: [{ x: 7.2, y: 5.1, r: 5 }, { x: 9.7, y: 0.8, r: 5 }, { x: 6.0, y: -4.0, r: 5 }],
+    }));
+  } else if (name === "skiff") {
+    // a skiff with a sensor array, away from her freighter in the Anvil: no range to draw
+    fp.emit("belt", beltMsg("anvil-1", "The Anvil", 19, -8.2, 3.9, {
+      track: [[[7.2, 5.1], [2.4, 9.3], [-3.1, 8.0], [-8.2, 3.9]]],
+      sweeps: [{ x: 2.4, y: 9.3 }, { x: -3.1, y: 8.0 }],
+      left: { x: 7.2, y: 5.1, name: "Full Measure", at: now - 14 * 60 },
+    }, { array: true }));
+  }
+  fp.emit("belt-view", { on: true });
+}
+beltMenu.addEventListener("change", () => emitBelt(beltMenu.value));
+
 // --- what you're doing: the action messages src/station_map/action.lua posts, played to their end -------
 
 const actionMenu = document.getElementById("action");
@@ -587,6 +660,10 @@ function start() {
   if (q.has("lanes")) {
     lanesMenu.value = q.get("lanes");
     emitLanes(lanesMenu.value);
+  }
+  if (q.has("belt")) {
+    beltMenu.value = q.get("belt");
+    emitBelt(beltMenu.value);
   }
   if (q.has("work")) {
     workMenu.value = q.get("work");

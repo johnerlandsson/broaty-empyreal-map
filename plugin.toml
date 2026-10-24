@@ -34,4 +34,4 @@ description = "Rotate the station model so your location faces the camera."
 type = "bool"
 default = true
 label = "Switch views to fit what you're doing"
-description = "Show the system chart while your ship travels, the lanes map while she's in a lane, and the station or the view ahead while she's stopped. The buttons still switch views by hand."
+description = "Show the system chart while your ship travels, the lanes map while she's in a lane, the belt map as she arrives at a belt or moves in one, and the station or the view ahead while she's stopped. The buttons still switch views by hand."

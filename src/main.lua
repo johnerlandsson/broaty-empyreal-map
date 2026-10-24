@@ -1,8 +1,9 @@
 -- Empyreal map (T.I.S.S., Orrin Station and Wenna Halt so far): folds GMCP location frames into one small message
 -- and pushes it to the "map" panel, and your ship's frames into the overview's scene, its docking and
 -- undocking (timed by Ship.Devices), the system chart, the
--- core lanes map (each switched on and off to fit what she's doing, unless the auto_view setting is
--- off) and what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card. The lanes' states as last seen are kept in Mallard's storage, so they outlive a restart. All state lives here; the panel is a
+-- core lanes map, the belt map (each switched on and off to fit what she's doing, unless the auto_view setting is
+-- off) and what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card. The lanes' states as last seen,
+-- and each belt's log (her track and sweeps in it), are kept in Mallard's storage, so they outlive a restart. All state lives here; the panel is a
 -- pure presentation layer that asks for a replay with "ready".
 --
 -- Mallard's require has no cache, so each module is required exactly once.
@@ -14,6 +15,7 @@ local N = require('station_map.lanes')
 local W = require('station_map.work')
 local M = require('station_map.manoeuvre')
 local A = require('station_map.action')
+local B = require('station_map.belt')
 
 local panel = mud.panel('map')
 local state = L.new()
@@ -23,15 +25,22 @@ local lanes = N.new()
 local work = W.new()
 local manoeuvre = M.new()
 local doing = A.new()
+local belt = B.new()
 
 -- storage is per plugin and world; a bad stored value (or none) is no sightings
 if storage then
   local ok, saved = pcall(storage.get, 'lanes')
   if ok then N.load(lanes, saved) end
+  local ok2, logs = pcall(storage.get, 'belts')
+  if ok2 then B.load(belt, logs) end
 end
 
 local function save_lanes()
   if storage then pcall(storage.set, 'lanes', N.saved(lanes)) end
+end
+
+local function save_belts()
+  if B.take_unsaved(belt) and storage then pcall(storage.set, 'belts', B.saved(belt)) end
 end
 
 local function has_location(s)
@@ -71,6 +80,14 @@ local function post_lanes_on()
   panel:post('lanes-view', { on = N.on(lanes) })
 end
 
+local function post_belt()
+  panel:post('belt', B.message(belt))
+end
+
+local function post_belt_on()
+  panel:post('belt-view', { on = B.on(belt) })
+end
+
 local function post_work()
   panel:post('work', W.message(work))
 end
@@ -91,16 +108,23 @@ local function activity()
   return 'stopped'
 end
 
--- The chart and the lanes map each cover the top band: switching one on switches the other off.
-local function set_views(chart_on, lanes_on)
+-- The chart, the lanes map and the belt map each cover the top band: switching one on switches
+-- the others off. A nil belt_on leaves the belt map as it is.
+local function set_views(chart_on, lanes_on, belt_on)
   if not chart_on and C.set_on(chart, false) then post_chart_on() end
   if not lanes_on and N.set_on(lanes, false) then post_lanes_on() end
+  if belt_on == false and B.set_on(belt, false) then post_belt_on() end
   if chart_on and C.set_on(chart, true) then post_chart_on() end
   if lanes_on and N.set_on(lanes, true) then post_lanes_on() end
+  if belt_on and B.set_on(belt, true) then post_belt_on() end
 end
 
+-- Stopped, the belt map is left as it is: it comes up as she arrives at a belt or a move in it
+-- starts (follow_belt), and stays when she comes to rest.
 local function fit_views(now)
-  set_views(now == 'travelling', now == 'lane')
+  local belt_on = nil
+  if now == 'travelling' or now == 'lane' then belt_on = false end
+  set_views(now == 'travelling', now == 'lane', belt_on)
 end
 
 -- With auto_view on, the band switches to fit only when what she's doing changes, so a view
@@ -112,6 +136,11 @@ local function follow_activity()
   if now == doing_now then return end
   doing_now = now
   if settings.get('auto_view') ~= false then fit_views(now) end
+end
+
+-- With auto_view on, the belt map comes up as she arrives at a belt and as a move in it starts.
+local function follow_belt()
+  if B.take_cue(belt) and settings.get('auto_view') ~= false then set_views(false, false, true) end
 end
 
 -- gmcp.on matches by prefix and case-insensitively, and passes the server's
@@ -134,7 +163,10 @@ local function scene_ship(data)
   if N.ship_status(lanes, data, os.time()) then post_lanes() end
   -- Where she is in a belt, so the scene can tell her moving through it.
   if W.ship_status(work, data, os.time()) then post_work() end
+  if B.ship_status(belt, data, os.time()) then post_belt() end
+  save_belts()
   follow_activity()
+  follow_belt()
 end
 
 local function scene_charts(data)
@@ -142,12 +174,17 @@ local function scene_charts(data)
   if C.space_charts(chart, data) then post_charts() end
   if N.space_charts(lanes, data, os.time()) then post_lanes() end
   save_lanes() -- every time: a lane seen now was seen until now
+  if B.space_charts(belt, data) then post_belt() end
+  save_belts()
 end
 
 local function ship_devices(data)
   if W.ship_devices(work, data, os.time()) then post_work() end
   local at = function(verb) return S.manoeuvre_at(scene, verb) end
   if M.ship_devices(manoeuvre, data, os.time(), at) then post_manoeuvre() end
+  if B.ship_devices(belt, data, os.time()) then post_belt() end
+  save_belts()
+  follow_belt()
 end
 
 local scene_reducers = {
@@ -194,6 +231,8 @@ world.on('disconnect', function()
   save_lanes()
   if W.reset(work) then post_work() end
   if A.reset(doing) then post_action() end
+  if B.reset(belt) then post_belt() end
+  save_belts()
   doing_now = nil -- the views stay as they are; the first status after it fits them
 end)
 
@@ -208,6 +247,8 @@ panel:on_message('ready', function()
   if C.on(chart) then post_chart_on() end
   if N.message(lanes).system or next(N.saved(lanes)) then post_lanes() end
   if N.on(lanes) then post_lanes_on() end
+  if B.message(belt).id then post_belt() end
+  if B.on(belt) then post_belt_on() end
   if next(W.message(work)) then post_work() end
   if A.message(doing).action then post_action() end
 end)
@@ -216,12 +257,21 @@ panel:on_message('chart', function(data)
   if type(data) ~= 'table' or type(data.on) ~= 'boolean' then return end
   if C.set_on(chart, data.on) then post_chart_on() end
   if data.on and N.set_on(lanes, false) then post_lanes_on() end
+  if data.on and B.set_on(belt, false) then post_belt_on() end
 end)
 
 panel:on_message('lanes-view', function(data)
   if type(data) ~= 'table' or type(data.on) ~= 'boolean' then return end
   if N.set_on(lanes, data.on) then post_lanes_on() end
   if data.on and C.set_on(chart, false) then post_chart_on() end
+  if data.on and B.set_on(belt, false) then post_belt_on() end
+end)
+
+panel:on_message('belt-view', function(data)
+  if type(data) ~= 'table' or type(data.on) ~= 'boolean' then return end
+  if B.set_on(belt, data.on) then post_belt_on() end
+  if data.on and C.set_on(chart, false) then post_chart_on() end
+  if data.on and N.set_on(lanes, false) then post_lanes_on() end
 end)
 
 settings.on('change', function(key)

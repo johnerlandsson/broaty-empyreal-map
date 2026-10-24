@@ -42,12 +42,13 @@ local function boot(opts)
   package.loaded['station_map.work'] = nil
   package.loaded['station_map.manoeuvre'] = nil
   package.loaded['station_map.action'] = nil
+  package.loaded['station_map.belt'] = nil
   local real_require = require
   _G.require = function(name)
     if name == 'station_map.location' or name == 'station_map.scene'
         or name == 'station_map.charts' or name == 'station_map.lanes' or name == 'station_map.work'
         or name == 'station_map.manoeuvre'
-        or name == 'station_map.action' then
+        or name == 'station_map.action' or name == 'station_map.belt' then
       env.requires[#env.requires + 1] = name
       package.loaded[name] = nil
     end
@@ -83,7 +84,7 @@ test('wires panel and requires each module once', function()
   local env = boot()
   eq(env.panel_id, 'map')
   eq(env.requires, { 'station_map.location', 'station_map.scene', 'station_map.charts', 'station_map.lanes',
-    'station_map.work', 'station_map.manoeuvre', 'station_map.action' })
+    'station_map.work', 'station_map.manoeuvre', 'station_map.action', 'station_map.belt' })
   eq(type(env.gmcp_handlers['mudstd.room.info']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Room']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Vehicle']), 'function')
@@ -681,6 +682,121 @@ test('disconnect posts doing nothing, if something was under way', function()
   env.posts = {}
   env.world_handlers.disconnect()
   eq(post_named(env, 'action').data, {})
+end)
+
+-- The belt map (src/station_map/belt.lua).
+local BELT_CHARTS = { system = 'senara', places = { { id = 'gannet-3', name = 'Gannet Belt', kind = 'belt' } } }
+local function at_belt(x, y)
+  return { name = 'Mule', docked = false, location = 'gannet-3',
+    belt = { x = x, y = y, radius = 18, core_km = 1, core_bearing = 0 } }
+end
+
+local function belt_on(env)
+  local on = nil
+  for _, p in ipairs(env.posts) do
+    if p.name == 'belt-view' then on = p.data.on end
+  end
+  return on
+end
+
+test('arriving at a belt posts where she is in it and switches the belt map on', function()
+  local env = boot()
+  env.gmcp_handlers['Space.Charts']('Space.Charts', BELT_CHARTS)
+  env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = false, destination = 'gannet-3' })
+  env.posts = {}
+  env.gmcp_handlers['Ship.Status']('Ship.Status', at_belt(3, 4))
+  local p = post_named(env, 'belt')
+  eq(p.data.id, 'gannet-3')
+  eq(p.data.name, 'Gannet Belt')
+  eq(p.data.place.x, 3)
+  eq(belt_on(env), true)
+  eq(env.stored.belts['gannet-3'].track, { { { 3, 4 } } })
+end)
+
+test('a move in the belt switches the belt map back on; coming to rest leaves it', function()
+  local real = os.time
+  local now = 1000
+  os.time = function() return now end
+  local env = boot()
+  local h = env.gmcp_handlers['Ship.Status']
+  h('Ship.Status', at_belt(3, 4))
+  env.panel_handlers['belt-view']({ on = false }) -- the view ahead, by hand
+  env.posts = {}
+  now = 1010
+  h('Ship.Status', at_belt(3.2, 4))
+  eq(belt_on(env), true)
+  env.panel_handlers['belt-view']({ on = false })
+  env.posts = {}
+  now = 1011
+  h('Ship.Status', at_belt(3.4, 4))
+  eq(belt_on(env), nil)
+  os.time = real
+end)
+
+test('with auto_view off the belt map stays off', function()
+  local env = boot({ auto_view = false })
+  env.gmcp_handlers['Ship.Status']('Ship.Status', at_belt(3, 4))
+  eq(belt_on(env), nil)
+end)
+
+test('travelling off the belt switches the belt map off and the chart on', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Status']('Ship.Status', at_belt(3, 4))
+  env.posts = {}
+  env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = false, destination = 'tiss' })
+  eq(belt_on(env), false)
+  eq(post_named(env, 'chart').data, { on = true })
+end)
+
+test('the belt map, the chart and the lanes map switch each other off', function()
+  local env = boot()
+  env.panel_handlers['belt-view']({ on = true })
+  env.posts = {}
+  env.panel_handlers.chart({ on = true })
+  eq(belt_on(env), false)
+  env.posts = {}
+  env.panel_handlers['belt-view']({ on = true })
+  eq(post_named(env, 'chart').data, { on = false })
+  env.panel_handlers['lanes-view']({ on = true })
+  eq(belt_on(env), false)
+  env.panel_handlers['belt-view']('nonsense')
+end)
+
+test('a sweep run to its end is stored with the belt', function()
+  local real = os.time
+  local now = 1000
+  os.time = function() return now end
+  local env = boot()
+  env.gmcp_handlers['Ship.Status']('Ship.Status', at_belt(3, 4))
+  local dev = function(busy, left)
+    return { devices = { { id = 'sensors', busy = busy, left = left, attachments = {} } } }
+  end
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', dev('scan', 10))
+  now = 1010
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', dev(nil, nil))
+  os.time = real
+  eq(env.stored.belts['gannet-3'].sweeps, { { x = 3, y = 4, r = 5 } })
+end)
+
+test('stored belt logs are loaded and replayed on ready at that belt', function()
+  local env = boot({ stored = { belts = { ['gannet-3'] = { radius = 18, track = { { { 1, 1 } } }, sweeps = {} } } } })
+  env.panel_handlers.ready({})
+  eq(post_named(env, 'belt'), nil) -- nowhere yet
+  env.gmcp_handlers['Ship.Status']('Ship.Status', at_belt(3, 4))
+  env.posts = {}
+  env.panel_handlers.ready({})
+  local p = post_named(env, 'belt')
+  eq(p.data.log.track, { { { 1, 1 } }, { { 3, 4 } } })
+  eq(post_named(env, 'belt-view').data, { on = true })
+end)
+
+test('disconnect at a belt posts her nowhere and keeps the log', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Status']('Ship.Status', at_belt(3, 4))
+  env.posts = {}
+  env.world_handlers.disconnect()
+  eq(post_named(env, 'belt').data.id, nil)
+  eq(env.stored.belts['gannet-3'] ~= nil, true)
 end)
 
 t.done()
