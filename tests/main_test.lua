@@ -514,6 +514,33 @@ test('travelling switches the chart on, and stopping switches it off', function(
   eq(views(env), { 'chart=false' })
 end)
 
+test('a trip to a planet ending loose posts the orbit scene with the planet', function()
+  local env = boot()
+  local real = os.time
+  local now = 1000
+  os.time = function() return now end
+  env.gmcp_handlers['Space.Charts']('Space.Charts', { bodies = { { id = 'tamsin', name = 'Tamsin', kind = 'planet', radius = 400 } } })
+  local h = env.gmcp_handlers['Ship.Status']
+  h('Ship.Status', { name = 'Mule', docked = false, destination = 'tamsin', progress = 0, eta = 60 })
+  now = 1060
+  env.posts = {}
+  h('Ship.Status', { name = 'Mule', docked = false })
+  os.time = real
+  eq(post_named(env, 'scene').data, { scene = 'orbit', planet = 'tamsin' })
+  eq(views(env), { 'chart=false' }) -- auto_view: she's stopped, as at any arrival
+end)
+
+test('a 3 s hop to a planet with no status under way still posts the orbit scene', function()
+  local env = boot()
+  env.gmcp_handlers['Space.Charts']('Space.Charts', { bodies = { { id = 'tamsin', name = 'Tamsin', kind = 'planet', radius = 400 } } })
+  local h = env.gmcp_handlers['Ship.Status']
+  h('Ship.Status', { name = 'Night Mail', docked = false, status = 'adrift' })
+  env.posts = {}
+  h('Ship.Status', { name = 'Night Mail', docked = false, status = 'over Tamsin' })
+  eq(post_named(env, 'scene').data, { scene = 'orbit', planet = 'tamsin' })
+  eq(post_named(env, 'chart-ship').data.over, { planet = 'tamsin' })
+end)
+
 test('a jump switches the lanes map on and the chart off', function()
   local env = boot()
   local h = env.gmcp_handlers['Ship.Status']

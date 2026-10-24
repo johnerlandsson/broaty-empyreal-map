@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EDGE_KM, ago, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
-  clusters, daylit, followStep, isClosed, markOf, mouthLabel, offCentre, offsetOn, onSurface, overlapping, parentOf,
+  HIGH_ORBIT, clusters, daylit, followStep, highOrbit, isClosed, orbitLit, markOf, mouthLabel, offCentre, offsetOn, onSurface, overlapping, parentOf,
   parsePoint, positionOf, scaleKm, shipFix, spreadOnEdge, stopFix, systemRadius,
 } from "./orbits.js";
 
@@ -572,6 +572,99 @@ describe("daylit", () => {
   it("is null when the charts can't place it", () => {
     expect(daylit(port(0), "nowhere", 0)).toBe(null);
     expect(daylit(indexCharts({ bodies: [{ id: "zennor", kind: "port", orbit: orbit("tamsin", 400, 14400) }] }), "zennor", 0)).toBe(null);
+  });
+});
+
+describe("high orbit", () => {
+  // Tamsin at [6000, 0] at the epoch, 400 km across; T.I.S.S. 900 km out from it, on the far
+  // side from the star (phase 0) or the near side (phase 180).
+  const sys = (phase = 0, radius = 400) =>
+    indexCharts({
+      epoch: 0,
+      system: "senara",
+      bodies: [
+        { id: "senara", kind: "star" },
+        { id: "tamsin", name: "Tamsin", kind: "planet", radius, orbit: orbit("senara", 6000, 259200) },
+        { id: "tiss", kind: "station", orbit: orbit("tamsin", 900, 7200, { phase }) },
+      ],
+      places: [{ id: "gannet", kind: "belt", orbit: orbit("tamsin", 2700, 50000) }],
+    });
+  const over = { planet: "tamsin", from: "tiss", depart: 0 };
+  const near = (a, b) => {
+    expect(a[0]).toBeCloseTo(b[0], 6);
+    expect(a[1]).toBeCloseTo(b[1], 6);
+  };
+
+  it("is 1.5 radii out", () => expect(HIGH_ORBIT).toBe(1.5));
+
+  it("puts her on the ring on the side she came in from", () => {
+    const fix = shipFix(sys(), { over }, 0);
+    expect(fix).toMatchObject({ kind: "at", place: "tamsin", orbit: { planet: "tamsin", angle: 0 } });
+    near(fix.pos, [6600, 0]);
+    const other = shipFix(sys(180), { over }, 0);
+    expect(other.orbit.angle).toBeCloseTo(Math.PI, 9);
+    near(other.pos, [5400, 0]);
+  });
+
+  it("takes the side from where she set out, not where that is now", () => {
+    // T.I.S.S. a quarter of the way round by the time she's looked at; she's where she came in
+    const t = 1800 * 1000;
+    const c = positionOf(sys(), "tamsin", t);
+    near(shipFix(sys(), { over }, t).pos, [c[0] + 600, c[1]]);
+  });
+
+  it("rides with the planet", () => {
+    const t = 50000 * 1000;
+    const c = positionOf(sys(), "tamsin", t);
+    near(shipFix(sys(), { over }, t).pos, [c[0] + 600, c[1]]);
+  });
+
+  it("with no trip to say which side, is over the planet's centre with no angle", () => {
+    const fix = shipFix(sys(), { over: { planet: "tamsin" } }, 0);
+    expect(fix.orbit).toEqual({ planet: "tamsin", angle: null });
+    near(fix.pos, [6000, 0]);
+    expect(shipFix(sys(0, null), { over }, 0).orbit.angle).toBe(null); // no radius to place a ring
+  });
+
+  it("finds the planet by name when her status named it before the charts came", () => {
+    expect(shipFix(sys(), { over: { name: "Tamsin" } }, 0).orbit).toEqual({ planet: "tamsin", angle: null });
+    expect(shipFix(sys(), { over: { name: "Nowhere" } }, 0)).toEqual({ kind: "none" });
+  });
+
+  it("is nothing over a planet the charts don't have", () => {
+    expect(shipFix(sys(), { over: { planet: "nowhere" } }, 0)).toEqual({ kind: "none" });
+    expect(highOrbit(sys(), null)).toBe(null);
+  });
+
+  it("is lit as her side faces the star, as daylit has it", () => {
+    expect(orbitLit(sys(180), { over }, 0)).toBe(true);
+    expect(orbitLit(sys(0), { over }, 0)).toBe(false);
+    expect(orbitLit(sys(), { over: { planet: "tamsin" } }, 0)).toBe(null);
+    expect(orbitLit(sys(), { docked: false, location: "tiss" }, 0)).toBe(null);
+  });
+
+  it("ends a trip to a planet on the ring, not its centre", () => {
+    const leg = legOf(sys(), { from: "tiss", destination: "tamsin", depart: 0, progress: 0, eta: 100, received: 0 });
+    expect(leg.frame).toBe("tamsin");
+    near(leg.from, [900, 0]);
+    near(leg.to, [600, 0]);
+  });
+
+  it("starts the next trip from the ring", () => {
+    const ship = { from_over: over, destination: "gannet", depart: 100, progress: 0, eta: 100, received: 100 };
+    const leg = legOf(sys(), ship);
+    expect(leg.frame).toBe("tamsin");
+    near(leg.from, [600, 0]);
+    // and a stop on it, from where she stopped
+    const st = stopFix(sys(), { from_over: over, destination: "gannet", depart: 100, arrive: 200, at: 100 });
+    near(st.off, [600, 0]);
+  });
+
+  it("frames the planet and what goes round it", () => {
+    const [x0, y0, x1, y1] = homeBox(sys(), { over }, 0);
+    expect((x0 + x1) / 2).toBeCloseTo(6000, 6);
+    expect((y0 + y1) / 2).toBeCloseTo(0, 6);
+    expect((x1 - x0) / 2).toBeCloseTo(2700 * 1.15, 6);
   });
 });
 

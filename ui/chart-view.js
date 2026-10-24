@@ -6,6 +6,7 @@
 
 import {
   EDGE_KM,
+  HIGH_ORBIT,
   ago,
   clusters,
   edgeMarker,
@@ -605,6 +606,24 @@ export class ChartView {
         if (!d) return;
         const b = P(d);
         el("circle", { cx: b[0], cy: b[1], r: 5, fill: "none", stroke: HL, "stroke-opacity": 0.7, "stroke-width": 1.2, "pointer-events": "none" }, marks);
+      } else if (fix.kind === "at" && herPos && fix.orbit) {
+        // in high orbit: a ring HIGH_ORBIT times the planet's disc as drawn (it may be drawn bigger
+        // than it is), her on it on the side she came in from, or the ring alone when that's not known
+        const planet = index.items.get(fix.orbit.planet);
+        const c = pos(planet.id);
+        if (!c) return;
+        const [x, y] = P(c);
+        const r = discR(planet) * HIGH_ORBIT;
+        const g = el("g", {}, lit);
+        el("circle", { cx: x, cy: y, r, fill: "none", stroke: HL, "stroke-opacity": fix.orbit.angle === null ? 0.8 : 0.45, "stroke-width": 1.2, "stroke-dasharray": "3 3" }, g);
+        el("circle", { cx: x, cy: y, r, fill: "none", stroke: "transparent", "stroke-width": 8 }, g);
+        const where = `high orbit over ${planet.name}`;
+        label(x, y - r - 6, where);
+        tip(g, "orbit", shipName, fix.orbit.angle === null ? `${where}, which side not known` : where);
+        if (fix.orbit.angle !== null) {
+          const a = fix.orbit.angle;
+          tip(chevron(lit, [x + Math.cos(a) * r, y - Math.sin(a) * r], -Math.PI / 2), "ship", shipName, where);
+        }
       } else if (fix.kind === "at" && herPos) {
         // at a port, on its dome: the planet's disc may be drawn bigger than it is
         const at = fix.place ? ground(fix.place) : null;

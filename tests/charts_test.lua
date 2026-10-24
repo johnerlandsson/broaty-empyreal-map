@@ -505,4 +505,127 @@ test('a new system drops a stop it has no place for', function()
   eq(C.ship(s).stop, nil)
 end)
 
+-- High orbit (Empyreal 2a84c78): a trip to a planet ends loose, location null.
+local function with_tamsin()
+  local s = C.new()
+  C.space_charts(s, charts({ bodies = {
+    { id = 'tamsin', name = 'Tamsin', kind = 'planet', radius = 400,
+      orbit = { parent = 'senara', a = 6000, period = 259200 } },
+    { id = 'tiss', name = 'T.I.S.S.', kind = 'station',
+      orbit = { parent = 'tamsin', a = 900, period = 7200 } },
+  } }))
+  return s
+end
+
+local function over_tamsin()
+  local s = with_tamsin()
+  C.ship_status(s, { location = 'tiss' }, 0)
+  C.ship_status(s, { destination = 'tamsin', progress = 0, eta = 100 }, 1)
+  C.ship_status(s, { status = 'in space' }, 101)
+  return s
+end
+
+test('a trip to a planet that comes due leaves her over it, with the trip she came in on', function()
+  local s = over_tamsin()
+  eq(C.ship(s).over, { planet = 'tamsin', from = 'tiss', depart = 1 })
+  eq(C.ship(s).stop, nil)
+  eq(C.ship(s).point, nil)
+end)
+
+test('over a planet with no trip known, only the planet', function()
+  local s = with_tamsin()
+  C.ship_status(s, { destination = 'tamsin', progress = 0.5, eta = 50 }, 0) -- panel started mid-trip
+  C.ship_status(s, { status = 'in space' }, 50)
+  eq(C.ship(s).over.planet, 'tamsin')
+  eq(C.ship(s).over.from, nil)
+  eq(C.ship(s).over.depart, 50 - 100)
+end)
+
+test('loose short of a planet is a stop, not high orbit', function()
+  local s = with_tamsin()
+  C.ship_status(s, { location = 'tiss' }, 0)
+  C.ship_status(s, { destination = 'tamsin', progress = 0, eta = 100 }, 1)
+  C.ship_status(s, { status = 'adrift' }, 40)
+  eq(C.ship(s).over, nil)
+  eq(C.ship(s).stop.destination, 'tamsin')
+end)
+
+test('high orbit holds while she is loose there', function()
+  local s = over_tamsin()
+  C.ship_status(s, { status = 'in space' }, 400)
+  eq(C.ship(s).over.planet, 'tamsin')
+end)
+
+test('the next trip starts from high orbit', function()
+  local s = over_tamsin()
+  C.ship_status(s, { destination = 'gannet', progress = 0, eta = 300 }, 500)
+  eq(C.ship(s).from, nil)
+  eq(C.ship(s).over, nil)
+  eq(C.ship(s).from_over, { planet = 'tamsin', from = 'tiss', depart = 1 })
+  C.ship_status(s, { destination = 'gannet', progress = 0.5, eta = 150 }, 650)
+  eq(C.ship(s).from_over.planet, 'tamsin')
+end)
+
+test('a stop on a trip out of high orbit keeps where it started', function()
+  local s = over_tamsin()
+  C.ship_status(s, { destination = 'gannet', progress = 0, eta = 300 }, 500)
+  C.ship_status(s, { status = 'adrift' }, 600)
+  eq(C.ship(s).stop.from_over.planet, 'tamsin')
+  eq(C.ship(s).stop.destination, 'gannet')
+end)
+
+test('high orbit over one planet, then the next: the side comes from the first ring', function()
+  local s = over_tamsin()
+  C.ship_status(s, { destination = 'tamsin', progress = 0, eta = 20 }, 500) -- nudged round, say
+  C.ship_status(s, { status = 'in space' }, 520)
+  eq(C.ship(s).over.from_over.planet, 'tamsin')
+  eq(C.ship(s).over.depart, 500)
+end)
+
+test('docking or arriving somewhere ends high orbit', function()
+  local s = over_tamsin()
+  C.ship_status(s, { destination = 'tiss', progress = 0, eta = 10 }, 500)
+  C.ship_status(s, { location = 'tiss' }, 510)
+  eq(C.ship(s).over, nil)
+  eq(C.ship(s).from_over, nil)
+end)
+
+test('a new system drops a high orbit it has no planet for', function()
+  local s = over_tamsin()
+  C.space_charts(s, charts({ system = 'maelor', bodies = {}, places = {} }))
+  eq(C.ship(s).over, nil)
+end)
+
+test('a status saying over a planet puts her over it, side unknown', function()
+  local s = with_tamsin()
+  C.ship_status(s, { location = 'tiss', status = 'at T.I.S.S.' }, 0)
+  C.ship_status(s, { status = 'adrift' }, 3) -- the 3 s hop fell between two statuses
+  C.ship_status(s, { status = 'over Tamsin' }, 165)
+  eq(C.ship(s).over, { planet = 'tamsin' })
+  eq(C.ship(s).stop, nil)
+end)
+
+test('the status keeps the side a trip seen to the planet gave', function()
+  local s = with_tamsin()
+  C.ship_status(s, { location = 'tiss' }, 0)
+  C.ship_status(s, { destination = 'tamsin', progress = 0, eta = 100 }, 1)
+  C.ship_status(s, { status = 'over Tamsin' }, 101)
+  eq(C.ship(s).over, { planet = 'tamsin', from = 'tiss', depart = 1 })
+  C.ship_status(s, { status = 'over Tamsin' }, 300)
+  eq(C.ship(s).over.from, 'tiss')
+end)
+
+test('over a planet before the charts name it, the name is kept', function()
+  local s = C.new()
+  C.ship_status(s, { status = 'over Tamsin' }, 0)
+  eq(C.ship(s).over, { name = 'Tamsin' })
+end)
+
+test('the next trip starts from the high orbit the status gave', function()
+  local s = with_tamsin()
+  C.ship_status(s, { status = 'over Tamsin' }, 0)
+  C.ship_status(s, { destination = 'tiss', progress = 0, eta = 3 }, 10)
+  eq(C.ship(s).from_over, { planet = 'tamsin' })
+end)
+
 t.done()

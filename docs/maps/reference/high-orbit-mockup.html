@@ -1,0 +1,126 @@
+<!doctype html>
+<!-- High orbit over a planet, 2026-10-24: three ways to draw the view ahead in high orbit, 1.5 × the
+     planet's radius out (Empyreal 2a84c78). Each option shows her side facing the star (day), facing
+     away (night) and with the side unknown (no trip to place her by). Self-contained, so it opens
+     from disk. A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>High orbit: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:16px 20px; width:1120px; }
+  h2 { color:#e3eaf2; font-size:15px; margin:16px 0 2px; }
+  h2 small { color:#7d8a9a; font-weight:400; font-size:12px; margin-left:8px; }
+  .row { display:flex; gap:12px; margin:6px 0 2px; }
+  figure { margin:0; text-align:center; }
+  figcaption { font:11px "DejaVu Sans Mono", monospace; margin-top:3px; }
+  canvas { width:360px; height:200px; border-radius:6px; outline:1px solid #18202b; display:block; }
+</style></head><body>
+<div id="out"></div>
+<script>
+const W = 360, H = 200;
+const BG = "#04060c", STAR = "223,231,241", RIM = "207,227,255";
+const DAY = ["#6e5a44", "#8a7052", "#5c4936"];
+const NIGHT = ["#121821", "#0e131b", "#080b11"];
+
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+const mix = (a, b, t) => { const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); const x = p(a), y = p(b); return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(",")})`; };
+
+function stars(g, dim) {
+  const r = rng(7);
+  for (let i = 0; i < 160; i++) {
+    const x = r() * W, y = r() * H, a = 0.2 + r() * 0.7;
+    g.fillStyle = `rgba(${STAR},${a * dim})`;
+    g.fillRect(x, y, r() < 0.15 ? 1.6 : 1, r() < 0.15 ? 1.6 : 1);
+  }
+}
+
+function faceGrad(g, top, bottom, lit) {
+  const grd = g.createLinearGradient(0, top, 0, bottom);
+  [0, 0.15, 1].forEach((s, i) => grd.addColorStop(s, mix(NIGHT[i], DAY[i], lit)));
+  return grd;
+}
+
+// A: the port's face, as is, with no town
+function optA(g, lit) {
+  g.fillStyle = BG; g.fillRect(0, 0, W, H);
+  stars(g, 1 - 0.5 * lit);
+  const R = W * 1.4, cx = W / 2, top = H * 0.52, cy = top + R;
+  g.save(); g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.clip();
+  g.fillStyle = faceGrad(g, top, H, lit); g.fillRect(0, top, W, H - top);
+  g.restore();
+  g.strokeStyle = `rgba(${RIM},${0.18 + 0.37 * lit})`; g.lineWidth = 1.5;
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+}
+
+// the face seen from 1.5 R: a rounder limb, cloud bands across it, a haze on the lit limb
+function roundFace(g, lit, shade) {
+  g.fillStyle = BG; g.fillRect(0, 0, W, H);
+  stars(g, 1 - 0.5 * lit);
+  const R = W * 0.78, cx = W / 2, top = H * 0.46, cy = top + R;
+  // haze above the limb, by day
+  const haze = g.createRadialGradient(cx, cy, R, cx, cy, R + 16);
+  haze.addColorStop(0, `rgba(${RIM},${0.22 * lit + 0.04})`);
+  haze.addColorStop(1, `rgba(${RIM},0)`);
+  g.fillStyle = haze; g.beginPath(); g.arc(cx, cy, R + 16, 0, Math.PI * 2); g.fill();
+  g.save(); g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.clip();
+  g.fillStyle = faceGrad(g, top, H, lit); g.fillRect(0, top - 2, W, H - top + 2);
+  // cloud bands: short arcs round the planet's centre, so they follow the curve
+  const r = rng(11);
+  g.lineCap = "round";
+  for (let i = 0; i < 22; i++) {
+    const d = 6 + r() * (H - top + 20); // depth below the crest
+    const a = (r() - 0.5) * 1.3;
+    const len = 0.04 + r() * 0.14;
+    g.strokeStyle = `rgba(232,220,200,${(0.04 + r() * 0.07) * (0.2 + 0.8 * lit)})`;
+    g.lineWidth = 1.5 + r() * 3;
+    g.beginPath(); g.arc(cx, cy, R - d, -Math.PI / 2 + a - len, -Math.PI / 2 + a + len); g.stroke();
+  }
+  // the limb darkens: the face turns away from you toward its edge
+  const limb = g.createRadialGradient(cx, cy, R * 0.86, cx, cy, R);
+  limb.addColorStop(0, "rgba(4,6,12,0)"); limb.addColorStop(1, "rgba(4,6,12,0.45)");
+  g.fillStyle = limb; g.fillRect(0, top - 2, W, H - top + 2);
+  if (shade) shade(g, R, cx, cy, top);
+  g.restore();
+  g.strokeStyle = `rgba(${RIM},${0.18 + 0.37 * lit})`; g.lineWidth = 1.5;
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+}
+
+// B: lit or dark, as daylit says; unknown at a dusk between
+const optB = (g, lit) => roundFace(g, lit);
+
+// C: a terminator across the face: the star's side lit, the far side dark, the line between
+// placed by how far round from the star she is (here: day 40°, night 140°, unknown none drawn)
+function optC(g, lit, k) {
+  if (k === null) return roundFace(g, 0.5);
+  roundFace(g, 1, (g, R, cx, cy, top) => {
+    // the night side comes in from one side; the terminator a soft vertical-ish curve
+    // the night side a disc coming in from the right: its edge, seen on the curved face, bows
+    const x = cx + (k - 0.5) * W * 1.6;
+    const big = W * 1.2;
+    const grd = g.createRadialGradient(x + big, cy - R * 0.2, big - 50, x + big, cy - R * 0.2, big + 30);
+    grd.addColorStop(0, "rgba(8,11,17,0.94)"); grd.addColorStop(0.45, "rgba(8,11,17,0.8)"); grd.addColorStop(1, "rgba(8,11,17,0)");
+    g.fillStyle = grd; g.fillRect(0, top - 2, W, H - top + 2);
+  });
+}
+
+const OPTIONS = [
+  ["A · the port's face, bare", "as over Zennor: the same flat curve and day/night colours, no town; unknown keeps the day", (g, s) => optA(g, s === "day" ? 1 : s === "night" ? 0 : 1)],
+  ["B · seen from high up", "a rounder limb (she's 0.5 R above it), faint cloud bands, haze on the lit limb; unknown is a dusk between", (g, s) => optB(g, s === "day" ? 1 : s === "night" ? 0 : 0.5)],
+  ["C · B with a terminator", "night creeps in from one side as she nears the line between day and night; unknown as B", (g, s) => optC(g, 1, s === "day" ? 0.95 : s === "night" ? 0.35 : null)],
+];
+const STATES = [["day", "her side faces the star"], ["night", "C: near the terminator"], ["unknown", "side unknown"]];
+
+const out = document.getElementById("out");
+for (const [title, sub, draw] of OPTIONS) {
+  out.insertAdjacentHTML("beforeend", `<h2>${title}<small>${sub}</small></h2>`);
+  const row = document.createElement("div"); row.className = "row"; out.appendChild(row);
+  for (const [s, cap] of STATES) {
+    const fig = document.createElement("figure");
+    const cv = document.createElement("canvas"); cv.width = W * 2; cv.height = H * 2;
+    const g = cv.getContext("2d"); g.scale(2, 2);
+    draw(g, s);
+    fig.appendChild(cv);
+    const label = s === "night" && title.startsWith("C") ? "day side, near the terminator" : s === "night" ? "her side away from the star" : cap;
+    fig.insertAdjacentHTML("beforeend", `<figcaption>${label}</figcaption>`);
+    row.appendChild(fig);
+  }
+}
+</script></body></html>

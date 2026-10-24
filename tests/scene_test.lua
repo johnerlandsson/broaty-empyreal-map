@@ -6,6 +6,7 @@ local test, eq = t.test, t.eq
 
 local CHARTS = { epoch = 0, system = 'sol', bodies = {
   { id = 'zennor', name = 'Zennor', kind = 'port' },
+  { id = 'tamsin', name = 'Tamsin', kind = 'planet', radius = 400 },
 }, places = {
   { id = 'tiss', name = 'T.I.S.S.', kind = 'station' },
   { id = 'zennor', name = 'Zennor', kind = 'station' },
@@ -320,6 +321,153 @@ test('off a host docked at a station, the undock is about the station; off one i
   eq(S.manoeuvre_at(s, 'undock'), 'tiss')
   S.ship_status(s, riding({ location = 'belt.7' }))
   eq(S.manoeuvre_at(s, 'undock'), nil)
+end)
+
+-- High orbit (Empyreal 2a84c78): Ship.Status's location is null there, as at a stop mid-trip.
+local function to_tamsin(s)
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, status({ location = 'tiss' }), 0)
+  S.ship_status(s, status({ destination = 'tamsin', progress = 0, eta = 100 }), 1)
+end
+
+test('a trip to a planet that comes due and goes loose is high orbit over it', function()
+  local s = S.new()
+  to_tamsin(s)
+  eq(S.ship_status(s, status({}), 101), true)
+  eq(S.scene(s), 'orbit')
+  eq(S.planet(s), 'tamsin')
+  eq(S.port(s), nil)
+  eq(S.station(s), nil)
+end)
+
+test('a status a few seconds short of the eta is still the arrival', function()
+  local s = S.new()
+  to_tamsin(s)
+  S.ship_status(s, status({}), 97)
+  eq(S.scene(s), 'orbit')
+end)
+
+test('loose well before the eta is a stop on the way, parked', function()
+  local s = S.new()
+  to_tamsin(s)
+  S.ship_status(s, status({}), 40)
+  eq(S.scene(s), 'parked')
+  eq(S.planet(s), nil)
+end)
+
+test('a later eta (debris) moves the arrival with it', function()
+  local s = S.new()
+  to_tamsin(s)
+  S.ship_status(s, status({ destination = 'tamsin', progress = 0.9, eta = 60 }), 90)
+  S.ship_status(s, status({}), 110)
+  eq(S.scene(s), 'parked')
+end)
+
+test('high orbit holds through later loose statuses, and ends with the next trip', function()
+  local s = S.new()
+  to_tamsin(s)
+  S.ship_status(s, status({}), 101)
+  eq(S.ship_status(s, status({}), 500), false)
+  eq(S.scene(s), 'orbit')
+  eq(S.ship_status(s, status({ destination = 'tiss', progress = 0, eta = 50 }), 600), true)
+  eq(S.scene(s), 'travelling')
+  eq(S.planet(s), nil)
+end)
+
+test('a trip to a station that comes due loose is not high orbit', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, status({ destination = 'tiss', progress = 0, eta = 10 }), 0)
+  S.ship_status(s, status({}), 10)
+  eq(S.scene(s), 'parked')
+end)
+
+test('loaded with her already in high orbit, there is no trip to say so: parked', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, status({}), 0)
+  eq(S.scene(s), 'parked')
+end)
+
+test('charts arriving after the arrival turn parked into orbit', function()
+  local s = S.new()
+  S.ship_status(s, status({ destination = 'tamsin', progress = 0, eta = 100 }), 1)
+  S.ship_status(s, status({}), 101)
+  eq(S.scene(s), 'parked')
+  eq(S.space_charts(s, CHARTS), true)
+  eq(S.scene(s), 'orbit')
+end)
+
+test('a host in high orbit puts her guest there too', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, status({ docked = true, host = { destination = 'tamsin', progress = 0, eta = 100 } }), 0)
+  S.ship_status(s, status({ docked = true, host = {} }), 100)
+  eq(S.scene(s), 'orbit')
+  eq(S.planet(s), 'tamsin')
+end)
+
+test('gaining a host forgets her own trip', function()
+  local s = S.new()
+  to_tamsin(s)
+  S.ship_status(s, status({ docked = true, host = {} }), 101)
+  eq(S.scene(s), 'parked')
+end)
+
+test('there is no docking from high orbit', function()
+  local s = S.new()
+  to_tamsin(s)
+  S.ship_status(s, status({}), 101)
+  eq(S.manoeuvre_at(s, 'dock'), nil)
+end)
+
+test('reset forgets the planets', function()
+  local s = S.new()
+  to_tamsin(s)
+  S.ship_status(s, status({}), 101)
+  S.reset(s)
+  S.ship_status(s, status({ destination = 'tamsin', progress = 0, eta = 1 }), 0)
+  S.ship_status(s, status({}), 1)
+  eq(S.scene(s), 'parked')
+end)
+
+-- Her status says it: the hop from T.I.S.S. to Tamsin is 3 s, and in play no status came while
+-- she was under way (2026-10-24): adrift off T.I.S.S., then "over Tamsin".
+test('a status saying over a planet is high orbit, with no trip seen', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, status({ location = 'tiss', status = 'at Tamsin International Space Station' }), 0)
+  S.ship_status(s, status({ status = 'adrift' }), 3)
+  eq(S.scene(s), 'parked')
+  eq(S.ship_status(s, status({ status = 'over Tamsin' }), 165), true)
+  eq(S.scene(s), 'orbit')
+  eq(S.planet(s), 'tamsin')
+end)
+
+test('loaded with her already over a planet, the status says so', function()
+  local s = S.new()
+  S.ship_status(s, status({ status = 'over Tamsin' }), 0)
+  eq(S.scene(s), 'parked') -- no charts yet to name it
+  eq(S.space_charts(s, CHARTS), true)
+  eq(S.scene(s), 'orbit')
+  eq(S.planet(s), 'tamsin')
+end)
+
+test('over something the charts have no planet by that name for is parked', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, status({ status = 'over Zennor' }), 0)
+  eq(S.scene(s), 'parked')
+end)
+
+test('setting off from high orbit ends it, status and all', function()
+  local s = S.new()
+  S.space_charts(s, CHARTS)
+  S.ship_status(s, status({ status = 'over Tamsin' }), 0)
+  S.ship_status(s, status({ destination = 'tiss', progress = 0, eta = 3, status = 'over Tamsin' }), 1)
+  eq(S.scene(s), 'travelling')
+  S.ship_status(s, status({ location = 'tiss', status = 'at Tamsin International Space Station' }), 4)
+  eq(S.scene(s), 'parked')
 end)
 
 t.done()

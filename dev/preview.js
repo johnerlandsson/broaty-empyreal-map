@@ -10,11 +10,14 @@
 //   ?repeat   with ?step: after it settles, re-send step N twice and report what changed
 //   ?debug    count model turns / redraws and deck highlights / re-centres, shown bottom-right
 //   ?still    send settings { turn_model: false }
-//   ?scene=S  open on overview scene S (station, parked, travelling, belt, or port-day / port-night over
-//             Zennor, which also emits charts placing it so); the bar's menu switches it
+//   ?scene=S  open on overview scene S (station, parked, travelling, belt, port-day / port-night over
+//             Zennor, which also emits charts placing it so, or orbit-day / orbit-night / orbit-unknown in high
+//             orbit over Tamsin, which also emits charts and chart-ship putting her on that side, or on no
+//             side known); the bar's menu switches it
 //   ?hull=H   aboard a ship, send hull H (skiff, courier or freighter) as the server will; the bar's menu switches it
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
-//             docked-tiss, landed-zennor, none, maelor, maelor-lanes, edge, to-mouth, adrift or from-stop), emitting charts, chart-ship and
+//             docked-tiss, landed-zennor, none, maelor, maelor-lanes, edge, to-mouth, adrift, from-stop, to-tamsin,
+//             high-orbit or high-orbit-unknown), emitting charts, chart-ship and
 //             chart { on: true }; the bar's menu switches it
 //   ?lanes=L  open the lanes map on scenario L (senara, in-trunk, in-mid, dozmary, petroc, new or partly), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it. &zoom=F opens it zoomed by F, &unfold with
@@ -61,6 +64,7 @@ import { DeckView } from "../ui/deck-view.js";
 import { LanesView } from "../ui/lanes-view.js";
 import { ModelView } from "../ui/model-view.js";
 import { lanesOf } from "../ui/lib/lanes.js";
+import { indexCharts, positionOf } from "../ui/lib/orbits.js";
 import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts } from "./charts-fixture.js";
 
 const q = new URLSearchParams(location.search);
@@ -354,7 +358,24 @@ function walk(from = 0, until = ROUTE.length - 1) {
 document.getElementById("walk").addEventListener("click", () => walk());
 
 const sceneMenu = document.getElementById("scene");
+/** Her in high orbit over Tamsin as the Lua side keeps it, come in from 2,000 km off it toward the
+ *  star (day) or away from it (night), or with no trip known (unknown). */
+function overTamsin(now, side) {
+  const s = Math.floor(now / 1000);
+  const p = positionOf(indexCharts(senaraCharts(now)), "tamsin", s * 1000 - 600000);
+  const k = (side === "day" ? -2000 : 2000) / Math.hypot(p[0], p[1]);
+  const from = `pt:tamsin:${(p[0] * k).toFixed(1)}:${(p[1] * k).toFixed(1)}`;
+  const over = side === "unknown" ? { planet: "tamsin" } : { planet: "tamsin", from, depart: s - 600 };
+  return { name: "Mule", docked: false, over, received: s };
+}
+
 function emitScene(name) {
+  const high = /^orbit-(day|night|unknown)$/.exec(name)?.[1];
+  if (high) {
+    fp.emit("charts", senaraCharts(Date.now()));
+    fp.emit("chart-ship", overTamsin(Date.now(), high));
+    return fp.emit("scene", { scene: "orbit", planet: "tamsin" });
+  }
   const side = /^port-(day|night)$/.exec(name)?.[1];
   if (!side) return fp.emit("scene", { scene: name });
   fp.emit("charts", senaraCharts(Date.now(), null, side));
@@ -426,13 +447,20 @@ function emitChart(name) {
     "to-mouth": { name: "Mule", docked: false, from: "tiss", destination: "mouth:senara:maelor", progress: 0.4, eta: 480 },
     adrift: { name: "Mule", docked: false, stop, received: s },
     "from-stop": { name: "Mule", docked: false, stop, destination: "mouth:senara:maelor", progress: 0.2, eta: 210, depart: s - 50, received: s },
+    "to-tamsin": { name: "Mule", docked: false, from: "gannet", destination: "tamsin", progress: 0.6, eta: 120 },
   };
+  if (name === "high-orbit" || name === "high-orbit-unknown") {
+    fp.emit("charts", senaraCharts(now));
+    fp.emit("chart-ship", overTamsin(now, name === "high-orbit" ? "night" : "unknown"));
+    fp.emit("chart", { on: true });
+    return;
+  }
   if (name === "maelor" || name === "maelor-lanes") {
     fp.emit("charts", maelorCharts(now, null, name === "maelor-lanes"));
     fp.emit("chart-ship", stamp(MAELOR_SHIP));
   } else if (MOUTH_TRIPS[name]) {
     fp.emit("charts", senaraCharts(now, EDGE(now)));
-    fp.emit("chart-ship", name === "to-mouth" ? stamp(MOUTH_TRIPS[name]) : MOUTH_TRIPS[name]);
+    fp.emit("chart-ship", name === "to-mouth" || name === "to-tamsin" ? stamp(MOUTH_TRIPS[name]) : MOUTH_TRIPS[name]);
   } else {
     fp.emit("charts", senaraCharts(now, name === "edge" ? EDGE(now) : null));
     fp.emit("chart-ship", stamp(name === "edge" ? SHIPS["parked-gannet"] : SHIPS[name]));

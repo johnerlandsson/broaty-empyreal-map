@@ -5,6 +5,9 @@
 // (content/help/lanes.md in the Empyreal source).
 export const EDGE_KM = 15000;
 
+// How far out high orbit is over a planet, in its radii (Empyreal's HIGH_ORBIT, navigation.md §6).
+export const HIGH_ORBIT = 1.5;
+
 const DEPTH = 8;
 const rad = (deg) => (deg * Math.PI) / 180;
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -80,16 +83,27 @@ export function positionOf(index, id, t, depth = 0) {
   return null;
 }
 
+// Whether `here`, km from the star, is on the side of a planet centred at `centre` that faces
+// the star: straight up from the centre through it, against the way to the star.
+const facesStar = (here, centre) => (here[0] - centre[0]) * -here[0] + (here[1] - centre[1]) * -here[1] > 0; // the star is at the origin
+
 // Whether a port on its planet's surface has its star above the horizon at wall-clock t (ms),
-// as the game's isDay (planetside.md §4): straight up from the planet's centre through the town,
-// against the way to the star. Null when the charts can't place the town or its planet.
+// as the game's isDay (planetside.md §4). Null when the charts can't place the town or its planet.
 export function daylit(index, id, t) {
   const planet = parentOf(index, id);
   const here = positionOf(index, id, t);
   const centre = planet === null ? null : positionOf(index, planet, t);
   if (!here || !centre) return null;
-  // the star is at the origin: the way to it is -here
-  return (here[0] - centre[0]) * -here[0] + (here[1] - centre[1]) * -here[1] > 0;
+  return facesStar(here, centre);
+}
+
+// Whether her side of the planet she's in high orbit over faces its star at wall-clock t (ms), the
+// same way daylit() has it for a town; null when she's not in high orbit or the side isn't known.
+export function orbitLit(index, ship, t) {
+  const fix = shipFix(index, ship, t);
+  if (!fix.orbit || fix.orbit.angle === null) return null;
+  const centre = positionOf(index, fix.orbit.planet, t);
+  return centre ? facesStar(fix.pos, centre) : null;
 }
 
 // The nearest body that holds both, as the game's Orbits.common: a chain starts at the
@@ -123,42 +137,82 @@ export function errorAt(fit, a, t) {
 // Lost once the error is nearly half way round the orbit.
 export const isLost = (errorKm, a) => errorKm >= 0.9 * Math.PI * a;
 
-// A trip as a straight line in the frame's offsets, times in ms, from a place's id or from a stop
-// (`stop`, below); null when unplaceable.
-function legFrom(index, from, stop, destination, depart, arrive, depth) {
+// Where a trip's start is at wall-clock t (ms), km from the star, and the id it rides with: a
+// place (`from`), a stop (`stop`, below) or the high orbit she left (`from_over`, below). Null
+// when unplaceable.
+function startOf(index, start, t, depth) {
+  if (depth > DEPTH || !start) return null;
+  if (start.from) {
+    const p = positionOf(index, start.from, t);
+    return p && { pos: p, frame: start.from };
+  }
+  const halt = start.stop ? stopFix(index, start.stop, depth + 1) : start.from_over ? highOrbit(index, start.from_over, depth + 1) : null;
+  const f = halt?.off && positionOf(index, halt.frame, t);
+  return f ? { pos: [f[0] + halt.off[0], f[1] + halt.off[1]], frame: halt.frame } : null;
+}
+
+// Where high orbit over `planet` is, as an offset from its centre, for a trip there from `p` at
+// wall-clock t (ms): HIGH_ORBIT radii out on the side she comes in from, as the game's target().
+// Null when the charts give the planet no radius.
+function ringOffset(index, planet, p, t) {
+  const r = HIGH_ORBIT * (num(index.items.get(planet)?.radius) ?? 0);
+  const c = positionOf(index, planet, t);
+  if (!(r > 0) || !c || !p) return null;
+  const v = [p[0] - c[0], p[1] - c[1]];
+  const l = Math.hypot(v[0], v[1]);
+  return l > 0 ? [(v[0] / l) * r, (v[1] / l) * r] : [r, 0];
+}
+
+const isPlanet = (index, id) => index.items.get(id)?.kind === "planet";
+
+// A trip as a straight line in the frame's offsets, times in ms, from a start as startOf() takes
+// it; one to a planet ends in high orbit over it. Null when unplaceable.
+function legFrom(index, start, destination, depart, arrive, depth) {
   if (depth > DEPTH || !destination) return null;
-  const halt = !from && stop ? stopFix(index, stop, depth + 1) : null;
-  if (!from && !halt) return null;
-  const frame = frameOf(index, from ?? halt.frame, destination);
+  const s = startOf(index, start, depart, depth);
+  if (!s) return null;
+  const frame = frameOf(index, s.frame, destination);
   if (frame === null) return null;
   const rel = (p, t) => {
     const f = positionOf(index, frame, t);
     return p && f && [p[0] - f[0], p[1] - f[1]];
   };
-  let start;
-  if (from) start = positionOf(index, from, depart);
-  else {
-    const h = positionOf(index, halt.frame, depart);
-    start = h && [h[0] + halt.off[0], h[1] + halt.off[1]];
-  }
-  const a = rel(start, depart);
-  const b = rel(positionOf(index, destination, arrive), arrive);
+  let end = positionOf(index, destination, arrive);
+  const off = isPlanet(index, destination) ? ringOffset(index, destination, s.pos, depart) : null;
+  if (end && off) end = [end[0] + off[0], end[1] + off[1]];
+  const a = rel(s.pos, depart);
+  const b = rel(end, arrive);
   return a && b ? { frame, from: a, to: b, depart, arrive } : null;
+}
+
+// High orbit over a planet: the Lua side keeps the trip she came in on (`over`: the planet, or its
+// `name` from her status until the charts named it, the
+// trip's start as startOf() takes it, and its depart, whole seconds). She rides with the planet,
+// `off` from its centre on the side she came from (the game aims from where she was when she set
+// out), or null when the trip's not known.
+export function highOrbit(index, over, depth = 0) {
+  if (!over || typeof over !== "object") return null;
+  // her status named it before the charts came: { name }, matched to a planet's name
+  const planet = over.planet ?? [...index.items.values()].find((it) => it.kind === "planet" && it.name === over.name)?.id;
+  if (!index.items.has(planet)) return null;
+  const depart = num(over.depart);
+  const s = depart === null ? null : startOf(index, over, depart * 1000, depth + 1);
+  return { planet, frame: planet, off: s ? ringOffset(index, planet, s.pos, depart * 1000) : null };
 }
 
 // Her trip as a straight line in the frame's offsets, times in ms; null when unplaceable.
 export function legOf(index, ship) {
-  const { from, stop, destination } = ship ?? {};
+  const { from, stop, from_over, destination } = ship ?? {};
   const received = num(ship?.received);
   const eta = num(ship?.eta);
-  if (!(from || stop) || !destination || received === null || eta === null) return null;
+  if (!(from || stop || from_over) || !destination || received === null || eta === null) return null;
   const progress = Math.min(Math.max(num(ship.progress) ?? 0, 0), 1);
   const arrive = (received + eta) * 1000;
   // the departure the Lua side kept from the trip's first status: worked out again from a late
   // one, progress (rounded to 2 places) would swing it by minutes
   const kept = num(ship.depart);
   const depart = kept !== null ? kept * 1000 : progress >= 1 ? arrive : arrive - (eta / (1 - progress)) * 1000;
-  return legFrom(index, from ?? null, stop ?? null, destination, depart, arrive, 0);
+  return legFrom(index, { from, stop, from_over }, destination, depart, arrive, 0);
 }
 
 // Where a stop mid-trip left her: the Lua side keeps the trip she stopped on (its start, a place
@@ -173,7 +227,7 @@ export function stopFix(index, stop, depth = 0) {
   const arrive = num(stop.arrive);
   const at = num(stop.at);
   if (depart === null || arrive === null || at === null) return null;
-  const leg = legFrom(index, stop.from ?? null, stop.stop ?? null, stop.destination, depart * 1000, arrive * 1000, depth);
+  const leg = legFrom(index, stop, stop.destination, depart * 1000, arrive * 1000, depth);
   if (!leg) return null;
   const span = leg.arrive - leg.depart;
   const k = span > 0 ? Math.min(Math.max((at * 1000 - leg.depart) / span, 0), 1) : 1;
@@ -184,7 +238,9 @@ export function stopFix(index, stop, depth = 0) {
   };
 }
 
-// Where your ship is at wall-clock t (ms): at a place, moving, searching, bound or none.
+// Where your ship is at wall-clock t (ms): at a place, moving, searching, bound or none. In high
+// orbit she's at the planet, `orbit` saying so: { planet, angle } with angle (radians, y up) from
+// its centre to her, or null when her side isn't known, and then pos is the planet's centre.
 export function shipFix(index, ship, t) {
   if (!ship || typeof ship !== "object") return { kind: "none" };
   if (ship.searching) {
@@ -210,6 +266,13 @@ export function shipFix(index, ship, t) {
   }
   const here = ship.location || ship.point;
   if (here) return { kind: "at", place: here, pos: positionOf(index, here, t) };
+  const over = highOrbit(index, ship.over);
+  const c = over && positionOf(index, over.planet, t);
+  if (c) {
+    const pos = over.off ? [c[0] + over.off[0], c[1] + over.off[1]] : c;
+    const angle = over.off ? Math.atan2(over.off[1], over.off[0]) : null;
+    return { kind: "at", place: over.planet, pos, orbit: { planet: over.planet, angle } };
+  }
   // stopped mid-trip: at rest where she stopped, at no place
   const halt = stopFix(index, ship.stop);
   const f = halt && positionOf(index, halt.frame, t);
@@ -260,7 +323,8 @@ export function homeBox(index, ship, t) {
     return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
   }
   if (fix.kind === "at" || fix.kind === "searching") {
-    const parent = fix.place ? parentOf(index, fix.place) : null;
+    // in high orbit, the planet she's over and what goes round it
+    const parent = fix.orbit ? fix.orbit.planet : fix.place ? parentOf(index, fix.place) : null;
     const body = parent && index.items.get(parent);
     const c = body && body.kind !== "star" ? positionOf(index, parent, t) : null;
     if (!c || !positionOf(index, fix.place, t)) return whole();

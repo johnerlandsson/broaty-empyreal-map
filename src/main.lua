@@ -73,7 +73,8 @@ local function post_location()
 end
 
 local function post_scene()
-  panel:post('scene', { scene = S.scene(scene), station = S.station(scene), port = S.port(scene) })
+  panel:post('scene', { scene = S.scene(scene), station = S.station(scene), port = S.port(scene),
+    planet = S.planet(scene) })
 end
 
 local function post_manoeuvre()
@@ -182,7 +183,7 @@ local reducers = {
 
 -- Each of these folds into the scene first, then the chart, then the lanes.
 local function scene_ship(data)
-  if S.ship_status(scene, data) then post_scene() end
+  if S.ship_status(scene, data, os.time()) then post_scene() end
   -- Off her, Ship.Devices isn't sent again (gmcp.ts sendShipGmcp): what she was doing goes too.
   if type(data) ~= 'table' and M.reset(manoeuvre) then post_manoeuvre() end
   C.ship_status(chart, data, os.time())

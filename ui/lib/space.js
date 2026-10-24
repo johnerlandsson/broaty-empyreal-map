@@ -1,25 +1,36 @@
 // The overview's space scenes, as plain data: a starfield seen looking ahead (still when parked,
 // streaming when travelling), low-poly rocks drifting past at a belt, with what the ship's sensors
-// and laser are doing there, and over a port the town on its planet's face below. No DOM here; the canvas
-// drawing is in space-view.js.
+// and laser are doing there, over a port the town on its planet's face below, and in high orbit the
+// planet's face, rounder from up there, with cloud on it. No DOM here; the canvas drawing is in space-view.js.
 
 const PARKED = 0.01; // the parked starfield barely drifts
 
-/** What the view eases toward for a scene: space shown, rocks shown, ground shown, star speed (0..1). */
+/**
+ * What the view eases toward for a scene: space shown, rocks shown, a port's ground shown, the
+ * planet's face from high orbit shown, star speed (0..1).
+ */
 export function targets(scene) {
   switch (scene) {
     case "parked":
-      return { space: 1, belt: 0, ground: 0, speed: PARKED };
+      return { space: 1, belt: 0, ground: 0, orbit: 0, speed: PARKED };
     case "travelling":
-      return { space: 1, belt: 0, ground: 0, speed: 1 };
+      return { space: 1, belt: 0, ground: 0, orbit: 0, speed: 1 };
     case "belt":
-      return { space: 1, belt: 1, ground: 0, speed: 0 };
+      return { space: 1, belt: 1, ground: 0, orbit: 0, speed: 0 };
     case "port":
-      return { space: 1, belt: 0, ground: 1, speed: PARKED };
+      return { space: 1, belt: 0, ground: 1, orbit: 0, speed: PARKED };
+    case "orbit":
+      return { space: 1, belt: 0, ground: 0, orbit: 1, speed: PARKED };
     default:
-      return { space: 0, belt: 0, ground: 0, speed: 0 };
+      return { space: 0, belt: 0, ground: 0, orbit: 0, speed: 0 };
   }
 }
+
+/**
+ * How lit the face below is for daylight() true, false or null (unknown): the day side, the
+ * night side, or a dusk between when nothing says which side she's on.
+ */
+export const litFor = (day) => (day === null ? 0.5 : day ? 1 : 0);
 
 /** Ease v toward target at `rate` per second, frame-rate independent; snaps when close. */
 export function approach(v, target, dt, rate) {
@@ -372,4 +383,22 @@ export class Town {
     this.beacons = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sy], i) => ({ x: (sx * field.w) / 2, y: (sy * field.h) / 2, at: i * 0.25 }));
     this.dust = Array.from({ length: 30 }, () => ({ x: rnd(), y: rnd(), rx: 10 + rnd() * 40, ry: 3 + rnd() * 8, a: rnd() }));
   }
+}
+
+// --- a planet from high orbit ----------------------------------------------------------------
+
+/**
+ * Cloud on a planet's face seen from high orbit: bands lying along the curve, each an arc about
+ * the planet's centre `d` (0 the limb .. 1 the band's foot) down from the limb, centred `a`
+ * radians either side of straight down the view, `len` radians long either way, `w` px thick and
+ * `alpha` strong by day. Scenery, the same for every planet: the game says nothing of its weather.
+ */
+export function clouds(n, rnd) {
+  return Array.from({ length: n }, () => ({
+    d: rnd(),
+    a: (rnd() - 0.5) * 1.3,
+    len: 0.04 + rnd() * 0.14,
+    w: 1.5 + rnd() * 3,
+    alpha: 0.04 + rnd() * 0.07,
+  }));
 }

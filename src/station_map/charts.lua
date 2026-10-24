@@ -7,6 +7,12 @@
 -- Stopped mid-trip she's at rest where she was along it, which the payload doesn't say: `stop`
 -- keeps the trip she stopped on (its start, destination, depart and arrive) and when (`at`), so
 -- the panel can place her there and start her next trip from it.
+-- In high orbit over a planet (Empyreal 2a84c78) she's loose too, `location` null: a trip to a
+-- planet that comes due and goes loose leaves her there, `over` it, keeping the trip she came in
+-- on (its start and depart: she comes out on the side she came from) so the panel can place her
+-- on the ring. Her status saying "over Tamsin" puts her there too, with no trip if none was seen
+-- (a 3 s hop can fall between two statuses), and `name` in place of `planet` until the charts
+-- name it. Her next trip starts from there, `from_over`.
 -- She reads from `host` when set, as scene.lua does.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 
@@ -114,6 +120,8 @@ local function drop_memory(state, charts)
     ship.from, ship.point, ship.searching = keep(ship.from), keep(ship.point), keep(ship.searching)
     if not keep(ship.destination) then ship.depart = nil end
     if ship.stop and not keep(ship.stop.destination) then ship.stop = nil end
+    if ship.over and ship.over.planet and not keep(ship.over.planet) then ship.over = nil end
+    if ship.from_over and not keep(ship.from_over.planet) then ship.from_over = nil end
   end
   if prev then
     prev.location = keep(prev.location)
@@ -140,6 +148,23 @@ local function is_belt(state, id)
   return false
 end
 
+-- The id of the planet the charts name `name`, or nil.
+local function planet_named(state, name)
+  if not (name and state.charts) then return nil end
+  for _, b in ipairs(state.charts.bodies) do
+    if b.kind == 'planet' and b.name == name then return b.id end
+  end
+  return nil
+end
+
+local function is_planet(state, id)
+  if not (id and state.charts) then return false end
+  for _, b in ipairs(state.charts.bodies) do
+    if b.id == id and b.kind == 'planet' then return true end
+  end
+  return false
+end
+
 local function snapshot(ship)
   if not ship then return nil end
   local c = {}
@@ -160,7 +185,7 @@ end
 -- The trip she's on as a stop's leg, if it has a start and a departure to place her by; nil else.
 local function stop_of(ship, prev, now)
   if not (ship and ship.destination and ship.depart and prev.eta and prev.received) then return nil end
-  if not (ship.from or ship.stop) then return nil end
+  if not (ship.from or ship.stop or ship.from_over) then return nil end
   local inner = ship.stop
   if not ship.from and inner then
     -- keep STOPS deep at most: past that the oldest is dropped, and with it where she is
@@ -168,8 +193,15 @@ local function stop_of(ship, prev, now)
     while s.stop do depth, s = depth + 1, s.stop end
     if depth >= STOPS then return nil end
   end
-  return { from = ship.from, stop = (not ship.from) and inner or nil, destination = ship.destination,
-    depart = ship.depart, arrive = prev.received + prev.eta, at = now }
+  return { from = ship.from, stop = (not ship.from) and inner or nil, from_over = ship.from_over,
+    destination = ship.destination, depart = ship.depart, arrive = prev.received + prev.eta, at = now }
+end
+
+-- The high orbit a trip to a planet leaves her in: the planet, and the trip's start and depart
+-- if it had them, to say which side she came in on.
+local function over_of(ship, planet)
+  local t = ship and ship.destination == planet and ship or {}
+  return { planet = planet, from = t.from, stop = t.stop, from_over = t.from_over, depart = t.depart }
 end
 
 -- When the trip began, whole seconds, from a status's progress and eta (the game's progress
@@ -196,19 +228,22 @@ function C.ship_status(state, data, now)
     eta = num(at.eta),
     received = num(now) or 0,
     hosted = host ~= nil,
+    status = str(at.status), -- a host's whereabouts carry none
   }
   local prev, old = state.prev, state.ship
   if prev and prev.hosted ~= cur.hosted then prev, old = nil, nil end -- not the same ship
 
-  local from, point, searching, depart, depart_progress, stop
+  local from, point, searching, depart, depart_progress, stop, over, from_over
   if cur.destination then
     local same_trip = prev and prev.destination == cur.destination
     if same_trip then
       from = old and old.from
       stop = old and old.stop
+      from_over = old and old.from_over
     elseif prev and not prev.destination then
       from = prev.location or (old and old.point)
-      if not from then stop = old and old.stop end
+      if not from then from_over = old and old.over end
+      if not (from or from_over) then stop = old and old.stop end
     end
     local new_leg = false
     if is_belt(state, cur.destination) then
@@ -231,12 +266,24 @@ function C.ship_status(state, data, now)
     if prev and prev.destination and leg_due(prev, cur.received) then
       if prev.destination:sub(1, 3) == 'pt:' then point = prev.destination end
       if is_belt(state, prev.destination) then searching = prev.destination end
+      if is_planet(state, prev.destination) then over = over_of(old, prev.destination) end
     elseif prev and prev.destination and not (old and old.searching) then
       stop = stop_of(old, prev, cur.received) -- stopped where she was on the way
     end
     point = point or (old and old.point)
     searching = searching or (old and old.searching)
-    if not (prev and prev.destination) then stop = old and old.stop end
+    if not (prev and prev.destination) then
+      stop = old and old.stop
+      over = old and old.over
+    end
+    -- her status names the planet: trust it over what the trips said
+    local name = cur.status and cur.status:match('^over (.+)$')
+    if name then
+      local id = planet_named(state, name)
+      local same_planet = over and ((id and over.planet == id) or (not id and over.name == name))
+      if not same_planet then over = id and { planet = id } or { name = name } end
+      stop = nil
+    end
   end
 
   state.prev = {
@@ -248,7 +295,7 @@ function C.ship_status(state, data, now)
     name = str(data.name),
     docked = cur.docked, location = cur.location, destination = cur.destination,
     progress = cur.progress, eta = cur.eta, received = cur.received, depart = depart,
-    from = from, point = point, searching = searching, stop = stop,
+    from = from, point = point, searching = searching, stop = stop, over = over, from_over = from_over,
   }
   return not same(before, snapshot(state.ship))
 end

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Belt, Starfield, Town, approach, awayAt, awayLook, heading, moveCard, rockFaces, makeRock, targets, work, workLines } from "./space.js";
+import { Belt, Starfield, Town, approach, awayAt, awayLook, clouds, heading, litFor, moveCard, rockFaces, makeRock, targets, work, workLines } from "./space.js";
 import { rng } from "./svg.js";
 
 describe("targets", () => {
@@ -28,11 +28,41 @@ describe("targets", () => {
   });
 
   it("only port shows the ground", () => {
-    for (const s of ["station", "parked", "travelling", "belt"]) expect(targets(s).ground).toBe(0);
+    for (const s of ["station", "parked", "travelling", "belt", "orbit"]) expect(targets(s).ground).toBe(0);
+  });
+
+  it("orbit shows the planet's face under still stars, no town, no rocks", () => {
+    const t = targets("orbit");
+    expect(t).toMatchObject({ space: 1, belt: 0, ground: 0, orbit: 1 });
+    expect(t.speed).toBeLessThan(0.05);
+    for (const s of ["station", "parked", "travelling", "belt", "port"]) expect(targets(s).orbit).toBe(0);
   });
 
   it("an unknown scene is the station", () => {
     expect(targets("nonsense")).toEqual(targets("station"));
+  });
+});
+
+describe("litFor", () => {
+  it("is day, night, or a dusk between when her side isn't known", () => {
+    expect(litFor(true)).toBe(1);
+    expect(litFor(false)).toBe(0);
+    expect(litFor(null)).toBe(0.5);
+  });
+});
+
+describe("clouds", () => {
+  it("are bands along the curve, faint, seeded", () => {
+    const c = clouds(22, rng(11));
+    expect(c).toHaveLength(22);
+    for (const b of c) {
+      expect(b.d).toBeGreaterThanOrEqual(0);
+      expect(b.d).toBeLessThan(1);
+      expect(Math.abs(b.a)).toBeLessThanOrEqual(0.65);
+      expect(b.len).toBeGreaterThan(0);
+      expect(b.alpha).toBeLessThan(0.12);
+    }
+    expect(clouds(22, rng(11))).toEqual(c);
   });
 });
 

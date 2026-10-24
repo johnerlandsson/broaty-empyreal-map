@@ -1,16 +1,17 @@
 // The overview away from the station: a canvas over the station model showing the starfield, the
 // belt with the ship's work in it (the sensors' sweep, an assay held on a rock, the laser cutting
 // one, and the seconds left; the rocks flowing past while her thrusters move her or she closes on
-// the rock to cut, out from the core up the view), or over a port the town on its planet's face below, lit or dark as
-// its star is up or not; no controls. It fades in over the model (hiding its zoom buttons),
+// the rock to cut, out from the core up the view), over a port the town on its planet's face below, lit or dark as
+// its star is up or not, or in high orbit the planet's face, rounder from up there, with cloud on it, lit
+// or dark as her side faces its star (a dusk between when that's not known); no controls. It fades in over the model (hiding its zoom buttons),
 // eases the stars' speed and cross-fades stars and rocks; the frame loop runs only while
 // something is on screen, and pauses while the panel is hidden or the system chart covers it.
 // Docking and undocking, it turns see-through over the station model, which shrinks into the
 // parked starfield or grows out of it on the game's clock (setManoeuvre, onAway); one stopped
 // early eases back to the scene's own picture.
 
-import { daylit } from "./lib/orbits.js";
-import { Belt, Starfield, Town, approach, awayAt, awayLook, heading, rockFaces, targets, work, workLines } from "./lib/space.js";
+import { daylit, orbitLit } from "./lib/orbits.js";
+import { Belt, Starfield, Town, approach, awayAt, awayLook, clouds, heading, litFor, rockFaces, targets, work, workLines } from "./lib/space.js";
 import { rng } from "./lib/svg.js";
 
 const BG = "#04060c";
@@ -22,7 +23,7 @@ const SPEED = 0.9; // per second: the stars speeding up and slowing down
 const DUSK = 1; // per second: day to night on the ground below, and back
 const DRIFT = targets("parked").speed; // the parked stars' drift, theirs as they show through
 const BACK = 1.5; // per second: a dock or an undock stopped early, the station back where it was
-const LOOK = 1000; // ms between asking whether the town below is in daylight
+const LOOK = 1000; // ms between asking whether the face below is in daylight
 // the planet's face: [top, upper, bottom] of its gradient, by day and by night
 const DAY = ["#6e5a44", "#8a7052", "#5c4936"];
 const NIGHT = ["#121821", "#0e131b", "#080b11"];
@@ -34,6 +35,8 @@ const RIM = "207,227,255"; // Glass: the thin air at the limb
 const SENSE = "89,209,138"; // the ok status light: the sensors' sweep and assay
 const BEAM = "207,227,255"; // Glass, the laser's beam, round a white core
 const DIM = "#7d8a9a"; // the seconds left, bottom right
+const CLOUD = "232,220,200"; // the bands on the face from high orbit
+const HAZE = 16; // px of thin air glowing over the limb from high orbit, by day
 
 export class SpaceView {
   /** @param {HTMLElement} containerEl the overview band, already holding the station model */
@@ -57,8 +60,11 @@ export class SpaceView {
     this.belt = new Belt(14, r);
     this.far = Array.from({ length: 90 }, () => [r(), r(), 0.2 + r() * 0.5]); // the belt's backdrop
     this.town = new Town(r);
-    this.charts = null; // indexCharts() of Space.Charts, to tell day from night below a port
+    this.clouds = clouds(22, r);
+    this.charts = null; // indexCharts() of Space.Charts, to tell day from night below
+    this.ship = null; // the chart's ship (src/station_map/charts.lua), for her side in high orbit
     this.port = null;
+    this.planet = null; // the planet she's in high orbit over
     this.lit = 1; // 1 the day side below, 0 the night side; eases toward litTarget
     this.litTarget = 1;
     this.looked = -Infinity;
@@ -69,6 +75,7 @@ export class SpaceView {
     this.space = 0;
     this.rocks = 0;
     this.ground = 0;
+    this.high = 0; // the planet's face from high orbit shown
     this.speed = 0;
     this.raf = 0;
     this.last = 0;
@@ -83,15 +90,25 @@ export class SpaceView {
     document.addEventListener("visibilitychange", () => (document.hidden ? this.pause() : this.wake()));
   }
 
-  /** Show a scene: "station", "parked", "travelling", "belt" or "port", with the port's id for the last. */
-  set(scene, port = null) {
+  /**
+   * Show a scene: "station", "parked", "travelling", "belt", "port" or "orbit", with the port's id
+   * for "port" and the planet's for "orbit".
+   */
+  set(scene, port = null, planet = null) {
     this.target = targets(scene);
-    if (port !== this.port) {
+    if (port !== this.port || planet !== this.planet) {
       this.port = port;
+      this.planet = planet;
       this.looked = -Infinity;
-      if (this.ground === 0) this.lit = this.litTarget = this.daylight() ?? this.litTarget; // no fade into a known sky
+      if (this.ground === 0 && this.high === 0) this.lit = this.litTarget = this.daylight() ?? this.litTarget; // no fade into a known sky
     }
     this.wake();
+  }
+
+  /** The chart's ship, for which side of the planet she's on in high orbit. */
+  setShip(ship) {
+    this.ship = ship && typeof ship === "object" ? ship : null;
+    this.looked = -Infinity;
   }
 
   /** What the ship's sensors and laser are doing: the work message (src/station_map/work.lua). */
@@ -111,11 +128,18 @@ export class SpaceView {
     this.looked = -Infinity;
   }
 
-  /** 1 if the port below has its star up now, 0 if not, null if the charts can't say. */
+  /**
+   * 1 if the face below has its star up now, 0 if not: a port's town, or her side of the planet in
+   * high orbit, which is a dusk (0.5) when nothing says which side; null if the charts can't say.
+   */
   daylight() {
-    if (!this.port || !this.charts) return null;
-    const day = daylit(this.charts, this.port, Date.now());
-    return day === null ? null : day ? 1 : 0;
+    if (!this.charts) return null;
+    if (this.port) {
+      const day = daylit(this.charts, this.port, Date.now());
+      return day === null ? null : litFor(day);
+    }
+    if (this.planet) return litFor(orbitLit(this.charts, this.ship, Date.now()));
+    return null;
   }
 
   /** While covered (the system chart is on) nothing draws and the loop stops; uncovering wakes it. */
@@ -158,9 +182,10 @@ export class SpaceView {
     this.space = approach(this.space, t.space, dt, FADE);
     this.rocks = approach(this.rocks, t.belt, dt, FADE);
     this.ground = approach(this.ground, t.ground, dt, FADE);
+    this.high = approach(this.high, t.orbit, dt, FADE);
     this.speed = approach(this.speed, t.speed, dt, SPEED);
     this.clock += dt;
-    if (t.ground && now - this.looked >= LOOK) {
+    if ((t.ground || t.orbit) && now - this.looked >= LOOK) {
       this.looked = now;
       this.litTarget = this.daylight() ?? this.litTarget; // unknown: keep what's shown
     }
@@ -223,7 +248,7 @@ export class SpaceView {
 
     if (this.rocks < 1) {
       this.field.step(dt, this.speed);
-      this.drawStars((1 - this.rocks) * (1 - 0.5 * this.ground * this.lit)); // a sunlit face below outshines them
+      this.drawStars((1 - this.rocks) * (1 - 0.5 * Math.max(this.ground, this.high) * this.lit)); // a sunlit face below outshines them
     }
 
     if (this.rocks > 0) {
@@ -254,6 +279,7 @@ export class SpaceView {
     }
 
     if (this.ground > 0) this.drawGround();
+    if (this.high > 0) this.drawOrbit();
   }
 
   /**
@@ -434,6 +460,71 @@ export class SpaceView {
     g.restore();
 
     g.globalAlpha = this.ground;
+    g.strokeStyle = `rgba(${RIM},${0.18 + 0.37 * lit})`;
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.arc(cx, cy, R, 0, Math.PI * 2);
+    g.stroke();
+    g.globalAlpha = 1;
+  }
+
+  /**
+   * The planet's face from high orbit, half its radius up: a rounder limb than over a port, faint
+   * cloud lying along the curve, the face darkening toward its edge, and thin air glowing over the
+   * limb by day; day and night cross-faded, a dusk between when her side isn't known. No town.
+   */
+  drawOrbit() {
+    const { g, w, h, lit } = this;
+    const R = w * 0.78;
+    const cx = w / 2;
+    const top = h * 0.46;
+    const cy = top + R;
+
+    g.save();
+    g.globalAlpha = this.high;
+    const haze = g.createRadialGradient(cx, cy, R, cx, cy, R + HAZE);
+    haze.addColorStop(0, `rgba(${RIM},${0.04 + 0.22 * lit})`);
+    haze.addColorStop(1, `rgba(${RIM},0)`);
+    g.fillStyle = haze;
+    g.beginPath();
+    g.arc(cx, cy, R + HAZE, 0, Math.PI * 2);
+    g.fill();
+
+    g.beginPath();
+    g.arc(cx, cy, R, 0, Math.PI * 2);
+    g.clip();
+    const face = (cols) => {
+      const grd = g.createLinearGradient(0, top, 0, h);
+      grd.addColorStop(0, cols[0]);
+      grd.addColorStop(0.15, cols[1]);
+      grd.addColorStop(1, cols[2]);
+      return grd;
+    };
+    g.fillStyle = face(NIGHT);
+    g.fillRect(0, top, w, h - top);
+    if (lit > 0) {
+      g.globalAlpha = this.high * lit;
+      g.fillStyle = face(DAY);
+      g.fillRect(0, top, w, h - top);
+    }
+    g.globalAlpha = this.high;
+    g.lineCap = "round";
+    const deep = h - top + 20; // the bands reach a little past the band's foot
+    for (const c of this.clouds) {
+      g.strokeStyle = `rgba(${CLOUD},${c.alpha * (0.2 + 0.8 * lit)})`;
+      g.lineWidth = c.w;
+      g.beginPath();
+      g.arc(cx, cy, R - 6 - c.d * deep, -Math.PI / 2 + c.a - c.len, -Math.PI / 2 + c.a + c.len);
+      g.stroke();
+    }
+    const limb = g.createRadialGradient(cx, cy, R * 0.86, cx, cy, R);
+    limb.addColorStop(0, "rgba(4,6,12,0)");
+    limb.addColorStop(1, "rgba(4,6,12,0.45)");
+    g.fillStyle = limb;
+    g.fillRect(0, top, w, h - top);
+    g.restore();
+
+    g.globalAlpha = this.high;
     g.strokeStyle = `rgba(${RIM},${0.18 + 0.37 * lit})`;
     g.lineWidth = 1.5;
     g.beginPath();

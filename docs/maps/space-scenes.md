@@ -14,13 +14,14 @@ again when you dock.
 | travelling | on the way somewhere | the stars streaming past as streaks |
 | belt | at an asteroid belt | low-poly rocks tumbling past on a faint backdrop, with the ship's sensors sweeping, an assay held on a rock or the laser cutting one while she's at it, and the rocks flowing past the other way while she moves across the belt |
 | port | parked over a port (Zennor), not landed | the planet's face across the lower band with the town on it, lit or dark, under the still stars |
+| orbit | in high orbit over a planet (`travel tamsin`) | the planet's face, rounder than over a port, with faint cloud on it and no town, lit or dark as her side faces the star, or a dusk between when that isn't known, under the still stars |
 | station | docked at a station, or not aboard a ship you own or crew | nothing: the station model shows |
 
 ## Where its data comes from
 
 `src/station_map/scene.lua` folds `Ship.Status` (docked, destination,
 location) and `Space.Charts` (which places are belts, which bodies are ports)
-into the scene, the station you're docked at and the port you're over. `Ship.Status` comes for the ship you're aboard and
+into the scene, the station you're docked at, the port you're over and the planet you're in high orbit over. `Ship.Status` comes for the ship you're aboard and
 can fly, your own or one you crew (crew get `leaseLeft` null, which the
 plugin doesn't read), so only as a guest aboard someone else's ship does the
 scene stay `station`.
@@ -114,6 +115,40 @@ the town it keeps what it last showed, the day side at first. This is no more
 than the player knows: the canopy tells them, and the orbits are the ones the
 chart draws.
 
+**In high orbit** (navigation.md §6 in `~/dev/empyreal`, 2a84c78,
+2026-10-24). `travel tamsin` flies her into high orbit over Tamsin, 1.5 times
+its radius out on the side she comes in from: *"You come into high orbit over
+Tamsin."* The game treats it as a point riding with the planet, so
+`Ship.Status` has `location` null there, as it has after a stop mid-trip, and
+`docked` false. Her `status` names it: *"over Tamsin"*, the game's
+`statusText`, which says "over" only there (over a port it's "at Zennor").
+`scene.lua` matches the name to a body of kind `planet` in Space.Charts, when
+the scene is worked out, so charts that come after the status still name it.
+That covers a plugin loaded with her already up there, and a short hop: in
+play (2026-10-24) the 3 s hop from T.I.S.S. to Tamsin came and went with no
+status under way, so the plugin never saw a trip. A host's whereabouts carry
+no status, so failing that, a trip whose destination is a planet that has
+come due, its `eta` run out to within 5 s as `charts.lua` has it, followed by
+a loose status, is high orbit over that planet; a loose status well before
+then is a stop on the way, `parked`. It holds until she sets off or docks
+somewhere. The scene message names the planet
+(`{ scene = 'orbit', planet = 'tamsin' }`). A host in high orbit puts her
+guest there only if the plugin saw the host's trip. Planets can't be docked at, so a dock
+from high orbit never times a station's approach.
+
+**Her side, lit or dark.** The game puts her on the side she came in from:
+the way from the planet's centre to where she was when she set out. The scene
+takes it from the chart's ship (orrery.md): `charts.lua` keeps the trip she
+came in on, its start and when it began, and `orbitLit` in `ui/lib/orbits.js`
+asks the same thing `daylit` asks of a town, whether the way straight up from
+the planet's centre through her is against the way to the star. It's asked
+once a second and cross-fades as over a port. With no trip known (above, or
+the trip had no start the plugin saw) it's a dusk, halfway between day and
+night, rather than a guess. That's the usual case for a short hop, where
+the status gives the planet and no trip. The game aims from where she was when the course
+was plotted, which may be a little before she set out, so a trip plotted long
+before it's flown can put her side a few degrees off.
+
 ## Docking and undocking
 
 Undocking and docking take time in the game, and the overview takes the same
@@ -200,6 +235,28 @@ in the middle of the face, its size by the band's width and the face's height:
 
 The ground fades in and out with the scene, as rocks do.
 
+In high orbit (option B of `docs/maps/reference/high-orbit-mockup.html`,
+rendered in `high-orbit-options.png`), she's half the planet's radius up, so
+it looks rounder than over a port: the limb is an arc of 0.78 band widths'
+radius, its top a little short of halfway down, falling away to both lower
+corners. The face is the port's, in the same day and night colours, with no
+town, no dust and no lamps:
+
+- **Cloud:** 22 short bands, each an arc round the planet's centre so it lies
+  along the curve, in `rgba(232,220,200)` at .04 to .11 by day and a fifth of
+  that by night. Scenery, the same on every planet: the game says nothing of
+  weather.
+- **The limb** darkens toward the edge (to .45 of the Background), and by day
+  thin air glows 16 px out from it in Glass (.26 by day, .04 by night), over
+  the Glass rim the port has.
+- **Unknown side:** a dusk, the day and night faces half and half, the stars
+  dimmed by a quarter.
+
+Every planet is drawn in Tamsin's dusty ochre for now: the charts give a
+planet's kind and radius and nothing of what it looks like. The face's size
+doesn't depend on the radius: high orbit is always 1.5 radii out, so every
+planet looks the same size from there.
+
 **At a belt, the ship's work** (style guide §12) is drawn over the rocks, and
 fades with them:
 
@@ -253,14 +310,16 @@ Unchanged: it says where you are aboard.
 
 ## Code
 
-`ui/space-view.js` (the canvas and frame loop, and the ground below a port),
+`ui/space-view.js` (the canvas and frame loop, the ground below a port and the planet from high orbit),
 `ui/lib/space.js` (scene targets, easing, starfield, belt, rocks, the held
 rock and the flow while she moves, `work()`, `heading()`, `moveCard()` and
 `workLines()`, the town's layout, a dock's or an undock's
-distance), `ui/lib/orbits.js` (`daylit`), `ui/model-view.js` (`setAway`),
+distance, the orbit scene's cloud and `litFor`), `ui/lib/orbits.js` (`daylit`, `orbitLit`), `ui/model-view.js` (`setAway`),
 `src/station_map/scene.lua`, `src/station_map/work.lua`,
 `src/station_map/manoeuvre.lua`. The preview's `?scene=port-day` and
-`?scene=port-night` put Zennor's town on the day or night side.
+`?scene=port-night` put Zennor's town on the day or night side, and
+`?scene=orbit-day`, `orbit-night` and `orbit-unknown` put her in high orbit
+over Tamsin on the star's side, the far side or no side known.
 `?work=scanning` (or `assaying`, `mining`, `idle`) opens on the belt with the
 ship at that work, a scan or assay starting again a second after it ends, as
 a program at par would. `?move=rcs-out` plays the thrusters out from the core for 20 s,

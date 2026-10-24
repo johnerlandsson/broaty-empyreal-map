@@ -1,6 +1,6 @@
 # The orrery
 
-*Status: built. Last updated 2026-10-23.*
+*Status: built. Last updated 2026-10-24.*
 
 ## What it is and when it shows
 
@@ -14,7 +14,7 @@ It shows while the **◎** button is on. The button sits left of the band's
 ship or not. It hides again when you disconnect, and the chart with it. With
 the auto_view setting on (the default), the chart switches itself on when your
 ship starts travelling in a system and off when she stops (docks, parks, reaches
-a belt or a port, or you step off her). It switches only when what she's doing
+a belt, a port or high orbit over a planet, or you step off her). It switches only when what she's doing
 changes, so ◎ pressed in between holds until then; the first status after a
 login or a reconnect counts as a change. With the setting off, the chart stays
 on or off as you left it through docking, undocking, walking about and a dropped
@@ -90,6 +90,23 @@ her place are worked out:
   `Ship.Status` came (as a guest aboard someone else's ship). The destination's
   ring is still drawn if she's bound somewhere.
 
+**High orbit** (Empyreal 2a84c78, 2026-10-24). A planet is a destination:
+`travel tamsin` ends 1.5 times Tamsin's radius out, on the side she came in
+from, where she rides with it. `Ship.Status` sends `location` null there and
+no offset, so charts.lua works it out as `scene.lua` does (space-scenes.md):
+her status "over Tamsin", or a trip to a planet that comes due and goes loose,
+leaves her `over` it. When it saw the trip, charts.lua keeps it,
+`over = { planet, from, depart }` (or `stop` or `from_over` in place of
+`from`); from the status alone it's `{ planet }`, or `{ name }` until the
+charts name it. The chart does the game's sums
+again: her side is the way from the planet's centre to where she set out, at
+the moment she set out, and she rides with the planet from there. With no
+start known it knows only the planet. A trip to a planet is drawn ending on
+that ring, not at the planet's centre, and her next trip starts from the ring
+(`from_over`), stops on it included. (The game aims from where she was when the
+course was plotted, a little before she sets out if she plotted at the berth,
+so the side can be a few degrees off.)
+
 Out of a lane, the game sends her status at the far mouth before the new
 system's charts. Crossing into a new system forgets only what isn't one of its
 bodies or places, so her first trip from the mouth still has its start.
@@ -144,7 +161,13 @@ Everything the style guide's §13 draws:
   still shows.
 - **Your ship** as an amber chevron, and **her route** dashed ahead, solid
   behind, with a ring where she'll arrive. Nothing else on the chart is amber
-  except a belt she's searching.
+  except a belt she's searching, and the ring of a high orbit she's in.
+- **In high orbit**, an amber dashed ring round the planet at 1.5 times its
+  disc as drawn (so it stays outside a disc drawn bigger than it is), her
+  chevron on it on the side she came in from, and the ring named "high orbit
+  over Tamsin" above it. With her side unknown it's the ring alone, a little
+  stronger, as the neutral mark; hovered, "high orbit over Tamsin, which side
+  not known". ⌂ frames the planet out to its furthest satellite.
 - **Names** are small and Dim. A planet's satellite is named only once its
   orbit is 80 px across (it is drawn, and hoverable, before). A satellite whose
   orbit is under 8 px across folds into its parent, unless it's where she is or
@@ -192,7 +215,8 @@ Unchanged: it says where you are aboard.
 ## Code
 
 - `src/station_map/charts.lua`: the reducer. Cleans `Space.Charts`, keeps her
-  state (`name`, `from`, the held point, `searching`, `received`, `depart`)
+  state (`name`, `from`, the held point, `searching`, `received`, `depart`,
+  `stop`, the high orbit she's `over` and the one a trip left, `from_over`)
   and the chart's on/off, which a disconnect leaves as it was. Pure; tests in `tests/charts_test.lua`.
 - `src/main.lua`: posts `charts`, `chart-ship` and `chart` `{on}` to the panel
   when they change, takes the choice back from the panel, and replays all three
@@ -210,8 +234,9 @@ Unchanged: it says where you are aboard.
   game's content, and `?chart=` in `dev/preview.js` opens the chart on one of
   its scenarios (`parked-gannet`, `under-way-orrin`, `searching-cinders`,
   `at-point`, `docked-tiss`, `landed-zennor`, `none`, `maelor`, `maelor-lanes` for Maelor's
-  three mouths with the Petroc branch closed, or `edge` for Senara's mouth with
-  its bearing). The bar's menu switches between them.
+  three mouths with the Petroc branch closed, `edge` for Senara's mouth with
+  its bearing, `to-tamsin` under way to high orbit, or `high-orbit` and
+  `high-orbit-unknown` up there with her side known or not). The bar's menu switches between them.
   `docs/maps/reference/closed-mouth-mockup.html` has the three looks weighed
   for a closed mouth; the dashed one was picked.
 

@@ -253,7 +253,7 @@ panel.on("settings", (msg) => {
 });
 
 panel.on("scene", (msg) => {
-  space.set(msg?.scene, msg?.port ?? null);
+  space.set(msg?.scene, msg?.port ?? null, msg?.planet ?? null);
   scene = msg?.scene ?? null;
   docked = typeof msg?.station === "string" ? msg.station : null;
   render();
@@ -291,6 +291,7 @@ panel.on("charts", (msg) => {
 
 panel.on("chart-ship", (msg) => {
   chart.setShip(msg);
+  space.setShip(msg);
   runChart();
 });
 

@@ -77,8 +77,10 @@ for it. Indoors you can't see the sky, so the band is the skyline alone.
 **Out in your ship.** Once you undock, the station model fades into a view
 looking ahead from your ship: a still starfield while you're parked, the
 stars streaming past while you travel, low-poly asteroids tumbling past
-while you're at a belt, and over Zennor the town below on Tamsin's face, on
-the day side or the night side as it is in the game. At a belt you see the
+while you're at a belt, over Zennor the town below on Tamsin's face, on
+the day side or the night side as it is in the game, and in high orbit over
+a planet its face curving away below, lit if your side of it faces the star
+(the system chart puts you on a ring round it). At a belt you see the
 ship's work: the sensors' green line crossing the view as she sweeps for
 rocks, brackets and a filling ring round a rock while she assays one, and
 the laser's beam on a rock while she mines, with the seconds left in the
@@ -290,7 +292,7 @@ python3 -m http.server 8765
 # http://localhost:8765/dev/preview.html
 ```
 
-`?step=N` jumps to step N of the walk, `?scene=belt` (or `parked`, `travelling`, `port-day`, `port-night`) opens on a
+`?step=N` jumps to step N of the walk, `?scene=belt` (or `parked`, `travelling`, `port-day`, `port-night`, `orbit-day`, `orbit-night`, `orbit-unknown`) opens on a
 space scene, and the menu in the bar switches it. `?work=scanning` (or `assaying`, `mining`, `idle`)
 opens on the belt with the ship at that work. `?move=rcs-out` (or `closing-cut`, `halted`) plays her
 moving in the belt, the thrusters out from the core, closing on a rock then cutting it, or a move
