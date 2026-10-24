@@ -43,13 +43,19 @@ a port on Tamsin, and it's listed under Senara with the stations.
 
 **Where you are** is `Space.Charts`' `system`.
 
-**A branch's state** is the `open` field on each `mouth` place in
-`Space.Charts` (true, or false for a closed branch; a trunk's is always
-true). The charts list only the mouths in your system, so each sighting is a
+**A branch's state** comes from the `mouth` places in `Space.Charts`. The
+charts list only the mouths in your system, and of those only the open ones
+(a trunk's is always open), plus a closed branch's while she's at its mouth
+or bound there, with `open` false (`SpaceSystem.listed`; `help lanes` says
+`charts` leaves a closed branch out). Every pair of stars has a lane, so
+`src/station_map/lanes.lua` has the stars' ids, and a lane of your system
+with no mouth listed is a closed branch, seen closed now. Each sighting is a
 lane id, from the mouth's id `mouth:<here>:<there>`, with its `open` and
-when. `src/station_map/lanes.lua` keeps them:
+when. The reducer keeps them:
 
-- every Space.Charts stamps the lanes whose mouths it has with now;
+- every Space.Charts stamps every lane of your system with now: what its
+  mouth says, or closed if it has none listed (a Space.Charts with no
+  `places`, or a system that's no star in the list, says only what's listed);
 - crossing into another system, or disconnecting, stamps the lanes you could
   see till then with now, since you saw them that long;
 - `main.lua` stores the sightings in Mallard's `storage` (per plugin and

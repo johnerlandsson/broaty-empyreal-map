@@ -1,8 +1,10 @@
--- Lanes reducer: folds Space.Charts and Ship.Status into what the core lanes map draws from: the
+-- Lanes reducer: folds Space.Charts and Ship.Status into what the lanes map draws from: the
 -- system you're in, the lanes whose mouths are in it (`visible`), each lane's open or closed state
 -- as you last saw it (`seen`, kept by main.lua in Mallard's storage), and the lane she's in while
--- she's in one (`transit`). A lane's state is only ever what a mouth here says (Space.Charts'
--- `open`); nothing here guesses when a branch will open.
+-- she's in one (`transit`). A lane's state is only ever what the charts here say: a mouth listed
+-- with its `open`, or a lane of this system with no mouth listed, which is a closed branch, since
+-- the charts leave those out (help lanes) unless she's at its mouth or bound there. Nothing here
+-- guesses when a branch will open.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 
 local N = {}
@@ -16,6 +18,17 @@ local function num(v)
   if type(v) == 'number' and v == v and v ~= math.huge and v ~= -math.huge then return v end
   return nil
 end
+
+-- Every star, as galaxy.yaml has them: every pair of them has a lane, a trunk or a branch, so a
+-- star's lanes are one to each of the others. ui/lib/lanes.js has the same list.
+N.STARS = {
+  'petroc', 'keyne', 'senara', 'maelor', 'elowen', 'mabyn',
+  'piran', 'breage', 'euny', 'madron', 'germoe', 'feock',
+  'hensbarrow', 'goonhilly', 'dozmary', 'godolphin', 'trencrom', 'kilmar', 'garrow', 'caradon',
+}
+
+local IS_STAR = {}
+for _, id in ipairs(N.STARS) do IS_STAR[id] = true end
 
 function N.new()
   return { system = nil, visible = {}, seen = {}, transit = nil, left = nil, on = false }
@@ -47,16 +60,28 @@ function N.space_charts(state, data, now)
   local changed = system ~= state.system
   if changed then stamp(state, now) end
   state.system = system
-  local visible = {}
+  local visible, listed = {}, {}
+  local function sight(id, open)
+    local old = state.seen[id]
+    if not old or old.open ~= open then changed = true end
+    state.seen[id] = { open = open, at = now }
+  end
   if type(data.places) == 'table' then
     for _, p in ipairs(data.places) do
       local lane = type(p) == 'table' and p.kind == 'mouth' and N.lane_of(p.id)
-      if lane then
+      if lane and not listed[lane.id] then
+        listed[lane.id] = true
         visible[#visible + 1] = lane.id
-        if type(p.open) == 'boolean' then
-          local old = state.seen[lane.id]
-          if not old or old.open ~= p.open then changed = true end
-          state.seen[lane.id] = { open = p.open, at = now }
+        if type(p.open) == 'boolean' then sight(lane.id, p.open) end
+      end
+    end
+    -- the lanes of a star we know with no mouth listed: closed branches, seen closed now
+    if system and IS_STAR[system] then
+      for _, other in ipairs(N.STARS) do
+        local id = other ~= system and N.lane_of('mouth:' .. system .. ':' .. other).id
+        if id and not listed[id] then
+          visible[#visible + 1] = id
+          sight(id, false)
         end
       end
     end

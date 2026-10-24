@@ -345,10 +345,11 @@ test('chart-ship carries her name', function()
   eq(post_named(env, 'chart-ship').data.name, 'Mule')
 end)
 
--- Petroc's mouths, the Maelor branch closed
+-- Petroc's mouths: its trunks, and the Maelor branch closed with her bound there
 local PETROC = { system = 'petroc', places = {
   { id = 'morvah_deep', name = 'Morvah Deep', kind = 'station' },
   { id = 'mouth:petroc:keyne', name = 'the Keyne lane mouth', kind = 'mouth', open = true },
+  { id = 'mouth:petroc:feock', name = 'the Feock lane mouth', kind = 'mouth', open = true },
   { id = 'mouth:petroc:maelor', name = 'the Maelor lane mouth', kind = 'mouth', open = false },
 } }
 
@@ -360,8 +361,10 @@ test('Space.Charts posts lanes and stores the sightings', function()
   os.time = real
   local m = post_named(env, 'lanes').data
   eq(m.system, 'petroc')
-  eq(m.visible, { 'keyne-petroc', 'maelor-petroc' })
+  eq(#m.visible, 19)
   eq(m.seen['maelor-petroc'], { open = false, at = 500 })
+  eq(m.seen['keyne-petroc'], { open = true, at = 500 })
+  eq(m.seen['dozmary-petroc'], { open = false, at = 500 }) -- off the charts
   eq(env.stored.lanes['maelor-petroc'], { open = false, at = 500 })
 end)
 

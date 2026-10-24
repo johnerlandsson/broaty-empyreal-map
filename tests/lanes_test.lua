@@ -8,13 +8,26 @@ local function mouth(here, there, open)
   return { id = 'mouth:' .. here .. ':' .. there, name = 'the ' .. there .. ' lane mouth', kind = 'mouth', open = open }
 end
 
+-- Maelor's charts: its two trunks, and the Petroc branch's mouth if it's listed (open, or closed
+-- with her at it or bound there); every other branch is closed, so off the charts.
 local function maelor(pm_open)
-  return { system = 'maelor', places = {
+  local places = {
     { id = 'wenna_halt', name = 'Wenna Halt', kind = 'station', open = nil },
     mouth('maelor', 'senara', true),
     mouth('maelor', 'elowen', true),
-    mouth('maelor', 'petroc', pm_open),
-  } }
+  }
+  if pm_open ~= nil then places[#places + 1] = mouth('maelor', 'petroc', pm_open) end
+  return { system = 'maelor', places = places }
+end
+
+-- Every lane of a star, sorted: one to each other star.
+local function lanes_of(star)
+  local out = {}
+  for _, other in ipairs(N.STARS) do
+    if other ~= star then out[#out + 1] = N.lane_of('mouth:' .. star .. ':' .. other).id end
+  end
+  table.sort(out)
+  return out
 end
 
 local function senara()
@@ -31,6 +44,19 @@ test('a fresh state knows nothing and is off', function()
   eq(N.on(s), false)
 end)
 
+test('the stars are galaxy.yaml\'s twenty, the Shallows ring then the Mid', function()
+  eq(#N.STARS, 20)
+  eq(N.STARS[1], 'petroc')
+  eq(N.STARS[12], 'feock')
+  eq(N.STARS[13], 'hensbarrow')
+  local seen = {}
+  for _, id in ipairs(N.STARS) do
+    eq(seen[id], nil, id)
+    seen[id] = true
+  end
+  eq(#lanes_of('maelor'), 19)
+end)
+
 test('lane ids are the two stars sorted, as galaxy.yaml has them', function()
   eq(N.lane_of('mouth:senara:maelor'), { id = 'maelor-senara', here = 'senara', there = 'maelor' })
   eq(N.lane_of('mouth:petroc:maelor').id, 'maelor-petroc')
@@ -45,18 +71,46 @@ test('Space.Charts records each mouth here as seen now', function()
   eq(N.space_charts(s, maelor(false), 100), true)
   local m = N.message(s)
   eq(m.system, 'maelor')
-  eq(m.visible, { 'elowen-maelor', 'maelor-petroc', 'maelor-senara' })
+  eq(m.visible, lanes_of('maelor'))
   eq(m.seen['maelor-petroc'], { open = false, at = 100 })
   eq(m.seen['maelor-senara'], { open = true, at = 100 })
 end)
 
-test('a mouth with no open boolean is not a sighting', function()
+test('a lane here with no mouth on the charts is a closed branch, seen closed now', function()
   local s = N.new()
-  local d = maelor(nil)
+  N.space_charts(s, maelor(nil), 100)
+  local m = N.message(s)
+  eq(m.visible, lanes_of('maelor'))
+  eq(m.seen['maelor-petroc'], { open = false, at = 100 })
+  eq(m.seen['dozmary-maelor'], { open = false, at = 100 })
+  eq(m.seen['elowen-maelor'], { open = true, at = 100 })
+  eq(m.seen['keyne-petroc'], nil) -- not a lane of Maelor's
+end)
+
+test('a branch coming onto the charts opens it, and going off them closes it', function()
+  local s = N.new()
+  N.space_charts(s, maelor(nil), 100)
+  eq(N.space_charts(s, maelor(nil), 150), false)
+  eq(N.space_charts(s, maelor(true), 200), true)
+  eq(N.message(s).seen['maelor-petroc'], { open = true, at = 200 })
+  eq(N.space_charts(s, maelor(nil), 300), true)
+  eq(N.message(s).seen['maelor-petroc'], { open = false, at = 300 })
+end)
+
+test('a system that is no star we know has only its mouths', function()
+  local s = N.new()
+  N.space_charts(s, { system = 'nowhere', places = { mouth('nowhere', 'senara', true) } }, 100)
+  eq(N.message(s).visible, { 'nowhere-senara' })
+  eq(N.message(s).seen, { ['nowhere-senara'] = { open = true, at = 100 } })
+end)
+
+test('a mouth with no open boolean is not a sighting, nor taken for closed', function()
+  local s = N.new()
+  local d = maelor(true)
   d.places[2].open = 'yes'
   N.space_charts(s, d, 100)
-  eq(N.message(s).seen['maelor-petroc'], nil)
   eq(N.message(s).seen['maelor-senara'], nil)
+  eq(N.message(s).seen['maelor-petroc'], { open = true, at = 100 })
   eq(N.message(s).seen['elowen-maelor'], { open = true, at = 100 })
 end)
 
@@ -74,7 +128,7 @@ test('leaving a system stamps its lanes with when you last saw them', function()
   N.space_charts(s, senara(), 5000)
   local m = N.message(s)
   eq(m.system, 'senara')
-  eq(m.visible, { 'keyne-senara', 'maelor-senara' })
+  eq(m.visible, lanes_of('senara'))
   eq(m.seen['maelor-petroc'], { open = false, at = 5000 })
   eq(m.seen['maelor-senara'], { open = true, at = 5000 })
 end)
@@ -86,6 +140,7 @@ test('junk charts are ignored', function()
   eq(N.space_charts(s, { system = 'senara', places = 'no' }, 1), true)
   eq(N.message(s).system, 'senara')
   eq(N.message(s).visible, {})
+  eq(N.message(s).seen, {}) -- with no places at all, nothing says what's off the charts
 end)
 
 test('in a lane by its status: the lane, which way and her timing', function()
