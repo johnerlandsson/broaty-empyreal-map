@@ -90,25 +90,40 @@ function town(data, spec) {
   return { index, model: new SkyView(modelEl, index, "zennor"), deck: new DeckView(deckEl, index, townPlans(spec)), lastLevel: null, locate: locateTown, info: townInfo };
 }
 
-const stations = {
-  tiss: tiss(),
-  orrin: decks(orrin, DECKS.orrin),
-  wenna: drum(wenna, DRUMS.wenna),
-  zennor: town(zennor, TOWNS.zennor),
-  morvah: decks(morvah, DECKS.morvah),
-  gwithian: decks(gwithian, DECKS.gwithian),
-  carrow: decks(carrow, DECKS.carrow),
-  lanyon: decks(lanyon, DECKS.lanyon),
-  kynance: decks(kynance, DECKS.kynance),
-  marazion: decks(marazion, DECKS.marazion),
-  penwith: decks(penwith, DECKS.penwith),
-  botallack: decks(botallack, DECKS.botallack),
-  polperro: decks(polperro, DECKS.polperro),
-  lamorna: decks(lamorna, DECKS.lamorna),
-  kilmar: decks(kilmar, DECKS.kilmar),
-  caradon: decks(caradon, DECKS.caradon),
-  garrow: decks(garrow, DECKS.garrow),
+// Each station is built the first time it shows: a model and a plan apiece, each over its own
+// starfield, cost tens of milliseconds and thousands of nodes, and most never show in a session.
+const BUILD = {
+  tiss: () => tiss(),
+  orrin: () => decks(orrin, DECKS.orrin),
+  wenna: () => drum(wenna, DRUMS.wenna),
+  zennor: () => town(zennor, TOWNS.zennor),
+  morvah: () => decks(morvah, DECKS.morvah),
+  gwithian: () => decks(gwithian, DECKS.gwithian),
+  carrow: () => decks(carrow, DECKS.carrow),
+  lanyon: () => decks(lanyon, DECKS.lanyon),
+  kynance: () => decks(kynance, DECKS.kynance),
+  marazion: () => decks(marazion, DECKS.marazion),
+  penwith: () => decks(penwith, DECKS.penwith),
+  botallack: () => decks(botallack, DECKS.botallack),
+  polperro: () => decks(polperro, DECKS.polperro),
+  lamorna: () => decks(lamorna, DECKS.lamorna),
+  kilmar: () => decks(kilmar, DECKS.kilmar),
+  caradon: () => decks(caradon, DECKS.caradon),
+  garrow: () => decks(garrow, DECKS.garrow),
 };
+const stations = {}; // station key -> its views, once built
+let turning = true; // the turn_model setting, for stations built after it came
+
+/** The station key's views, built on first use; undefined for one there's no plan of. */
+function built(key) {
+  if (!stations[key] && BUILD[key]) {
+    const s = (stations[key] = BUILD[key]());
+    s.model.setTurning(turning);
+    s.deck.div.style.display = "none"; // showDeck() shows it once it's the plan showing
+    if (key === "zennor" && chart.index) s.model.setCharts(chart.index);
+  }
+  return stations[key];
+}
 const ships = {}; // hull id -> the DeckView drawing that hull, built on first use
 const cars = {}; // car kind (lift, tram) -> the DeckView drawing it, built on first use
 const space = new SpaceView(modelEl);
@@ -192,8 +207,9 @@ let skyTimer = 0;
 function runSky() {
   clearInterval(skyTimer);
   skyTimer = 0;
+  if (current !== "zennor") return;
   const sky = stations.zennor.model;
-  if (current !== "zennor" || !sky.live || chart.shown || lanes.shown || belt.shown || document.hidden || (scene && scene !== "station")) return;
+  if (!sky.live || chart.shown || lanes.shown || belt.shown || document.hidden || (scene && scene !== "station")) return;
   sky.draw(Date.now());
   skyTimer = setInterval(() => sky.draw(Date.now()), 1000);
 }
@@ -208,6 +224,7 @@ function show(key) {
   if (key === current) return;
   stations[current]?.model.setAway?.(0); // a model left behind part-way is put back
   current = key;
+  built(key);
   for (const [k, s] of Object.entries(stations)) s.model.div.style.display = k === key ? "" : "none";
 }
 
@@ -271,7 +288,8 @@ function render() {
 }
 
 panel.on("settings", (msg) => {
-  for (const s of Object.values(stations)) s.model.setTurning(msg?.turn_model !== false);
+  turning = msg?.turn_model !== false;
+  for (const s of Object.values(stations)) s.model.setTurning(turning);
 });
 
 panel.on("scene", (msg) => {
@@ -307,7 +325,7 @@ panel.on("manoeuvre", (msg) => {
 panel.on("charts", (msg) => {
   chart.setCharts(msg);
   space.setCharts(chart.index);
-  stations.zennor.model.setCharts(chart.index);
+  stations.zennor?.model.setCharts(chart.index);
   belt.setCharts(chart.index);
   runChart();
 });
