@@ -1,22 +1,31 @@
 // A town's plan (Zennor): looking down at the ground, not a deck. No stars and no plate: bare
-// earth, the old windbreak wall in stone round the town with an arch at its gate, the buildings as
-// room boxes on stone footings, and the open rooms (street, square, path) as packed earth with a
-// dashed edge, named in Dim. The landing field sits in its blast walls, the terraces step down
-// each held up by a dry stone wall, and the overlook is up the ridge path's switchbacks. Layout
-// maths lives in lib/town.js.
+// earth, each district on a faint wash of its colour and named in it, the river along the downhill
+// side with its bridge, the scarp the Steps climb, the buildings as room boxes on stone footings,
+// and the open rooms (street, square, path) as packed earth with a dashed edge, named in Dim. The
+// tram is a line in Glass through its stops; the landing field sits in its blast walls, the
+// terraces step down each held up by a dry stone wall, and the overlook is up the ridge path's
+// switchbacks. Zoomed out, the rooms' names fade and the districts' stay readable. Layout maths
+// lives in lib/town.js.
 
 import { DISTRICT_COLOURS as DC } from "./lib/geometry.js";
-import { townLayout, townShape } from "./lib/town.js";
+import { MAX_W, RIVER, townFrame, townLayout, townShape } from "./lib/town.js";
 import { el } from "./lib/svg.js";
 import { DIM, PLATE, hover, label, roomBox } from "./deck-view.js";
 
 // style guide §4.2, Towns
 const GROUND = "#110e0b";
-const EARTH = "#1c1814";
+const EARTH = "#332b22"; // light enough to read on every district's wash
 const STONE = "#4b4338";
+const WATER = "#22384c";
+const GLASS = "#cfe3ff";
 const FIELD = PLATE; // fused grey stone
 const GREEN = DC.hydroponics;
+const WASH = 0.085; // a district's wash
 const NONE = { "pointer-events": "none" };
+const DASH = { "stroke-dasharray": "4 3" };
+const NAME_PX = 10; // a district's name is never smaller than this on screen
+const FADE = [5, 6.5]; // a room's 12-unit name fades out between these sizes on screen
+const AWAY = 0.45; // zoomed out past this (screen px a unit), districts are named over their middles
 
 /**
  * @param {typeof import("./lib/town.js").TOWNS.zennor} spec
@@ -28,62 +37,90 @@ export function townPlans(spec) {
 
 function buildTownPlan(svg, index, spec) {
   const layout = townLayout(index, spec);
-  const { boxes, links, wall, labels, bounds } = layout;
+  const { boxes, links, labels, bounds, districts, river, scarp, gate, tram } = layout;
   const g = el("g", { display: "none" }, svg);
   // the ground covers the stars the view draws under every plan
-  el("rect", { x: -4000, y: -3000, width: 8000, height: 6000, fill: GROUND }, g);
+  el("rect", { x: -6000, y: -4000, width: 12000, height: 8000, fill: GROUND }, g);
 
-  // open ground: every street, path and the square as one surface, its outer edge dashed. The
-  // edges go down first and the earth over them, so where two pieces meet there's no seam.
-  const open = [];
-  for (const l of links) if (l.kind === "street" || l.kind === "path") open.push({ ...l, rx: 0 });
-  for (const b of boxes) {
-    if (b.kind === "street" || b.kind === "path") open.push({ x: b.cx - b.w / 2, y: b.cy - b.h / 2, width: b.w, height: b.h, rx: 2 });
-    if (b.kind === "square") open.push({ x: b.cx - b.w / 2, y: b.cy - b.h / 2, width: b.w, height: b.h, rx: 10 });
+  // each district's wash: its cells in its colour, the group faded as one so neighbours don't double
+  for (const d of districts) {
+    const w = el("g", { fill: d.tint ?? DC.industrial, opacity: WASH, ...NONE }, g);
+    for (const c of d.cells) el("rect", { ...c, rx: 6 }, w);
   }
-  const rect = (r, attrs) => el("rect", { x: r.x, y: r.y, width: r.width, height: r.height, rx: r.rx ?? 0, ...attrs, ...NONE }, g);
-  for (const r of open) rect(r, { fill: "none", stroke: STONE, "stroke-width": 2, "stroke-dasharray": "4 3" });
-  for (const r of open) rect(r, { fill: EARTH });
+
+  if (river) {
+    el("path", { d: river.d, stroke: WATER, "stroke-width": RIVER.w, fill: "none", "stroke-linecap": "round", ...NONE }, g);
+    el("path", { d: river.d, stroke: "#2e4a63", "stroke-width": 1.2, "stroke-dasharray": "10 8", fill: "none", ...NONE }, g);
+    hover(el("path", { d: river.d, stroke: "transparent", "stroke-width": RIVER.w, fill: "none" }, g), { name: river.name.replace(/^the /, "The ") });
+  }
+
+  if (scarp) {
+    let ticks = "";
+    for (let y = scarp.y0 + 4; y < scarp.y1; y += 9) ticks += `M${scarp.x},${y}l${scarp.downhill * 7},4`;
+    el("path", { d: `M${scarp.x},${scarp.y0}V${scarp.y1}`, stroke: STONE, "stroke-width": 2, ...NONE }, g);
+    el("path", { d: ticks, stroke: STONE, "stroke-width": 1.3, ...NONE }, g);
+  }
+
+  // open ground: every street, path, square and the garden as one surface, its outer edge dashed.
+  // The edges go down first and the earth over them, so where two pieces meet there's no seam.
+  const isOpen = (l) => l.kind === "street" || l.kind === "path";
+  // a link's band: a straight one's rect, a diagonal one's line its width wide (a little wider
+  // under it for the dashed edge, as a rect's edge is its outline)
+  const band = (l, fill, edge = false) =>
+    l.x1 !== undefined
+      ? el("line", { x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, stroke: edge ? STONE : fill, "stroke-width": l.width + (edge ? 4 : 0), ...(edge ? DASH : {}), ...NONE }, g)
+      : el("rect", { x: l.x, y: l.y, width: l.width, height: l.height, ...(edge ? { fill: "none", stroke: STONE, "stroke-width": 2, ...DASH } : { fill }), ...NONE }, g);
+  const openBoxes = boxes.filter((b) => ["street", "path", "square", "garden"].includes(b.kind));
+  const boxRect = (b, attrs) =>
+    el("rect", { x: b.cx - b.w / 2, y: b.cy - b.h / 2, width: b.w, height: b.h, rx: b.kind === "square" || b.kind === "garden" ? 10 : 2, ...attrs, ...NONE }, g);
+  for (const l of links) if (isOpen(l)) band(l, null, true);
+  for (const b of openBoxes) boxRect(b, { fill: "none", stroke: STONE, "stroke-width": 2, ...DASH });
+  for (const l of links) if (isOpen(l)) band(l, EARTH);
+  for (const b of openBoxes) boxRect(b, { fill: EARTH });
   // doors into buildings and tracks out to the terraces: earth, no edge
-  for (const l of links) if (l.kind === "door" || l.kind === "track") rect(l, { fill: EARTH });
+  for (const l of links) if (l.kind === "door" || l.kind === "track") band(l, EARTH);
+  // the bridge: the way over the river, with a parapet each side
+  for (const l of links) {
+    if (!l.bridge || l.x1 !== undefined) continue;
+    const d = l.width > l.height ? `M${l.x - 14},${l.y}h${l.width + 28}M${l.x - 14},${l.y + l.height}h${l.width + 28}` : `M${l.x},${l.y - 14}v${l.height + 28}M${l.x + l.width},${l.y - 14}v${l.height + 28}`;
+    el("path", { d, stroke: STONE, "stroke-width": 2.5, ...NONE }, g);
+  }
 
   for (const b of boxes) if (spec.wells?.includes(b.room.id)) el("circle", { cx: b.cx, cy: b.cy + 16, r: 6, fill: GROUND, stroke: STONE, "stroke-width": 1.4, ...NONE }, g);
 
-  if (wall) drawWall(g, wall);
-
-  // climbs: switchbacks up from a path, then a dashed line marked "up"
-  for (const l of links) {
-    if (l.kind !== "climb") continue;
-    const lowFirst = l.lower === l.a;
-    const [x1, y1, x2, y2] = lowFirst ? [l.x1, l.y1, l.x2, l.y2] : [l.x2, l.y2, l.x1, l.y1];
-    const len = Math.hypot(x2 - x1, y2 - y1) || 1;
-    const [ux, uy] = [(x2 - x1) / len, (y2 - y1) / len];
-    let start = [x1, y1];
-    if (layoutKind(layout, l.lower) === "path" && len > 80) {
-      const n = 5;
-      const step = 48 / n;
-      const pts = [[x1, y1]];
-      for (let i = 1; i <= n; i++) {
-        const side = i === n ? 0 : i % 2 ? -8 : 8;
-        pts.push([x1 + ux * step * i - uy * side, y1 + uy * step * i + ux * side]);
-      }
-      el("path", { d: `M${pts.map((p) => p.join(",")).join("L")}`, stroke: STONE, "stroke-width": 2, fill: "none", "stroke-linejoin": "round", ...NONE }, g);
-      start = pts[n];
-    }
-    el("path", { d: `M${start.join(",")}L${x2},${y2}`, stroke: DIM, "stroke-width": 1.5, "stroke-dasharray": "4 4", fill: "none", ...NONE }, g);
-    label(g, (start[0] + x2) / 2, (start[1] + y2) / 2 - 9, l.dir === "up" || l.dir === "down" ? "up" : "", 9, { fill: DIM });
+  if (tram) {
+    el("path", { d: tram.d, stroke: GLASS, "stroke-opacity": 0.75, "stroke-width": 3, fill: "none", "stroke-linejoin": "round", ...NONE }, g);
+    const stops = tram.stops.map((id) => layout.byId.get(id)?.room.name.replace(/ Station$/, "")).join(" · ");
+    hover(el("path", { d: tram.d, stroke: "transparent", "stroke-width": 12, fill: "none" }, g), { name: tram.name, address: stops });
   }
 
+  for (const l of links) {
+    if (l.kind === "steps") steps(g, l);
+    else if (l.kind === "climb") climb(g, l, layout);
+  }
+
+  if (gate) {
+    const k = gate.half - 4;
+    const t = `translate(${gate.x} ${gate.y}) rotate(${gate.rot})`;
+    // a stub of the old wall either side of the gap, and the arch over it
+    el("path", { d: `M${-gate.half - 30},0H${-gate.half}M${gate.half},0H${gate.half + 30}`, transform: t, stroke: STONE, "stroke-width": 5, "stroke-linecap": "round", ...NONE }, g);
+    el("path", { d: `M${-k},3v-6a${k},${k} 0 0 1 ${2 * k},0v6`, transform: t, stroke: STONE, "stroke-width": 3, fill: "none", ...NONE }, g);
+  }
+
+  const stops = new Set(tram?.stops ?? []);
   for (const b of boxes) {
     const r = { x: b.cx - b.w / 2, y: b.cy - b.h / 2, width: b.w, height: b.h };
+    const tint = spec.tints?.[b.room.district] ?? DC.industrial;
     if (b.kind === "building") {
       el("rect", { x: r.x - 4, y: r.y - 4, width: b.w + 8, height: b.h + 8, rx: 6, fill: STONE, ...NONE }, g);
       el("rect", { ...r, rx: 5, fill: GROUND, ...NONE }, g);
-      roomBox(g, b.room, b.cx, b.cy, spec.tints[b.room.id] ?? DC.industrial, b.w, b.h);
+      if (stops.has(b.room.id)) el("rect", { x: r.x + 4, y: r.y + 4, width: b.w - 8, height: b.h - 8, rx: 3, fill: "none", stroke: GLASS, "stroke-opacity": 0.35, ...NONE }, g);
+      roomBox(g, b.room, b.cx, b.cy, tint, b.w, b.h);
     } else if (b.kind === "field") field(g, b);
     else if (b.kind === "terraces" || b.kind === "old-terraces") terraces(g, b, b.kind === "old-terraces");
     else if (b.kind === "overlook") overlook(g, b);
     else if (b.kind === "square") label(g, b.cx, b.cy - 8, b.room.name, 12);
+    else if (b.kind === "garden") garden(g, b);
     if (b.kind !== "building") hit(g, townShape(layout, { kind: "room", id: b.room.id }), b.room);
   }
 
@@ -92,8 +129,20 @@ function buildTownPlan(svg, index, spec) {
       label(g, t.x, t.y + (i - (t.lines.length - 1) / 2) * 13, s, 11, { fill: DIM, "text-anchor": t.anchor }),
     );
   }
+  if (river) label(g, river.label.x, river.label.y, river.name, 12, { fill: DIM, "font-style": "italic", "letter-spacing": 3, transform: `rotate(-90 ${river.label.x} ${river.label.y})` });
 
-  label(g, bounds.x0 + 14, bounds.y0 + 14, "N ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
+  // what stays readable however far out: the districts' names, and N ▲ in the corner
+  for (const t of g.querySelectorAll("text")) t.style.opacity = "var(--names, 1)";
+  // each district's name twice: beside it, and over its middle for far out, a word a line
+  const nameAttrs = (d) => ({ fill: d.tint ?? DIM, "fill-opacity": 0.85, "font-weight": 600, "letter-spacing": 2, stroke: GROUND, "stroke-opacity": 0.85, "paint-order": "stroke" });
+  const names = districts.map((d) => {
+    const near = label(g, d.label.x, d.label.y, d.name.toUpperCase(), 15, nameAttrs(d));
+    const far = label(g, d.middle.x, d.middle.y, "", 15, { ...nameAttrs(d), display: "none" });
+    const lines = d.name.replace(/^the /i, "").toUpperCase().split(" "); // far out, "MARKET / QUARTER"
+    lines.forEach((t, i) => el("tspan", { x: d.middle.x, dy: i ? "1.1em" : `${-0.55 * (lines.length - 1)}em` }, far, t));
+    return { near, far };
+  });
+  const north = label(g, bounds.x0 + 14, bounds.y0 + 14, "N ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
 
   const hl = el("g", NONE, g);
   return {
@@ -105,14 +154,30 @@ function buildTownPlan(svg, index, spec) {
     length: 0,
     home: layout.home,
     extent: layout.extent,
+    maxW: Math.max(MAX_W, layout.extent.w * 1.15),
     offsets: [0],
     margin: 0.35,
     shape: (where) => townShape(layout, where),
+    frame: (where) => townFrame(layout, index, where),
+    onView: (k, view) => {
+      // k is screen pixels a plan unit
+      const px = 12 * k;
+      g.style.setProperty("--names", String(Math.max(0, Math.min(1, (px - FADE[0]) / (FADE[1] - FADE[0])))));
+      const size = Math.max(15, NAME_PX / k);
+      const away = k < AWAY;
+      for (const { near, far } of names) {
+        near.setAttribute("display", away ? "none" : "");
+        far.setAttribute("display", away ? "" : "none");
+        for (const t of [near, far]) {
+          t.setAttribute("font-size", size);
+          t.setAttribute("stroke-width", size * 0.35);
+        }
+      }
+      if (view) {
+        Object.entries({ x: view[0] + 14 / k, y: view[1] + 14 / k, "font-size": 10 / k }).forEach(([a, v]) => north.setAttribute(a, v));
+      }
+    },
   };
-}
-
-function layoutKind(layout, id) {
-  return layout.byId.get(id)?.kind ?? null;
 }
 
 /** A transparent copy of a room's lit shape, for its tooltip. */
@@ -128,40 +193,43 @@ function hit(g, shape, room) {
   hover(node, room);
 }
 
-/** The windbreak wall: a rounded rectangle in stone, open where the ways out go, an arch at the gate. */
-function drawWall(g, w) {
-  const { x0, y0, x1, y1, r } = w;
-  // each side's run, corner to corner, cut by its gaps
-  const sides = {
-    north: { from: x0 + r, to: x1 - r, at: (s, e) => `M${s},${y0}H${e}` },
-    south: { from: x0 + r, to: x1 - r, at: (s, e) => `M${s},${y1}H${e}` },
-    west: { from: y0 + r, to: y1 - r, at: (s, e) => `M${x0},${s}V${e}` },
-    east: { from: y0 + r, to: y1 - r, at: (s, e) => `M${x1},${s}V${e}` },
-  };
+/** The Steps: a flight of stone treads between their two rooms, named, their seconds on hover. */
+function steps(g, l) {
+  const [x1, x2] = [Math.min(l.x1, l.x2), Math.max(l.x1, l.x2)];
+  const y = l.y1;
+  const h = 26;
+  el("rect", { x: x1, y: y - h / 2, width: x2 - x1, height: h, fill: EARTH, ...NONE }, g);
+  const n = Math.max(3, Math.round((x2 - x1) / 7));
   let d = "";
-  for (const [side, run] of Object.entries(sides)) {
-    const cuts = w.gaps.filter((p) => p.side === side).sort((a, b) => a.at - b.at);
-    let s = run.from;
-    for (const c of cuts) {
-      if (c.at - c.half > s) d += run.at(s, c.at - c.half);
-      s = Math.max(s, c.at + c.half);
+  for (let i = 1; i < n; i++) d += `M${x1 + (i * (x2 - x1)) / n},${y - h / 2}v${h}`;
+  el("path", { d, stroke: STONE, "stroke-width": 1.6, ...NONE }, g);
+  el("path", { d: `M${x1},${y - h / 2}H${x2}M${x1},${y + h / 2}H${x2}`, stroke: STONE, "stroke-width": 2, ...NONE }, g);
+  label(g, (x1 + x2) / 2, y - h / 2 - 9, "the Steps", 11, { fill: DIM });
+  const s = l.seconds ?? {};
+  const body = [s.down !== undefined && `about ${s.down} s down`, s.up !== undefined && `${s.up} s up`].filter(Boolean).join(", ");
+  hover(el("rect", { x: x1, y: y - h / 2, width: x2 - x1, height: h, fill: "transparent" }, g), { name: "The Steps", address: body });
+}
+
+/** A climb: switchbacks up from a path, then a dashed line marked "up". */
+function climb(g, l, layout) {
+  const lowFirst = l.lower === l.a;
+  const [x1, y1, x2, y2] = lowFirst ? [l.x1, l.y1, l.x2, l.y2] : [l.x2, l.y2, l.x1, l.y1];
+  const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+  const [ux, uy] = [(x2 - x1) / len, (y2 - y1) / len];
+  let start = [x1, y1];
+  if (layout.byId.get(l.lower)?.kind === "path" && len > 80) {
+    const n = 5;
+    const step = 48 / n;
+    const pts = [[x1, y1]];
+    for (let i = 1; i <= n; i++) {
+      const side = i === n ? 0 : i % 2 ? -8 : 8;
+      pts.push([x1 + ux * step * i - uy * side, y1 + uy * step * i + ux * side]);
     }
-    if (run.to > s) d += run.at(s, run.to);
+    el("path", { d: `M${pts.map((p) => p.join(",")).join("L")}`, stroke: STONE, "stroke-width": 2, fill: "none", "stroke-linejoin": "round", ...NONE }, g);
+    start = pts[n];
   }
-  d += `M${x0},${y0 + r}A${r},${r} 0 0 1 ${x0 + r},${y0}M${x1 - r},${y0}A${r},${r} 0 0 1 ${x1},${y0 + r}`;
-  d += `M${x1},${y1 - r}A${r},${r} 0 0 1 ${x1 - r},${y1}M${x0 + r},${y1}A${r},${r} 0 0 1 ${x0},${y1 - r}`;
-  el("path", { d, stroke: STONE, "stroke-width": 5, fill: "none", "stroke-linecap": "round", ...NONE }, g);
-  for (const c of w.gaps) {
-    if (!c.gate) continue;
-    const [cx, cy, rot] = {
-      north: [c.at, y0, 0],
-      south: [c.at, y1, 180],
-      west: [x0, c.at, -90],
-      east: [x1, c.at, 90],
-    }[c.side];
-    const k = c.half - 4;
-    el("path", { d: `M${-k},3v-6a${k},${k} 0 0 1 ${2 * k},0v6`, transform: `translate(${cx} ${cy}) rotate(${rot})`, stroke: STONE, "stroke-width": 3, fill: "none", ...NONE }, g);
-  }
+  el("path", { d: `M${start.join(",")}L${x2},${y2}`, stroke: DIM, "stroke-width": 1.5, "stroke-dasharray": "4 4", fill: "none", ...NONE }, g);
+  label(g, (start[0] + x2) / 2, (start[1] + y2) / 2 - 9, l.dir === "up" || l.dir === "down" ? "up" : "", 9, { fill: DIM });
 }
 
 /** The landing field: fused stone in its blast walls, three scorched pads. */
@@ -190,6 +258,14 @@ function terraces(g, b, old) {
   }
   el("rect", { x: b.cx - 58, y: b.cy - 9, width: 116, height: 18, rx: 3, fill: GROUND, opacity: 0.85, ...NONE }, g);
   label(g, b.cx, b.cy, b.room.name, 12);
+}
+
+/** The garden: a lawn on the open ground, in green, named on it. */
+function garden(g, b) {
+  el("rect", { x: b.cx - b.w / 2, y: b.cy - b.h / 2, width: b.w, height: b.h, rx: 10, fill: GREEN, "fill-opacity": 0.16, stroke: GREEN, "stroke-opacity": 0.6, "stroke-width": 1.4, ...NONE }, g);
+  const words = b.room.name.split(" ");
+  const lines = words.length > 1 ? [words.slice(0, -1).join(" "), words.at(-1)] : [b.room.name];
+  lines.forEach((s, i) => label(g, b.cx, b.cy + (i - (lines.length - 1) / 2) * 13, s, 11));
 }
 
 /** The overlook: a bare round top, its stone bench with its back to the wind (north). */

@@ -81,7 +81,7 @@ function decks(data, spec) {
   return { index, model, deck: new DeckView(deckEl, index, decksPlans(spec)), lastLevel: null, locate: locateDecks };
 }
 
-/** Zennor: a town on the ground, rooms placed by their compass exits; its sky over it. */
+/** Zennor: a city on the ground, rooms placed by their compass exits, ⌂ framing your district; its sky over it. */
 function town(data, spec) {
   const index = indexTown(data, spec);
   return { index, model: new SkyView(modelEl, index, "zennor"), deck: new DeckView(deckEl, index, townPlans(spec)), lastLevel: null, locate: locateTown, info: townInfo };

@@ -269,7 +269,7 @@ export class DeckView {
     this.cur = this.homeView();
     this.apply();
 
-    this.zoom = attachPanZoom(div, () => this.cur, (v) => this.setView(v), { minW: MIN_W, maxW: MAX_W });
+    this.zoom = attachPanZoom(div, () => this.cur, (v) => this.setView(v), { minW: MIN_W, maxW: () => this.plans[this.level]?.maxW ?? MAX_W });
     zoomButtons(div, "8px", (f) => {
       if (f) {
         this.zoom(f);
@@ -300,15 +300,17 @@ export class DeckView {
     const r = this.div.getBoundingClientRect?.();
     if (!r || r.width <= 0 || r.height <= 0) return false;
     this.aspect = r.height / r.width;
+    this.px = r.width;
     const h = this.cur[2] * this.aspect;
     this.cur = [this.cur[0], this.cur[1] + this.cur[3] / 2 - h / 2, this.cur[2], h];
     return true;
   }
 
+  /** The plan's home view: framed to its extent, or to what its frame(where) picks for where you are. */
   homeView() {
-    const [hx, hy] = this.plans[this.level].home;
-    const { extent } = this.plans[this.level];
-    const w = extent ? fitWidth(extent, this.aspect) : BASE_W;
+    const plan = this.plans[this.level];
+    const { home: [hx, hy], extent } = plan.frame?.(this.where) ?? plan;
+    const w = extent ? fitWidth(extent, this.aspect, 1.15, plan.maxW) : BASE_W;
     const h = w * this.aspect;
     return [hx - w / 2, hy - h / 2, w, h];
   }
@@ -334,6 +336,7 @@ export class DeckView {
       if (wrapped !== cx) this.cur = [this.cur[0] + wrapped - cx, ...this.cur.slice(1)];
     }
     this.svg.setAttribute("viewBox", this.cur.map((n) => +n.toFixed(2)).join(" "));
+    if (this.px) p?.onView?.(this.px / this.cur[2], this.cur); // screen pixels a plan unit, for a plan that draws by zoom
   }
 
   show(level) {
@@ -367,6 +370,7 @@ export class DeckView {
   /** Show the plan for where.level and light the player's place (its door, from inside a workshop
    *  or bunk); "off" just clears the light. */
   set(where) {
+    this.where = where;
     if (!where || where.kind === "off") {
       if (this.key === "off") return;
       for (const p of this.plans) p.hl.replaceChildren();
@@ -402,6 +406,11 @@ export class DeckView {
     this.focus = [px, py];
     const vyFocus = plan.ring ? py * 0.5 : py;
     const m = plan.margin ?? 0.35; // how far off centre the highlight may sit before the view follows
+    // a plan that frames where you are (a town's district) re-frames when you're out of sight
+    if (plan.frame && (Math.abs(px - cx) > vw / 2 || Math.abs(vyFocus - cy) > vh / 2)) {
+      this.setView(this.homeView());
+      return;
+    }
     // a new level re-centres, unless the plans share one frame (an extent), as a decks station's do
     if ((changed && !plan.extent) || Math.abs(px - cx) > vw * m || Math.abs(vyFocus - cy) > vh * m) {
       this.setView([px - vw / 2, vyFocus - vh / 2, vw, vh]);

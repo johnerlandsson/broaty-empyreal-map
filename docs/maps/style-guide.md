@@ -19,7 +19,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | T.I.S.S. model and deck plans | top, bottom | you're on T.I.S.S., or your ship is docked there | [tiss.md](tiss.md) |
 | Drum station models and plans (Wenna Halt) | top, bottom | you're on that station, or your ship is docked there | [drum-stations.md](drum-stations.md) |
 | Decks station models and plans (Orrin Station and the thirteen halts) | top, bottom | you're on that station, or your ship is docked there | [decks-stations.md](decks-stations.md) |
-| Town sky and plan (Zennor) | top, bottom | you're in the town, or your ship is landed there | [town.md](town.md) |
+| Town sky and plan (Zennor) | top, bottom | you're in the city, or your ship is landed there | [town.md](town.md) |
 | Space scenes | top | you're out in a ship you own or crew, undocked | [space-scenes.md](space-scenes.md) |
 | Ship plans | bottom | you're aboard any ship, docked or not | [ship-plans.md](ship-plans.md) |
 | Orrery (the system chart) | top | the ◎ toggle is on | [orrery.md](orrery.md) |
@@ -104,8 +104,11 @@ On a town's plan (the ground, not a deck; see town.md):
 | Name | Value | Used for |
 |---|---|---|
 | Ground | `#110e0b` | the bare earth under the whole plan, in place of the stars and Plate |
-| Earth | `#1c1814` | open ground you walk across: streets, a square, a path, doors and tracks |
-| Stone | `#4b4338` | a town's wall and gate arch, building footings, blast walls, terrace walls, an open room's dashed edge |
+| Earth | `#332b22` | open ground you walk across: streets, a square, a path, doors and tracks, the Steps; light enough to stand out on every district's wash (about 1.25:1, against 1.0 at the first `#1c1814`) |
+| Stone | `#4b4338` | the stub of a town's old wall and its gate arch, building footings, blast walls, terrace walls, an open room's dashed edge, the Steps' treads and the scarp's hatching |
+| Water | `#22384c`, its dashed middle `#2e4a63` | a river (the Carn) |
+| District wash | a district's colour (§4.4) at .085 | the ground under each district's rooms, so the districts read as areas |
+| Glass | `#cfe3ff` (§4.3) at .75 | the tram's line through its stops, and a faint inner edge on each stop's box |
 
 ### 4.3 Models and scenes
 

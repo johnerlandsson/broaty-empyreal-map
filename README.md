@@ -8,7 +8,7 @@ further out, Morvah Deep, Gwithian Reach, Carrow Yard and Lanyon High, and
 the six round the Shallows' ring, Kynance Spindle, Marazion Quay, Penwith
 Vats, Botallack Head, Polperro Old Dock and Lamorna Light, and the Mid's
 three, Kilmar Steading, Caradon Works and Garrow Stop. It also maps Zennor,
-the town on the planet Tamsin below T.I.S.S. The panel shows whichever place
+the city on the planet Tamsin below T.I.S.S. The panel shows whichever place
 you're in, or the one your ship is docked or landed at, and charts the star
 system you're in and the lanes across the core. At a station it has no plan
 of, it shows none, and says so, rather than the last one.
@@ -66,7 +66,7 @@ window collar at the fore end of the axis. The drum turns your room to face
 you, as the wheel does.
 
 **Zennor** is on the ground, so instead of a model the top band shows its
-skyline: the ridge rising east, the town's low roofs and the Port Office's
+skyline: the ridge rising east, the city's low roofs and the Port Office's
 squat tower. Out of doors, the sky is over it as the game's `look sky` tells
 it, moving as you watch: day and night, dawn and dusk, T.I.S.S. climbing out
 of the west, passing overhead and setting, and Orrin as a golden star at
@@ -77,7 +77,7 @@ for it. Indoors you can't see the sky, so the band is the skyline alone.
 **Out in your ship.** Once you undock, the station model fades into a view
 looking ahead from your ship: a still starfield while you're parked, the
 stars streaming past while you travel, low-poly asteroids tumbling past
-while you're at a belt, over Zennor the town below on Tamsin's face, on
+while you're at a belt, over Zennor the city below on Tamsin's face, on
 the day side or the night side as it is in the game, and in high orbit over
 a planet its face curving away below, lit if your side of it faces the star
 (the system chart puts you on a ring round it). At a belt you see the
@@ -191,15 +191,19 @@ one, and stays when she stops, unless you've turned that off. The belt map,
   south, the Chart Office west and the Berths east with their airlock
   hatches, and a ramp up to the Lounge, at 0.2 g, its deep chairs facing
   one wide window on the sea.
-- **Zennor:** the town from above, north up, laid out as its exits go, on
-  bare earth inside its old stone wall. The Landing Field is at the north in
-  its blast walls, with the Field Office and the Port Office either side.
-  Fore Street runs south through the arch of the Field Gate to the Square,
-  with the Exchange and the Tinner's Arms off it, and on to the Water House
-  and out of the wall to the green Terraces stepping down below. The Ridge
-  Path leaves the top of the street east, through the wall and up its
-  switchbacks to the Overlook. Buildings are boxes on stone footings, and the
-  streets are packed earth. On a street, its stretch of the street lights.
+- **Zennor:** the city from above, north up, laid out as its exits go, on
+  bare earth. It climbs the east side of the Carn's valley, so uphill is
+  east: the Downs with the Landing Field at the top, the Steps down the
+  scarp to the Old Town's gate, the Market Quarter and the Courts below it,
+  the Rows stepping down to Riverside on the river, and the Terraces
+  downriver to the south. Each of its seven districts lies on a faint wash
+  of its colour, named in it. The Carn runs down the west side under Carn
+  Bridge, the Steps are a flight of stone between the scarp's two rooms, and
+  the tram is a pale line through its four stops, Riverside, Market, Uptown
+  and the Downs. Buildings are boxes on stone footings, and the streets are
+  packed earth. On a street, its stretch of the street lights. ⌂ frames your
+  district; zoomed out, the rooms' names fade and the districts' stay
+  readable.
 
 Your place is lit with the same glow as in the model, not marked with a dot:
 a room box, a stretch of corridor, a lift or the ladderway hatch. The plan
@@ -226,7 +230,7 @@ The line at the bottom left says where you are, for example
 `LAUNDRY · Rim 2:00, aft · 0.9 g` or `LIFT 3 · climbing hubward`. Aboard a
 ship it shows the room and the ship's class where it's known:
 `COCKPIT OF THE MULE · prospecting skiff`. In Zennor, whose rooms have no
-address, it shows the town: `THE SQUARE · Zennor · 1 g`. In your workshop or bunk
+address, it shows the district and the city: `CONDUIT SQUARE · the Market Quarter · Zennor · 1 g`. In your workshop or bunk
 it names it and its door: `JUNIPER'S SMALL WORKSHOP · off Workshop Row · 0.3 g`.
 Anywhere else off the station
 plans, the deck plan dims, nothing is lit, and the line shows the room
@@ -302,7 +306,7 @@ npm test            # vitest for the UI and data code, then the Lua tests
 panel in a browser with a stand-in for Mallard and a **▶ Walk** button that
 replays a walk round T.I.S.S., then flights to Orrin Station, Wenna Halt and
 the thirteen halts and a walk round each, a stop at a made-up Pendeen Halt,
-which it has no plan of, then a landing at Zennor and a walk round the town:
+which it has no plan of, then a landing at Zennor and a walk round the whole city (`dev/zennor-walk.js`):
 
 ```bash
 python3 -m http.server 8765
@@ -349,13 +353,15 @@ Wenna Halt's six rooms (`ui/data/wenna.js`) are written by hand from
 are placed from their exits and descriptions. What's particular to the drum
 (colours, cradles, the ramp) is in `DRUMS` in `ui/lib/drum.js`.
 
-Zennor's fourteen rooms (`ui/data/zennor.js`) are copied from
-`content/areas/zennor.yaml`: ids, names, flags and exits, and the area's
-gravity. Nothing is placed by hand. The rooms have no addresses or coords, so
-each one's place comes from its compass exits, one cell a step, and a test
-checks the file against the YAML when `~/dev/empyreal` is there. What the
-exits don't say (colours, which open ground is a square, a path or terraces,
-the wall) is in `TOWNS` in `ui/lib/town.js`.
+Zennor's 45 rooms (`ui/data/zennor.js`) are copied from
+`content/areas/zennor.yaml`: ids, names, districts, flags and exits (the
+Steps' with their seconds), the area's gravity and districts, and the tram's
+stops. Nothing is placed by hand. The rooms have no addresses or coords, so
+each one's place comes from its compass exits: an exit says which side of the
+room the next one is, and the rooms settle where the ways are shortest. A
+test checks the file against the YAML when `~/dev/empyreal` is there. What
+the exits don't say (district colours, which open ground is a square, a path
+or terraces, the river and the scarp) is in `TOWNS` in `ui/lib/town.js`.
 
 ---
 

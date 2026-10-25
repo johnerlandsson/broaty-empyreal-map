@@ -44,6 +44,8 @@ export function glowFilter(defs, id) {
  * @param {HTMLElement} div element the svg fills
  * @param {() => number[]} get current viewBox [x, y, w, h]
  * @param {(vb: number[]) => void} set replace the viewBox
+ * @param {{minW: number, maxW: number|(() => number)}} limits the narrowest and widest viewBox; the
+ *   widest may be asked each time, for a view whose plans differ
  * @returns {(f: number, ax?: number, ay?: number) => void} zoom by factor f (<1 zooms in)
  */
 export function attachPanZoom(div, get, set, { minW, maxW }) {
@@ -64,7 +66,7 @@ export function attachPanZoom(div, get, set, { minW, maxW }) {
       ax = v[0] + v[2] / 2;
       ay = v[1] + v[3] / 2;
     }
-    const k = Math.max(minW, Math.min(maxW, v[2] * f)) / v[2];
+    const k = Math.max(minW, Math.min(typeof maxW === "function" ? maxW() : maxW, v[2] * f)) / v[2];
     set([ax - (ax - v[0]) * k, ay - (ay - v[1]) * k, v[2] * k, v[3] * k]);
   };
   div.addEventListener(
