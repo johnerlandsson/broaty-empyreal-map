@@ -26,6 +26,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | Orrery (the system chart) | top | the ◎ toggle is on | [orrery.md](orrery.md) |
 | Lanes map | top | the ⋈ toggle is on | [lanes.md](lanes.md) |
 | Belt map | top | its toggle is on, at a belt | [belt.md](belt.md) |
+| Unknown location | top, bottom | the panel has loaded and the game hasn't said where you are yet | §10 |
 | What you're doing (a card, not a map) | bottom, top-left corner | you're doing something that takes time | [action-card.md](action-card.md) |
 
 ## 2. Principles
@@ -289,6 +290,13 @@ A new map type says in its doc what its line shows.
   for a workshop or bunk, doesn't know its door either), the
   plan stays where it was at 45% opacity, nothing is lit, and the info line
   shows the room name.
+- **Unknown location.** Until the first location (or a dock) places you, each
+  band is a sparse starfield (~150 stars) with a dashed Edge outline and a
+  "?" in the middle: a ring in the top band, an empty floor in the bottom.
+  The info line says `LOCATION UNKNOWN`. No station is built until one is
+  picked, so the panel loads fast. It never comes back once you're placed;
+  at a station there's no plan of, both bands stay blank (`ui/unknown-view.js`,
+  `docs/maps/reference/unknown-location-options.png`, option A).
 - **Unknown kind.** When a map type covers a kind of place it has no drawing
   for (a new hull, say), it shows that type's generic drawing rather than
   nothing (see ship-plans.md).

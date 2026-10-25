@@ -10,7 +10,8 @@
 // top band, one at a time; while one does, the space scene doesn't draw. Docking and undocking, the station
 // model shows through the space scene, drawing near or falling away on the game's clock. What you're
 // doing (Char.Action) is a card in the deck band's corner, over whichever plan shows; the overview is
-// left as it is.
+// left as it is. Until the game says where you are, both bands show an unknown location
+// (unknown-view.js), and no station is built till one is picked.
 
 import { ActionCard } from "./action-card.js";
 import { BeltView } from "./belt-view.js";
@@ -50,6 +51,7 @@ import { SpaceView } from "./space-view.js";
 import { shipPlans, updateShip } from "./ship-deck.js";
 import { townPlans } from "./town-deck.js";
 import { SkyView } from "./town-view.js";
+import { UnknownView } from "./unknown-view.js";
 
 const modelEl = document.getElementById("model");
 const deckEl = document.getElementById("deck");
@@ -128,6 +130,7 @@ const ships = {}; // hull id -> the DeckView drawing that hull, built on first u
 const cars = {}; // car kind (lift, tram) -> the DeckView drawing it, built on first use
 const space = new SpaceView(modelEl);
 space.onAway = (away) => stations[current]?.model.setAway?.(away);
+let unknown = new UnknownView(modelEl, deckEl); // both bands until the game says where you are
 const doing = new ActionCard(deckEl);
 const moving = new ActionCard(deckEl, moveCard); // her thrusters, or closing on a rock, under yours
 const info = document.getElementById("info");
@@ -214,7 +217,8 @@ function runSky() {
   skyTimer = setInterval(() => sky.draw(Date.now()), 1000);
 }
 
-let current; // the station showing: undefined till the first render, null for one there's no plan of
+const UNKNOWN_LINE = "LOCATION UNKNOWN";
+let current; // the station showing: undefined till one is picked, null for one there's no plan of
 let docked = null; // where your ship is docked (a place id), from the scene message
 let approaching = null; // the station a dock under way is drawing near (its place id), from the manoeuvre message
 let last = null; // the last location message
@@ -256,7 +260,11 @@ function carView(kind) {
 }
 
 function render() {
-  show(pickStation(last, docked ?? approaching, current === undefined ? "tiss" : current));
+  show(pickStation(last, docked ?? approaching, current));
+  if (unknown && (current !== undefined || last)) {
+    unknown.remove(); // placed, or a location came that places you on no station: it never shows again
+    unknown = null;
+  }
   const s = stations[current]; // none at a station there's no plan of: nothing shows, not the last one
   const where = s ? (s.locate ?? locate)(s.index, last, s.lastLevel) : null;
   if (s) {
@@ -284,7 +292,7 @@ function render() {
     return;
   }
   showDeck(s?.deck ?? null);
-  info.textContent = s ? (s.info ?? infoLine)(where, last, s.index) : noPlanLine(last);
+  info.textContent = s ? (s.info ?? infoLine)(where, last, s.index) : unknown ? UNKNOWN_LINE : noPlanLine(last);
 }
 
 panel.on("settings", (msg) => {
@@ -387,6 +395,5 @@ panel.on("location", (msg) => {
   runSky();
 });
 
-show("tiss");
-showDeck(stations.tiss.deck);
+info.textContent = UNKNOWN_LINE;
 panel.post("ready", {});

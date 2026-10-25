@@ -11,7 +11,9 @@ three, Kilmar Steading, Caradon Works and Garrow Stop. It also maps Zennor,
 the city on the planet Tamsin below T.I.S.S. The panel shows whichever place
 you're in, or the one your ship is docked or landed at, and charts the star
 system you're in and the lanes across the core. At a station it has no plan
-of, it shows none, and says so, rather than the last one.
+of, it shows none, and says so, rather than the last one. Until the game
+has said where you are, it shows a quiet sky with a question mark in each
+half and says LOCATION UNKNOWN.
 
 ---
 
