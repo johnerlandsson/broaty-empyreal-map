@@ -540,22 +540,29 @@ styled and shown like it, and drawn as the chart is:
 - **Her:** the amber chevron (§13.1), pointing the way she last moved.
   Between the game's ticks she glides, never jumps.
 - **The player's log**, which the game leaves to them, drawn quietly under
-  her: her track solid amber at .3, 2 px (the chart's stretch behind); each
-  sweep the 5 km disc it covered in Sensors at .08, stroked at .3, or a small
-  Sensors ring where the range isn't known; where she left her host a Glass
-  diamond in its dashed `3 3` Glass ring at .45, the 5 km she needs to be
-  within to dock, named "where you left the Full Measure · last seen 14m ago"
-  in Dim.
+  her: her track solid amber at .3, 2 px (the chart's stretch behind), earlier
+  visits at .15; each sweep the 5 km disc it covered in Sensors at .08,
+  stroked at .3, the newest three only, older ones fading to .025 and under
+  .2, or a small Sensors ring where the range isn't known; where she left her
+  host a Glass diamond in its dashed `3 3` Glass ring at .45, the 5 km she
+  needs to be within to dock (left out once she is), named "where you left
+  the Full Measure · last seen 14m ago" in Dim.
+- **Names never overprint:** the ring's, the ships' and the host's are placed
+  together, each beside its mark where it's clear, else moved a line or along
+  with a Dim hair to it; a ring name with nowhere clear is left off.
 - **Her sensors' reach:** dashed `4 3` in Sensors at .5, drawn only when the
   game has told the player the range (5 km, with no sensor array fitted).
 - **The last sweep's ships:** as on the chart (§13), Glass brackets round a
   dot, dark ones in Dim; named with the range and bearing from her now and
-  aged ("seen 4m ago"). Your host seen since you left her: the "where you
-  left" mark dims to .55, with a dotted Glass line on to her.
+  aged ("seen 4m ago"). Your host seen since you left her: the sweep's
+  mark replaces the "where you left" one, the alongside ring round it.
 - **Docked at her host:** her chevron at .8 inside the host's Glass brackets.
 - **Words:** the belt's name in capitals and where she is in the game's
   words ("11 km out from the core, bearing 210°"), top left in Text, with a
   Background halo.
+- **Zoom:** wheel, drag and + − ⌂, from the whole belt to six times in, the
+  rim and the bearing ring zooming with it; zoomed in, it follows her until
+  you drag it, as the chart does.
 - **Never:** rocks, worked-out ground, a ship moved on from where the sweep
   saw her, or a range the game hasn't given.
 

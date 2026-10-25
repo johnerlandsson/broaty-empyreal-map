@@ -114,6 +114,31 @@ export function discFrame(w, h, radius) {
   return { cx: w / 2, cy: h / 2, k: r / radius, r };
 }
 
+/** How far in the map zooms: six times the fit, as the lanes map. */
+export const ZOOM_IN = 6;
+
+/** The view that shows the whole belt, discFrame's, as [x, y, w, h] in km with y down (the band's way
+ *  up, so pan and zoom work on it as on the lanes map's). */
+export function fitView(w, h, radius) {
+  const f = discFrame(w, h, radius);
+  return [-f.cx / f.k, -f.cy / f.k, w / f.k, h / f.k];
+}
+
+/** The frame a view draws in, as discFrame's: the core's place in px, px per km and the rim's px. */
+export function viewFrame(vb, w, h, radius) {
+  const k = w / vb[2];
+  return { cx: -vb[0] * k, cy: -vb[1] * k, k, r: radius * k };
+}
+
+/** A view of yours kept as the band changes shape, as the lanes map keeps one: its middle and its
+ *  width in km stay, its height follows the band's. */
+export function reshape(vb, w, h) {
+  const u = vb[2] / (w || 1);
+  const mx = vb[0] + vb[2] / 2;
+  const my = vb[1] + vb[3] / 2;
+  return [mx - (w * u) / 2, my - (h * u) / 2, w * u, h * u];
+}
+
 /** A belt point in band px: y up. */
 export function toBand(f, x, y) {
   return [f.cx + x * f.k, f.cy - y * f.k];
@@ -174,12 +199,79 @@ export function compassMarks(index, beltId, course, t) {
   return { marks, next };
 }
 
-/** The km rings inside a disc: every 5 km short of the rim. */
-export function ringKms(radius) {
+/**
+ * Where to write the map's names so none overprints another. Each of `items`, in order (the first
+ * pick first), is { x, y, wide }: its mark's place in px and its widest line's width, and optionally
+ * `deg` (a bearing ring mark's angle: named on its outward side, and kept off the disc, `outside`),
+ * `lines` (1 or 2), `gap` (px from the mark to the words), `base` (the first baseline below y) and
+ * `must` (named even with nowhere clear, beside it as it would be alone). It tries beside its mark,
+ * then a line or more up or down, then slid further out, then the other side, and takes the first
+ * spot clear of the names placed before it, the `avoid` boxes ([x0, y0, x1, y1]), the band's w × h,
+ * and, `outside`, the disc out to `clear` px from (cx, cy). Each gets { x, y, anchor, moved } (y the
+ * first baseline; `moved` when it's off its mark's line), or null: its mark goes unnamed.
+ */
+export function placeNames(items, { cx, cy, clear }, w, h, avoid = []) {
+  const taken = [...avoid];
+  const meets = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+  const inDisc = (b) => {
+    const nx = Math.min(Math.max(cx, b[0]), b[2]);
+    const ny = Math.min(Math.max(cy, b[1]), b[3]);
+    return Math.hypot(nx - cx, ny - cy) < clear;
+  };
+  return items.map(({ x, y, wide, deg = 90, lines = 1, gap = 7, base = 3, outside = false, must = false }) => {
+    const a = (deg * Math.PI) / 180;
+    const right = Math.sin(a) >= 0;
+    const away = -Math.cos(a) >= 0 ? 1 : -1; // down, away from the disc, in its lower half; up in its upper
+    const tries = [];
+    for (const [flip, side] of [[0, right], [1, !right]]) {
+      for (const dy of [0, 1, -1, 2, -2, 3]) for (const dx of [0, 1, 2]) tries.push({ side, dy: dy * away * 11, dx: dx * 24, cost: flip * 2.5 + Math.abs(dy) + dx * 1.2 });
+    }
+    tries.sort((p, q) => p.cost - q.cost);
+    const spot = ({ side, dy, dx }) => {
+      const lx = side ? x + gap + dx : x - gap - dx;
+      const ly = y + base + dy;
+      const box = side ? [lx, ly - 8, lx + wide, ly + 2 + (lines - 1) * 10] : [lx - wide, ly - 8, lx, ly + 2 + (lines - 1) * 10];
+      return { lx, ly, box, out: box[0] < 2 || box[1] < 0 || box[2] > w - 2 || box[3] > h };
+    };
+    for (const t of tries) {
+      const { lx, ly, box, out } = spot(t);
+      if (out || (outside && inDisc(box)) || taken.some((b) => meets(b, box))) continue;
+      taken.push(box);
+      return { x: lx, y: ly, anchor: t.side ? "start" : "end", moved: t.dy !== 0 || t.dx !== 0 };
+    }
+    if (!must) return null;
+    const alone = { side: right, dy: 0, dx: 0 };
+    if (spot(alone).out) alone.side = !right;
+    const { lx, ly, box } = spot(alone);
+    taken.push(box);
+    return { x: lx, y: ly, anchor: alone.side ? "start" : "end", moved: false };
+  });
+}
+
+/** How many of the newest sweeps are drawn at full strength; older ones fade. */
+export const RECENT_SWEEPS = 3;
+
+/**
+ * How strongly to draw sweep i of n (oldest first, as the log keeps them): the newest RECENT_SWEEPS
+ * as they always were, older ones nearly gone, fainter the older they are, so what she did lately
+ * stands out and a belt worked for hours doesn't turn into one bright blob. `fill` and `stroke` are
+ * opacities for a disc; `ring` for a sweep with no known range.
+ */
+export function sweepTone(i, n) {
+  if (i >= n - RECENT_SWEEPS) return { fill: 0.08, stroke: 0.3, ring: 0.85 };
+  const age = (i + 1) / Math.max(1, n - RECENT_SWEEPS); // (0, 1], 1 the newest of the old
+  return { fill: 0.025, stroke: 0.06 + 0.12 * age, ring: 0.2 + 0.25 * age };
+}
+
+/** The km rings inside a disc: every `step` km (5, or 1 zoomed in) short of the rim. */
+export function ringKms(radius, step = 5) {
   const out = [];
-  for (let km = 5; km < radius - 0.5; km += 5) out.push(km);
+  for (let km = step; km < radius - 0.5; km += step) out.push(km);
   return out;
 }
+
+/** The km between rings at k px a km: 5, or 1 once a km is 30 px or more. */
+export const ringStep = (k) => (k >= 30 ? 1 : 5);
 
 /** Seconds as "just now", "14m", "2h 5m" or "3d 4h". */
 export function ago(s) {

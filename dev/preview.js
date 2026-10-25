@@ -26,10 +26,10 @@
 //   ?lanes=L  open the lanes map on scenario L (senara, in-trunk, in-mid, dozmary, petroc, new or partly), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it. &zoom=F opens it zoomed by F, &unfold with
 //             its key's card unfolded
-//   ?belt=B   open the belt map on scenario B (arriving, rcs-rim, sweeps, skiff, freighter-seen, docked-pair or compass),
+//   ?belt=B   open the belt map on scenario B (arriving, rcs-rim, sweeps, skiff, freighter-seen, docked-pair, compass or worked),
 //             emitting belt messages (and chart-contacts, for the last two) as
 //             src/station_map/belt.lua posts them, a tick a second while she moves, and belt-view { on: true };
-//             the bar's menu switches it
+//             the bar's menu switches it. &zoom=F opens it zoomed by F about her, as + does
 //   ?work=W   at a belt, the ship's work W (scanning, assaying, mining or idle) as the work message has it
 //             (src/station_map/work.lua): a scan or assay starts now and starts again a second after it
 //             ends, as a program at par would; the bar's menu switches it
@@ -66,6 +66,7 @@ import wenna from "../ui/data/wenna.js";
 import zennor from "../ui/data/zennor.js";
 import skyCases from "./sky-cases.json" with { type: "json" };
 import { DeckView } from "../ui/deck-view.js";
+import { BeltView } from "../ui/belt-view.js";
 import { LanesView } from "../ui/lanes-view.js";
 import { ModelView } from "../ui/model-view.js";
 import { lanesOf } from "../ui/lib/lanes.js";
@@ -534,6 +535,20 @@ if (q.has("zoom")) {
   }
 }
 
+// ?belt=B&zoom=F: once the belt map is drawn, zoom it by F about her (0.5 is twice as near), as + does
+if (q.has("belt") && q.has("zoom")) {
+  for (const name of ["setBelt", "setOn"]) {
+    const orig = BeltView.prototype[name];
+    BeltView.prototype[name] = function (...args) {
+      orig.apply(this, args);
+      if (!this.zoomed && this.shown) {
+        this.zoomed = true;
+        this.zoomBy(Number(q.get("zoom")));
+      }
+    };
+  }
+}
+
 // A visit's sightings, as the reducer makes them for a character with every mouth there on her charts:
 // every lane of the system, open if a trunk or listed open, closed if off the charts, all as of `at`.
 function visit(seen, system, open, at) {
@@ -700,6 +715,24 @@ function emitBelt(name) {
     fp.emit("chart-contacts", { at, system: "senara", contacts: [
       beltContact(host, ...host, { kind: "ship", id: "ship.7", name: "Full Measure", moving: false, size: 3, hull: "freighter", owner: "Annet's" }),
       beltContact(host, -6.8, 2.4, { kind: "ship", id: "ship.42", name: "Mule", moving: false, size: 1, hull: "skiff", owner: "Dilbo's" }),
+    ] });
+  } else if (name === "worked") {
+    // a skiff that has worked the Cinders for hours: a dozen sweeps, two visits, back beside her host
+    // (the last sweep saw the Old Reliable there, and the Magpie off to the west)
+    const at = Date.now() - 10 * 60000;
+    const here = [3.9, 0.2];
+    const sweeps = [[-9.5, -4], [-8.2, -5.6], [-10.6, -6.3], [-7.4, -3.1], [-9.1, -7.2], [-6.8, -6], [-8.8, -2.4],
+      [-10.2, -4.8], [1.4, 9.9], [2.6, 7.6], [3.6, 5.8], here].map(([x, y]) => ({ x, y, r: 5 }));
+    fp.emit("charts", senaraCharts(Date.now(), EDGE(Date.now())));
+    fp.emit("belt", beltMsg("cinders", "The Cinders", 16, ...here, {
+      track: [[[-12.2, -4.9], [-7.8, -3.9], [-9.6, -6.7], [-7.2, -5.3], [-9.5, -2.6]], [[-7, 4.6], [1.6, 6], here]],
+      sweeps,
+      left: { x: 4.1, y: 0.7, name: "Old Reliable", id: "ship.7", at: now - 40 * 60 },
+      seen: { at, x: here[0], y: here[1] },
+    }));
+    fp.emit("chart-contacts", { at, system: "senara", contacts: [
+      beltContact(here, 3.9, 0.7, { kind: "ship", id: "ship.7", name: "Old Reliable", moving: false, size: 3, hull: "freighter", owner: "Annet's" }),
+      beltContact(here, -1.9, 3.2, { kind: "ship", id: "ship.42", name: "Magpie", moving: false, size: 1, hull: "skiff", owner: "Dilbo's" }),
     ] });
   } else if (name === "compass") {
     // at Gannet with the Senara charts, the Maelor mouth's bearing known and a course plotted home:

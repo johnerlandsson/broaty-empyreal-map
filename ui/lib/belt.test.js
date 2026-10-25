@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { senaraCharts } from "../../dev/charts-fixture.js";
-import { Glide, HOME, ago, beltShipText, beltShips, cleanBelt, compassMarks, discFrame, headingOf, hereOf, placeText, ringKms, toBand } from "./belt.js";
+import { Glide, HOME, RECENT_SWEEPS, ZOOM_IN, ago, beltShipText, beltShips, cleanBelt, compassMarks, discFrame, fitView, headingOf, hereOf, placeNames, placeText, reshape, ringKms, ringStep, sweepTone, toBand, viewFrame } from "./belt.js";
 import { indexCharts, positionOf } from "./orbits.js";
 
 describe("placeText", () => {
@@ -71,6 +71,9 @@ describe("framing", () => {
     expect(ringKms(18)).toEqual([5, 10, 15]);
     expect(ringKms(15)).toEqual([5, 10]);
     expect(ringKms(15.6)).toEqual([5, 10, 15]);
+    expect(ringKms(4, 1)).toEqual([1, 2, 3]);
+    expect(ringStep(29)).toBe(5);
+    expect(ringStep(30)).toBe(1);
   });
 
   it("headings are clockwise from 0", () => {
@@ -259,5 +262,98 @@ describe("compassMarks", () => {
     expect(compassMarks(index, "gannet", null, now).next).toBe(null);
     expect(compassMarks(index, "gannet", { to: "gannet", at: now, seconds: 0 }, now).next).toBe(null);
     expect(compassMarks(index, "gannet", { to: "contact-2", name: "contact-2", at: now, seconds: 60 }, now).next).toBe(null);
+  });
+});
+
+describe("sweepTone", () => {
+  it("draws the newest sweeps as they always were", () => {
+    for (let i = 9; i >= 10 - RECENT_SWEEPS; i--) expect(sweepTone(i, 10)).toEqual({ fill: 0.08, stroke: 0.3, ring: 0.85 });
+    expect(sweepTone(0, 2)).toEqual({ fill: 0.08, stroke: 0.3, ring: 0.85 });
+  });
+
+  it("fades older ones, fainter the older", () => {
+    const old = sweepTone(0, 10);
+    const less = sweepTone(6, 10);
+    expect(old.fill).toBeLessThan(0.08);
+    expect(old.stroke).toBeLessThan(less.stroke);
+    expect(less.stroke).toBeLessThan(0.3);
+    expect(old.ring).toBeLessThan(less.ring);
+  });
+});
+
+describe("placeNames", () => {
+  const disc = { cx: 200, cy: 150, clear: 106 };
+  const top = (deg) => ({ x: 200 + Math.sin((deg * Math.PI) / 180) * 112, y: 150 - Math.cos((deg * Math.PI) / 180) * 112, deg, wide: 40, outside: true });
+  const box = (p, wide) => (p.anchor === "start" ? [p.x, p.y - 8, p.x + wide, p.y + 2] : [p.x - wide, p.y - 8, p.x, p.y + 2]);
+  const meets = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+
+  it("names a lone mark beside it, outward", () => {
+    const [p] = placeNames([{ x: 312, y: 150, deg: 90, wide: 40 }], disc, 400, 300);
+    expect(p).toEqual({ x: 319, y: 153, anchor: "start", moved: false });
+    const [q] = placeNames([{ x: 88, y: 150, deg: 270, wide: 40 }], disc, 400, 300);
+    expect(q.anchor).toBe("end");
+  });
+
+  it("keeps a crowd's names apart, and off the disc", () => {
+    const items = [354, 2, 9, 16].map(top);
+    const spots = placeNames(items, disc, 400, 300);
+    const boxes = spots.map((p, i) => p && box(p, items[i].wide)).filter(Boolean);
+    expect(boxes.length).toBeGreaterThan(2);
+    for (let i = 0; i < boxes.length; i++) for (let j = 0; j < i; j++) expect(meets(boxes[i], boxes[j])).toBe(false);
+    for (const b of boxes) {
+      const nx = Math.min(Math.max(200, b[0]), b[2]);
+      const ny = Math.min(Math.max(150, b[1]), b[3]);
+      expect(Math.hypot(nx - 200, ny - 150)).toBeGreaterThanOrEqual(106);
+    }
+  });
+
+  it("keeps clear of what it's told to, and of the band's edges", () => {
+    const [p] = placeNames([{ x: 312, y: 150, deg: 90, wide: 40 }], disc, 400, 300, [[300, 140, 400, 160]]);
+    expect(meets(box(p, 40), [300, 140, 400, 160])).toBe(false);
+    const [q] = placeNames([{ x: 380, y: 150, deg: 90, wide: 40 }], disc, 400, 300);
+    expect(q.anchor).toBe("end");
+  });
+
+  it("leaves a name out when there's nowhere for it, unless it must be named", () => {
+    expect(placeNames([{ x: 312, y: 150, deg: 90, wide: 40 }], disc, 400, 300, [[0, 0, 400, 300]])).toEqual([null]);
+    const [p] = placeNames([{ x: 312, y: 150, wide: 40, must: true }], disc, 400, 300, [[0, 0, 400, 300]]);
+    expect(p).toEqual({ x: 319, y: 153, anchor: "start", moved: false });
+  });
+
+  it("moves a ship's two lines clear of another's", () => {
+    const two = { wide: 90, lines: 2, gap: 10, base: 1, must: true };
+    const [a, b] = placeNames([{ x: 150, y: 150, ...two }, { x: 160, y: 158, ...two }], disc, 400, 300);
+    const tall = (p) => (p.anchor === "start" ? [p.x, p.y - 8, p.x + 90, p.y + 12] : [p.x - 90, p.y - 8, p.x, p.y + 12]);
+    expect(meets(tall(a), tall(b))).toBe(false);
+    expect(b.moved).toBe(true);
+  });
+});
+
+describe("the view", () => {
+  it("fits the whole belt as discFrame does", () => {
+    const vb = fitView(600, 300, 18);
+    const f = viewFrame(vb, 600, 300, 18);
+    const d = discFrame(600, 300, 18);
+    for (const key of ["cx", "cy", "k", "r"]) expect(f[key]).toBeCloseTo(d[key], 9);
+    expect(ZOOM_IN).toBe(6);
+  });
+
+  it("draws a zoomed view's km where it shows them", () => {
+    // three times in, centred on (6, -2) km: that point is the band's middle, and a km is 3x the px
+    const fit = fitView(600, 300, 18);
+    const vb = [6 - fit[2] / 6, 2 - fit[3] / 6, fit[2] / 3, fit[3] / 3];
+    const f = viewFrame(vb, 600, 300, 18);
+    const [x, y] = toBand(f, 6, -2);
+    expect(x).toBeCloseTo(300, 9);
+    expect(y).toBeCloseTo(150, 9);
+    expect(f.k).toBeCloseTo(3 * discFrame(600, 300, 18).k, 9);
+  });
+
+  it("keeps a view's middle and width as the band changes shape", () => {
+    const v = reshape([10, 20, 30, 15], 900, 300);
+    expect(v[0] + v[2] / 2).toBeCloseTo(25, 9);
+    expect(v[1] + v[3] / 2).toBeCloseTo(27.5, 9);
+    expect(v[2]).toBeCloseTo(30, 9);
+    expect(v[3]).toBeCloseTo(10, 9); // the band's 3:1
   });
 });

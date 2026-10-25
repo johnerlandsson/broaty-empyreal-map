@@ -35,7 +35,8 @@ switches the others off. With the auto_view setting on:
 
 A disconnect hides the button and the map and leaves it on or off as it was.
 While it's on, the space scene underneath keeps its state but doesn't draw.
-The map doesn't zoom or pan: the disc always fits the band.
+It opens on the whole belt. Wheel, drag and its **+ − ⌂** buttons zoom and
+pan it, as the lanes map (below, Top band).
 
 The map shows only what the player knows. No rocks and no worked-out areas.
 Other ships only as the last sweep saw them: where, named as it named them,
@@ -166,23 +167,39 @@ chart), with option B's sweep discs:
   mouth a Glass double chevron pointing out (a closed one's dashed in Dim).
   Named beside it, outward, in Dim, 8.5, with a Background halo: "T.I.S.S. ·
   home", "Orrin Station", "Senara", "Tamsin", "Maelor" ("Petroc · closed").
-  A name that would run off the band goes the other side. Marks nearer than
+  Marks nearer than
   13 px along the ring are spread evenly about their middle (`spreadOnEdge`,
   as the chart's mouths), each with a Dim leader at .5 back to its true
   bearing.
 - **Where she'd travel next:** a small amber chevron with the glow, among the
   marks, pointing out along the way her plotted course goes, an amber leader
   at .6 from the rim, and the destination's name beside it in amber.
+- **Names don't overprint** (`placeNames`): every name on the map, the
+  ring's, the ships', "where you left" and the docked host's, is placed
+  together, her host and the sweep's ships first, then where she'd go next,
+  then the ring's marks in their order. Each takes the first spot clear of the
+  names placed before it, the ring's marks and degrees, her, the ships'
+  brackets, the belt's words top left and the buttons top right: beside its
+  mark, then a line or more further out or in, then slid along, then the other
+  side. One moved off its mark's line keeps a Dim hair to it at .4. A ring
+  name with nowhere clear is left off (its mark stays); a ship's always goes
+  somewhere.
 - **Core:** a small Star cross.
-- **Sweeps:** each the 5 km disc it covered, Sensors green filled at .08 and
-  stroked at .3, so the ground you've swept shows where they overlap. Without
-  a known range, a 3.5 px ring in Sensors green.
+- **Sweeps:** each the 5 km disc it covered, Sensors green. The newest three
+  are filled at .08 and stroked at .3, so the ground you've swept lately shows
+  where they overlap; older ones fade, filled at .025 and stroked from .06 to
+  .18, the older the fainter (`sweepTone`), so a belt worked for hours isn't
+  one bright blob (option B of `belt-declutter-mockup.html`, 2026-10-25).
+  Without a known range, a 3.5 px ring in Sensors green, .85 for the newest,
+  .2 to .45 for older ones.
 - **Where you left your host:** a Glass diamond outline, the 5 km alongside
-  ring she needs to be within to dock again dashed `3 3` in Glass at .45, and
+  ring she needs to be within to dock again dashed `3 3` in Glass at .45 (left
+  out once she's within it: her sensor ring is there already), and
   beside it in Dim "where you left the Full Measure", with "last seen 14m ago"
   under it at .75. It's labelled last seen because the host may have moved.
-- **Her track:** solid amber at .3, 2 px, as the chart's stretch behind her
-  (§13.1), a polyline a visit, the latest running to where she's drawn now.
+- **Her track:** solid amber, 2 px, as the chart's stretch behind her
+  (§13.1), a polyline a visit, the latest at .3 running to where she's drawn
+  now, earlier visits at .15.
 - **The sweep's ships:** option A of
   `docs/maps/reference/belt-ships-mockup.html` (picked 2026-10-25;
   `belt-ships-options.png` is the render): each as the chart draws her
@@ -192,11 +209,12 @@ chart), with option B's sweep discs:
   chart's light Dim, 8.5: "Full Measure · 18.6 km, 53°" (km to a tenth, whole
   degrees, as `rcs 53 18.6` takes them); a dark ship's by contact number in
   Dim. Under it at .75, 8, the hull's last word, "under drive" if she was
-  moving, and the age: "freighter · seen 4m ago", "seen just now". Words go
-  left of the mark where they'd run off the band.
+  moving, and the age: "freighter · seen 4m ago", "seen just now". Placed
+  with the other names (above).
 - **Your host, seen since:** if a sweep after you left her saw your host (by
-  her id), the "where you left" mark and words dim to .55, and a dotted `1 3`
-  Glass line at .35 runs from the diamond to where the sweep saw her.
+  her id), the sweep's mark takes the place of "where you left": no diamond
+  and no words, and the dashed alongside ring goes round where the sweep saw
+  her, unless she's within it. (Both at once read as two ships, 2026-10-25.)
 - **Docked at her host:** her chevron at .8 scale, upright and pulsing,
   inside Glass brackets 7 px across at the host's place, named "Full Measure"
   with "docked" under it. No sensor ring and no track running on to her.
@@ -210,6 +228,17 @@ chart), with option B's sweep discs:
   "docked at the Full Measure", and with the host's place, "docked at the
   Full Measure," over "9 km out from the core, bearing 151°". Words keep a
   Background halo, so marks under them don't cut them.
+- **Zoom and pan** (option A of `belt-zoom-mockup.html`, picked 2026-10-25):
+  wheel, drag and **+ − ⌂** top right (`zoomButtons`, as the lanes map), from
+  the whole belt to six times in. Everything zooms together, the rim and the
+  bearing ring with its marks too, so zoomed in on her they go off the band
+  until you zoom back out; marks and names stay their size. The km rings go
+  every 1 km once a km is 30 px. **+** and **−** zoom about her while the view
+  follows her, the wheel about the pointer. Zoomed in, the view follows her
+  as the chart does (`followStep`: re-centred when she's further off the middle
+  than 35%, measured from where the zoom left her) until you drag it; then
+  it's yours. ⌂, switching the map on, or another belt shows the whole belt
+  again. A view of yours keeps its middle and width as the band changes shape.
 - **Live:** redrawn once a second while it's shown (the host's "last seen"
   and the ships' "seen" age, and the bearing ring's marks go round with their
   orbits), and every 100 ms while she glides.
@@ -239,9 +268,11 @@ Unchanged: it's the bottom band's.
   switching each other off, auto_view's arrival and move starts
   (`follow_belt`), and `storage`.
 - `ui/lib/belt.js`: the message's cleaning, `placeText`, the disc's framing,
-  `Glide`, her place between ticks, `beltShips` and `beltShipText`, the
-  sweep's ships placed and worded, and `compassMarks`, the bearing ring's
-  marks and where she'd travel next. Pure, tested in `belt.test.js` (with the
+  `fitView`, `viewFrame` and `reshape`, the view and its frame, `Glide`, her
+  place between ticks, `beltShips` and `beltShipText`, the
+  sweep's ships placed and worded, `compassMarks`, the bearing ring's marks
+  and where she'd travel next, `sweepTone`, how strongly each sweep is drawn,
+  and `placeNames`, where every name goes. Pure, tested in `belt.test.js` (with the
   check that a place in a belt is its core plus her `x` and `y` on the star's
   axes, and that a mouth's bearing comes from its place, not `edge.bearing`).
 - `ui/belt-view.js`: the SVG and the button. `setContacts` takes the sweep,
@@ -253,10 +284,15 @@ Unchanged: it's the bottom band's.
   `freighter-seen`: a skiff whose sweep saw her freighter again, a dark
   contact and the Mule under drive; `docked-pair`: docked at the Full Measure
   8.7 km out; `compass`: Gannet with the Senara charts, the Maelor mouth and a
-  course plotted home) shows it without the game.
+  course plotted home; `worked`: the Cinders after hours of sweeps, back
+  beside her host, the Magpie on the last sweep) shows it without the game;
+  `&zoom=0.33` opens it three times in on her.
 - The options it was picked from: `docs/maps/reference/belt-mockup.html`; for
   the ships and the docked pair, `belt-ships-mockup.html`; for the bearing
-  ring's marks, `belt-compass-mockup.html` (`belt-compass-options.png`).
+  ring's marks, `belt-compass-mockup.html` (`belt-compass-options.png`); for
+  the older sweeps fading, `belt-declutter-mockup.html` (option B,
+  `belt-declutter-options.png`); for zooming, `belt-zoom-mockup.html` (option
+  A, `belt-zoom-options.png`).
 
 ## Where it differs from the style guide
 
@@ -264,8 +300,6 @@ Unchanged: it's the bottom band's.
   are the player's own log, the thing the game leaves them to keep. They're
   quiet next to her (amber at .3 and green washes, never pulsing), so only
   she is lit.
-- **No zoom or pan** (§8.3): a belt is at most 19 km across and always fits
-  the band.
 - **No tooltips** (§13.4): every mark is named, or explained by this doc.
 - **Other ships aren't "where she is now"**: as on the chart, a ship is drawn
   where the last sweep saw her and aged, since the game doesn't say more.
