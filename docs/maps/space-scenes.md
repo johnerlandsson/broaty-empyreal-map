@@ -274,7 +274,7 @@ fades with them:
   nearest), easing in and out (1.6 per second) and turning to a new heading
   (2 per second) in place of the idle drift. Up the band is straight out from
   the core, so `rcs out` streams the rocks down, `rcs in` up, and a bearing
-  round the core sideways; a belt's own bearings mean nothing outside it.
+  round the core sideways.
   Until her place first changes (a second into a move) the rocks drift as
   ever. Closing on a rock, there's no beam: it comes on once she's beside it.
   Nothing else marks it: no wakes, no thruster glow (option A of

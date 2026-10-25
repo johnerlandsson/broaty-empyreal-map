@@ -529,7 +529,7 @@ styled and shown like it, and drawn as the chart is:
 - **The disc:** the rim at the belt's radius in the middle Tone, 1.2 px;
   rings every 5 km dotted `1 4` in Orbit, labelled in Dim, 8; ticks outside
   the rim every 10°, longer and lighter every 30°, with 0°, 90°, 180° and
-  270° in Dim, 8. The belt's 0° is up and the disc never turns.
+  270° in Dim, 8. The system's 0° is up and the disc never turns.
 - **The core:** a small Star cross.
 - **Her:** the amber chevron (§13.1), pointing the way she last moved.
   Between the game's ticks she glides, never jumps.
@@ -542,11 +542,16 @@ styled and shown like it, and drawn as the chart is:
   in Dim.
 - **Her sensors' reach:** dashed `4 3` in Sensors at .5, drawn only when the
   game has told the player the range (5 km, with no sensor array fitted).
+- **The last sweep's ships:** as on the chart (§13), Glass brackets round a
+  dot, dark ones in Dim; named with the range and bearing from her now and
+  aged ("seen 4m ago"). Your host seen since you left her: the "where you
+  left" mark dims to .55, with a dotted Glass line on to her.
+- **Docked at her host:** her chevron at .8 inside the host's Glass brackets.
 - **Words:** the belt's name in capitals and where she is in the game's
   words ("11 km out from the core, bearing 210°"), top left in Text, with a
   Background halo.
-- **Never:** rocks, worked-out ground, other ships, or a range the game
-  hasn't given.
+- **Never:** rocks, worked-out ground, a ship moved on from where the sweep
+  saw her, or a range the game hasn't given.
 
 ## 14. Adding a map
 

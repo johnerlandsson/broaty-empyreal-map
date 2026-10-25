@@ -1,6 +1,6 @@
 # Sweep contacts on the system chart
 
-*Status: built. Last updated 2026-10-24.*
+*Status: built. Last updated 2026-10-25.*
 
 ## What it is
 
@@ -17,19 +17,24 @@ sweep moves her.
 
 ## Where its data comes from
 
-`Space.Contacts` (Empyreal's gmcp.md §8.5, 780d893, c041930 and 18769cb). It
-comes once a sweep, for the ship you operate: `at` (the sweep's wall-clock ms),
-`system`, and `contacts`, each with `kind` (`body`, `station`, `mouth`, `belt`,
-`ship` or `unknown`), `id`, `name`, `km` from her at the sweep, `x` and `y` in
-the star's frame then, `hidden` (the body that eclipsed it) and `missed` (a
-noisy sweep got no return). A ship also has `moving`, `size`, `hull` and
+`Space.Contacts` (Empyreal's gmcp.md §8.5, 780d893, c041930, 18769cb and
+3bece7c). It comes once a sweep, for the ship you operate: `at` (the sweep's
+wall-clock ms), `system`, and `contacts`, each with `kind` (`body`, `station`,
+`mouth`, `belt`, `ship` or `unknown`), `id`, `name`, `km` from her at the sweep,
+`bearing`, which way it was from her then (degrees clockwise from the system's
+zero, +y, to a tenth; null on a sweep saved before 3bece7c), `x` and `y` in the
+star's frame then (which gmcp.md says "may go"), `hidden` (the body that
+eclipsed it) and `missed` (a noisy sweep got no return). A ship also has `moving`, `size`, `hull` and
 `owner`. It's null when there's no ship or no sweep in the system she's in, and
 the game doesn't move it on with time.
 
 `src/station_map/charts.lua` cleans it (`C.space_contacts`): it drops a contact
-it can't place and keeps the rest as sent, except a dark ship's. An `unknown`
-contact keeps only her contact number (as both `id` and `name`), `km`, `x`, `y`,
-`hidden` and `missed`, so nothing more of her ever reaches the panel. `src/main.lua`
+it can't place (neither `km` and `bearing` nor `x` and `y`) and keeps the rest as
+sent, except a dark ship's. An `unknown` contact keeps only her contact number
+(as both `id` and `name`), `km`, `bearing`, `x`, `y`, `hidden` and `missed`, so
+nothing more of her ever reaches the panel. As a sweep with a new `at` comes it
+keeps her ship as it was then (`her`), the same sweep again keeping the one it
+had. `src/main.lua`
 posts it as `chart-contacts` when it changes, replays it on `ready`, and posts
 null on a disconnect. `plugin.toml` lists `Space.Contacts` in `gmcp_access`. The
 `Space 1` advertise already covers it.
@@ -37,13 +42,22 @@ null on a disconnect. `plugin.toml` lists `Space.Contacts` in `gmcp_access`. The
 The chart draws a sweep only when it's of the system in the charts. A sweep
 from the last system stays hidden until the game replaces it.
 
+**Where each contact goes** (navigation.md decision 18): every frame in a system
+has the star's axes, so a contact is where the chart puts her at the sweep (her
+ship as `her` had it, placed at `at`, `shipFix`) plus its `km` along its
+`bearing`. Bearing 0 is +y, up on the chart, and 90° is +x, right: clockwise on
+screen, as the game counts. Where she can't be placed then, or a contact has no
+bearing, its `x` and `y` are used. In a belt the chart draws her at the belt, so
+a contact is off the belt as it was off her. The belt map (belt.md) places the
+same sweep's ships in the belt the same way.
+
 ## What the chart draws
 
 Look B of `docs/maps/reference/contacts-mockup.html` (picked 2026-10-24;
 `contacts-options.png` is the render):
 
 - **A named ship** (`ship`: by transponder, or within 20 km): a target's four
-  corner brackets in Glass round a Glass dot, at `x`/`y`. Her name is beside it
+  corner brackets in Glass round a Glass dot, where the sweep saw her. Her name is beside it
   in a light Dim. A second, smaller line gives her hull's last word, and adds
   "under drive" when she was moving: "freighter · under drive". Under drive, the
   brackets also have a short tick out of each side. Hovered, the tooltip says
@@ -98,8 +112,9 @@ no line.
 - `src/station_map/charts.lua`: `C.space_contacts`, `C.contacts`. A disconnect
   clears the sweep with the charts. Tests are in `tests/charts_test.lua`, and
   the wiring tests are in `tests/main_test.lua`.
-- `ui/lib/contacts.js`: pure. `sweepOf` (the sweep against the charts'
-  system), the wording (`shipLine`, `shipTip`, `markText`, `sweepAge`), `chased`
+- `ui/lib/contacts.js`: pure. `along` and `placeOf` (a contact from her place
+  by km and bearing), `sweepOf` (the sweep against the charts' system, placed
+  from her), the wording (`shipLine`, `shipTip`, `markText`, `sweepAge`), `chased`
   and the card's text (`card`). Tests are in `ui/lib/contacts.test.js`, chases
   included.
 - `ui/lib/orbits.js`: `positionOf` and `frameOf` read `index.seen`.

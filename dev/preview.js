@@ -26,7 +26,8 @@
 //   ?lanes=L  open the lanes map on scenario L (senara, in-trunk, in-mid, dozmary, petroc, new or partly), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it. &zoom=F opens it zoomed by F, &unfold with
 //             its key's card unfolded
-//   ?belt=B   open the belt map on scenario B (arriving, rcs-rim, sweeps or skiff), emitting belt messages as
+//   ?belt=B   open the belt map on scenario B (arriving, rcs-rim, sweeps, skiff, freighter-seen or docked-pair),
+//             emitting belt messages (and chart-contacts, for the last two) as
 //             src/station_map/belt.lua posts them, a tick a second while she moves, and belt-view { on: true };
 //             the bar's menu switches it
 //   ?work=W   at a belt, the ship's work W (scanning, assaying, mining or idle) as the work message has it
@@ -616,6 +617,16 @@ function beltMsg(id, name, radius, x, y, log, extra = {}) {
   return { id, name, radius, place, host: null, array: false, log: { track: [], sweeps: [], ...log }, ...extra };
 }
 
+/** A Space.Contacts ship as charts.lua cleans it, seen at (x, y) in the belt from her at `from`: km
+ *  and bearing to a tenth, as gmcp.ts sends them, and no x or y. */
+function beltContact(from, x, y, c) {
+  const dx = x - from[0];
+  const dy = y - from[1];
+  const tenth = (n) => Math.round(n * 10) / 10;
+  const bearing = tenth((((Math.atan2(dx, dy) * 180) / Math.PI) + 360) % 360) % 360;
+  return { hidden: null, missed: false, ...c, km: tenth(Math.hypot(dx, dy)), bearing };
+}
+
 /** km along a bearing from (x, y). */
 const along = (x, y, bearing, km) => {
   const a = (bearing * Math.PI) / 180;
@@ -631,6 +642,7 @@ function emitBelt(name) {
   const now = Math.floor(Date.now() / 1000);
   sceneMenu.value = "belt";
   emitScene("belt");
+  fp.emit("chart-contacts", null);
   if (name === "arriving") {
     // just in at Gannet, mid-belt: one place, nothing logged yet
     fp.emit("belt", beltMsg("gannet-3", "Gannet Belt", 18, 6.1, -3.4, { track: [[[6.1, -3.4]]] }));
@@ -659,6 +671,36 @@ function emitBelt(name) {
       track: [[[7.2, 5.1], [9.7, 0.8], [6.0, -4.0], [-5.5, -9.5]]],
       sweeps: [{ x: 7.2, y: 5.1, r: 5 }, { x: 9.7, y: 0.8, r: 5 }, { x: 6.0, y: -4.0, r: 5 }],
     }));
+  } else if (name === "freighter-seen") {
+    // a skiff at Gannet 14 minutes after leaving her freighter; a sweep 4 minutes ago saw the
+    // freighter again, a dark contact and the Mule under drive; she's moved on since
+    const at = Date.now() - 4 * 60000;
+    const from = [-1.5, -3.5];
+    fp.emit("belt", beltMsg("gannet-3", "Gannet Belt", 18, -5.5, -9.5, {
+      track: [[[7.2, 5.1], [3, -1], from, [-5.5, -9.5]]],
+      sweeps: [{ x: from[0], y: from[1], r: 5 }],
+      left: { x: 7.2, y: 5.1, name: "Full Measure", id: "ship.7", at: now - 14 * 60 },
+      seen: { at, x: from[0], y: from[1] },
+    }));
+    fp.emit("chart-contacts", { at, system: "senara", contacts: [
+      beltContact(from, 9.4, 1.6, { kind: "ship", id: "ship.7", name: "Full Measure", moving: false, size: 3, hull: "freighter", owner: "Annet's" }),
+      beltContact(from, -12.5, 3.2, { kind: "unknown", id: "contact-1", name: "contact-1" }),
+      beltContact(from, 2.5, -13.4, { kind: "ship", id: "ship.42", name: "Mule", moving: true, size: 1, hull: "skiff", owner: "Dilbo's" }),
+    ] });
+  } else if (name === "docked-pair") {
+    // docked at her freighter 8.7 km out at Gannet; a sweep 2 minutes ago saw the Mule (and her host)
+    const at = Date.now() - 2 * 60000;
+    const host = [4.2, -7.6];
+    const m = beltMsg("gannet-3", "Gannet Belt", 18, null, null, {
+      track: [[[-3, 2], host]],
+      seen: { at, x: host[0], y: host[1] },
+    }, { host: "Full Measure", host_id: "ship.7" });
+    m.docked = beltMsg("", "", 18, ...host, {}).place;
+    fp.emit("belt", m);
+    fp.emit("chart-contacts", { at, system: "senara", contacts: [
+      beltContact(host, ...host, { kind: "ship", id: "ship.7", name: "Full Measure", moving: false, size: 3, hull: "freighter", owner: "Annet's" }),
+      beltContact(host, -6.8, 2.4, { kind: "ship", id: "ship.42", name: "Mule", moving: false, size: 1, hull: "skiff", owner: "Dilbo's" }),
+    ] });
   } else if (name === "skiff") {
     // a skiff with a sensor array, away from her freighter in the Anvil: no range to draw
     fp.emit("belt", beltMsg("anvil-1", "The Anvil", 19, -8.2, 3.9, {

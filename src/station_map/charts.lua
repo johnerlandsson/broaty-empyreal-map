@@ -144,10 +144,13 @@ end
 
 local KINDS = { body = true, station = true, mouth = true, belt = true, ship = true, unknown = true }
 
+-- A contact is placed by its km and bearing from her at the sweep (gmcp.md §8.5, navigation.md
+-- decision 18), or by x and y, which "may go", on a sweep from before bearings.
 local function clean_contact(c)
-  local kind, id, x, y = str(c.kind), str(c.id), num(c.x), num(c.y)
-  if not (kind and KINDS[kind] and id and x and y) then return nil end
-  local out = { kind = kind, id = id, name = str(c.name) or id, km = num(c.km), x = x, y = y,
+  local kind, id, x, y, km, bearing = str(c.kind), str(c.id), num(c.x), num(c.y), num(c.km), num(c.bearing)
+  if not (x and y) then x, y = nil, nil end
+  if not (kind and KINDS[kind] and id and ((km and bearing) or x)) then return nil end
+  local out = { kind = kind, id = id, name = str(c.name) or id, km = km, bearing = bearing, x = x, y = y,
     hidden = str(c.hidden), missed = c.missed == true }
   if kind == 'ship' then
     out.moving, out.size, out.hull, out.owner = bool(c.moving), num(c.size), str(c.hull), str(c.owner)
@@ -157,11 +160,21 @@ local function clean_contact(c)
   return out
 end
 
+-- Her ship as she was when a sweep came (the chart places her at its `at` from it, and its contacts
+-- from her); the same sweep again keeps the one it had.
+local function her_at(state, old, at)
+  if old and old.at == at then return old.her end
+  if not state.ship then return nil end
+  local c = {}
+  for k, v in pairs(state.ship) do c[k] = v end
+  return c
+end
+
 function C.space_contacts(state, data)
   local old = state.contacts
   local new = nil
   if type(data) == 'table' and num(data.at) and str(data.system) then
-    new = { at = num(data.at), system = str(data.system), contacts = {} }
+    new = { at = num(data.at), system = str(data.system), her = her_at(state, old, num(data.at)), contacts = {} }
     if type(data.contacts) == 'table' then
       for _, c in ipairs(data.contacts) do
         local clean = type(c) == 'table' and clean_contact(c)

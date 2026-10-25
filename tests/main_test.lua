@@ -973,6 +973,16 @@ test('Space.Contacts posts chart-contacts when the sweep changes', function()
   eq(post_named(env, 'chart-contacts').data, nil)
 end)
 
+test('a sweep at a belt posts the belt with where she was as it came, and stores it', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Status']('Ship.Status', at_belt(3, 4))
+  env.posts = {}
+  env.gmcp_handlers['Space.Contacts']('Space.Contacts', SWEEP)
+  eq(names(env), { 'chart-contacts', 'belt' })
+  eq(post_named(env, 'belt').data.log.seen, { at = 5000, x = 3, y = 4 })
+  eq(env.stored.belts['gannet-3'].seen.at, 5000)
+end)
+
 test('the sweep is replayed on ready and cleared on disconnect', function()
   local env = boot()
   env.gmcp_handlers['Space.Contacts']('Space.Contacts', SWEEP)

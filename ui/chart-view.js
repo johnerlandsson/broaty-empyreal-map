@@ -34,7 +34,7 @@ import {
   systemRadius,
 } from "./lib/orbits.js";
 import { courseCard } from "./lib/course.js";
-import { attachPanZoom, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
+import { attachPanZoom, brackets, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
 import { card as sweepText, chased, isDark, markText, nameOf as contactName, shipLine, shipTip, sweepOf } from "./lib/contacts.js";
 
 const HL = "#ffb347";
@@ -290,10 +290,26 @@ export class ChartView {
   }
 
   /** Index the sweep against the charts: only a sweep of their system is drawn, and its ships'
-   *  positions go on the index so a chase's line can end where she was seen. */
+   *  positions go on the index so a chase's line can end where she was seen. Each contact is where
+   *  the chart puts her at the sweep (her ship as charts.lua kept it then, at its `at`) plus its km
+   *  and bearing; its x and y where she can't be placed or it has no bearing. A chase under way at
+   *  the sweep places her by the ships' x and y first. */
   attachSweep() {
-    this.sweep = this.index ? sweepOf(this.contacts, this.index.system) : null;
-    if (this.index) this.index.seen = this.sweep?.seen ?? null;
+    const index = this.index;
+    if (!index) {
+      this.sweep = null;
+      return;
+    }
+    index.seen = sweepOf(this.contacts, index.system)?.seen ?? null;
+    let from = null;
+    try {
+      const pos = shipFix(index, this.contacts?.her, this.contacts?.at).pos;
+      if (pos?.every(Number.isFinite)) from = pos;
+    } catch {
+      from = null;
+    }
+    this.sweep = sweepOf(this.contacts, index.system, from);
+    index.seen = this.sweep?.seen ?? null;
   }
 
   /** Switch the chart on or off (from the Lua side's replay or the ◎ button). */
@@ -649,7 +665,7 @@ export class ChartView {
         const it = index.items.get(c.id);
         if (it && hidden(it)) return; // folded into its parent at this zoom
         const at = it && markOf(it.kind) === "port" ? ground(c.id) : null;
-        const p = at ? [at.x, at.y] : P(pos(c.id) ?? [c.x, c.y]);
+        const p = at ? [at.x, at.y] : P(pos(c.id) ?? sweep.where.get(c.id));
         const [x, y] = p;
         if (!it) el("rect", { x: x - 2.6, y: y - 2.6, width: 5.2, height: 5.2, fill: GLASS, opacity: SEEN_DIM, transform: `rotate(45 ${x} ${y})` }, marks);
         if (c.hidden) {
@@ -678,7 +694,8 @@ export class ChartView {
     // her contact number alone, for a dark one
     for (const c of sweep?.ships ?? []) {
       safe(() => {
-        const [x, y] = P([c.x, c.y]);
+        const seenAt = sweep.where.get(c.id);
+        const [x, y] = P(seenAt);
         const dark = isDark(c);
         const col = dark ? DIM : GLASS;
         const g = el("g", {}, marks);
@@ -691,7 +708,7 @@ export class ChartView {
         label(x + 10, y + 1, contactName(c), "start", [x, y - 9]).setAttribute("fill", dark ? DIM : "#aebccc");
         const line = shipLine(c);
         if (line) label(x + 10, y + 11, line, "start", [x, y - 19]).setAttribute("font-size", 9);
-        offView.push([contactName(c), [c.x, c.y]]);
+        offView.push([contactName(c), seenAt]);
       });
     }
 
@@ -969,16 +986,6 @@ function chevron(parent, p, angle) {
     },
     parent,
   );
-}
-
-/** A target's four corner brackets round (x, y), half-width r, each arm k long (px). */
-function brackets(x, y, r, k) {
-  return [
-    `M${x - r},${y - r + k} V${y - r} H${x - r + k}`,
-    `M${x + r - k},${y - r} H${x + r} V${y - r + k}`,
-    `M${x + r},${y + r - k} V${y + r} H${x + r - k}`,
-    `M${x - r + k},${y + r} H${x - r} V${y + r - k}`,
-  ].join(" ");
 }
 
 /** Km from the parent on an orbit, at polar angle phi (radians, from the parent, y up). */

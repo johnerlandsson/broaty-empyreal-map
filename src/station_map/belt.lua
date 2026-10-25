@@ -1,8 +1,10 @@
 -- Belt reducer: folds Ship.Status `belt` (mining.md §2.3, gmcp.md §8.2: her place in the belt she's
--- at, km in the belt's own frame, and her distance and bearing from its core) and her location, the
--- belt's id, into where she is in it; and keeps, per belt, the player's own log of it: the track of
--- her places, a sweep where she was as each scan ran to its end (Ship.Devices), and where she left
--- her host (a skiff undocking from a ship at the belt starts where her host is). The game leaves
+-- at, km from its core along the system's axes, and her distance and bearing from it) and her
+-- location, the belt's id, into where she is in it, or where her host is while she's docked (`host`'s
+-- `belt`); and keeps, per belt, the player's own log of it: the track of her places, a sweep where she
+-- was as each scan ran to its end (Ship.Devices), where she left her host (a skiff undocking from a
+-- ship at the belt starts where her host is), and where she was when the last sweep's picture came
+-- (Space.Contacts: the panel places its ships from there by their km and bearing). The game leaves
 -- what's been worked to players ("players keep track of that themselves"); this is that, never game
 -- data. main.lua keeps the logs in Mallard's storage; a belt's log goes once its system's charts
 -- no longer list it (it's closed, and its id never comes back).
@@ -100,20 +102,25 @@ function B.ship_status(state, data, now)
   local before_id, before_place, before_host = state.id, state.place, state.host
   local logged = false
   if type(data) ~= 'table' then
-    state.id, state.place, state.host, state.scan = nil, nil, nil, nil
+    state.id, state.place, state.host, state.host_id, state.docked, state.scan = nil, nil, nil, nil, nil, nil
     return before_id ~= nil or before_place ~= nil or before_host ~= nil
   end
   local host = type(data.host) == 'table' and data.host or nil
   local place = (not host) and place_of(data.belt) or nil
+  local docked = nil -- where her host is in the belt, while she's docked at her there
   local id = nil
   if place then
     id = str(data.location)
     if not id then place = nil end
   elseif host then
     local loc = str(host.location)
-    if loc and state.belts[loc] and host.docked ~= true and not str(host.destination) then id = loc end
+    if loc and host.docked ~= true and not str(host.destination) then
+      docked = place_of(host.belt)
+      if docked or state.belts[loc] then id = loc end
+    end
   end
   local host_name = host and (str(host.name) or 'host') or nil
+  local host_id = host and str(host.id) or nil
 
   if id and id ~= before_id then state.cue = 'arrived' end
   if place then
@@ -122,24 +129,43 @@ function B.ship_status(state, data, now)
     log.name = state.names[id] or log.name
     -- just off her host, here at the belt: her first place is where the host was
     if before_host and before_id == id and not before_place then
-      log.left = { x = place.x, y = place.y, name = before_host, at = now }
+      log.left = { x = place.x, y = place.y, name = before_host, id = state.host_id, at = now }
       logged = true
     end
     local fresh = before_place == nil or before_id ~= id
     if add_point(log, place.x, place.y, fresh) then logged = true end
   elseif id and host_name then
     local log = state.logs[id]
+    if docked and log then log.radius = docked.radius end
     if log and log.left and log.left.name == host_name then
       log.left = nil -- docked back at her: where she was left is where she is
       logged = true
     end
   end
-  state.id, state.place, state.host = id, place, host_name
+  local before_docked = state.docked
+  state.id, state.place, state.host, state.host_id, state.docked = id, place, host_name, host_id, docked
   if logged then state.unsaved = true end
-  local moved = (place and before_place) and (place.x ~= before_place.x or place.y ~= before_place.y
-    or place.km ~= before_place.km or place.bearing ~= before_place.bearing or place.radius ~= before_place.radius)
+  local function moved(a, b)
+    if (a == nil) ~= (b == nil) then return true end
+    return a ~= nil and (a.x ~= b.x or a.y ~= b.y or a.km ~= b.km or a.bearing ~= b.bearing or a.radius ~= b.radius)
+  end
   return logged or id ~= before_id or host_name ~= before_host
-    or (place == nil) ~= (before_place == nil) or moved == true
+    or moved(place, before_place) or moved(docked, before_docked)
+end
+
+-- Fold Space.Contacts as charts.lua cleaned it: a sweep that's new to the belt she's at notes where
+-- she was as it came, her own place or, docked, her host's. The panel draws the sweep's ships from
+-- there, by km and bearing (gmcp.md §8.5), and only while that sweep is the last. True if the belt
+-- map's message changed.
+function B.space_contacts(state, contacts)
+  local at = type(contacts) == 'table' and num(contacts.at) or nil
+  local p = state.place or state.docked
+  if not (at and state.id and p) then return false end
+  local log = log_for(state, state.id)
+  if log.seen and log.seen.at == at then return false end
+  log.seen = { at = at, x = p.x, y = p.y }
+  state.unsaved = true
+  return true
 end
 
 -- The first entry for each device, by id.
@@ -277,10 +303,13 @@ function B.load(state, saved)
       local left = nil
       local l = log.left
       if type(l) == 'table' and num(l.x) and num(l.y) and str(l.name) then
-        left = { x = l.x, y = l.y, name = l.name, at = num(l.at) }
+        left = { x = l.x, y = l.y, name = l.name, id = str(l.id), at = num(l.at) }
       end
+      local seen = nil
+      local sn = log.seen
+      if type(sn) == 'table' and num(sn.at) and num(sn.x) and num(sn.y) then seen = { at = sn.at, x = sn.x, y = sn.y } end
       state.logs[id] = { system = str(log.system), name = str(log.name), radius = num(log.radius),
-        track = track, sweeps = sweeps, left = left }
+        track = track, sweeps = sweeps, left = left, seen = seen }
     end
   end
 end
@@ -291,7 +320,7 @@ function B.saved(state) return state.logs end
 -- A disconnect: she's nowhere; the logs stay.
 function B.reset(state)
   local changed = state.id ~= nil or state.place ~= nil or state.host ~= nil
-  state.id, state.place, state.host, state.scan, state.cue = nil, nil, nil, nil, nil
+  state.id, state.place, state.host, state.host_id, state.docked, state.scan, state.cue = nil, nil, nil, nil, nil, nil, nil
   state.system, state.belts = nil, {}
   return changed
 end
@@ -306,19 +335,22 @@ end
 function B.on(state) return state.on end
 
 -- What the belt map draws: the belt she's at (or her host is), her place in it, the host she's
--- docked at, whether a sensor array is fitted (nil: not known), and the belt's log.
+-- docked at and where that host is in the belt, whether a sensor array is fitted (nil: not known),
+-- and the belt's log.
 function B.message(state)
   local id = state.id
   local log = id and state.logs[id] or nil
-  local p = state.place
+  local p, d = state.place, state.docked
   return {
     id = id,
     name = id and (state.names[id] or (log and log.name)) or nil,
-    radius = p and p.radius or (log and log.radius) or nil,
+    radius = p and p.radius or d and d.radius or (log and log.radius) or nil,
     place = p and { x = p.x, y = p.y, km = p.km, bearing = p.bearing } or nil,
     host = state.host,
+    host_id = state.host_id,
+    docked = d and { x = d.x, y = d.y, km = d.km, bearing = d.bearing } or nil,
     array = state.array,
-    log = log and { track = log.track, sweeps = log.sweeps, left = log.left } or { track = {}, sweeps = {} },
+    log = log and { track = log.track, sweeps = log.sweeps, left = log.left, seen = log.seen } or { track = {}, sweeps = {} },
   }
 end
 

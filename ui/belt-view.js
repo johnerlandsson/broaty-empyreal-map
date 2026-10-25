@@ -1,12 +1,14 @@
 // The belt map: where your ship is in the belt she's at, over the top band, switched on and off by a
 // button left of the lanes' ⋈ (docs/maps/belt.md). The belt's disc at the radius its rocks reach, km
-// rings, its core, a bearing ring in the belt's own degrees, and her, moving between the game's
-// ticks; and the player's own log of the belt: her track, each sweep's ground, and where she left
-// her host. Nothing the game hasn't told the player: no rocks, nothing worked out, no other ships.
-// Marks and colours are the style guide's §13.6.
+// rings, its core, a bearing ring from the system's zero (the one `rcs` and every contact's bearing
+// count from), and her, moving between the game's ticks, or with her host while she's docked; the
+// player's own log of the belt: her track, each sweep's ground, and where she left her host; and the
+// last sweep's ships, where it saw them. Nothing the game hasn't told the player: no rocks, nothing
+// worked out, no ship moved on from the sweep. Marks and colours are the style guide's §13.6.
 
-import { ALONGSIDE_KM, Glide, SENSOR_KM, ago, cleanBelt, discFrame, placeText, ringKms, toBand } from "./lib/belt.js";
-import { el, glowFilter, stars } from "./lib/svg.js";
+import { ALONGSIDE_KM, Glide, SENSOR_KM, ago, beltShipText, beltShips, cleanBelt, discFrame, hereOf, placeText, ringKms, toBand } from "./lib/belt.js";
+import { isDark } from "./lib/contacts.js";
+import { brackets, el, glowFilter, stars } from "./lib/svg.js";
 
 const HL = "#ffb347";
 const HL_STROKE = "#fff3df";
@@ -17,6 +19,7 @@ const GLASS = "#cfe3ff";
 const GREEN = "#59d18a";
 const BG = "#04060c";
 const TEXT = "#e3eaf2";
+const NAMED = "#aebccc"; // a named ship's name, as on the chart
 const TONES = ["#3a4556", "#58667b", "#7e8da3"];
 const FONT = "Inter, system-ui, sans-serif";
 const CHAR_W = 4.6; // a guess at an 8.5 px label's width per character (there's no layout here)
@@ -32,6 +35,7 @@ export class BeltView {
     this.band = bandEl;
     this.onToggle = opts.onToggle ?? (() => {});
     this.belt = null;
+    this.contacts = null;
     this.on = false;
     this.glide = new Glide();
 
@@ -117,11 +121,17 @@ export class BeltView {
   setBelt(msg) {
     const t = Date.now();
     this.belt = cleanBelt(msg);
-    const p = this.belt?.place;
+    const p = hereOf(this.belt);
     this.glide.set(this.belt?.id ?? null, p ? [p.x, p.y] : null, t);
     this.btn.style.display = this.ready ? "" : "none";
     this.sync();
     this.draw(t);
+  }
+
+  /** The last sweep's picture (Space.Contacts as charts.lua cleaned it), or null. */
+  setContacts(contacts) {
+    this.contacts = contacts && typeof contacts === "object" ? contacts : null;
+    this.draw(Date.now());
   }
 
   /** Switch the map on or off (from the Lua side, the button, or ◎ or ⋈ taking the band). */
@@ -182,27 +192,57 @@ export class BeltView {
       else el("circle", { cx: x, cy: y, r: 3.5, fill: BG, stroke: GREEN, "stroke-width": 1.2, opacity: 0.85 }, marks);
     }
 
-    // where she left her host, with the ring she has to be within to dock again; last seen, as it may have moved
+    // the last sweep's ships in the belt, where it saw them, from her place as it came
+    const ships = beltShips(b, this.contacts);
+    const since = ships.find((s) => s.host);
+
+    // where she left her host, with the ring she has to be within to dock again; last seen, as it may
+    // have moved. A sweep that saw her since dims it, with a dotted line on to where it saw her.
     if (b.left) {
       const [x, y] = toBand(f, b.left.x, b.left.y);
       const rr = ALONGSIDE_KM * k;
-      el("circle", { cx: x, cy: y, r: rr, fill: "none", stroke: GLASS, "stroke-opacity": 0.45, "stroke-dasharray": "3 3" }, marks);
-      el("path", { d: `M${x},${y - 4}L${x + 3},${y}L${x},${y + 4}L${x - 3},${y}Z`, fill: "none", stroke: GLASS, "stroke-width": 1.1 }, marks);
+      const g = el("g", since ? { opacity: 0.55 } : {}, marks);
+      el("circle", { cx: x, cy: y, r: rr, fill: "none", stroke: GLASS, "stroke-opacity": 0.45, "stroke-dasharray": "3 3" }, g);
+      el("path", { d: `M${x},${y - 4}L${x + 3},${y}L${x},${y + 4}L${x - 3},${y}Z`, fill: "none", stroke: GLASS, "stroke-width": 1.1 }, g);
+      if (since) {
+        const [sx, sy] = toBand(f, since.p[0], since.p[1]);
+        el("line", { x1: x, y1: y, x2: sx, y2: sy, stroke: GLASS, "stroke-opacity": 0.35, "stroke-dasharray": "1 3" }, marks);
+      }
       const line1 = `where you left the ${b.left.name}`;
       const line2 = b.left.at === null ? "last seen" : `last seen ${ago(t / 1000 - b.left.at)}${t / 1000 - b.left.at < 60 ? "" : " ago"}`;
       const wide = Math.max(line1.length, line2.length) * CHAR_W;
       const right = x + 8 + wide < w - 4;
       const lx = right ? x + 8 : x - 8;
       const anchor = right ? "start" : "end";
-      text(words, lx, y - 6, line1, { "font-size": 8.5, "text-anchor": anchor, ...halo });
-      text(words, lx, y + 4, line2, { "font-size": 8, opacity: 0.75, "text-anchor": anchor, ...halo });
+      const g2 = el("g", since ? { opacity: 0.55 } : {}, words);
+      text(g2, lx, y - 6, line1, { "font-size": 8.5, "text-anchor": anchor, ...halo });
+      text(g2, lx, y + 4, line2, { "font-size": 8, opacity: 0.75, "text-anchor": anchor, ...halo });
+    }
+
+    // each ship as the chart draws her: Glass brackets round a dot, ticked at the sides under drive;
+    // dim and empty for a dark one. Her name with the range and bearing from you now (`rcs` them),
+    // and her hull and how long ago the sweep saw her under it.
+    for (const s of ships) {
+      const [x, y] = toBand(f, s.p[0], s.p[1]);
+      const dark = isDark(s.c);
+      const col = dark ? DIM : GLASS;
+      el("path", { d: brackets(x, y, 5, 2.6), fill: "none", stroke: col, "stroke-width": 1.2 }, marks);
+      if (!dark) el("circle", { cx: x, cy: y, r: 1.3, fill: GLASS }, marks);
+      if (!dark && s.c.moving) el("path", { d: `M${x - 8},${y}H${x - 6}M${x + 6},${y}H${x + 8}`, stroke: col, "stroke-width": 1 }, marks);
+      const [line1, line2] = beltShipText(s, this.contacts.at, t);
+      const right = x + 10 + Math.max(line1.length, line2.length) * CHAR_W < w - 4;
+      const lx = right ? x + 10 : x - 10;
+      const anchor = right ? "start" : "end";
+      text(words, lx, y + 1, line1, { "font-size": 8.5, fill: dark ? DIM : NAMED, "text-anchor": anchor, ...halo });
+      text(words, lx, y + 11, line2, { "font-size": 8, opacity: 0.75, "text-anchor": anchor, ...halo });
     }
 
     // her track: each visit a stretch, the last carried on to where she's drawn now
     const now = this.glide.at(t);
     b.track.forEach((seg, i) => {
       const pts = seg.map((p) => toBand(f, p[0], p[1]));
-      if (i === b.track.length - 1 && now) {
+      // docked, she rides with her host: the track is her own flying, and stops where she docked
+      if (i === b.track.length - 1 && now && !b.docked) {
         const last = seg[seg.length - 1];
         const to = this.glide.to;
         // while she glides to her latest place, the track stops where she's drawn
@@ -214,19 +254,35 @@ export class BeltView {
         "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, marks);
     });
 
-    // her, with her sensors' reach when it's known
+    // docked at her host in the belt: the host's brackets, her name and hull, round her chevron
+    if (b.docked && now) {
+      const [x, y] = toBand(f, now[0], now[1]);
+      el("path", { d: brackets(x, y, 7, 3), fill: "none", stroke: GLASS, "stroke-width": 1.2 }, marks);
+      const line1 = b.host ?? "your host";
+      const right = x + 12 + line1.length * CHAR_W < w - 4;
+      const lx = right ? x + 12 : x - 12;
+      const anchor = right ? "start" : "end";
+      text(words, lx, y + 1, line1, { "font-size": 8.5, fill: NAMED, "text-anchor": anchor, ...halo });
+      text(words, lx, y + 11, "docked", { "font-size": 8, opacity: 0.75, "text-anchor": anchor, ...halo });
+    }
+
+    // her, with her sensors' reach when it's known; docked, small inside her host's brackets
     if (now) {
       const [x, y] = toBand(f, now[0], now[1]);
-      if (b.array === false) {
+      if (b.array === false && !b.docked) {
         el("circle", { cx: x, cy: y, r: SENSOR_KM * k, fill: "none", stroke: GREEN, "stroke-opacity": 0.5, "stroke-dasharray": "4 3" }, marks);
       }
       el("path", { d: "M0,-8 L5,6 L0,3 L-5,6 Z", fill: HL, stroke: HL_STROKE, "stroke-width": 0.8, "stroke-linejoin": "round",
-        transform: `translate(${x} ${y}) rotate(${this.glide.heading ?? 0})` }, lit);
+        transform: `translate(${x} ${y}) rotate(${b.docked ? 0 : (this.glide.heading ?? 0)})${b.docked ? " scale(0.8)" : ""}` }, lit);
     }
 
     // the belt's name and where she is, in the game's words
     text(words, 12, 20, (b.name ?? b.id).toUpperCase(), { "font-size": 9.5, fill: TEXT, "letter-spacing": 1, ...halo });
-    const said = b.place ? placeText(b.place, b.radius) : b.host ? `docked at the ${b.host}` : null;
+    const said = b.place
+      ? placeText(b.place, b.radius)
+      : b.host
+        ? `docked at the ${b.host}${b.docked ? `, ${placeText(b.docked, b.radius)}` : ""}`
+        : null;
     if (said) {
       const comma = said.indexOf(", ");
       const lines = comma > 0 ? [said.slice(0, comma + 1), said.slice(comma + 2)] : [said];

@@ -236,8 +236,11 @@ local function char_status(data)
   post_lanes()
 end
 
+-- The sweep goes to the chart, and to the belt map, which notes where she was as it came.
 local function space_contacts(data)
   if C.space_contacts(chart, data) then post_chart_contacts() end
+  if B.space_contacts(belt, C.contacts(chart)) then post_belt() end
+  save_belts()
 end
 
 local scene_reducers = {

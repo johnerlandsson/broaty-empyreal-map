@@ -203,6 +203,52 @@ test('riding a host at a belt: the belt, its log, no place of her own', function
   eq(m.radius, 18)
 end)
 
+test("docked at her host in a belt: the host's place, the pair drawn there", function()
+  local s = B.new()
+  local r = riding('gannet-3')
+  r.host.belt = { x = 4.2, y = -7.6, radius = 18, core_km = 8.7, core_bearing = 151 }
+  eq(B.ship_status(s, r, 100), true) -- the host's belt says it's a belt, charts or not
+  local m = B.message(s)
+  eq(m.id, 'gannet-3')
+  eq(m.place, nil)
+  eq(m.docked, { x = 4.2, y = -7.6, km = 8.7, bearing = 151 })
+  eq(m.host_id, 'ship.7')
+  eq(m.radius, 18)
+  eq(B.ship_status(s, r, 101), false)
+  r.host.belt = { x = 5, y = -7.6, radius = 18 } -- her host moves in the belt
+  eq(B.ship_status(s, r, 102), true)
+  eq(B.message(s).docked.x, 5)
+  -- undocking, she starts where her host is
+  B.ship_status(s, at('gannet-3', 5, -7.6), 130)
+  eq(B.message(s).docked, nil)
+  eq(B.message(s).log.left.id, 'ship.7')
+end)
+
+test('a new sweep notes where she was as it came; the same sweep again does not', function()
+  local s = B.new()
+  B.space_charts(s, CHARTS)
+  eq(B.space_contacts(s, { at = 5000, system = 'senara', contacts = {} }), false) -- at no belt
+  B.ship_status(s, at('gannet-3', -1.5, -3.5), 100)
+  B.take_unsaved(s)
+  eq(B.space_contacts(s, { at = 6000, system = 'senara', contacts = {} }), true)
+  eq(B.take_unsaved(s), true)
+  eq(B.message(s).log.seen, { at = 6000, x = -1.5, y = -3.5 })
+  B.ship_status(s, at('gannet-3', -5.5, -9.5), 110)
+  eq(B.space_contacts(s, { at = 6000, system = 'senara', contacts = {} }), false)
+  eq(B.message(s).log.seen.x, -1.5)
+  eq(B.space_contacts(s, nil), false)
+  eq(B.message(s).log.seen.x, -1.5) -- a disconnect's null leaves the note for the sweep's return
+end)
+
+test("docked, a sweep notes her host's place", function()
+  local s = B.new()
+  local r = riding('gannet-3')
+  r.host.belt = { x = 4.2, y = -7.6, radius = 18 }
+  B.ship_status(s, r, 100)
+  B.space_contacts(s, { at = 6000, system = 'senara', contacts = {} })
+  eq(B.message(s).log.seen, { at = 6000, x = 4.2, y = -7.6 })
+end)
+
 test('riding a host somewhere that is not a belt is no belt', function()
   local s = B.new()
   B.space_charts(s, CHARTS)
@@ -221,7 +267,7 @@ test('undocking from a host at the belt marks where she left it, as her first pl
   B.take_cue(s)
   B.ship_status(s, at('gannet-3', 7.2, 5.1), 130)
   local m = B.message(s)
-  eq(m.log.left, { x = 7.2, y = 5.1, name = 'Full Measure', at = 130 })
+  eq(m.log.left, { x = 7.2, y = 5.1, name = 'Full Measure', id = 'ship.7', at = 130 })
   eq(m.log.track, { { { 7.2, 5.1 } } })
   eq(B.take_cue(s), nil) -- she was already at the belt
   -- she moves off; the mark stays where it was
@@ -303,7 +349,9 @@ test('stored logs load back, keeping only well-formed ones', function()
     ['gannet-3'] = { system = 'senara', name = 'Gannet Belt', radius = 18,
       track = { { { 1, 2 }, { 'x', 3 }, { 4, 5 } }, 'bad', {} },
       sweeps = { { x = 1, y = 2, r = 5 }, { x = 'a' }, { x = 3, y = 4 } },
-      left = { x = 1, y = 1, name = 'Full Measure', at = 99 } },
+      left = { x = 1, y = 1, name = 'Full Measure', id = 'ship.7', at = 99 },
+      seen = { at = 6000, x = 1, y = 'n' } },
+    ['anvil-1'] = { seen = { at = 6000, x = 1, y = 2 } },
     ['cinders-2'] = { track = 'x' },
     [7] = { },
     ['u-3'] = 'x',
@@ -311,7 +359,8 @@ test('stored logs load back, keeping only well-formed ones', function()
   local saved = B.saved(s)
   eq(saved['gannet-3'], { system = 'senara', name = 'Gannet Belt', radius = 18,
     track = { { { 1, 2 }, { 4, 5 } } }, sweeps = { { x = 1, y = 2, r = 5 }, { x = 3, y = 4 } },
-    left = { x = 1, y = 1, name = 'Full Measure', at = 99 } })
+    left = { x = 1, y = 1, name = 'Full Measure', id = 'ship.7', at = 99 } })
+  eq(saved['anvil-1'].seen, { at = 6000, x = 1, y = 2 })
   eq(saved['cinders-2'], { track = {}, sweeps = {} })
   eq(saved['u-3'], nil)
 end)

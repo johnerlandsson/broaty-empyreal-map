@@ -132,15 +132,19 @@ export const MAELOR_SHIP = { name: "Mule", docked: true, location: "wenna_halt" 
 export function senaraContacts(now, positionOf, index, ago = 4 * 60 * 1000) {
   const at = now - ago;
   const g = positionOf(index, "gannet", at);
-  const off = (dx, dy) => ({ x: Math.round(g[0] + dx), y: Math.round(g[1] + dy), km: Math.round(Math.hypot(dx, dy)) });
+  // range and bearing from her at Gannet, as gmcp.ts sends them, and x and y, which may go
+  const bearing = (dx, dy) => (Math.round((((Math.atan2(dx, dy) * 180) / Math.PI) + 360) % 360 * 10) / 10) % 360;
+  const off = (dx, dy) => ({ x: Math.round(g[0] + dx), y: Math.round(g[1] + dy), km: Math.round(Math.hypot(dx, dy)), bearing: bearing(dx, dy) });
   const place = (id) => {
     const p = positionOf(index, id, at);
-    return { x: Math.round(p[0]), y: Math.round(p[1]), km: Math.round(Math.hypot(p[0] - g[0], p[1] - g[1])) };
+    const [dx, dy] = [p[0] - g[0], p[1] - g[1]];
+    return { x: Math.round(p[0]), y: Math.round(p[1]), km: Math.round(Math.hypot(dx, dy)), bearing: bearing(dx, dy) };
   };
   const none = { hidden: null, missed: false, moving: null, size: null, hull: null, owner: null };
   return {
     at,
     system: "senara",
+    her: { name: "Mule", docked: false, location: "gannet" }, // as charts.lua kept her when it came
     contacts: [
       { kind: "station", id: "tiss", name: "T.I.S.S.", ...place("tiss"), ...none, hidden: "tamsin" },
       { kind: "station", id: "orrin_station", name: "Orrin Station", ...place("orrin_station"), ...none, missed: true },

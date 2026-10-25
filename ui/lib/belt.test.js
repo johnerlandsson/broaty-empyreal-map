@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Glide, ago, cleanBelt, discFrame, headingOf, placeText, ringKms, toBand } from "./belt.js";
+import { Glide, ago, beltShipText, beltShips, cleanBelt, discFrame, headingOf, hereOf, placeText, ringKms, toBand } from "./belt.js";
 
 describe("placeText", () => {
   it("says it as the game does", () => {
@@ -28,7 +28,8 @@ describe("cleanBelt", () => {
       log: {
         track: [[[1, 2], ["x", 3], [4, 5]], "bad", []],
         sweeps: [{ x: 1, y: 2, r: 5 }, { x: "a" }, { x: 3, y: 4 }],
-        left: { x: 1, y: 1, name: "Full Measure", at: 99 },
+        left: { x: 1, y: 1, name: "Full Measure", id: "ship.7", at: 99 },
+        seen: { at: 6000, x: 1, y: "n" },
       },
     });
     expect(b).toEqual({
@@ -37,10 +38,13 @@ describe("cleanBelt", () => {
       radius: 18,
       place: { x: 3, y: 4, km: 5, bearing: 37 },
       host: null,
+      hostId: null,
+      docked: null,
       array: false,
       track: [[[1, 2], [4, 5]]],
       sweeps: [{ x: 1, y: 2, r: 5 }, { x: 3, y: 4, r: null }],
-      left: { x: 1, y: 1, name: "Full Measure", at: 99 },
+      left: { x: 1, y: 1, name: "Full Measure", id: "ship.7", at: 99 },
+      seen: null,
     });
   });
 
@@ -114,5 +118,63 @@ describe("Glide", () => {
     expect(g.moving(2000)).toBe(false);
     g.set("c", null, 3000);
     expect(g.at(3000)).toBe(null);
+  });
+});
+
+describe("the last sweep's ships in the belt", () => {
+  const AT = 6_000_000;
+  // her at (-1.5, -3.5) as the sweep came; a ship's km and bearing from there
+  const off = (dx, dy) => ({ km: Math.hypot(dx, dy), bearing: ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360 });
+  const SWEEP = {
+    at: AT,
+    system: "senara",
+    contacts: [
+      { kind: "ship", id: "ship.7", name: "Full Measure", ...off(10.9, 5.1), hull: "freighter", moving: false },
+      { kind: "unknown", id: "contact-1", name: "contact-1", ...off(-11, 6.7) },
+      { kind: "ship", id: "ship.9", name: "Far Away", ...off(30, 0), hull: "skiff" }, // beyond the rim
+      { kind: "ship", id: "ship.3", name: "Old", km: 2, bearing: null, x: 1, y: 1 }, // a sweep from before bearings
+      { kind: "station", id: "tiss", name: "T.I.S.S.", km: 900, bearing: 10 },
+    ],
+  };
+  const belt = (extra = {}, log = {}) =>
+    cleanBelt({ id: "gannet-3", radius: 18, place: { x: -5.5, y: -9.5 }, log: { seen: { at: AT, x: -1.5, y: -3.5 }, ...log }, ...extra });
+  const close = (p, q) => q.forEach((v, i) => expect(p[i]).toBeCloseTo(v, 6));
+
+  it("places each ship from where she was as the sweep came, in the disc only", () => {
+    const ships = beltShips(belt(), SWEEP);
+    expect(ships.map((s) => s.c.id)).toEqual(["ship.7", "contact-1"]);
+    close(ships[0].p, [9.4, 1.6]);
+    close(ships[1].p, [-12.5, 3.2]);
+  });
+
+  it("gives range and bearing from her now, as rcs takes them", () => {
+    const [fm] = beltShips(belt(), SWEEP);
+    expect(fm.km).toBeCloseTo(Math.hypot(14.9, 11.1), 6);
+    expect(fm.bearing).toBeCloseTo(((Math.atan2(14.9, 11.1) * 180) / Math.PI), 6);
+    expect(beltShipText(fm, AT, AT + 4 * 60_000)).toEqual(["Full Measure · 18.6 km, 53°", "freighter · seen 4m ago"]);
+    const [, dark] = beltShips(belt(), SWEEP);
+    expect(beltShipText(dark, AT, AT + 30_000)[1]).toBe("seen just now");
+  });
+
+  it("draws nothing for a sweep she has no place for, or another sweep", () => {
+    expect(beltShips(belt({}, { seen: null }), SWEEP)).toEqual([]);
+    expect(beltShips(belt(), { ...SWEEP, at: AT + 1 })).toEqual([]);
+    expect(beltShips(belt(), null)).toEqual([]);
+  });
+
+  it("marks the host she left, seen by a later sweep, by her id", () => {
+    const later = beltShips(belt({}, { left: { x: 7.2, y: 5.1, name: "Full Measure", id: "ship.7", at: AT / 1000 - 600 } }), SWEEP);
+    expect(later.map((s) => s.host)).toEqual([true, false]);
+    const earlier = beltShips(belt({}, { left: { x: 7.2, y: 5.1, name: "Full Measure", id: "ship.7", at: AT / 1000 + 60 } }), SWEEP);
+    expect(earlier[0].host).toBe(false);
+  });
+
+  it("docked, her place is her host's, and the host isn't drawn twice", () => {
+    const b = cleanBelt({ id: "gannet-3", radius: 18, place: null, host: "Full Measure", host_id: "ship.7",
+      docked: { x: 4.2, y: -7.6, km: 8.7, bearing: 151 }, log: { seen: { at: AT, x: -1.5, y: -3.5 } } });
+    expect(hereOf(b)).toEqual({ x: 4.2, y: -7.6, km: 8.7, bearing: 151 });
+    const ships = beltShips(b, SWEEP);
+    expect(ships.map((s) => s.c.id)).toEqual(["contact-1"]);
+    expect(ships[0].km).toBeCloseTo(Math.hypot(-16.7, 10.8), 6);
   });
 });

@@ -146,3 +146,13 @@ export function zoomButtons(container, top, onZoom) {
   container.appendChild(z);
   return z;
 }
+
+/** A target's four corner brackets round (x, y), half-width r, each arm k long (px). */
+export function brackets(x, y, r, k) {
+  return [
+    `M${x - r},${y - r + k} V${y - r} H${x - r + k}`,
+    `M${x + r - k},${y - r} H${x + r} V${y - r + k}`,
+    `M${x + r},${y + r - k} V${y + r} H${x + r - k}`,
+    `M${x - r + k},${y + r} H${x - r} V${y + r - k}`,
+  ].join(" ");
+}

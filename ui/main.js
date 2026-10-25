@@ -291,6 +291,7 @@ panel.on("charts", (msg) => {
 
 panel.on("chart-contacts", (msg) => {
   chart.setContacts(msg);
+  belt.setContacts(msg);
   runChart(); // a chase she couldn't be placed on may be placed now
 });
 

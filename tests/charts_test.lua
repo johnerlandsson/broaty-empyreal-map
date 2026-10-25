@@ -659,6 +659,43 @@ test('a dark ship is only her contact number and where she was', function()
   eq(C.contacts(s).contacts[3], { kind = 'unknown', id = 'contact-1', name = 'contact-1', km = 2400, x = 5, y = 6, missed = false })
 end)
 
+test("keeps each contact's bearing, a dark ship's too", function()
+  local s = fresh()
+  local d = sweep()
+  d.contacts[2].bearing, d.contacts[3].bearing = 53.4, 331
+  C.space_contacts(s, d)
+  eq(C.contacts(s).contacts[2].bearing, 53.4)
+  eq(C.contacts(s).contacts[3], { kind = 'unknown', id = 'contact-1', name = 'contact-1', km = 2400, bearing = 331,
+    x = 5, y = 6, missed = false })
+  eq(C.contacts(s).contacts[1].bearing, nil) -- a sweep saved before bearings has none
+end)
+
+test('places a contact by km and bearing when x and y have gone', function()
+  local s = fresh()
+  C.space_contacts(s, sweep({ contacts = {
+    { kind = 'ship', id = 'ship.7', name = 'Full Measure', km = 4.2, bearing = 53 },
+    { kind = 'ship', id = 'ship.8', name = 'Nowhere', km = 4.2 },
+  } }))
+  eq(#C.contacts(s).contacts, 1)
+  eq(C.contacts(s).contacts[1].x, nil)
+  eq(C.contacts(s).contacts[1].bearing, 53)
+end)
+
+test('keeps her ship as she was when a sweep came, and keeps it for the same sweep', function()
+  local s = fresh()
+  C.space_contacts(s, sweep())
+  eq(C.contacts(s).her, nil) -- no Ship.Status yet: the chart falls back on x and y
+  C.ship_status(s, { location = 'gannet' }, 10)
+  C.space_contacts(s, sweep({ at = 6000 }))
+  eq(C.contacts(s).her.location, 'gannet')
+  eq(C.contacts(s).her.received, 10)
+  C.ship_status(s, { destination = 'tiss', progress = 0, eta = 300 }, 20)
+  eq(C.space_contacts(s, sweep({ at = 6000 })), false)
+  eq(C.contacts(s).her.location, 'gannet')
+  C.space_contacts(s, sweep({ at = 7000 }))
+  eq(C.contacts(s).her.destination, 'tiss')
+end)
+
 test('the same sweep again is no change; a new one is', function()
   local s = fresh()
   C.space_contacts(s, sweep())

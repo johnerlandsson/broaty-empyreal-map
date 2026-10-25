@@ -146,7 +146,7 @@ enters a lane, unless you've turned that off.
 
 **The belt map.** At a belt, a third button beside ⋈ swaps the band for the
 belt she's in: its disc as far as its rocks reach, the core, and a ring of
-bearings in the belt's own degrees, 0° up, with your ship in amber and the
+bearings from the system's zero (the one `rcs` takes), 0° up, with your ship in amber and the
 game's words for where she is ("11 km out from the core, bearing 210°", "at
 the core", "at the outer edge"). She moves smoothly while the thrusters
 carry her (`rcs`) or she closes on a rock to mine it. Over the belt is what
@@ -156,7 +156,13 @@ undocked from her freighter there, "where you left the Full Measure" with
 the 5 km ring she has to be inside to dock again, marked last seen because
 the freighter may have moved. Without a sensor array, a dashed ring shows
 her sensors' 5 km reach; with one the game doesn't say how far they see, so
-there's no ring. It never shows rocks, worked-out ground or other ships.
+there's no ring. Ships the last sweep saw in the belt are drawn where it
+saw them, as on the chart, with how far and which way each is from you now
+("Full Measure · 4.2 km, 53°") and how long ago ("seen 4m ago"). If it saw
+the freighter you left, a dotted line runs on to her. Docked at her
+freighter in a belt, your ship is drawn inside the freighter's brackets
+where she is. It never shows rocks or worked-out ground, and never moves a
+ship on from where the sweep saw her.
 The map remembers each belt across restarts, and forgets one once it closes.
 It comes up by itself as she arrives at a belt and as she starts to move in
 one, and stays when she stops, unless you've turned that off. The belt map,
