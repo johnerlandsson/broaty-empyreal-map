@@ -232,7 +232,7 @@ function render() {
   const where = s ? (s.locate ?? locate)(s.index, last, s.lastLevel) : null;
   if (s) {
     if (where.kind !== "off") s.lastLevel = where.level;
-    s.model.set(where);
+    s.model.set(where, last);
     s.deck.set(where);
     s.deck.dim(where.kind === "off");
   }

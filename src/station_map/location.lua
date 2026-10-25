@@ -1,7 +1,8 @@
 -- Location reducer: folds three GMCP packages (mudstd.room.info,
 -- Empyreal.Room, Empyreal.Vehicle) into one small location message, with the
--- ship's hull and which of her rooms you're in when you're aboard one, and the door you came in
--- by when you're in your workshop or bunk.
+-- room's district (a town's skyline follows it), the ship's hull and which of
+-- her rooms you're in when you're aboard one, and the door you came in by when
+-- you're in your workshop or bunk.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 -- Uses no io/os/debug/coroutine (removed in Mallard's sandbox).
 
@@ -66,6 +67,7 @@ function L.message(state)
     roomId = state.roomId,
     name = state.name,
     address = state.address,
+    district = state.district,
     gravity = state.gravity,
     area = state.area,
     areaName = state.areaName,
@@ -111,6 +113,7 @@ function L.room_info(state, data)
       -- is another room of the same ship: Empyreal.Room says so again just after, and clearing
       -- it in between would draw the generic ship for a moment.
       state.address = nil
+      state.district = nil
       state.gravity = nil
       local area = str(data.area)
       if not (area and area == state.area and L.ship_room(id)) then
@@ -153,6 +156,7 @@ function L.empyreal_room(state, data)
       state.hullName = nil
       state.name = str(data.address)
       state.address = nil
+      state.district = nil
       state.gravity = num(data.gravity)
     end)
   end
@@ -168,6 +172,7 @@ function L.empyreal_room(state, data)
     end
     state.roomId = id
     state.address = str(data.address)
+    state.district = str(data.district)
     state.gravity = num(data.gravity)
     -- Aboard a ship, `ship` says which: `class` is the hull's id ("skiff"), `kind` its name
     -- ("prospecting skiff").
@@ -194,6 +199,7 @@ function L.reset(state)
     state.roomId = nil
     state.name = nil
     state.address = nil
+    state.district = nil
     state.gravity = nil
     state.area = nil
     state.areaName = nil

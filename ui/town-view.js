@@ -1,19 +1,18 @@
-// A town's top band (Zennor): you're on the ground, so not a model but the skyline from the
-// street, a still, low-poly view in the models' Tones: the ridge rising east, the town's low roofs
-// and the port office's squat tower with its glass room, the field's blast wall at the west, the
-// salt pans a pale line on the horizon. Out of doors the sky is over it, as the game's `look sky`
+// A town's top band (Zennor): you're on the ground, so not a model but the skyline, the city across
+// the Carn's valley framed on the district you're in, still and low-poly in the models' Tones
+// (ui/lib/skyline.js, drawn by town-skyline.js), with lamps in its windows once the sky is dark.
+// Out of doors the sky is over it, as the game's `look sky`
 // tells it (ui/lib/sky.js): a dome from the western horizon through overhead to the eastern, with
 // Senara, T.I.S.S. and Orrin where the game puts them, each named and hovered with its sentence,
 // the sky's tint, stars and glow stepped with the game's bands. Indoors, or with no charts to say,
 // it's the skyline alone, with nothing in its sky. main.js redraws it each second while it's
 // live; it needs `div`, `set()` and `setTurning()` as from a ModelView, and `setCharts()`.
 
+import { skylineFor } from "./lib/skyline.js";
 import { groundSky, skyScene } from "./lib/sky.js";
 import { attachPanZoom, el, stars, zoomButtons } from "./lib/svg.js";
+import { drawSkyline } from "./town-skyline.js";
 
-const TONES = ["#3a4556", "#58667b", "#7e8da3"];
-const EDGE = "#0d1218";
-const GLASS = "#cfe3ff";
 const ORBIT = "#2b3646";
 const DIM = "#7d8a9a";
 const TEXT = "#e3eaf2";
@@ -35,6 +34,8 @@ export class SkyView {
     this.port = port;
     this.charts = null;
     this.outdoors = false;
+    this.district = "downs"; // where the skyline's framed: you come to Zennor by landing on the Downs
+    this.drawn = null; // the district and lamps it was last drawn with
     this.tips = new Map(); // data-tip key -> { title, body }: the hovered thing's name and the game's sentence
     this.tipKey = null; // what's hovered
     this.tipShown = null; // what the tooltip last showed, so a redraw doesn't re-show the same
@@ -60,7 +61,7 @@ export class SkyView {
     el("path", { d: dome() }, el("clipPath", { id: "sky-clip" }, defs));
     el("feGaussianBlur", { stdDeviation: 10 }, el("filter", { id: "sky-soft", x: "-50%", y: "-50%", width: "200%", height: "200%" }, defs));
     this.back = el("g", {}, svg); // tint and stars, behind the skyline
-    skyline(el("g", {}, svg));
+    this.land = el("g", {}, svg); // the skyline
     this.front = el("g", {}, svg); // the dome, its marks and the glow, over it: nothing up is hidden
     this.zoom = attachPanZoom(div, () => this.vb, (v) => this.setView(v), { minW: VIEW[2] * 0.4, maxW: VIEW[2] * 1.6 });
     div.addEventListener("pointermove", (e) => this.hoverAt(e.target));
@@ -73,9 +74,14 @@ export class SkyView {
     this.svg.setAttribute("viewBox", v.map((n) => +n.toFixed(2)).join(" "));
   }
 
-  /** Where you are: out of doors in one of the town's rooms the sky shows, anywhere else not. */
-  set(where) {
+  /**
+   * Where you are: out of doors in one of the town's rooms the sky shows, anywhere else not. The
+   * location message's `district` frames the skyline; somewhere with none (the tram, your ship on
+   * the field) keeps the last.
+   */
+  set(where, msg) {
     this.outdoors = where?.kind === "room" && !!this.town?.byId.get(where.id)?.outdoors;
+    if (skylineFor(msg?.district)) this.district = msg.district;
     this.draw(Date.now());
   }
 
@@ -98,6 +104,11 @@ export class SkyView {
     this.front.replaceChildren();
     this.tips = new Map();
     const sky = this.outdoors && this.charts ? groundSky(this.charts, this.port, t) : null;
+    const drawn = `${this.district} ${!!sky?.dark}`;
+    if (drawn !== this.drawn) {
+      this.drawn = drawn;
+      drawSkyline(this.land, skylineFor(this.district), { lamps: !!sky?.dark });
+    }
     if (sky) this.drawSky(sky);
     this.refreshTip();
   }
@@ -197,32 +208,4 @@ function mark(g, look, x, y) {
     el("circle", { cx: x, cy: y, r: 6, fill: GOLD, opacity: 0.15 }, g);
     el("circle", { cx: x, cy: y, r: 2.4, fill: GOLD }, g);
   }
-}
-
-function skyline(g) {
-  const face = (d, fill) => el("path", { d, fill, stroke: EDGE, "stroke-width": 1.3, "stroke-linejoin": "round" }, g);
-  // the salt pans, white to the horizon beyond the valley's mouth
-  el("path", { d: `M-1500,${HORIZON}H1500`, stroke: GLASS, "stroke-opacity": 0.35, "stroke-width": 1.5 }, g);
-  // the ridge behind the town, east, running on out of view
-  face(`M10,${HORIZON}L95,-22L140,-6L190,-30L260,-12L360,-26L1500,-26V60H10Z`, TONES[1]);
-  face(`M95,-22L120,60H10Z`, TONES[0]);
-  face(`M95,-22L140,-6L190,-30L260,-12L360,-26L1500,-26V60H120Z`, TONES[2]);
-  // the ground
-  face(`M-1500,${HORIZON + 8}H1500V900H-1500Z`, TONES[0]);
-  // the town's roofs, low and thick-walled: a front face, its end in shadow, the roof in the light
-  const block = (x, w, h) => {
-    const y = HORIZON + 8;
-    face(`M${x},${y}V${y - h}H${x + w}V${y}Z`, TONES[1]);
-    face(`M${x + w},${y}V${y - h}l8,-4V${y - 4}Z`, TONES[0]);
-    face(`M${x},${y - h}l8,-4H${x + w + 8}l-8,4Z`, TONES[2]);
-  };
-  block(-160, 30, 9);
-  block(-120, 34, 12);
-  block(-80, 26, 16);
-  block(-44, 40, 11);
-  block(4, 30, 14);
-  block(42, 22, 34); // the port office's tower
-  el("path", { d: `M42,${HORIZON + 8 - 34}h22`, stroke: GLASS, "stroke-width": 3, "stroke-opacity": 0.8 }, g); // its glass room
-  // the field's blast wall, west of the town
-  el("path", { d: `M-200,${HORIZON + 8}V${HORIZON + 2}H-168V${HORIZON + 8}`, fill: "none", stroke: TONES[2], "stroke-width": 2 }, g);
 }

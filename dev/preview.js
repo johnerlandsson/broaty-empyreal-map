@@ -89,7 +89,7 @@ const byId = new Map(DATA.flat().map((r) => [r.id, r]));
 
 const room = (id) => {
   const r = byId.get(id);
-  return { label: r.name, msg: { roomId: id, name: r.name, area: id.split(".")[0], address: r.address ?? undefined, gravity: r.gravity } };
+  return { label: r.name, msg: { roomId: id, name: r.name, area: id.split(".")[0], address: r.address ?? undefined, district: r.district ?? undefined, gravity: r.gravity } };
 };
 
 /** Board lift `hour` at fromId, ride to toId; messages as Empyreal.Room + Empyreal.Vehicle fold them. */

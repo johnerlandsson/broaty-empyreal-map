@@ -1,6 +1,6 @@
 # Towns
 
-*Status: built for Zennor. Last updated 2026-10-23.*
+*Status: built for Zennor. Last updated 2026-10-25.*
 
 ## What it is and when it shows
 
@@ -43,11 +43,65 @@ gate, and where a wellhead is. From the flags:
 ## Top band: the sky
 
 Not a model: you're on the ground, and the ground and the sky are all there
-is to see. Under it is a still, low-poly skyline in the models' Tones, as
-from the street: the ridge rising east, the town's low roofs and the Port
-Office's squat tower with its glass room, the field's blast wall at the
-west, and the salt pans a pale line on the horizon. A taller band shows more
-sky, not more ground. + − ⌂, wheel and drag work as on a model.
+is to see. Under the sky is a still, low-poly skyline in the models' Tones:
+the city across the Carn's valley, framed on the district you're in. A taller
+band shows more sky, not more ground. + − ⌂, wheel and drag work as on a
+model.
+
+### The skyline
+
+Zennor is a city of 400,000 climbing the east side of the Carn's valley
+(empyreal 94cb413, `docs/planetside.md` §5.1), and its size is in what its
+rooms look out on (decision 17). The skyline is the valley in section,
+looking north up the river, so west is on the left as it is on the sky's
+dome. From west to east:
+
+- **Westbank**, "as big again as this one", tenements and mill chimneys
+  climbing to its own ridge.
+- **The Carn** at the bottom, a bright line, with Carn Bridge's five arches.
+- **Riverside**'s mills, wheels in the race, a chimney and the Kiln Yard's
+  kiln, which never goes out.
+- **The Rows**' tenements, four and five storeys, stepping up the slope.
+- **The Courts**' buildings of state, pedimented and columned, and the
+  Founders' Garden's whitewashed trees.
+- **The Market Quarter**: the Corn Exchange's vault of glass and iron, the
+  Pannier Market's iron roof, the arcades.
+- **The old town**'s low ochre houses and the Tinners' Hall, with the ridge
+  of the Ridge Path and the Overlook behind them, and the Field Gate's arch
+  at the foot of the scarp.
+- **The scarp**, with the tram's rails from Riverside Station up its face
+  and the car halfway.
+- **The Downs** on top: the winding house and its cable wheel, the Field
+  Office, blast walls round the field, the Port Office's squat tower with its
+  glass room, fuel tanks half sunk, a mast, then open upland.
+
+Far up the valley to the north the ice cap is a bright line on the horizon,
+"where the sky starts" (the Overlook). It shows only through the valley's
+notch.
+
+**Framed on your district.** Empyreal.Room's `district`, which the location
+message now carries, slides the section so your district stands under the
+middle of the sky, and walking down the city slides it west to east. From
+the Downs the city falls away below you to the river and Westbank. From the
+Embankment it climbs up both sides. Somewhere with no district, the tram car
+or your ship on the field, the skyline keeps the last one. Before any
+district has come it's framed on the Downs, where you land.
+
+**The Terraces** are south of the city, where the valley widens, and off
+the section. Their view is their own: the terraces stepping up the east side
+near you, each with a row of crops in hydroponics green and its leat at the
+top edge, the Seed House among them. Behind them is the city's section,
+small and in darker tones, "city all the way up the valley side, roofs on
+roofs to the Downs" (Terrace Road).
+
+**Lamps.** Once the sky is dark (the game's dark: Senara below −5°, when
+T.I.S.S. turns a spark), lamps are lit in the windows in Porthole amber,
+"from the river to the ridges on both sides". They're lit only out of doors,
+where the game tells you it's night. Indoors there's no hour to go by, so
+there are no lamps. The kiln glows in the dusk colour at all hours.
+
+The skyline is drawn from the rooms' prose. Nothing in it is a room, and
+nothing in it is named or hovered.
 
 ### Out of doors
 
@@ -72,7 +126,7 @@ game's `ground.ts` works it out (planetside.md §4), and moving as you watch:
 - **The sky's colour** steps with the game's bands, so it never says more
   than the words. Night is black and crowded with stars. At dusk Senara's
   side glows warm and a few stars are out. At dawn the sky pales, a glow rising
-  from its side of the horizon behind the ridge, and there are no stars,
+  from its side of the horizon behind the skyline, and there are no stars,
   since the game's dawn names none. By day the dome
   is tinted a dark, dusty blue-grey, a step lighter for each band: just up,
   low, well up, overhead.
@@ -84,7 +138,7 @@ overhead from 60°. It's dark below −5°. Rising and heading are judged a
 minute ahead, and time is in the game's whole ticks. Positions use the
 game's own Kepler sum, not the chart's, because at a pass exactly overhead
 rounding decides whether the game says east or west. The bodies and the glow
-draw over the ridge, so nothing the game says is up is hidden.
+draw over the skyline, so nothing the game says is up is hidden.
 
 It's redrawn once a second while it's the band showing, the panel is
 visible, and neither the chart (◎), the lanes map (⋈) nor a space scene covers
@@ -94,12 +148,13 @@ it.
 
 In a room that isn't open to the sky, or while you're aboard your landed
 ship, or before the charts have come, the game shows no sky, and neither
-does the band: it's the skyline alone, with no stars, no arc and nothing
-about the hour. Stepping outdoors brings the sky straight back.
+does the band: it's the skyline alone, with no stars, no arc, no lamps and
+nothing about the hour. Stepping outdoors brings the sky straight back.
 
-`ui/town-view.js`'s `SkyView` is the whole of it. `main.js` asks of it what
-it asks of a model (`div`, `set()` and `setTurning()`), plus `setCharts()`,
-`live` and `draw(t)` for its timer.
+`ui/town-view.js`'s `SkyView` is the sky and the band. `main.js` asks of it
+what it asks of a model (`div`, `set()` and `setTurning()`), plus
+`setCharts()`, `live` and `draw(t)` for its timer. `set(where, msg)` also
+takes the location message, for its `district`.
 
 ## Bottom band: the town plan
 
@@ -152,7 +207,15 @@ have no address, so the town's name stands where an address would.
 - `ui/lib/town.js`: specs, `placeRooms()`, the index, `locateTown()`,
   `townInfo()`, the plan's layout and highlight shapes.
 - `ui/town-deck.js`: the plan's drawing.
-- `ui/town-view.js`: the skyline and the sky over it.
+- `ui/town-view.js`: the band and the sky over the skyline.
+- `ui/lib/skyline.js`: the valley's section (`VALLEY`), the terraces'
+  (`TERRACES`), where each district is across it (`PLACES`), and
+  `skylineFor()`, the layers to draw for a district. Pure, tested in
+  `skyline.test.js`, including that every district in zennor.yaml has a
+  view when `~/dev/empyreal` is there.
+- `ui/town-skyline.js`: draws them.
+- `src/station_map/location.lua`: Empyreal.Room's `district`, into the
+  location message.
 - `ui/lib/sky.js`: `groundSky()`, ground.ts's sky from the charts, and
   `skyScene()`, what the dome draws for it.
 - `dev/sky-cases.ts` and `dev/sky-cases.json`: the game's own Space.Charts
@@ -171,8 +234,8 @@ Copy its rooms from the area's YAML into a data file: id, name, flags and
 exits, and the area's id, name and gravity. Add a spec to `TOWNS` (root,
 tints, open ground, wall, gate, wells). Add its prefix and port id to
 `ui/lib/stations.js`, wire it with `town()` in `ui/main.js`, and add it to the
-tests and the preview's walk. The skyline is Zennor's; a second town would
-want its own. The sky works for any port the charts place: `SkyView` takes
+tests and the preview's walk. The skyline is Zennor's valley; a second
+town would want its own section and places for its districts. The sky works for any port the charts place: `SkyView` takes
 the port's id, and `SHORT` in `ui/lib/sky.js` the short names of the
 stations over it. A town whose exits don't sit on a grid (two
 ways into one cell, a loop that doesn't close) is pushed apart by
@@ -187,6 +250,10 @@ ways into one cell, a loop that doesn't close) is pushed apart by
   The skyline is scenery, and the sky over it is a chart of what the game
   says is overhead, with no highlight (§6 lights places on plans and models,
   and this is neither).
+- **Hydroponics green for crops.** The terraces' rows take the hydroponics
+  district colour (§4.4) at half strength. Nothing else on the skyline is
+  tinted, and nothing is highlighted: which district you're in is said by
+  where the skyline is framed, not by amber.
 - **A lit sky.** By day the dome is tinted, a step lighter for each of
   Senara's bands, though the scene is otherwise always dark (§4). The tints
   stay dark, dusty blue-greys, so the band still reads as night-dark
