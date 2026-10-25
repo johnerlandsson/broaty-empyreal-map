@@ -206,7 +206,7 @@ one, and stays when she stops, unless you've turned that off. The belt map,
   readable.
 
 Your place is lit with the same glow as in the model, not marked with a dot:
-a room box, a stretch of corridor, a lift or the ladderway hatch. The plan
+a room box, a stretch of corridor or the ladderway hatch. The plan
 switches to your floor when you arrive there and re-centres only when you
 walk out of the middle of the view. Closed rooms are drawn dashed and dimmed.
 In your workshop or bunk, which the station plan doesn't have, the room you
@@ -215,6 +215,11 @@ bright tab on its far edge for the door, and the model lights it as usual.
 The map shows only that door, not where in the row your unit is.
 Hover over a room or a corridor stop to see its name, its address and, for a
 closed room, why it's closed.
+
+Riding a lift or Zennor's tram, the deck plan gives way to the car itself,
+as aboard a one-room ship: the lift's square car or the tram's long wooden
+one, its doors open or shut, and under it a line of its stops with the car
+on it, at its stop or midway between two with an arrow the way it's going.
 
 **Aboard a ship.** The bottom band shows the ship's plan in place of the
 station's: the whole hull from above, fore up, with the room you're in lit
@@ -227,7 +232,8 @@ hold and the engine room, with a bar across each way through. Hover over a
 room for its name.
 
 The line at the bottom left says where you are, for example
-`LAUNDRY · Rim 2:00, aft · 0.9 g` or `LIFT 3 · climbing hubward`. Aboard a
+`LAUNDRY · Rim 2:00, aft · 0.9 g`, `LIFT 3 · climbing hubward, Rim → Mid` or
+`THE TRAM · uphill, Market → Uptown`. Aboard a
 ship it shows the room and the ship's class where it's known:
 `COCKPIT OF THE MULE · prospecting skiff`. In Zennor, whose rooms have no
 address, it shows the district and the city: `CONDUIT SQUARE · the Market Quarter · Zennor · 1 g`. In your workshop or bunk

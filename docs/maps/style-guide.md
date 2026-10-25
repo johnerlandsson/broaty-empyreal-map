@@ -22,6 +22,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | Town sky and plan (Zennor) | top, bottom | you're in the city, or your ship is landed there | [town.md](town.md) |
 | Space scenes | top | you're out in a ship you own or crew, undocked | [space-scenes.md](space-scenes.md) |
 | Ship plans | bottom | you're aboard any ship, docked or not | [ship-plans.md](ship-plans.md) |
+| Cars (a lift, the tram) | bottom | you're riding one | [cars.md](cars.md) |
 | Orrery (the system chart) | top | the ◎ toggle is on | [orrery.md](orrery.md) |
 | Lanes map | top | the ⋈ toggle is on | [lanes.md](lanes.md) |
 | Belt map | top | its toggle is on, at a belt | [belt.md](belt.md) |
@@ -275,7 +276,7 @@ name and normal case for the rest, joined with ` · `:
 
 - `LAUNDRY · Rim 2:00, aft · 0.9 g`: name, address (when it isn't the name),
   gravity.
-- `LIFT 3 · climbing hubward`, `LIFT 3 · at Mid 3:00`.
+- `LIFT 3 · climbing hubward, Rim → Mid`, `LIFT 3 · at Mid 3:00`, `THE TRAM · uphill, Market → Uptown` (cars.md).
 - At a door (§6): `JUNIPER'S SMALL WORKSHOP · off Workshop Row · 0.3 g`, the
   door in place of an address.
 - Off the map: the room name from GMCP, in capitals.

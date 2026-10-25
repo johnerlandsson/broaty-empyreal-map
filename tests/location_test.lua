@@ -115,6 +115,42 @@ test('identical frame reports no change', function()
   eq(L.room_info(s, { id = 'tiss.market', name = 'Market Hall' }), false)
 end)
 
+test('riding the tram: a car of kind tram, its stops bottom to top', function()
+  local f = L.new()
+  L.room_info(f, { id = 'zennor.tram-market', name = 'Market Station', area = 'zennor' })
+  eq(L.empyreal_room(f, { id = 'zennor.tram', gravity = 1,
+    vehicle = { kind = 'tram', id = 'zennor.tram',
+      floors = { { id = 'zennor.tram-riverside' }, { id = 'zennor.tram-market', name = 'Market Station' }, 7, { name = 'no id' } },
+      at = 'zennor.tram-market', doors = 'open' } }), true)
+  local m = L.message(f)
+  eq(m.roomId, nil)
+  eq(m.lift.id, 'zennor.tram')
+  eq(m.lift.kind, 'tram')
+  eq(#m.lift.floors, 2)
+  eq(m.lift.floors[1].id, 'zennor.tram-riverside')
+  eq(m.lift.floors[1].name, nil)
+  eq(m.lift.floors[2].name, 'Market Station')
+  eq(m.lift.at, 'zennor.tram-market')
+  eq(m.gravity, 1)
+  -- moving keeps the kind and the stops
+  eq(L.vehicle(f, { id = 'zennor.tram', between = { 'zennor.tram-market', 'zennor.tram-uptown' }, doors = 'closed', heading = 'uphill' }), true)
+  m = L.message(f)
+  eq(m.lift.kind, 'tram')
+  eq(#m.lift.floors, 2)
+  eq(m.lift.heading, 'uphill')
+  eq(m.lift.between[2], 'zennor.tram-uptown')
+  -- a copy each time
+  m.lift.floors[1].id = 'x'
+  eq(L.message(f).lift.floors[1].id, 'zennor.tram-riverside')
+end)
+
+test('a lift says it is a lift, even without a kind', function()
+  local f = L.new()
+  L.empyreal_room(f, { id = 'tiss.lift-9', part = 'lift', address = 'Lift 9', vehicle = { at = 'tiss.rim-0900' } })
+  eq(L.message(f).lift.kind, 'lift')
+  eq(L.message(f).lift.floors, nil)
+end)
+
 test('a ship vehicle is a room, not a lift', function()
   local f = L.new()
   L.empyreal_room(f, { id = 'ship.42', address = nil, part = nil, gravity = 0,

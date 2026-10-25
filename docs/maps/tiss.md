@@ -54,7 +54,9 @@ Four plans, one per level:
   beyond the one before it, so Bay 1 and Bay 2 run on in a row to starboard
   of the Berths, and the plate widens to take them
   (`reference/tiss-bays-mockup.html`, option A).
-- Lit: a room box, a corridor stretch, a lift symbol or the ladderway hatch.
+- Lit: a room box, a corridor stretch or the ladderway hatch. Riding a lift,
+  the band shows the car instead, with its line of floors (cars.md); the
+  model still lights your spoke.
 - In a workshop (`unit.<n>`) or bunk (`bunk.<n>`), which the game builds
   itself with no address, you're at its door, as the game's own `go` and
   `directions` place you (Empyreal commit 2b7228f): the room its one exit,
@@ -72,8 +74,8 @@ guide.
 
 ## Info line
 
-`LAUNDRY · Rim 2:00, aft · 0.9 g`; in a lift, `LIFT 3 · climbing hubward`
-or `LIFT 3 · at Mid 3:00`; in a workshop or bunk, its name and its door in
+`LAUNDRY · Rim 2:00, aft · 0.9 g`; in a lift, `LIFT 3 · climbing hubward, Rim → Mid`
+or `LIFT 3 · at Mid 3:00` (cars.md); in a workshop or bunk, its name and its door in
 place of an address: `JUNIPER'S SMALL WORKSHOP · off Workshop Row · 0.3 g`.
 
 ## Code

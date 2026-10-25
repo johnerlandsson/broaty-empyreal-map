@@ -94,18 +94,43 @@ const room = (id) => {
   return { label: r.name, msg: { roomId: id, name: r.name, area: id.split(".")[0], address: r.address ?? undefined, district: r.district ?? undefined, gravity: r.gravity } };
 };
 
-/** Board lift `hour` at fromId, ride to toId; messages as Empyreal.Room + Empyreal.Vehicle fold them. */
+/** Board lift `hour` at fromId, ride to toId; messages as Empyreal.Room + Empyreal.Vehicle fold them,
+ *  its shaft's floors rim to hub as the car's Empyreal.Room has them. */
 function ride(hour, fromId, toId) {
   const id = `tiss.lift-${hour}`;
   const name = `Lift ${hour}`;
   const gravity = byId.get(fromId).gravity;
   const heading = byId.get(toId).z > byId.get(fromId).z ? "hubward" : "rimward";
   const to = byId.get(toId).name;
+  const x = (hour % 12) * 2;
+  const floors = [
+    ...[0, 1, 2].map((z) => station.rooms.find((r) => r.terrain === "lobby" && r.z === z && r.x === x)).filter(Boolean),
+    byId.get("tiss.hub"),
+  ].map((r) => ({ id: r.id, name: r.name }));
+  const car = { id, kind: "lift", floors };
   return [
-    { label: `${name} at ${byId.get(fromId).name}`, msg: { name, gravity, lift: { id, at: fromId, doors: "open" } } },
-    { label: `${name} riding to ${to}`, msg: { name, gravity, lift: { id, between: [fromId, toId], heading, doors: "closed" } } },
-    { label: `${name} at ${to}`, msg: { name, gravity, lift: { id, at: toId, heading, doors: "open" } } },
+    { label: `${name} at ${byId.get(fromId).name}`, msg: { name, gravity, lift: { ...car, at: fromId, doors: "open" } } },
+    { label: `${name} riding to ${to}`, msg: { name, gravity, lift: { ...car, between: [fromId, toId], heading, doors: "closed" } } },
+    { label: `${name} at ${to}`, msg: { name, gravity, lift: { ...car, at: toId, heading, doors: "open" } } },
   ];
+}
+
+/** Ride Zennor's tram from stop `from` to stop `to`, as the car's Empyreal.Room and Empyreal.Vehicle
+ *  fold them: no name (the car has no address), its stops bottom to top, passing those between. */
+function tramRide(from, to) {
+  const car = zennor.cars.find((c) => c.id === TRAM);
+  const floors = car.stops.map((id) => ({ id }));
+  const [a, b] = [car.stops.indexOf(from), car.stops.indexOf(to)];
+  const dir = Math.sign(b - a);
+  const heading = dir > 0 ? "uphill" : "downhill";
+  const msg = (lift) => ({ gravity: zennor.area.gravity, lift: { id: TRAM, kind: "tram", floors, ...lift } });
+  const steps = [{ label: `The Tram at ${byId.get(from).name}`, msg: msg({ at: from, doors: "open" }) }];
+  for (let i = a; i !== b; i += dir) {
+    const [p, q] = [car.stops[i], car.stops[i + dir]];
+    steps.push({ label: `The Tram, ${heading}, ${byId.get(p).name} to ${byId.get(q).name}`, msg: msg({ between: [p, q], heading, doors: "closed" }) });
+  }
+  steps.push({ label: `The Tram at ${byId.get(to).name}`, msg: msg({ at: to, heading, doors: "open" }) });
+  return steps;
 }
 
 /** Inside a leased workshop or bunk, as the game builds it: no address, its office room's gravity,
@@ -260,7 +285,7 @@ const ROUTE = [
   { label: "Berths (no plan)", msg: { roomId: "pendeen.berth", name: "Berths", area: "pendeen", areaName: "Pendeen Halt", address: "Deck 2, frame 3", gravity: 0 } },
   { label: "Flying to Zennor", msg: COCKPIT, scene: { scene: "travelling" } },
   { label: "Landed at Zennor", msg: COCKPIT, scene: { scene: "station", station: "zennor" } },
-  ...ZENNOR_WALK.map((id) => (id === TRAM ? { label: "The Tram (off the plan)", msg: { roomId: id, name: "The Tram", area: "zennor", gravity: zennor.area.gravity } } : room(id))),
+  ...ZENNOR_WALK.flatMap((id, i) => (id === TRAM ? tramRide(ZENNOR_WALK[i - 1], ZENNOR_WALK[i + 1]) : [room(id)])),
 ];
 window.ROUTE = ROUTE;
 

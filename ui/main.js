@@ -2,7 +2,8 @@
 // replace it while you're out in your ship, and the deck plan (bottom). Each station has its own
 // model and plan (a town on the ground has a skyline for its model); only the one you're on (or
 // docked or landed at) shows. Aboard a ship (any "ship." room) the bottom band shows that ship's
-// plan instead, one view per hull drawing, built on first use.
+// plan instead, one view per hull drawing, built on first use; riding a car (a lift or the tram),
+// the car and its line of stops, one view per kind.
 // The Lua side holds all state and replays it when we post "ready", so this file keeps only the
 // last location, the docked station, and the level each plan last showed (a lift between floors
 // keeps the plan where it was). The system chart (◎), the lanes map (⋈) or the belt map can cover the
@@ -13,6 +14,7 @@
 
 import { ActionCard } from "./action-card.js";
 import { BeltView } from "./belt-view.js";
+import { carPlans, nameCar, updateCar } from "./car-deck.js";
 import { ChartView } from "./chart-view.js";
 import botallack from "./data/botallack.js";
 import caradon from "./data/caradon.js";
@@ -37,6 +39,7 @@ import { decksPlans } from "./decks-deck.js";
 import { drumPlans } from "./drum-deck.js";
 import { DECKS, buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "./lib/decks.js";
 import { DRUMS, buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
+import { carInfo, carKind, carName, stopNames } from "./lib/cars.js";
 import { hullOf, isShipRoom, shipInfo } from "./lib/hulls.js";
 import { indexStation, infoLine, locate } from "./lib/locate.js";
 import { moveCard } from "./lib/space.js";
@@ -107,6 +110,7 @@ const stations = {
   garrow: decks(garrow, DECKS.garrow),
 };
 const ships = {}; // hull id -> the DeckView drawing that hull, built on first use
+const cars = {}; // car kind (lift, tram) -> the DeckView drawing it, built on first use
 const space = new SpaceView(modelEl);
 space.onAway = (away) => stations[current]?.model.setAway?.(away);
 const doing = new ActionCard(deckEl);
@@ -209,7 +213,7 @@ function show(key) {
 
 /** Show only this deck in the bottom band (a station's or a ship's), or none; true if it was hidden. */
 function showDeck(view) {
-  for (const d of [...Object.values(stations).map((s) => s.deck), ...Object.values(ships)]) {
+  for (const d of [...Object.values(stations).map((s) => s.deck), ...Object.values(ships), ...Object.values(cars)]) {
     if (d !== view) d.div.style.display = "none";
   }
   if (!view) return false;
@@ -226,6 +230,14 @@ function shipView(id) {
   return ships[id];
 }
 
+function carView(kind) {
+  if (!cars[kind]) {
+    cars[kind] = new DeckView(deckEl, null, carPlans(kind));
+    cars[kind].div.style.display = "none"; // so showDeck() frames it once it's the only deck
+  }
+  return cars[kind];
+}
+
 function render() {
   show(pickStation(last, docked ?? approaching, current === undefined ? "tiss" : current));
   const s = stations[current]; // none at a station there's no plan of: nothing shows, not the last one
@@ -235,6 +247,16 @@ function render() {
     s.model.set(where, last);
     s.deck.set(where);
     s.deck.dim(where.kind === "off");
+  }
+  if (s && last?.lift) {
+    // riding a car: the car itself, as a one-room ship is shown
+    const view = carView(carKind(last.lift));
+    if (showDeck(view)) view.home();
+    nameCar(view, carName(last, s.index));
+    updateCar(view, last.lift, stopNames(s.index));
+    view.set({ kind: "room", id: last.lift.id, level: 0 });
+    info.textContent = carInfo(last, s.index);
+    return;
   }
   if (isShipRoom(last?.roomId)) {
     const view = shipView(hullOf(last.hull).id);

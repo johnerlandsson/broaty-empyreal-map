@@ -24,7 +24,8 @@ source: each room's id, name, district, flags and exits as the YAML has them
 (an exit `via: steps` as `{ to, via, seconds }`), the area's name, gravity
 and districts (id, name, entrance), and the tram car's stops bottom to top in
 `cars`. The car itself is a room that moves, so it isn't one of the rooms and
-isn't placed (that's zennor-tram, a follow-up). Nothing is placed by hand. A
+isn't placed: riding it, the band shows the car instead (cars.md). Nothing
+is placed by hand. A
 test checks the data against the YAML whenever `~/dev/empyreal` is there.
 
 `placeRooms()` in `ui/lib/town.js` walks the exits from the spec's `root`
@@ -261,7 +262,8 @@ Overlook's circle, or for a street or path its stretch: a cross from its
 middle halfway along each straight way it joins other open ground (stopping
 short of a box), so Top of Fore Street lights east, west and north, and the
 Head of the Steps only east (the Steps aren't street). Every room has a
-tooltip with its name. Aboard the tram (`zennor.tram`) you're off the plan.
+tooltip with its name. Aboard the tram the band shows the car and its line of
+stops instead (cars.md).
 
 ## Info line
 
