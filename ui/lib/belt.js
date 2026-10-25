@@ -2,9 +2,12 @@
 // she is in a belt, the disc framed in the band, her place glided between the game's ticks, and the
 // last sweep's ships in the belt. A belt's frame is km from its core along the star's axes, y toward
 // the system's bearing 0, bearings clockwise (navigation.md §2.5, bearingOf in
-// ~/dev/empyreal/packages/game/src/systems/belts.ts); the band draws 0 up.
+// ~/dev/empyreal/packages/game/src/systems/belts.ts); the band draws 0 up. A place in a belt is its
+// core's, from the charts, plus her x and y, so the bearing ring points the same way as the system.
 
 import { along, isDark, isShip, nameOf, shipLine } from "./contacts.js";
+import { courseLine, isClosed, mouthStar, positionOf } from "./orbits.js";
+import { SHORT } from "./sky.js";
 
 /** help mining: "sensor range (5 km; more with a sensor array)". */
 export const SENSOR_KM = 5;
@@ -122,6 +125,53 @@ export function headingOf(a, b) {
   const dy = b[1] - a[1];
   if (Math.hypot(dx, dy) < 1e-9) return null;
   return (((Math.atan2(dx, dy) * 180) / Math.PI) + 360) % 360;
+}
+
+/** Her home: the game's first station, `travel home`'s (`names: [home, tiss]` in content/game/world.yaml,
+ *  space.homeId). The charts don't say which it is; it's the same for everyone. */
+export const HOME = "tiss";
+
+// The order marks are listed in: her home, the other stations, the star, the planet, the mouths.
+const RANK = { station: 1, port: 1, star: 2, planet: 3, mouth: 4 };
+
+/** What the bearing ring names a charted thing: a station by the game's short name, a mouth by the
+ *  star it faces ("Petroc · closed" while its lane is). */
+function markLabel(it) {
+  if (it.kind === "mouth") return isClosed(it) ? `${mouthStar(it.name)} · closed` : mouthStar(it.name);
+  return SHORT[it.id] ?? it.name;
+}
+
+/**
+ * Which way things on her charts lie from the core of belt `beltId` at wall-clock t (ms), degrees
+ * clockwise from the system's zero, as the belt's own bearings count. `marks`: the star, the planet
+ * the belt goes round, the stations (her home first) and the lane mouths placed on her charts, each
+ * { id, kind, label, deg, home, closed }. `next`: where the course she has plotted aims, as the chart
+ * draws its line (courseLine), { id, label, deg }, or null. Every bearing is a difference of
+ * positionOf's x and y: a mouth's `edge.bearing` is counter-clockwise from x and is never read here.
+ * Nothing at all where the charts don't list the belt or can't place it.
+ */
+export function compassMarks(index, beltId, course, t) {
+  const none = { marks: [], next: null };
+  if (index?.items.get(beltId)?.kind !== "belt") return none;
+  const core = positionOf(index, beltId, t);
+  if (!core) return none;
+  const degFrom = (p) => (p ? headingOf(core, p) : null);
+  const by = index.items.get(beltId)?.orbit?.parent ?? null;
+  const marks = [];
+  for (const it of index.items.values()) {
+    const kind = it.kind;
+    if (!RANK[kind] || (kind === "planet" && it.id !== by)) continue;
+    const deg = degFrom(positionOf(index, it.id, t));
+    if (deg === null) continue; // a mouth with no bearing (a wild lane's), or one the charts can't place
+    marks.push({ id: it.id, kind, label: markLabel(it), deg, home: it.id === HOME, closed: kind === "mouth" && isClosed(it) });
+  }
+  marks.sort((a, b) => b.home - a.home || RANK[a.kind] - RANK[b.kind]);
+  const to = typeof course?.to === "string" ? course.to : null;
+  const line = to && to !== beltId ? courseLine(index, { location: beltId }, course, t) : null;
+  const deg = line ? degFrom(line.to) : null;
+  const it = index.items.get(to);
+  const next = deg === null ? null : { id: to, label: it ? markLabel(it) : (course.name ?? to), deg };
+  return { marks, next };
 }
 
 /** The km rings inside a disc: every 5 km short of the rim. */

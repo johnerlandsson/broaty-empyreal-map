@@ -1,13 +1,15 @@
 // The belt map: where your ship is in the belt she's at, over the top band, switched on and off by a
 // button left of the lanes' ⋈ (docs/maps/belt.md). The belt's disc at the radius its rocks reach, km
 // rings, its core, a bearing ring from the system's zero (the one `rcs` and every contact's bearing
-// count from), and her, moving between the game's ticks, or with her host while she's docked; the
-// player's own log of the belt: her track, each sweep's ground, and where she left her host; and the
+// count from) with the way to what's on her charts and where her plotted course goes round it, and
+// her, moving between the game's ticks, or with her host while she's docked; the player's own log of
+// the belt: her track, each sweep's ground, and where she left her host; and the
 // last sweep's ships, where it saw them. Nothing the game hasn't told the player: no rocks, nothing
 // worked out, no ship moved on from the sweep. Marks and colours are the style guide's §13.6.
 
-import { ALONGSIDE_KM, Glide, SENSOR_KM, ago, beltShipText, beltShips, cleanBelt, discFrame, hereOf, placeText, ringKms, toBand } from "./lib/belt.js";
+import { ALONGSIDE_KM, Glide, SENSOR_KM, ago, beltShipText, beltShips, cleanBelt, compassMarks, discFrame, hereOf, placeText, ringKms, toBand } from "./lib/belt.js";
 import { isDark } from "./lib/contacts.js";
+import { spreadOnEdge } from "./lib/orbits.js";
 import { brackets, el, glowFilter, stars } from "./lib/svg.js";
 
 const HL = "#ffb347";
@@ -23,6 +25,7 @@ const NAMED = "#aebccc"; // a named ship's name, as on the chart
 const TONES = ["#3a4556", "#58667b", "#7e8da3"];
 const FONT = "Inter, system-ui, sans-serif";
 const CHAR_W = 4.6; // a guess at an 8.5 px label's width per character (there's no layout here)
+const PIN_GAP = 13; // px along the ring between two marks' centres, closer ones spread apart
 
 let instances = 0;
 
@@ -36,6 +39,8 @@ export class BeltView {
     this.onToggle = opts.onToggle ?? (() => {});
     this.belt = null;
     this.contacts = null;
+    this.index = null; // the charts, indexed (orbits.js), for the bearing ring's marks
+    this.course = null; // the course message: { course } while one is stored, else {}
     this.on = false;
     this.glide = new Glide();
 
@@ -50,6 +55,7 @@ export class BeltView {
     div.appendChild(svg);
     this.svg = svg;
     const id = `belt-${++instances}`;
+    this.glow = `${id}-glow`;
     const defs = el("defs", {}, svg);
     glowFilter(defs, `${id}-glow`);
     const glow = defs.lastChild;
@@ -134,6 +140,18 @@ export class BeltView {
     this.draw(Date.now());
   }
 
+  /** The chart's indexed Space.Charts (orbits.js indexCharts), or null. */
+  setCharts(index) {
+    this.index = index ?? null;
+    this.draw(Date.now());
+  }
+
+  /** The course message from the Lua side: { course } while one is stored, else {}. */
+  setCourse(msg) {
+    this.course = msg && typeof msg === "object" ? msg : null;
+    this.draw(Date.now());
+  }
+
   /** Switch the map on or off (from the Lua side, the button, or ◎ or ⋈ taking the band). */
   setOn(on) {
     on = !!on;
@@ -178,7 +196,14 @@ export class BeltView {
       el("line", { x1: cx + Math.sin(a) * f.r, y1: cy - Math.cos(a) * f.r, x2: cx + Math.sin(a) * r1, y2: cy - Math.cos(a) * r1,
         stroke: long ? TONES[2] : TONES[0], "stroke-width": 1 }, marks);
     }
+    // round the ticks, the way from the core to what's on her charts, and to where she'd travel next
+    const { marks: pins, next } = compassMarks(this.index, b.id, this.course?.course, t);
+    const all = next ? [...pins, { ...next, kind: "next" }] : pins;
+    const { angles } = spreadOnEdge(all.map((m) => m.deg), (PIN_GAP / (f.r + 12)) * (180 / Math.PI));
+    all.forEach((m, i) => this.pin(marks, words, f, m, angles[i], w, halo));
     for (const d of [0, 90, 180, 270]) {
+      // a mark there takes its place
+      if (angles.some((g) => Math.abs((((g - d) % 360) + 540) % 360 - 180) < 7)) continue;
       const a = (d * Math.PI) / 180;
       const r = f.r + 13;
       text(marks, cx + Math.sin(a) * r, cy - Math.cos(a) * r + 3, `${d}°`, { "font-size": 8, "text-anchor": "middle" });
@@ -292,5 +317,53 @@ export class BeltView {
     this.marks.replaceChildren(marks);
     this.lit.replaceChildren(lit);
     this.words.replaceChildren(words);
+  }
+
+  /**
+   * One mark round the bearing ring, `m` from compassMarks, drawn at `deg` (spread from m.deg when
+   * crowded, with a leader back to its tick): its chart mark (style guide §13.1) or, for where she'd
+   * travel next, a small amber chevron pointing out, and its name beside it, outward.
+   */
+  pin(marks, words, f, m, deg, w, halo) {
+    const { cx, cy, r } = f;
+    const on = (rr, d) => {
+      const a = (d * Math.PI) / 180;
+      return [cx + Math.sin(a) * rr, cy - Math.cos(a) * rr];
+    };
+    const [x, y] = on(r + 12, deg);
+    const nextOne = m.kind === "next";
+    const tone = nextOne ? HL : DIM;
+    if (nextOne) {
+      const [x0, y0] = on(r + 1, m.deg);
+      el("line", { x1: x0, y1: y0, x2: x, y2: y, stroke: HL, "stroke-opacity": 0.6 }, marks);
+    } else if (Math.abs(deg - m.deg) > 0.5) {
+      const [x0, y0] = on(r + 7, m.deg);
+      el("line", { x1: x0, y1: y0, x2: x, y2: y, stroke: DIM, "stroke-opacity": 0.5 }, marks);
+    }
+    const glass = { fill: "none", stroke: GLASS, "stroke-width": 1.1 };
+    if (nextOne) {
+      el("path", { d: "M0,-4.5L3.5,3L0,1.2L-3.5,3Z", fill: HL, stroke: HL_STROKE, "stroke-width": 0.6, "stroke-linejoin": "round",
+        filter: `url(#${this.glow})`, transform: `translate(${x} ${y}) rotate(${deg})` }, marks);
+    } else if (m.kind === "star") {
+      el("circle", { cx: x, cy: y, r: 6, fill: STAR, opacity: 0.18 }, marks);
+      el("circle", { cx: x, cy: y, r: 2.4, fill: STAR }, marks);
+    } else if (m.kind === "planet") {
+      el("circle", { cx: x, cy: y, r: 3.2, fill: TONES[0], stroke: TONES[2], "stroke-width": 0.8 }, marks);
+    } else if (m.kind === "port") {
+      el("path", { d: `M${x - 3},${y + 1.2}A3,3 0 0 1 ${x + 3},${y + 1.2}Z`, ...glass }, marks);
+    } else if (m.kind === "mouth") {
+      el("path", { d: "M-3,1.5L0,-1.5L3,1.5M-3,4.5L0,1.5L3,4.5", ...glass, "stroke-linejoin": "round",
+        ...(m.closed ? { stroke: DIM, "stroke-dasharray": "2 1.6" } : {}), transform: `translate(${x} ${y}) rotate(${deg})` }, marks);
+    } else {
+      el("path", { d: `M${x},${y - 3.5}L${x + 2.6},${y}L${x},${y + 3.5}L${x - 2.6},${y}Z`, ...glass }, marks);
+    }
+    // named outward, or the other side where it would run off the band
+    const s = m.home ? `${m.label} · home` : m.label;
+    const wide = s.length * CHAR_W;
+    let right = Math.sin((deg * Math.PI) / 180) >= 0;
+    if (right && x + 7 + wide > w - 4) right = false;
+    else if (!right && x - 7 - wide < 4) right = true;
+    el("text", { x: right ? x + 7 : x - 7, y: y + 3, "font-size": 8.5, fill: tone, "font-family": FONT,
+      "text-anchor": right ? "start" : "end", ...halo }, words, s);
   }
 }

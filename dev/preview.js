@@ -26,7 +26,7 @@
 //   ?lanes=L  open the lanes map on scenario L (senara, in-trunk, in-mid, dozmary, petroc, new or partly), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it. &zoom=F opens it zoomed by F, &unfold with
 //             its key's card unfolded
-//   ?belt=B   open the belt map on scenario B (arriving, rcs-rim, sweeps, skiff, freighter-seen or docked-pair),
+//   ?belt=B   open the belt map on scenario B (arriving, rcs-rim, sweeps, skiff, freighter-seen, docked-pair or compass),
 //             emitting belt messages (and chart-contacts, for the last two) as
 //             src/station_map/belt.lua posts them, a tick a second while she moves, and belt-view { on: true };
 //             the bar's menu switches it
@@ -701,6 +701,15 @@ function emitBelt(name) {
       beltContact(host, ...host, { kind: "ship", id: "ship.7", name: "Full Measure", moving: false, size: 3, hull: "freighter", owner: "Annet's" }),
       beltContact(host, -6.8, 2.4, { kind: "ship", id: "ship.42", name: "Mule", moving: false, size: 1, hull: "skiff", owner: "Dilbo's" }),
     ] });
+  } else if (name === "compass") {
+    // at Gannet with the Senara charts, the Maelor mouth's bearing known and a course plotted home:
+    // the bearing ring marks the star, Tamsin, the stations, the mouth and where she'd go next
+    fp.emit("charts", senaraCharts(Date.now(), EDGE(Date.now())));
+    fp.emit("course", { course: { to: "tiss", name: "Tamsin International Space Station", km: 2140, seconds: 230, fuel: 6.1, ragged: false, at: Date.now() - 40000 } });
+    fp.emit("belt", beltMsg("gannet", "Gannet Belt", 18, -5.5, -9.5, {
+      track: [[[7.2, 5.1], [9.7, 0.8], [6.0, -4.0], [-5.5, -9.5]]],
+      sweeps: [{ x: 7.2, y: 5.1, r: 5 }, { x: 9.7, y: 0.8, r: 5 }, { x: 6.0, y: -4.0, r: 5 }],
+    }));
   } else if (name === "skiff") {
     // a skiff with a sensor array, away from her freighter in the Anvil: no range to draw
     fp.emit("belt", beltMsg("anvil-1", "The Anvil", 19, -8.2, 3.9, {

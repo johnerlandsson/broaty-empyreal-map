@@ -5,8 +5,8 @@
 ## What it is and when it shows
 
 Where your ship is inside the belt she's at, drawn over the top band: the
-belt's disc, its core, a bearing ring from the system's zero, and her, with
-the game's own words for where she is ("11 km out from the core, bearing
+belt's disc, its core, a bearing ring from the system's zero with the way to
+what's on her charts marked round it, and her, with the game's own words for where she is ("11 km out from the core, bearing
 210°"). Over it, what you've seen of that belt for yourself: the track of
 where she's been, the ground each sweep covered, and where you left your
 host. And the ships the last sweep saw in the belt, where it saw them, with
@@ -44,6 +44,8 @@ player as it happened: where she was (Ship.Status), that a sweep ran to its
 end there (Ship.Devices), which ship she undocked from and where that ship is
 while she's docked (Ship.Status `host`), and what the last sweep picked out
 (Space.Contacts).
+The marks round the bearing ring are what's on her charts (Space.Charts) and
+the course she has plotted (Ship.Course), nothing else.
 
 ## Where its data comes from
 
@@ -54,8 +56,9 @@ uncharted belt 15), and her distance and bearing from the core, degrees
 clockwise from the system's zero. It's null anywhere but a belt. Since
 Empyreal 3bece7c (navigation.md §2.5, decision 18) a belt's axes are its
 star's: one zero for every bearing in a system, the same one `rcs` and each
-contact's `bearing` count from. The map draws that 0° (+y) up and never turns
-it.
+contact's `bearing` count from. A place in a belt is its core's place in the
+system plus her `x` and `y`. The map draws that 0° (+y) up and never turns
+it, so the bearing ring points the same way as the chart.
 
 **Docked at her host**, her own `belt` is null, and `host.belt` (the same
 shape) is where her host is in the belt. The map draws the pair there. **The belt** is `Ship.Status`'
@@ -66,6 +69,34 @@ Ship.Status comes every tick while she moves (it's sent when it changes), so
 between ticks the panel glides her from where she's drawn to her new place
 over the time since the last one came: she moves steadily, a tick behind the
 game.
+
+**The bearing ring's marks** are worked out from `Space.Charts` as the chart
+does (`positionOf` in `ui/lib/orbits.js`), at the current time: the belt's
+core is where her fit of it puts it, and each mark's bearing is the way from
+there to the thing, degrees clockwise from the system's zero, `atan2(dx, dy)`
+of their places in the star's frame, as the game's `bearingOf` counts. That's
+the frame her `x` and `y` are in, so a mark at 120° is the way she'd `rcs` at
+120°. A lane mouth's place comes from its `edge` through `positionOf`; its
+`edge.bearing` is counter-clockwise from the star's x axis (the orbit frame,
+cos and sin) and is never read as a compass bearing. Marked, in this order
+(it's the order crowded marks are spread in):
+
+- **her home**, T.I.S.S., the station `travel home` goes to (`names: [home,
+  tiss]` in content/game/world.yaml). The charts don't say which is home; it's
+  the same for everyone, so the plugin knows it (`HOME` in `ui/lib/belt.js`);
+- the **other stations** on her charts, ports (Zennor) among them;
+- the **star**;
+- the **planet** the belt goes round, if it goes round one (the Anvil goes
+  round Senara and has none);
+- the **lane mouths** on her charts with a bearing. A wild lane's mouth has no
+  `edge`, so no mark.
+
+**Where she'd travel next** is the course she has plotted (`Ship.Course`,
+the `course` message): the way to where it aims, as the chart's course line
+has it (`courseLine`: the destination where it'll be when she'd arrive,
+carried with the body that holds both ends), from the core. None with no
+course, for a course to the belt she's at, or for one the charts can't place
+(a ship on the last sweep).
 
 **The words** are `placeText` in `systems/belts.ts`, done again on her
 `core_km` and `core_bearing`: "at the core" within 1 km of it, "at the outer
@@ -126,7 +157,22 @@ chart), with option B's sweep discs:
   "10", "15").
 - **Bearing ring:** ticks outside the rim every 10°, 5 px in the lightest
   Tone every 30° and 2.5 px in the darkest between; "0°", "90°", "180°" and
-  "270°" in Dim, 8. 0° is up, clockwise, as the game counts.
+  "270°" in Dim, 8, each left out when a mark is within 7° of it. 0° is up,
+  clockwise, as the game counts, from the system's zero.
+- **Marks round it** (option A of `docs/maps/reference/belt-compass-mockup.html`):
+  each thing's chart mark (§13.1), 12 px outside the rim at its bearing from
+  the core: the star a Star dot in a faint glow, the planet a darkest-Tone disc
+  edged in the lightest, a station a Glass diamond, a port a Glass dome, a
+  mouth a Glass double chevron pointing out (a closed one's dashed in Dim).
+  Named beside it, outward, in Dim, 8.5, with a Background halo: "T.I.S.S. ·
+  home", "Orrin Station", "Senara", "Tamsin", "Maelor" ("Petroc · closed").
+  A name that would run off the band goes the other side. Marks nearer than
+  13 px along the ring are spread evenly about their middle (`spreadOnEdge`,
+  as the chart's mouths), each with a Dim leader at .5 back to its true
+  bearing.
+- **Where she'd travel next:** a small amber chevron with the glow, among the
+  marks, pointing out along the way her plotted course goes, an amber leader
+  at .6 from the rim, and the destination's name beside it in amber.
 - **Core:** a small Star cross.
 - **Sweeps:** each the 5 km disc it covered, Sensors green filled at .08 and
   stroked at .3, so the ground you've swept shows where they overlap. Without
@@ -165,7 +211,8 @@ chart), with option B's sweep discs:
   Full Measure," over "9 km out from the core, bearing 151°". Words keep a
   Background halo, so marks under them don't cut them.
 - **Live:** redrawn once a second while it's shown (the host's "last seen"
-  and the ships' "seen" age), and every 100 ms while she glides.
+  and the ships' "seen" age, and the bearing ring's marks go round with their
+  orbits), and every 100 ms while she glides.
 
 ## Bottom band
 
@@ -192,17 +239,24 @@ Unchanged: it's the bottom band's.
   switching each other off, auto_view's arrival and move starts
   (`follow_belt`), and `storage`.
 - `ui/lib/belt.js`: the message's cleaning, `placeText`, the disc's framing,
-  `Glide`, her place between ticks, and `beltShips` and `beltShipText`, the
-  sweep's ships placed and worded. Pure, tested in `belt.test.js`.
-- `ui/belt-view.js`: the SVG and the button. `setContacts` takes the sweep.
-- `ui/main.js`: the toggles, and the redraw loop shared with the chart and the
+  `Glide`, her place between ticks, `beltShips` and `beltShipText`, the
+  sweep's ships placed and worded, and `compassMarks`, the bearing ring's
+  marks and where she'd travel next. Pure, tested in `belt.test.js` (with the
+  check that a place in a belt is its core plus her `x` and `y` on the star's
+  axes, and that a mouth's bearing comes from its place, not `edge.bearing`).
+- `ui/belt-view.js`: the SVG and the button. `setContacts` takes the sweep,
+  `setCharts` and `setCourse` the charts and the course.
+- `ui/main.js`: the toggles, the charts, the course and the sweep passed on
+  from the chart's messages, and the redraw loop shared with the chart and the
   lanes map.
 - `dev/preview.html?belt=arriving` (also `rcs-rim`, `sweeps`, `skiff`,
   `freighter-seen`: a skiff whose sweep saw her freighter again, a dark
   contact and the Mule under drive; `docked-pair`: docked at the Full Measure
-  8.7 km out) shows it without the game.
-- The options it was picked from: `docs/maps/reference/belt-mockup.html`, and
-  for the ships and the docked pair, `belt-ships-mockup.html`.
+  8.7 km out; `compass`: Gannet with the Senara charts, the Maelor mouth and a
+  course plotted home) shows it without the game.
+- The options it was picked from: `docs/maps/reference/belt-mockup.html`; for
+  the ships and the docked pair, `belt-ships-mockup.html`; for the bearing
+  ring's marks, `belt-compass-mockup.html` (`belt-compass-options.png`).
 
 ## Where it differs from the style guide
 

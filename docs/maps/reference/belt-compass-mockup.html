@@ -1,0 +1,99 @@
+<!doctype html>
+<!-- The belt map's bearing ring, 2026-10-25: three ways to mark which way things on her charts lie from
+     the belt's core, now that a belt's axes are its star's (navigation.md §2.5). Gannet Belt, bearings
+     worked out from the Senara fixture with ui/lib/orbits.js; a course plotted home. Picked: A. -->
+<html><head><meta charset="utf-8"><style>
+body{background:#11151c;color:#dfe7f1;font-family:Inter,system-ui,sans-serif;margin:16px}
+.row{display:flex;gap:18px;flex-wrap:wrap}
+.opt{width:380px}
+h2{font-size:14px;margin:0 0 6px}
+p{font-size:12px;color:#9fb0c3;margin:6px 0 0;line-height:1.4}
+.band{width:380px;height:252px;background:#04060c;position:relative;border:1px solid #2b3646}
+</style></head><body><div class="row" id="row"></div>
+<script>
+const HL="#ffb347",HLS="#fff3df",DIM="#7d8a9a",ORBIT="#2b3646",STAR="#fffaf0",GLASS="#cfe3ff",TEXT="#e3eaf2",GREEN="#59d18a",BG="#04060c",TONES=["#3a4556","#58667b","#7e8da3"];
+const R=18,W=380,H=252;
+const P=[[7.2,5.1],[9.7,0.8],[6.0,-4.0],[-5.5,-9.5]];
+// from Gannet's core (orbits.js on the Senara fixture); home first
+const T=[
+ {id:"tiss",kind:"station",name:"T.I.S.S.",deg:121.9,home:true},
+ {id:"orrin_station",kind:"station",name:"Orrin Station",deg:255.5},
+ {id:"zennor",kind:"port",name:"Zennor",deg:149.7},
+ {id:"senara",kind:"star",name:"Senara",deg:204.6},
+ {id:"tamsin",kind:"planet",name:"Tamsin",deg:141.3,by:true},
+ {id:"maelor",kind:"mouth",name:"Maelor",deg:283.9},
+];
+const COURSE={name:"T.I.S.S.",deg:117.6};
+const rad=d=>d*Math.PI/180;
+const at=(cx,cy,r,d)=>[cx+Math.sin(rad(d))*r,cy-Math.cos(rad(d))*r];
+const halo=`stroke="${BG}" stroke-width="3" stroke-linejoin="round" paint-order="stroke"`;
+function stars(n,seed){let s=seed,o="";const r=()=>(s=(s*16807)%2147483647)/2147483647;for(let i=0;i<n;i++)o+=`<circle cx="${r()*W}" cy="${r()*H}" r="${0.4+r()*0.6}" fill="#fff" opacity="${0.12+r()*0.5}"/>`;return o}
+function chev(p,deg){return `<g filter="url(#g)"><path d="M0,-8 L5,6 L0,3 L-5,6 Z" transform="translate(${p[0]} ${p[1]}) rotate(${deg})" fill="${HL}" stroke="${HLS}" stroke-width=".8" stroke-linejoin="round"/></g>`}
+const defs=`<defs><filter id="g" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><radialGradient id="sg"><stop offset="0" stop-color="${STAR}" stop-opacity=".5"/><stop offset="1" stop-color="${STAR}" stop-opacity="0"/></radialGradient></defs>`;
+// a glyph by kind at p, pointing out along deg (the mouth)
+function glyph(t,p,deg,s=1){const[x,y]=p;switch(t.kind){
+ case"star":return `<circle cx="${x}" cy="${y}" r="${6*s}" fill="url(#sg)"/><circle cx="${x}" cy="${y}" r="${2.4*s}" fill="${STAR}"/>`;
+ case"planet":return `<circle cx="${x}" cy="${y}" r="${3.2*s}" fill="${TONES[0]}" stroke="${TONES[2]}" stroke-width=".8"/>`;
+ case"port":return `<path d="M${x-3*s},${y+1.2*s}A${3*s},${3*s} 0 0 1 ${x+3*s},${y+1.2*s}Z" fill="none" stroke="${GLASS}" stroke-width="1.1"/>`;
+ case"mouth":return `<g transform="translate(${x} ${y}) rotate(${deg})" fill="none" stroke="${GLASS}" stroke-width="1.1" stroke-linejoin="round"><path d="M-3,1.5L0,-1.5L3,1.5M-3,4.5L0,1.5L3,4.5" transform="scale(${s})"/></g>`;
+ default:return `<path d="M${x},${y-3.5*s}L${x+2.6*s},${y}L${x},${y+3.5*s}L${x-2.6*s},${y}Z" fill="none" stroke="${GLASS}" stroke-width="1.1"/>`;}}
+// spread crowded bearings apart, as orbits.js spreadOnEdge
+function spread(degs,gap){const o=degs.map((d,i)=>[d,i]).sort((a,b)=>a[0]-b[0]);const gs=[];for(const e of o){const l=gs.at(-1);if(l&&e[0]-l.at(-1)[0]<gap)l.push(e);else gs.push([e])}
+ const out=degs.slice();for(const g of gs){if(g.length<2)continue;const m=g.reduce((s,[d])=>s+d,0)/g.length;g.forEach(([,i],k)=>out[i]=m+(k-(g.length-1)/2)*gap)}return out}
+// the belt map as built: disc, rings, ticks, core, track, sweeps, host, her, words
+function base(cx,cy,k,skip=[]){const f=([x,y])=>[cx+x*k,cy-y*k],pts=P.map(f),r=R*k;let o=defs+stars(70,7);
+ o+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${TONES[1]}" stroke-width="1.2"/>`;
+ for(const km of[5,10,15])o+=`<circle cx="${cx}" cy="${cy}" r="${km*k}" fill="none" stroke="${ORBIT}" stroke-dasharray="1 4"/><text x="${cx+3}" y="${cy-km*k+10}" font-size="8" fill="${DIM}" opacity=".8">${km===5?"5 km":km}</text>`;
+ for(let d=0;d<360;d+=10){const L=d%30===0?5:2.5,a=at(cx,cy,r,d),b=at(cx,cy,r+L,d);o+=`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${d%30===0?TONES[2]:TONES[0]}"/>`}
+ for(const d of[0,90,180,270]){if(skip.includes(d))continue;const p=at(cx,cy,r+13,d);o+=`<text x="${p[0]}" y="${p[1]+3}" font-size="8" fill="${DIM}" text-anchor="middle">${d}°</text>`}
+ o+=`<path d="M${cx-4},${cy}H${cx+4}M${cx},${cy-4}V${cy+4}" stroke="${STAR}" stroke-width="1.2"/>`;
+ [0,1,2].forEach(i=>{const p=pts[i];o+=`<circle cx="${p[0]}" cy="${p[1]}" r="${5*k}" fill="${GREEN}" fill-opacity=".08" stroke="${GREEN}" stroke-opacity=".3"/>`});
+ const h=pts[0];o+=`<circle cx="${h[0]}" cy="${h[1]}" r="${5*k}" fill="none" stroke="${GLASS}" stroke-opacity=".45" stroke-dasharray="3 3"/><path d="M${h[0]},${h[1]-4}L${h[0]+3},${h[1]}L${h[0]},${h[1]+4}L${h[0]-3},${h[1]}Z" fill="none" stroke="${GLASS}" stroke-width="1.1"/>`;
+ o+=`<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="${HL}" stroke-opacity=".3" stroke-width="2" stroke-linejoin="round"/>`;
+ return {o,pts,f,r}}
+function words(o){return o+`<text x="12" y="20" font-size="9.5" fill="${TEXT}" letter-spacing="1" ${halo}>GANNET BELT</text><text x="12" y="33" font-size="10" fill="${TEXT}" ${halo}>11 km out from the core,</text><text x="12" y="45" font-size="10" fill="${TEXT}" ${halo}>bearing 210°</text>`}
+function label(t){return t.name+(t.home?" · home":"")}
+
+// A: pins outside the ticks, named beside them
+function A(){const cx=190,cy=126,k=100/R;let{o,pts,r}=base(cx,cy,k,[]);
+ const all=[...T,{...COURSE,course:true}];const sp=spread(all.map(t=>t.deg),11);
+ all.forEach((t,i)=>{const d=sp[i],tick0=at(cx,cy,r+1,t.deg),tick1=at(cx,cy,r+7,t.deg),g=at(cx,cy,r+12,d);
+  const right=Math.sin(rad(d))>=0,side=right?1:-1,lx=g[0]+side*7,ly=g[1]+3;
+  if(t.course){o+=`<line x1="${tick0[0]}" y1="${tick0[1]}" x2="${g[0]}" y2="${g[1]}" stroke="${HL}" stroke-opacity=".6"/><g transform="translate(${g[0]} ${g[1]}) rotate(${d})"><path d="M0,-4.5L3.5,3L0,1.2L-3.5,3Z" fill="${HL}" stroke="${HLS}" stroke-width=".6" filter="url(#g)"/></g>`;
+   o+=`<text x="${lx}" y="${ly}" font-size="8.5" fill="${HL}" text-anchor="${right?"start":"end"}" ${halo}>${t.name}</text>`;return}
+  if(Math.abs(d-t.deg)>0.5)o+=`<line x1="${tick1[0]}" y1="${tick1[1]}" x2="${g[0]}" y2="${g[1]}" stroke="${DIM}" stroke-opacity=".5"/>`;
+  o+=glyph(t,g,d)+`<text x="${lx}" y="${ly}" font-size="8.5" fill="${DIM}" text-anchor="${right?"start":"end"}" ${halo}>${label(t)}</text>`});
+ o+=chev(pts[3],-140);return words(o)}
+
+// B: spokes from the core, marks inside the rim; the course from her
+function B(){const cx=190,cy=126,k=100/R;let{o,pts,r}=base(cx,cy,k);
+ const sp=spread(T.map(t=>t.deg),14);
+ T.forEach((t,i)=>{const e=at(cx,cy,r-2,t.deg);o+=`<line x1="${cx}" y1="${cy}" x2="${e[0]}" y2="${e[1]}" stroke="${TONES[1]}" stroke-opacity=".45" stroke-dasharray="1 3"/>`});
+ T.forEach((t,i)=>{const d=sp[i],g=at(cx,cy,r-8,d),right=Math.sin(rad(d))>=0,l=at(cx,cy,r-16,d);
+  o+=glyph(t,g,t.deg,.85)+`<text x="${l[0]}" y="${l[1]+3}" font-size="8" fill="${DIM}" text-anchor="${right?"end":"start"}" ${halo}>${label(t)}</text>`});
+ // the course: from her, the way the destination lies, out to the rim
+ const s=pts[3],a=rad(COURSE.deg),dx=Math.sin(a),dy=-Math.cos(a);const q=[s[0]-cx,s[1]-cy];const bq=q[0]*dx+q[1]*dy,c=q[0]**2+q[1]**2-r*r,tt=-bq+Math.sqrt(bq*bq-c);
+ const e=[s[0]+dx*tt,s[1]+dy*tt];o+=`<line x1="${s[0]}" y1="${s[1]}" x2="${e[0]}" y2="${e[1]}" stroke="${HL}" stroke-opacity=".55" stroke-dasharray="1 4" stroke-linecap="round" stroke-width="1.4"/>`;
+ o+=`<g transform="translate(${e[0]} ${e[1]}) rotate(${COURSE.deg})"><path d="M0,-6L4.5,3.5L0,1.5L-4.5,3.5Z" fill="${HL}" stroke="${HLS}" stroke-width=".6" filter="url(#g)"/></g>`;
+ const lp=at(cx,cy,r+14,COURSE.deg);o+=`<text x="${lp[0]}" y="${lp[1]+3}" font-size="8.5" fill="${HL}" ${halo}>${COURSE.name}</text>`;
+ o+=chev(pts[3],COURSE.deg);return words(o)}
+
+// C: notches on the ring, named in two columns either side
+function C(){const cx=190,cy=126,k=100/R;let{o,pts,r}=base(cx,cy,k);
+ const all=[...T,{...COURSE,course:true}];
+ const right=all.filter(t=>t.deg<180).sort((a,b)=>Math.cos(rad(b.deg))-Math.cos(rad(a.deg)));
+ const left=all.filter(t=>t.deg>=180).sort((a,b)=>Math.cos(rad(b.deg))-Math.cos(rad(a.deg)));
+ const col=(list,x,anchor)=>{const n=list.length,top=cy-(n-1)*6.5;list.forEach((t,i)=>{const y=top+i*13,n0=at(cx,cy,r+6,t.deg),side=anchor==="start"?-1:1,ex=x+side*6;
+  const c=t.course?HL:DIM;o+=`<path d="M${n0[0]},${n0[1]}L${ex-side*10},${y}H${ex}" fill="none" stroke="${c}" stroke-opacity="${t.course?.6:.35}"/>`;
+  if(t.course){o+=`<g transform="translate(${at(cx,cy,r+3,t.deg).join(" ")}) rotate(${t.deg})"><path d="M0,-4L3,2.5L0,1L-3,2.5Z" fill="${HL}" filter="url(#g)"/></g>`}
+  else o+=glyph(t,at(cx,cy,r+3,t.deg),t.deg,.7);
+  const s=`${label(t)}`;o+=`<text x="${x}" y="${y+3}" font-size="8" fill="${c}" text-anchor="${anchor}" ${halo}>${s}<tspan fill-opacity=".6" font-size="7.5"> ${Math.round(t.deg)}°</tspan></text>`})};
+ col(right,cx+r+16,"start");col(left,cx-r-16,"end");
+ o+=chev(pts[3],-140);return words(o)}
+
+const opts=[["A · pins outside the ticks",A,"Each thing on her charts is its chart mark (star, planet, Glass diamond, port dome, mouth chevron) just outside the 10° ticks at its bearing from the core, named beside it in Dim. Crowds spread apart with a short leader back to the true bearing. Where she'd travel next is a small amber chevron on the ring, named in amber."],
+ ["B · spokes from the core",B,"A faint dotted spoke from the core to the rim for each, the mark just inside the rim and its name inside the disc. The course is drawn from her: amber dotted, from her chevron the way the destination lies, out to an amber arrowhead on the rim (her chevron turns to it)."],
+ ["C · notches and side columns",C,"Small marks on the ring at the bearing, and the names gathered in two columns either side of the disc (east half right, west half left), top to bottom by bearing, each with its bearing in degrees and a leader to its mark. The next leg is the amber line, named in amber. Words never crowd the top or bottom, where the band is tight."]];
+const row=document.getElementById("row");
+for(const[t,fn,d]of opts){const div=document.createElement("div");div.className="opt";div.innerHTML=`<h2>${t}</h2><div class="band"><svg width="${W}" height="${H}" font-family="Inter,system-ui,sans-serif">${fn()}</svg></div><p>${d}</p>`;row.appendChild(div)}
+</script></body></html>

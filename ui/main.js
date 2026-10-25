@@ -286,6 +286,7 @@ panel.on("charts", (msg) => {
   chart.setCharts(msg);
   space.setCharts(chart.index);
   stations.zennor.model.setCharts(chart.index);
+  belt.setCharts(chart.index);
   runChart();
 });
 
@@ -335,7 +336,10 @@ panel.on("belt-view", (msg) => {
 });
 
 panel.on("action", (msg) => doing.set(msg));
-panel.on("course", (msg) => chart.setCourse(msg));
+panel.on("course", (msg) => {
+  chart.setCourse(msg);
+  belt.setCourse(msg);
+});
 
 panel.on("location", (msg) => {
   last = msg;

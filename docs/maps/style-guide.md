@@ -530,6 +530,12 @@ styled and shown like it, and drawn as the chart is:
   rings every 5 km dotted `1 4` in Orbit, labelled in Dim, 8; ticks outside
   the rim every 10°, longer and lighter every 30°, with 0°, 90°, 180° and
   270° in Dim, 8. The system's 0° is up and the disc never turns.
+- **Round the ring:** the way from the core to what's on her charts, each its
+  chart mark just outside the ticks (§13.1: the star, the belt's planet, the
+  stations with her home first, the lane mouths with a bearing), named
+  outward in Dim, 8.5; crowded marks spread with a Dim leader to their true
+  bearing. Where she'd travel next, her plotted course, is a small amber
+  chevron pointing out, named in amber.
 - **The core:** a small Star cross.
 - **Her:** the amber chevron (§13.1), pointing the way she last moved.
   Between the game's ticks she glides, never jumps.
