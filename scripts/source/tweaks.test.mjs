@@ -26,6 +26,11 @@ describe("loadTweaks", () => {
   it("names the file of a JSON error", () => {
     expect(() => loadTweaks(dir("bad-json"))).toThrow(/x\.json/);
   });
+
+  it("names files under `shownAs` when given, wherever they're read from", () => {
+    expect(() => loadTweaks(dir("bad-key"), { shownAs: "data/tweaks" })).toThrow(/^data\/tweaks\/x\.json: foo$/);
+    expect(() => loadTweaks(dir("bad-json"), { shownAs: "data/tweaks" })).toThrow(/^data\/tweaks\/x\.json: /);
+  });
 });
 
 describe("loadTweaks footprints and view", () => {

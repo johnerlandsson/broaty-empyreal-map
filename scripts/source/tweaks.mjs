@@ -1,7 +1,7 @@
 // Reads the human tweak files (data/tweaks/<place>.json and palette.json) and resolves one
 // place's look from them. The build only ever reads these files.
 import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { basename, join, relative } from "node:path";
 import { boundsOf, outlineOf, pathOf, reachesOf } from "../../ui/lib/footprint.js";
 import { crosses } from "./footprints.mjs";
 import {
@@ -29,8 +29,12 @@ const CUTAWAYS = ["off", "hide-above", "ghost-above"];
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const local = (id) => id.slice(id.indexOf(".") + 1);
 
-/** A path for messages: relative to the repo (the working directory) where it lies under it. */
-function shown(file) {
+/**
+ * A path for messages: under `shownAs` when given, else relative to the repo (the working
+ * directory) where it lies under it.
+ */
+function shown(file, shownAs) {
+  if (shownAs) return `${shownAs}/${basename(file)}`;
   const rel = relative(process.cwd(), file);
   return rel.startsWith("..") ? file : rel;
 }
@@ -188,11 +192,11 @@ export function checkTweak(file, tweak, palette) {
   }
 }
 
-function readJson(file) {
+function readJson(file, name) {
   try {
     return JSON.parse(readFileSync(file, "utf8"));
   } catch (err) {
-    throw new Error(`${shown(file)}: ${err.message}`);
+    throw new Error(`${name}: ${err.message}`);
   }
 }
 
@@ -201,25 +205,27 @@ function readJson(file) {
  * `.json`. Throws, naming the file and key path, on bad JSON, an unknown key or an unknown
  * palette name.
  * @param {string} dir
+ * @param {{shownAs?: string}} [opts] `shownAs` names the dir in messages ("data/tweaks"), for a
+ *   copy read from elsewhere.
  * @returns {{palette: Record<string, string>, places: Record<string, object>}}
  */
-export function loadTweaks(dir) {
-  const palettePath = join(dir, "palette.json");
-  const palette = readJson(palettePath);
-  expectObject(shown(palettePath), "(top level)", palette);
+export function loadTweaks(dir, { shownAs } = {}) {
+  const palettePath = shown(join(dir, "palette.json"), shownAs);
+  const palette = readJson(join(dir, "palette.json"), palettePath);
+  expectObject(palettePath, "(top level)", palette);
   for (const [name, colour] of Object.entries(palette)) {
     if (!PALETTE_NAME.test(name)) {
-      throw new Error(`${shown(palettePath)}: ${JSON.stringify(name)} is not a palette name (lower-case letters, digits and hyphens, starting with a letter)`);
+      throw new Error(`${palettePath}: ${JSON.stringify(name)} is not a palette name (lower-case letters, digits and hyphens, starting with a letter)`);
     }
-    if (typeof colour !== "string") throw new Error(`${shown(palettePath)}: ${name} must be a colour string`);
+    if (typeof colour !== "string") throw new Error(`${palettePath}: ${name} must be a colour string`);
   }
 
   const places = {};
   for (const entry of readdirSync(dir).sort()) {
     if (!entry.endsWith(".json") || entry === "palette.json") continue;
     const file = join(dir, entry);
-    const tweak = readJson(file);
-    checkTweak(shown(file), tweak, palette);
+    const tweak = readJson(file, shown(file, shownAs));
+    checkTweak(shown(file, shownAs), tweak, palette);
     places[entry.slice(0, -".json".length)] = tweak;
   }
   const loaded = { palette, places };

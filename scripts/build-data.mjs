@@ -197,17 +197,18 @@ function hullLines(id, rooms, look, tweaks) {
  * Builds every place, the index and the report. Reads and checks everything before writing
  * anything, so a missing source, a bad tweak or a partial checkout writes nothing. What changed is
  * against the last commit when the out dir is in a git work tree, else against the files there.
- * @param {{source: string, tweaksDir: string, outDir: string, reportPath: string}} opts
+ * @param {{source: string, tweaksDir: string, outDir: string, reportPath: string, tweaksShownAs?: string}} opts
+ *   `tweaksShownAs` names the tweaks dir in messages, for a copy of data/tweaks read from elsewhere.
  * @returns {Promise<{report: object}>}
  */
-export async function build({ source, tweaksDir, outDir, reportPath }) {
+export async function build({ source, tweaksDir, outDir, reportPath, tweaksShownAs }) {
   for (const path of SOURCE_PATHS) {
     if (!existsSync(join(source, path))) throw new Error(`Empyreal source not found: no ${join(source, path)}`);
   }
   const areasDir = join(source, "content/areas");
   if (!readdirSync(areasDir).some((f) => f.endsWith(".yaml"))) throw new Error(`Empyreal source has no areas: no *.yaml in ${areasDir}`);
   const src = loadSource(source);
-  const tweaks = loadTweaks(tweaksDir);
+  const tweaks = loadTweaks(tweaksDir, { shownAs: tweaksShownAs });
   const previous = previousReport(reportPath);
   const report = emptyReport(src.commit);
   const files = new Map(); // path -> text
