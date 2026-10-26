@@ -15,8 +15,8 @@ function isCar(room, wheelAddress) {
  * @param {object[]} rooms  the area's rooms as loadSource reads them, `off:` and all
  * @param {Record<string, {x: number, y: number, z: number}>} place  where to put rooms the layout
  *   doesn't, by local id (`transfer` for `tiss.transfer`)
- * @returns {{rooms: object[], unplaced: string[]}}  unplaced: the rooms of a layout left without
- *   `at`, lift cars aside
+ * @returns {{rooms: object[], unplaced: string[]}}  rooms: those placed, lift cars and, without a
+ *   layout, all; unplaced: the ids of a layout's rooms left without `at`, lift cars aside
  */
 export function placeRooms(area, rooms, place = {}) {
   const layout = area.layout ?? { kind: "none" };
@@ -24,7 +24,8 @@ export function placeRooms(area, rooms, place = {}) {
   const wheel = layout.kind === "wheel" ? placeWheel(layout, rooms) : null;
   const unplaced = [];
 
-  const out = rooms.map((raw) => {
+  const out = [];
+  for (const raw of rooms) {
     const room = { ...raw };
     let part;
     if (wheel) {
@@ -39,15 +40,20 @@ export function placeRooms(area, rooms, place = {}) {
       const cell = parseAddress(raw.address);
       if (cell) room.at = { deck: cell.z, frame: cell.y, side: cell.x };
     }
-    if (layout.kind === "wheel" || layout.kind === "decks") {
-      // `place` is {x, y, z}, a wheel's coordinates; a room placed by it keeps the layout's terrain.
-      const fill = wheel && place[local(raw.id)];
-      if (!room.at && fill) room.at = { x: fill.x, y: fill.y, z: fill.z };
-      if (!room.at && !isCar(raw, wheel?.get(raw.id)?.address)) unplaced.push(raw.id);
+    // `place` applies only to wheels: decks addresses always parse to a cell. Its {x, y, z} keeps the layout's terrain.
+    const key = local(raw.id);
+    if (wheel && !room.at && Object.hasOwn(place, key)) {
+      const fill = place[key];
+      room.at = { x: fill.x, y: fill.y, z: fill.z };
+    }
+    // A room of a layout the rules can't place stays out of the rooms; a lift car is a car, not unplaced.
+    if ((layout.kind === "wheel" || layout.kind === "decks") && !room.at && !isCar(raw, wheel?.get(raw.id)?.address)) {
+      unplaced.push(raw.id);
+      continue;
     }
     // Its own gravity, else its part's, else its area's.
     room.gravity = raw.gravity ?? part ?? area.gravity;
-    return room;
-  });
+    out.push(room);
+  }
   return { rooms: out, unplaced };
 }

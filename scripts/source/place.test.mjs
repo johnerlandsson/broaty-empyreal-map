@@ -28,11 +28,13 @@ describe("placeRooms on the fixtures", () => {
     expect(byId.get("wheelie.ladderway-12")).toMatchObject({ at: { x: 1, y: 0, z: 0 }, terrain: "ladderway" });
     expect(byId.get("wheelie.hub")).toMatchObject({ at: { x: 0, y: 0, z: 3 }, terrain: "hub", gravity: 0 });
     expect(unplaced).toEqual(["wheelie.hub-freight"]);
+    expect(byId.has("wheelie.hub-freight")).toBe(false);
   });
 
   it("leaves a lift car unplaced, but not in unplaced, with the rim's gravity", () => {
     const { byId, unplaced } = placed(src, "wheelie");
     const car = byId.get("wheelie.lift-12");
+    expect(car).toBeDefined();
     expect(car).not.toHaveProperty("at");
     expect(car.gravity).toBe(0.9);
     expect(unplaced).not.toContain("wheelie.lift-12");
@@ -86,7 +88,9 @@ describe.skipIf(!hasReal)("placeRooms on the real source", () => {
   });
 
   it("leaves tiss.transfer unplaced unless `place` places it", () => {
-    expect(placed(src, "tiss").unplaced).toContain("tiss.transfer");
+    const bare = placed(src, "tiss");
+    expect(bare.unplaced).toContain("tiss.transfer");
+    expect(bare.byId.has("tiss.transfer")).toBe(false);
     const { byId, unplaced } = placed(src, "tiss", { transfer: { x: 0, y: -1, z: 3 } });
     expect(byId.get("tiss.transfer").at).toEqual({ x: 0, y: -1, z: 3 });
     expect(unplaced).not.toContain("tiss.transfer");
@@ -95,7 +99,7 @@ describe.skipIf(!hasReal)("placeRooms on the real source", () => {
   it("gives lift cars no place and doesn't count them unplaced", () => {
     const { rooms, unplaced } = placed(src, "tiss");
     const cars = rooms.filter((r) => /^Lift \d+$/.test(r.address ?? ""));
-    expect(cars.length).toBeGreaterThan(0);
+    expect(cars.map((c) => c.id)).toEqual(expect.arrayContaining(["tiss.lift-12", "tiss.lift-3", "tiss.lift-6", "tiss.lift-9"]));
     for (const car of cars) {
       expect(car, car.id).not.toHaveProperty("at");
       expect(unplaced).not.toContain(car.id);
