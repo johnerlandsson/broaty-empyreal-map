@@ -10,8 +10,9 @@
 // top band, one at a time; while one does, the space scene doesn't draw. Docking and undocking, the station
 // model shows through the space scene, drawing near or falling away on the game's clock. What you're
 // doing (Char.Action) is a card in the deck band's corner, over whichever plan shows; the overview is
-// left as it is. Until the game says where you are, both bands show an unknown location
-// (unknown-view.js), and no station is built till one is picked.
+// left as it is. Station time (UTC) and its shift are a tab on the rule between the bands, always.
+// Until the game says where you are, both bands show an unknown location (unknown-view.js), and no
+// station is built till one is picked.
 
 import { ActionCard } from "./action-card.js";
 import { BeltView } from "./belt-view.js";
@@ -28,6 +29,7 @@ import { noPlanLine, pickStation, stationOfDock } from "./lib/stations.js";
 import { SpaceView } from "./space-view.js";
 import { buildPlace } from "./place-views.js";
 import { shipPlans, updateShip } from "./ship-deck.js";
+import { StationClock } from "./station-clock.js";
 import { UnknownView } from "./unknown-view.js";
 
 const modelEl = document.getElementById("model");
@@ -59,6 +61,7 @@ let unknown = new UnknownView(modelEl, deckEl); // both bands until the game say
 const doing = new ActionCard(deckEl);
 const moving = new ActionCard(deckEl, moveCard); // her thrusters, or closing on a rock, under yours
 const info = document.getElementById("info");
+new StationClock(document.querySelector("main.station")); // station time, on the rule between the bands
 const panel = window.panel;
 
 // switching one of the chart, the lanes map and the belt map on switches the others off; the Lua side does too

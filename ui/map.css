@@ -44,6 +44,25 @@ body {
 }
 #info:empty { display: none; }
 
+/* Station time (ui/station-clock.js): a tab on the rule between the bands, at the right, the panel's
+ * rather than either map's. Its centre is the rule's: the grid's 42fr of the height less the rule. */
+.station-clock {
+  position: absolute;
+  right: 10px;
+  top: calc((100% - 1px) * .42);
+  transform: translateY(-50%);
+  z-index: 4;
+  padding: 2px 8px;
+  border-radius: 9px;
+  background: #0e131a;
+  border: 1px solid #2b3646;
+  font: 400 10px Inter, system-ui, sans-serif;
+  color: #9aa7b7;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.station-clock .time { font-weight: 600; color: #e3eaf2; font-variant-numeric: tabular-nums; }
+
 /* What you're doing (ui/action-card.js): cards stacked in the deck band's top-left corner, clear of
  * the zoom buttons, yours over the ship's move. Dark like the plan under them, whatever the theme,
  * with the plan's amber for the bar. */

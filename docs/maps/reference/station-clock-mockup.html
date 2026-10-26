@@ -1,0 +1,69 @@
+<!doctype html>
+<!-- Station clock, 2026-10-26: three places and looks for station time (UTC) and its shift, as
+     help people words them: first shift 06:00 to 14:00, second 14:00 to 22:00, the night watch
+     otherwise. Each frame is the real preview (dev/preview.html) at the Market on T.I.S.S., with
+     Juniper climbing so the action card shows too; the clock is put in from here. Serve the repo
+     root over http to open it. A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Station clock: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:18px; }
+  .row { display:flex; gap:26px; justify-content:center; align-items:flex-start; }
+  figure { margin:0; text-align:center; }
+  figcaption { margin:8px 0 2px; color:#e3eaf2; font-size:14px; }
+  figcaption small { display:block; color:#7d8a9a; max-width:360px; margin:4px auto 0; font-size:12px; line-height:1.4; }
+  iframe { display:block; width:360px; height:560px; border:1px solid #2b3646; border-radius:6px; margin-top:8px; background:#04060c; }
+</style></head><body>
+<div class="row">
+  <figure><figcaption>A · beside the info line<small>Bottom right of the deck band, in the info line's own chrome: when it is, across from where you are. Follows the theme.</small></figcaption><iframe data-opt="a"></iframe></figure>
+  <figure><figcaption>B · a tab on the rule<small>A small tab sitting on the line between the bands, at the right. Belongs to the panel, not to either map.</small></figcaption><iframe data-opt="b"></iframe></figure>
+  <figure><figcaption>C · a card under yours<small>In the deck band's top-left stack, under the action card: the time, the shift, its time left and a thin bar.</small></figcaption><iframe data-opt="c"></iframe></figure>
+</div>
+<script>
+const CSS = {
+  a: `.bar { display:none !important; }
+      #info { max-width: calc(100% - 150px); }
+      .clock { position:absolute; right:8px; bottom:8px; z-index:3; padding:2px 6px; border-radius:4px;
+        font:11px "DejaVu Sans Mono", monospace; letter-spacing:.5px; line-height:1.4; color:#dfe7f1;
+        background: color-mix(in srgb, #04060c 70%, transparent); white-space:nowrap; pointer-events:none; }
+      .clock b { font-weight:400; color:#dfe7f1; } .clock span { color:#9aa7b7; }`,
+  b: `.bar { display:none !important; }
+      .clock { position:absolute; right:10px; top:42%; transform:translateY(-50%); z-index:4; padding:2px 8px; border-radius:9px;
+        background:#0e131a; border:1px solid #2b3646; font:400 10px Inter, system-ui, sans-serif; color:#9aa7b7; white-space:nowrap; pointer-events:none; }
+      .clock b { font-weight:600; color:#e3eaf2; font-variant-numeric: tabular-nums; }`,
+  c: `.bar { display:none !important; }
+      .clock { min-width:150px; box-sizing:border-box; padding:4px 8px 6px; border-radius:6px; background:rgba(14,19,26,.92);
+        border:1px solid #2b3646; box-shadow:0 2px 10px rgba(0,0,0,.65); font:600 12px Inter, system-ui, sans-serif; color:#e3eaf2; }
+      .clock .r { display:flex; gap:8px; align-items:baseline; white-space:nowrap; }
+      .clock .r span { margin-left:auto; font-weight:400; font-size:11px; color:#9aa7b7; }
+      .clock .d { margin-top:1px; font-weight:400; font-size:10px; color:#9aa7b7; }
+      .clock .t { height:2px; margin-top:5px; border-radius:1px; background:#2b3646; overflow:hidden; }
+      .clock .t i { display:block; height:100%; width:98%; background:#7d8a9a; }`,
+};
+const HTML = {
+  a: `<b>13:52</b> <span>· first shift</span>`,
+  b: `<b>13:52</b> · first shift`,
+  c: `<div class="r">13:52<span>UTC</span></div><div class="d">first shift · 8 m to go</div><div class="t"><i></i></div>`,
+};
+for (const f of document.querySelectorAll("iframe")) {
+  const opt = f.dataset.opt;
+  f.addEventListener("load", () => {
+    const doc = f.contentDocument;
+    const style = doc.createElement("style");
+    style.textContent = CSS[opt];
+    doc.head.appendChild(style);
+    const put = () => {
+      const clock = doc.createElement("div");
+      clock.className = "clock";
+      clock.innerHTML = HTML[opt];
+      if (opt === "c") {
+        const stack = doc.querySelector("#deck > .action-cards");
+        if (!stack) return setTimeout(put, 100);
+        stack.appendChild(clock);
+      } else doc.querySelector("main.station").appendChild(clock);
+    };
+    put();
+  });
+  f.src = "../../../dev/preview.html?step=2&action=repair-skiff";
+}
+</script>
+</body></html>

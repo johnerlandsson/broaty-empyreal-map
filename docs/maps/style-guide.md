@@ -1,6 +1,6 @@
 # Map style guide
 
-*Last updated 2026-10-24.*
+*Last updated 2026-10-26.*
 
 This guide is the visual language every map in the panel shares: the station
 models, the space scenes, the deck plans and the ship plans. Each kind of map
@@ -28,6 +28,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | Belt map | top | its toggle is on, at a belt | [belt.md](belt.md) |
 | Unknown location | top, bottom | the panel has loaded and the game hasn't said where you are yet | §10 |
 | What you're doing (a card, not a map) | bottom, top-left corner | you're doing something that takes time | [action-card.md](action-card.md) |
+| Station time (a tab, not a map) | on the rule between the bands, right | always | [station-clock.md](station-clock.md) |
 
 ## 2. Principles
 
@@ -62,6 +63,10 @@ Two bands, split about 42 / 58 by a 1 px rule (`#2b3646`):
   while it takes time, with the seconds left and a draining bar
   ([action-card.md](action-card.md)). It's chrome, the same size at any zoom,
   and it's hidden when you're doing nothing.
+- **Station time**, a tab on the rule between the bands at the right, says
+  the time on the station (UTC) and its shift: `13:52 · first shift`
+  ([station-clock.md](station-clock.md)). It always shows, and turns with the
+  minute on its own.
 
 Each band has zoom buttons (**+**, **−**, **⌂**) top right, wheel zoom and
 drag pan. **⌂** puts the view back where the map starts it.
