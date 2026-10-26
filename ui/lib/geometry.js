@@ -46,16 +46,29 @@ export function roll(p, phiHours) {
   return [p[0] * c + p[1] * s, -p[0] * s + p[1] * c, p[2]];
 }
 
-const YAW = (CAM.yaw * Math.PI) / 180;
-const PITCH = (CAM.pitch * Math.PI) / 180;
-
-/** Yaw about Y, then pitch about X. Screen y is down; larger depth is nearer. */
-export function project([x, y, z]) {
-  const x1 = x * Math.cos(YAW) + z * Math.sin(YAW);
-  const z1 = -x * Math.sin(YAW) + z * Math.cos(YAW);
-  return [x1, -(y * Math.cos(PITCH) - z1 * Math.sin(PITCH)), y * Math.sin(PITCH) + z1 * Math.cos(PITCH)];
+/**
+ * A camera at `yaw` and `pitch` degrees: its projection (yaw about Y, then pitch about X; screen y
+ * is down, larger depth is nearer) and its front, the hour on the wheel nearest it, whatever sits
+ * there facing the viewer.
+ */
+export function camera({ yaw, pitch }) {
+  const Y = (yaw * Math.PI) / 180;
+  const X = (pitch * Math.PI) / 180;
+  const [cy, sy, cx, sx] = [Math.cos(Y), Math.sin(Y), Math.cos(X), Math.sin(X)];
+  return {
+    project([x, y, z]) {
+      const x1 = x * cy + z * sy;
+      const z1 = -x * sy + z * cy;
+      return [x1, -(y * cx - z1 * sx), y * sx + z1 * cx];
+    },
+    front: (Math.atan2(-sy * cx, sx) / (2 * Math.PI)) * 12,
+  };
 }
 
-/** The hour on the wheel nearest the camera: whatever sits there faces the viewer. */
-export const FRONT =
-  (Math.atan2(-Math.sin(YAW) * Math.cos(PITCH), Math.sin(PITCH)) / (2 * Math.PI)) * 12;
+const DEFAULT = camera(CAM);
+
+/** The default camera's projection. */
+export const project = DEFAULT.project;
+
+/** The hour on the wheel nearest the default camera: whatever sits there faces the viewer. */
+export const FRONT = DEFAULT.front;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CAM, FRONT, P3, project, roll } from "./geometry.js";
+import { CAM, FRONT, P3, camera, project, roll } from "./geometry.js";
 
 describe("geometry", () => {
   it("roll moves hour 0 to hour 3", () => {
@@ -20,5 +20,18 @@ describe("geometry", () => {
 
   it("project gives larger depth to nearer points", () => {
     expect(project([0, -100, 0])[2]).toBeLessThan(project([0, 100, 0])[2]);
+  });
+
+  it("camera(CAM) is the default camera", () => {
+    const c = camera(CAM);
+    expect(c.project([1, 2, 3])).toEqual(project([1, 2, 3]));
+    expect(c.front).toBe(FRONT);
+  });
+
+  it("camera at yaw 0, pitch 0 looks straight down the axis", () => {
+    const [x, y, z] = camera({ yaw: 0, pitch: 0 }).project([1, 2, 3]);
+    expect(x).toBeCloseTo(1, 12);
+    expect(y).toBeCloseTo(-2, 12);
+    expect(z).toBeCloseTo(3, 12);
   });
 });

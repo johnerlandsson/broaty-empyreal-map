@@ -1,9 +1,15 @@
 // @vitest-environment happy-dom
-// ModelView's cutaway modes: Orrin cut away at the Exchange (Deck 2), its Deck 3 above the cut.
+// ModelView's cutaway modes: Orrin cut away at the Exchange (Deck 2), its Deck 3 above the cut;
+// and its camera home per place, on T.I.S.S.
 
 import { describe, expect, it } from "vitest";
 import orrin from "../tests/fixtures/generated/orrin.js";
 import { buildDecksModel, decksCut, decksKey, indexDecks } from "./lib/decks.js";
+import { data } from "./data/places.js";
+import { CAM, FRONT, camera } from "./lib/geometry.js";
+import { indexStation } from "./lib/locate.js";
+import { awayLook } from "./lib/space.js";
+import { tissRooms } from "./lib/look.js";
 import { ModelView } from "./model-view.js";
 
 const WHERE = { kind: "room", id: "orrin.market", level: 1 };
@@ -53,5 +59,53 @@ describe("cutaway", () => {
     const top = build({ cutaway: "ghost-above" });
     top.set({ kind: "room", id: "orrin.berth", level: 2 }); // Deck 3: nothing above to ghost
     expect(ghosted(top)).toHaveLength(0);
+  });
+});
+
+describe("camera", () => {
+  const tiss = (camera) => {
+    const index = indexStation(tissRooms(data.tiss));
+    return new ModelView(document.createElement("div"), index, { view: camera ? { camera } : undefined });
+  };
+  const AT_3 = { kind: "room", id: "tiss.somewhere", level: 0, x: 6 }; // hour 3
+
+  it("turns T.I.S.S.'s hour to the place's camera's front (Review Focus 5)", () => {
+    const cam = { yaw: 40, pitch: 25, zoom: 1 };
+    const front = camera(cam).front;
+    expect(front).not.toBeCloseTo(FRONT, 3);
+    const m = tiss(cam);
+    expect(m.phi).toBeCloseTo(front, 9); // 12:00 faces this camera
+    m.set(AT_3);
+    const off = (((m.phi + 3 - front) % 12) + 12) % 12;
+    expect(Math.min(off, 12 - off)).toBeCloseTo(0, 9);
+    m.setTurning(false);
+    expect(m.phi).toBeCloseTo(front, 9);
+  });
+
+  it("no camera is the default camera at zoom 1", () => {
+    const a = tiss();
+    const b = tiss({ ...CAM, zoom: 1 });
+    expect(b.bounds).toEqual(a.bounds);
+    expect(b.vb).toEqual(a.vb);
+    expect(b.phi).toBe(FRONT);
+  });
+
+  it("zoom 2 halves the home view box about the same centre", () => {
+    const one = tiss({ yaw: 40, pitch: 25, zoom: 1 });
+    const two = tiss({ yaw: 40, pitch: 25, zoom: 2 });
+    const [x1, y1, w1, h1] = one.vb;
+    const [x2, y2, w2, h2] = two.vb;
+    expect(w2).toBeCloseTo(w1 / 2, 9);
+    expect(h2).toBeCloseTo(h1 / 2, 9);
+    expect(x2 + w2 / 2).toBeCloseTo(x1 + w1 / 2, 9);
+    expect(y2 + h2 / 2).toBeCloseTo(y1 + h1 / 2, 9);
+    // home (the zoom buttons' reset) and docking back (setAway 0) both come back to it
+    two.setView([0, 0, 1, 1]);
+    two.setAway(0.5);
+    const { zoom } = awayLook(0.5);
+    expect(two.vb[2]).toBeCloseTo(w2 * zoom, 9); // backed out from home, not from the whole model
+    expect(two.vb[0] + two.vb[2] / 2).toBeCloseTo(x2 + w2 / 2, 9);
+    two.setAway(0);
+    expect(two.vb).toEqual([x2, y2, w2, h2]);
   });
 });

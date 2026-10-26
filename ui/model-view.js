@@ -1,12 +1,13 @@
 // The station model: a flat-shaded, painter's-algorithm drawing of a station as SVG polygons,
 // T.I.S.S. unless given another's faces. The wheel (or drum) turns by itself so the player's clock
 // position comes round to the camera; the player's place is shown by lighting the faces that share
-// their key. The user can zoom and pan, not rotate. Docking and undocking, it shrinks or grows in its
-// framing as the space scene's timing says (setAway).
+// their key. Each place may have its own camera (angle and how close its home framing is); the user
+// can zoom and pan from there, not rotate. Docking and undocking, it shrinks or grows in its framing
+// as the space scene's timing says (setAway).
 // Geometry lives in lib/geometry.js, lib/model.js, lib/drum.js and lib/decks.js, turn maths in
 // lib/turn.js.
 
-import { BLZ, FRONT, P3, RR, RT, RWZ, project, roll } from "./lib/geometry.js";
+import { BLZ, CAM, P3, RR, RT, RWZ, camera, roll } from "./lib/geometry.js";
 import { keyOf } from "./lib/locate.js";
 import { buildModel } from "./lib/model.js";
 import { awayLook } from "./lib/space.js";
@@ -78,6 +79,12 @@ function hourOf(where) {
 
 const num = (n) => n.toFixed(1);
 
+/** A view box `zoom` times as close as `[x, y, w, h]`, about the same centre. */
+function homeOf([x, y, w, h], zoom) {
+  if (zoom === 1) return [x, y, w, h];
+  return [x + (w - w / zoom) / 2, y + (h - h / zoom) / 2, w / zoom, h / zoom];
+}
+
 /** A path along a projected face's edges, leaving out those `edges` marks false. */
 function edgePath(P, edges) {
   return P.map((p, i) => {
@@ -93,12 +100,14 @@ export class ModelView {
    * @param {ReturnType<typeof import("./lib/locate.js").indexStation>} index
    * @param {{faces?: object[], keyOf?: (where: object) => string|null,
    *   hourOf?: (where: object) => number|null, cutOf?: (where: object) => number|null,
-   *   labels?: boolean, view?: {cutaway?: "off"|"hide-above"|"ghost-above"}}} [opts] another station's model: its faces, the face key and hour for a
+   *   labels?: boolean, view?: {cutaway?: "off"|"hide-above"|"ghost-above",
+   *   camera?: {yaw: number, pitch: number, zoom: number}}}} [opts] another station's model: its faces, the face key and hour for a
    *   place, the deck to cut the model away above (faces with a higher `deck` are drawn as a
    *   dashed outline, and those with that `lid` as its top), and whether to draw T.I.S.S.'s ring
    *   names, and how the place is viewed: `cutaway` is whether cutting away happens at all ("off"),
    *   leaves the decks above out ("hide-above", as when absent) or draws them as a ghost
-   *   ("ghost-above")
+   *   ("ghost-above"), and `camera` is the angle it's seen from (CAM when absent) and how close its
+   *   home framing is (`zoom`: 1 frames the whole model, 2 is twice as close)
    */
   constructor(containerEl, index, opts = {}) {
     this.faces = opts.faces ?? buildModel(index);
@@ -107,6 +116,7 @@ export class ModelView {
     this.cutOf = opts.cutOf ?? (() => null);
     this.cut = null;
     this.cutaway = opts.view?.cutaway ?? "hide-above";
+    this.cam = camera(opts.view?.camera ?? CAM);
     this.normals = this.faces.map((f) => normalOf(f.pts));
 
     const div = document.createElement("div");
@@ -126,7 +136,8 @@ export class ModelView {
     // the union of the silhouettes over a full turn, so turning never moves the framing
     this.bounds = this.computeBounds();
     this.labels = opts.labels === false ? null : this.layoutLabels();
-    this.vb = this.bounds.slice();
+    this.home = homeOf(this.bounds, opts.view?.camera?.zoom ?? 1);
+    this.vb = this.home.slice();
     const svg = el("svg", { viewBox: this.vb.join(" ") });
     Object.assign(svg.style, { display: "block", width: "100%", height: "100%" });
     div.appendChild(svg);
@@ -142,7 +153,7 @@ export class ModelView {
     this.shapes = el("g", {}, this.pulse);
     if (this.labels) this.drawLabels(el("g", { "pointer-events": "none" }, svg));
 
-    this.phi = FRONT; // 12:00 faces the camera
+    this.phi = this.cam.front; // 12:00 faces the camera
     this.turning = true;
     this.key = null;
     this.hour = null; // hour of the last location, null when it gave none
@@ -153,11 +164,11 @@ export class ModelView {
     this.away = 0; // 0 as docked, 1 backed out of the berth (setAway)
     this.draw();
 
-    const W = this.bounds[2];
+    const W = this.home[2];
     this.zoom = attachPanZoom(div, () => this.vb, (v) => this.setView(v), { minW: W * 0.25, maxW: W * 1.2 });
     zoomButtons(div, "8px", (f) => {
       if (f) this.zoom(f);
-      else this.setView(this.bounds.slice());
+      else this.setView(this.home.slice());
     });
   }
 
@@ -169,7 +180,7 @@ export class ModelView {
     for (let k = 0; k < 12; k++) {
       for (const f of this.faces) {
         for (const p of f.pts) {
-          const [x, y] = project(f.turns ? roll(p, k) : p);
+          const [x, y] = this.cam.project(f.turns ? roll(p, k) : p);
           if (x < x0) x0 = x;
           if (x > x1) x1 = x;
           if (y < y0) y0 = y;
@@ -193,7 +204,7 @@ export class ModelView {
       let best = [-Infinity, 0];
       for (let h = 0; h < 12; h += 0.05) {
         for (const dz of [-RWZ[z], RWZ[z]]) {
-          const p = project(P3(RR[z] + RT[z], h, dz));
+          const p = this.cam.project(P3(RR[z] + RT[z], h, dz));
           if (p[0] > best[0]) best = p;
         }
       }
@@ -203,7 +214,7 @@ export class ModelView {
     const step = LABEL_SIZE + 14;
     const mid = rings[0].from[1] + step;
     rings.forEach((r, i) => (r.y = mid + (i - 1) * step));
-    const [dx, dy] = project([0, 0, BLZ + 18]);
+    const [dx, dy] = this.cam.project([0, 0, BLZ + 18]);
     const docks = { text: "DOCKS", x: dx + 14, y: dy + 24 };
     this.bounds[2] = colX + LABEL_W + PAD / 2 - this.bounds[0];
     return { colX, rings, docks };
@@ -243,14 +254,14 @@ export class ModelView {
   /**
    * Draw the station `away` from as docked (0) to backed out of the berth (1), as awayLook has it:
    * smaller in its framing, its backdrop of stars giving way to the space scene's over it, fading
-   * at the far end, and no zoom buttons. Back at 0 it's as it was, framed as docked.
+   * at the far end, and no zoom buttons. Back at 0 it's as it was, framed as docked: its home.
    */
   setAway(away) {
     if (away === this.away) return;
     this.away = away;
     const { zoom, model, stars: field } = awayLook(away);
-    const [x, y, w, h] = this.bounds;
-    this.setView(away === 0 ? this.bounds.slice() : [x + (w - w * zoom) / 2, y + (h - h * zoom) / 2, w * zoom, h * zoom]);
+    const [x, y, w, h] = this.home;
+    this.setView(away === 0 ? this.home.slice() : [x + (w - w * zoom) / 2, y + (h - h * zoom) / 2, w * zoom, h * zoom]);
     this.backdrop.style.opacity = away === 0 ? "" : String(1 - field);
     this.svg.style.opacity = model === 1 ? "" : String(model);
     const buttons = this.div.querySelector(".zoom");
@@ -270,6 +281,7 @@ export class ModelView {
    */
   draw() {
     const { phi, key } = this;
+    const { project } = this.cam;
     const cut = this.cutaway === "off" ? null : this.cut;
     const ghostly = this.cutaway === "ghost-above";
     const turned = (f, v) => (f.turns ? roll(v, phi) : v);
@@ -386,13 +398,13 @@ export class ModelView {
     if (first) {
       // a fresh mount (open, reload, reconnect) starts already facing the player: nothing spins
       this.stop();
-      if (hour != null && this.turning) this.phi = shortestTurn(this.phi, hour);
+      if (hour != null && this.turning) this.phi = shortestTurn(this.phi, hour, this.cam.front);
       this.draw();
       return;
     }
 
     if (hour != null && hourChanged && this.turning) {
-      const target = shortestTurn(this.phi, hour);
+      const target = shortestTurn(this.phi, hour, this.cam.front);
       if (Math.abs(target - this.phi) >= EPS) {
         this.animateTo(target);
         this.draw();
@@ -404,19 +416,19 @@ export class ModelView {
     if (keyChanged || cutChanged) this.draw();
   }
 
-  /** With turning off the wheel rests at FRONT; turning it on again brings the last hour round. */
+  /** With turning off the wheel rests at the camera's front; turning it on again brings the last hour round. */
   setTurning(enabled) {
     enabled = !!enabled;
     if (enabled === this.turning) return;
     this.turning = enabled;
     if (!enabled) {
       this.stop();
-      if (Math.abs(this.phi - FRONT) >= EPS) {
-        this.phi = FRONT;
+      if (Math.abs(this.phi - this.cam.front) >= EPS) {
+        this.phi = this.cam.front;
         this.draw();
       }
     } else if (this.hour != null) {
-      const target = shortestTurn(this.phi, this.hour);
+      const target = shortestTurn(this.phi, this.hour, this.cam.front);
       if (Math.abs(target - this.phi) >= EPS) this.animateTo(target);
     }
   }
