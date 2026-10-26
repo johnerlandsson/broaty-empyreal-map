@@ -1,0 +1,34 @@
+{
+  "paintDistricts": {
+    "downs": "docks",
+    "old-town": "commons",
+    "market-quarter": "concourse",
+    "courts": "offices",
+    "rows": "residential",
+    "riverside": "industrial",
+    "terraces": "hydroponics"
+  },
+  "town": {
+    "root": "square",
+    "uphill": "east",
+    "ground": {
+      "square": "square",
+      "exchange-square": "square",
+      "garden": "garden",
+      "ridge-path": "path",
+      "overlook": "overlook",
+      "terraces": "terraces",
+      "lower-terraces": "old-terraces"
+    },
+    "gate": "gate",
+    "wells": [
+      "square",
+      "exchange-square"
+    ],
+    "river": {
+      "name": "the Carn",
+      "bridge": "carn-bridge"
+    },
+    "scarp": "downs"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "like": "orrin",
+  "paint": {
+    "deck-3-frame-2": "commons",
+    "deck-3-frame-1": "commons",
+    "freight": "concourse",
+    "concourse": "commons",
+    "deck-2-frame-2": "commons",
+    "market": "midring"
+  },
+  "fixtures": [
+    {
+      "type": "blister",
+      "room": "gallery"
+    },
+    {
+      "type": "cradle",
+      "side": 0,
+      "deck": 3,
+      "hw": 0.36,
+      "hh": 0.32,
+      "len": 0.22
+    },
+    {
+      "type": "cradle",
+      "side": -1,
+      "deck": 3,
+      "hw": 0.3,
+      "hh": 0.28,
+      "len": 0.6
+    },
+    {
+      "type": "cradle",
+      "side": 1,
+      "deck": 3,
+      "hw": 0.3,
+      "hh": 0.28,
+      "len": 0.6
+    },
+    {
+      "type": "cradle",
+      "side": -1,
+      "deck": 2,
+      "hw": 0.3,
+      "hh": 0.28,
+      "len": 0.6
+    },
+    {
+      "type": "cradle",
+      "side": 0,
+      "deck": 2,
+      "hw": 0.3,
+      "hh": 0.28,
+      "len": 0.6
+    },
+    {
+      "type": "cradle",
+      "side": 1,
+      "deck": 2,
+      "hw": 0.3,
+      "hh": 0.28,
+      "len": 0.6
+    }
+  ]
+}

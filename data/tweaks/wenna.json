@@ -1,0 +1,102 @@
+{
+  "paint": {
+    "concourse": "hydroponics",
+    "market": "concourse",
+    "freight": "offices",
+    "berth": "docks",
+    "charts": "docks",
+    "lounge": "docks"
+  },
+  "fixtures": [
+    {
+      "type": "drum-cradle",
+      "hour": -0.3,
+      "z": -12,
+      "hw": 8,
+      "h": 20,
+      "hl": 11
+    },
+    {
+      "type": "drum-cradle",
+      "hour": -0.08,
+      "z": -12,
+      "hw": 8,
+      "h": 20,
+      "hl": 11
+    },
+    {
+      "type": "drum-cradle",
+      "hour": 0.14,
+      "z": -12,
+      "hw": 8,
+      "h": 20,
+      "hl": 11
+    },
+    {
+      "type": "drum-cradle",
+      "hour": 0.36,
+      "z": -12,
+      "hw": 8,
+      "h": 20,
+      "hl": 11
+    }
+  ],
+  "drum": {
+    "rooms": {
+      "concourse": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "hour": 0,
+        "band": 0,
+        "terrain": "room"
+      },
+      "market": {
+        "x": 0,
+        "y": 1,
+        "z": 0,
+        "hour": 0,
+        "band": 1,
+        "terrain": "room"
+      },
+      "freight": {
+        "x": 0,
+        "y": -1,
+        "z": 0,
+        "hour": 0,
+        "band": -1,
+        "terrain": "room"
+      },
+      "berth": {
+        "x": 1,
+        "y": 0,
+        "z": 0,
+        "hour": 1,
+        "band": 0,
+        "terrain": "room"
+      },
+      "charts": {
+        "x": -1,
+        "y": 0,
+        "z": 0,
+        "hour": 11,
+        "band": 0,
+        "terrain": "room"
+      },
+      "lounge": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "hour": null,
+        "band": null,
+        "terrain": "lounge"
+      }
+    },
+    "axis": {
+      "room": "lounge",
+      "r": 58,
+      "len": 18
+    },
+    "way": "ramp"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "concourse": "#d9a441",
+  "residential": "#5b8def",
+  "hydroponics": "#4caf7a",
+  "commons": "#a57be0",
+  "offices": "#3fb6b2",
+  "midring": "#8796a8",
+  "industrial": "#d0703c",
+  "docks": "#cfe3ff",
+  "hub": "#cfe3ff"
+}

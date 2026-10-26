@@ -1,0 +1,62 @@
+{
+  "like": "orrin",
+  "paint": {
+    "deck-3-frame-2": "midring",
+    "deck-3-frame-1": "midring",
+    "deck-2-frame-2": "midring"
+  },
+  "fixtures": [
+    {
+      "type": "blister",
+      "room": "gallery"
+    },
+    {
+      "type": "cradle",
+      "side": 0,
+      "deck": 3,
+      "hw": 0.3,
+      "hh": 0.3,
+      "len": 0.22
+    },
+    {
+      "type": "cradle",
+      "side": -1,
+      "deck": 3,
+      "hw": 0.42,
+      "hh": 0.22,
+      "len": 0.8
+    },
+    {
+      "type": "cradle",
+      "side": 1,
+      "deck": 3,
+      "hw": 0.42,
+      "hh": 0.22,
+      "len": 0.8
+    },
+    {
+      "type": "cradle",
+      "side": 0,
+      "deck": 2,
+      "hw": 0.42,
+      "hh": 0.22,
+      "len": 0.8
+    },
+    {
+      "type": "cradle",
+      "side": -1,
+      "deck": 2,
+      "hw": 0.18,
+      "hh": 0.16,
+      "len": 0.36
+    },
+    {
+      "type": "cradle",
+      "side": 1,
+      "deck": 2,
+      "hw": 0.18,
+      "hh": 0.16,
+      "len": 0.36
+    }
+  ]
+}

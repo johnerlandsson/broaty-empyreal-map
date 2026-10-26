@@ -1,0 +1,15 @@
+{
+  "paint": {
+    "ladderway-12-mid": "offices",
+    "ladderway-12-rim": "concourse",
+    "ladderway-3-mid": "midring",
+    "ladderway-3-rim": "residential",
+    "ladderway-6-mid": "midring",
+    "ladderway-6-rim": "hydroponics",
+    "ladderway-9-mid": "midring",
+    "ladderway-9-rim": "commons"
+  },
+  "place": {
+    "transfer": { "x": 0, "y": -1, "z": 3 }
+  }
+}

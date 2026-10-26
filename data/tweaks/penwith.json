@@ -1,0 +1,49 @@
+{
+  "like": "orrin",
+  "paint": {
+    "deck-3-frame-2": "hydroponics",
+    "deck-3-frame-1": "hydroponics",
+    "freight": "midring",
+    "concourse": "hydroponics",
+    "deck-2-frame-2": "hydroponics",
+    "market": "offices"
+  },
+  "fixtures": [
+    {
+      "type": "blister",
+      "room": "gallery"
+    },
+    {
+      "type": "cradle",
+      "side": 0,
+      "deck": 3,
+      "hw": 0.3,
+      "hh": 0.3,
+      "len": 0.22
+    },
+    {
+      "type": "cradle",
+      "side": -1,
+      "deck": 3,
+      "hw": 0.42,
+      "hh": 0.3,
+      "len": 0.65
+    },
+    {
+      "type": "cradle",
+      "side": 1,
+      "deck": 3,
+      "hw": 0.42,
+      "hh": 0.3,
+      "len": 0.65
+    },
+    {
+      "type": "cradle",
+      "side": 0,
+      "deck": 2,
+      "hw": 0.3,
+      "hh": 0.3,
+      "len": 0.9
+    }
+  ]
+}
