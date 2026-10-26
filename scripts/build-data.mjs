@@ -130,9 +130,9 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
 
     const { rooms: placed, unplaced } = placeRooms(area, raw, tweak.place ?? {});
     report.unplaced.push(...unplaced.map((u) => ({ place: id, id: u })));
-    const rooms = placed
-      .map(({ at, terrain, ...rest }) => ordered({ ...keepRoom(rest).room, at, terrain }, ROOM_KEYS))
-      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    // In the source's order, not sorted: the builders draw rooms in the order they come, and a
+    // tie (which cell a district's label takes) goes to the first, so the order is on screen.
+    const rooms = placed.map(({ at, terrain, ...rest }) => ordered({ ...keepRoom(rest).room, at, terrain }, ROOM_KEYS));
 
     const { look, orphans } = resolveLook(id, placed, layout.kind, tweaks);
     report.orphans.push(...orphans.map((key) => ({ place: id, key })));

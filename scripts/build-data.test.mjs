@@ -75,7 +75,8 @@ describe("build", () => {
     expect(w.kind).toBe("area");
     expect(w.levels).toEqual([0, 3]);
     expect(w.districts).toEqual([{ id: "concourse", name: "the Concourse", entrance: "wheelie.rim-12" }]);
-    expect(w.rooms.map((r) => r.id)).toEqual(w.rooms.map((r) => r.id).sort());
+    const yaml = parse(readFileSync(join(fixtures, "content/areas/wheelie.yaml"), "utf8"));
+    expect(w.rooms.map((r) => r.id)).toEqual(yaml.rooms.map((r) => r.id)); // the source's order, as drawn
     expect(w.rooms.find((r) => r.id === "wheelie.hub-freight").at).toEqual({ x: 1, y: 0, z: 3 });
     expect(w.look.palette).toEqual(JSON.parse(readFileSync(palette, "utf8")));
     expect(w.look.paint["rim-12"]).toBe("industrial");
