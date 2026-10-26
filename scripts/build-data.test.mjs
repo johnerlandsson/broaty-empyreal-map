@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -220,6 +220,57 @@ describe("build", () => {
     expect(existsSync(join(opts.outDir, "hand.js"))).toBe(true);
     expect((await loadIndex(join(opts.outDir, "places.js"))).map((p) => p.id)).toEqual(["wheelie"]);
     expect((await build(opts)).report.removedPlaces).toEqual([]);
+  });
+
+  it("still lists the same changes vs the last commit when built twice in a git work tree (R14)", async () => {
+    const dir = temp();
+    const git = (...args) => execFileSync("git", ["-C", dir, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    git("init", "-q");
+    git("config", "user.email", "t@t");
+    git("config", "user.name", "t");
+    const opts = { ...setup(), outDir: join(dir, "ui/data"), reportPath: join(dir, "data/report.json") };
+    await build(opts);
+    git("add", "-A");
+    git("commit", "-q", "-m", "first");
+    // a sync: a room renamed, a flag and a place new, a place gone
+    const path = join(opts.source, "content/areas/mini.yaml");
+    writeFileSync(path, readFileSync(path, "utf8").replaceAll("mini.store", "mini.shop").replace("[listed, shop]", "[listed, shop, vault]"));
+    const copy = readFileSync(path, "utf8").replaceAll("mini", "minor");
+    writeFileSync(join(opts.source, "content/areas/minor.yaml"), copy);
+    rmSync(join(opts.source, "content/areas/wheelie.yaml"));
+    const first = (await build(opts)).report;
+    expect(first.rooms.renamed).toEqual([{ place: "mini", from: "mini.store", to: "mini.shop" }]);
+    expect(first.newPlaces).toEqual([{ place: "minor", builder: "decks" }]);
+    expect(first.removedPlaces).toEqual([{ place: "wheelie" }]);
+    expect(first.droppedFlags).toEqual([{ name: "vault", places: ["mini", "minor"] }]);
+    const text = readFileSync(opts.reportPath, "utf8");
+    expect((await build(opts)).report).toEqual(first);
+    expect(readFileSync(opts.reportPath, "utf8")).toBe(text);
+    expect(existsSync(join(opts.outDir, "wheelie.js"))).toBe(false);
+  });
+
+  it("stops when the source has no areas, and writes nothing", async () => {
+    const opts = setup();
+    await build(opts);
+    const before = readdirSync(opts.outDir).map((f) => readFileSync(join(opts.outDir, f), "utf8"));
+    const report = readFileSync(opts.reportPath, "utf8");
+    for (const f of readdirSync(join(opts.source, "content/areas"))) rmSync(join(opts.source, "content/areas", f));
+    await expect(build(opts)).rejects.toThrow(/no areas.*content\/areas/);
+    expect(readdirSync(opts.outDir).map((f) => readFileSync(join(opts.outDir, f), "utf8"))).toEqual(before);
+    expect(readFileSync(opts.reportPath, "utf8")).toBe(report);
+  });
+
+  it("refuses a build that would remove every place it had, and writes nothing", async () => {
+    const opts = setup();
+    await build(opts);
+    const before = readdirSync(opts.outDir).map((f) => readFileSync(join(opts.outDir, f), "utf8"));
+    for (const f of ["mini.yaml", "wheelie.yaml"]) rmSync(join(opts.source, "content/areas", f));
+    writeFileSync(
+      join(opts.source, "content/areas/other.yaml"),
+      stringify({ area: { id: "other", name: "Other", gravity: 0, layout: { kind: "decks" } }, rooms: [{ id: "other.a", name: "A", address: "Deck 1, frame 1" }] }),
+    );
+    await expect(build(opts)).rejects.toThrow(/every place.*mini, wheelie/);
+    expect(readdirSync(opts.outDir).map((f) => readFileSync(join(opts.outDir, f), "utf8"))).toEqual(before);
   });
 
   it("refuses an area called places, and writes nothing", async () => {

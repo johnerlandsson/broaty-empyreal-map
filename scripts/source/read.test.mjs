@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdtempSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -34,6 +34,22 @@ describe("loadSource", () => {
 
   it("throws naming the missing areas directory", () => {
     expect(() => loadSource("/nonexistent")).toThrow(/\/nonexistent\/content\/areas/);
+  });
+
+  it("names the file of a bad YAML, an empty one, or one without its top key", () => {
+    const copy = () => {
+      const dir = mkdtempSync(join(tmpdir(), "empyreal-"));
+      cpSync(fixtures, dir, { recursive: true });
+      return dir;
+    };
+    for (const [text, why] of [["area: [", /mini\.yaml/], ["", /mini\.yaml.*area/], ["rooms: []\n", /mini\.yaml.*area/]]) {
+      const dir = copy();
+      writeFileSync(join(dir, "content/areas/mini.yaml"), text);
+      expect(() => loadSource(dir), JSON.stringify(text)).toThrow(why);
+    }
+    const dir = copy();
+    writeFileSync(join(dir, "content/game/world.yaml"), "world: {}\n");
+    expect(() => loadSource(dir)).toThrow(/world\.yaml.*world\.stations/);
   });
 
   it.skipIf(!existsSync(join(real, "content/areas")))("loads the real source", () => {

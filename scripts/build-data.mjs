@@ -3,9 +3,10 @@
 // each area with a builder, ui/data/places.js, and the sync report. Reads the source, never writes it.
 // Usage: node scripts/build-data.mjs [--source DIR] [--tweaks DIR] [--out DIR] [--report PATH]
 
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { keepArea, keepRoom, ROOM_FIELDS } from "./source/filter.mjs";
 import { placeRooms } from "./source/place.mjs";
@@ -54,11 +55,54 @@ function moduleText(commit, value) {
   return `${STAMP}${commit ?? "unknown"}. Do not edit.\nexport default ${JSON.stringify(value, null, 2)};\n`;
 }
 
+const git = (dir, ...args) => execFileSync("git", ["-C", dir, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+
+/** The nearest directory of a path that exists: the path itself, else its closest parent. */
+function existing(path) {
+  let dir = path;
+  while (!existsSync(dir)) dir = dirname(dir);
+  return dir;
+}
+
+/** Whether a directory is in a git work tree with a commit at HEAD. */
+function atHead(dir) {
+  try {
+    git(dir, "rev-parse", "--verify", "-q", "HEAD");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A file as it was before this sync, or null: in a git work tree, as the last commit has it (not
+ * there, it's new); elsewhere, as it is on disk. So a build run again mid-sync, after the first
+ * wrote its files, still compares with the commit and gives the same report (R14).
+ */
+function committed(file) {
+  const dir = existing(dirname(file));
+  if (!atHead(dir)) return existsSync(file) ? readFileSync(file, "utf8") : null;
+  try {
+    return git(dir, "show", `HEAD:./${relative(dir, file)}`);
+  } catch {
+    return null;
+  }
+}
+
+/** The names of the files in a directory before this sync, as committed() reads them. */
+function committedNames(outDir) {
+  const dir = existing(outDir);
+  if (!atHead(dir)) return existsSync(outDir) ? readdirSync(outDir) : [];
+  const rel = relative(dir, outDir);
+  return git(dir, "ls-tree", "--name-only", "HEAD", `./${rel ? `${rel}/` : ""}`).split("\n").filter(Boolean).map((f) => basename(f));
+}
+
 /** The previous build's report, or null. */
 function previousReport(path) {
-  if (!existsSync(path)) return null;
+  const text = committed(path);
+  if (text === null) return null;
   try {
-    return JSON.parse(readFileSync(path, "utf8"));
+    return JSON.parse(text);
   } catch (err) {
     throw new Error(`${path}: ${err.message}`);
   }
@@ -80,20 +124,20 @@ function indexText(commit, places) {
   return `${STAMP}${commit ?? "unknown"}. Do not edit.\n${imports.join("\n")}\n\nexport default ${JSON.stringify(places, null, 2)};\n\nexport const data = {\n${data.join("\n")}\n};\n`;
 }
 
-/** The ids of generated place files in the out dir (stamped; hand-made files aren't). */
-function generatedIds(outDir) {
-  if (!existsSync(outDir)) return [];
-  return readdirSync(outDir)
+/** The ids of the generated place files (stamped; hand-made files aren't) among the names, each read by `read`. */
+function generatedIds(outDir, names, read) {
+  return names
     .filter((f) => f.endsWith(".js") && f !== "places.js")
-    .filter((f) => readFileSync(join(outDir, f), "utf8").startsWith(STAMP))
+    .filter((f) => read(join(outDir, f))?.startsWith(STAMP))
     .map((f) => f.slice(0, -".js".length));
 }
 
-/** The rooms of a file already in the out dir (generated or hand-made), or null. */
+/** The rooms of a file as it was before this sync (generated or hand-made), or null. */
 async function before(file) {
-  if (!existsSync(file)) return null;
+  const text = committed(file);
+  if (text === null) return null;
   // A data: URL, so a file rewritten in this process isn't served from the module cache.
-  const mod = await import(`data:text/javascript,${encodeURIComponent(readFileSync(file, "utf8"))}`);
+  const mod = await import(`data:text/javascript,${encodeURIComponent(text)}`);
   return mod.default?.rooms ?? [];
 }
 
@@ -108,7 +152,8 @@ function writeIfChanged(file, text) {
 
 /**
  * Builds every place, the index and the report. Reads and checks everything before writing
- * anything, so a missing source or a bad tweak writes nothing.
+ * anything, so a missing source, a bad tweak or a partial checkout writes nothing. What changed is
+ * against the last commit when the out dir is in a git work tree, else against the files there.
  * @param {{source: string, tweaksDir: string, outDir: string, reportPath: string}} opts
  * @returns {Promise<{report: object}>}
  */
@@ -116,6 +161,8 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
   for (const path of SOURCE_PATHS) {
     if (!existsSync(join(source, path))) throw new Error(`Empyreal source not found: no ${join(source, path)}`);
   }
+  const areasDir = join(source, "content/areas");
+  if (!readdirSync(areasDir).some((f) => f.endsWith(".yaml"))) throw new Error(`Empyreal source has no areas: no *.yaml in ${areasDir}`);
   const src = loadSource(source);
   const tweaks = loadTweaks(tweaksDir);
   const previous = previousReport(reportPath);
@@ -191,10 +238,17 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
     places.push({ id, prefix: id, builder, docks });
   }
 
-  // A generated file whose area has left the source goes; a hand-made one stays.
+  // A generated file whose area has left the source goes; a hand-made one stays. The report lists
+  // those the last commit had; any on disk goes. A source without any of them is a partial checkout.
   const areaIds = new Set(src.areas.map((a) => a.area.id));
-  const gone = generatedIds(outDir).filter((id) => !areaIds.has(id));
+  const had = generatedIds(outDir, committedNames(outDir), committed);
+  const gone = had.filter((id) => !areaIds.has(id));
+  if (had.length && gone.length === had.length) {
+    throw new Error(`this build would remove every place the map has (${had.sort().join(", ")}): is ${source} a whole checkout? Nothing written`);
+  }
   report.removedPlaces.push(...gone.map((place) => ({ place })));
+  const disk = (file) => (existsSync(file) ? readFileSync(file, "utf8") : null);
+  const remove = existsSync(outDir) ? generatedIds(outDir, readdirSync(outDir), disk).filter((id) => !areaIds.has(id)) : [];
 
   places.sort((a, b) => (a.id < b.id ? -1 : 1));
   files.set(join(outDir, "places.js"), indexText(src.commit, places));
@@ -202,7 +256,7 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
   files.set(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 
   for (const [path, text] of files) writeIfChanged(path, text);
-  for (const id of gone) rmSync(join(outDir, `${id}.js`));
+  for (const id of remove) rmSync(join(outDir, `${id}.js`));
   return { report };
 }
 

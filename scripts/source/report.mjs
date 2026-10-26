@@ -122,7 +122,7 @@ function lists(report) {
   return [
     ["new places", report.newPlaces],
     ["places removed", report.removedPlaces],
-    ["new places, no builder", report.noBuilder],
+    ["places with no builder", report.noBuilder],
     ["rooms added", report.rooms.added],
     ["rooms removed", report.rooms.removed],
     ["rooms renamed", report.rooms.renamed],
