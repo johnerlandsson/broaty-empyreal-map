@@ -8,6 +8,7 @@ export function emptyReport(commit) {
   return {
     commit,
     newPlaces: [],
+    removedPlaces: [],
     noBuilder: [],
     rooms: { added: [], removed: [], renamed: [] },
     exits: { added: [], removed: [] },
@@ -15,6 +16,8 @@ export function emptyReport(commit) {
     orphans: [],
     droppedFlags: [],
     unknownFields: [],
+    knownDroppedFlags: [],
+    knownUnknownFields: [],
   };
 }
 
@@ -73,22 +76,29 @@ export function diffRooms(place, before, after) {
 }
 
 /**
- * What keepRoom dropped from a place's rooms, by flag and by field, leaving out DROPPED_FIELDS.
- * @param {string} place
- * @param {{id: string, dropped: {fields: string[], flags: string[]}}[]} rooms
- * @returns {{droppedFlags: object[], unknownFields: object[]}}
+ * What keepRoom dropped, by name: each flag and unknown field (DROPPED_FIELDS aside) with the
+ * places it occurs in. A name is listed only the first time it appears, that is when the
+ * previous report's known lists lack it (every name, with no previous report); the known lists
+ * are every name dropped now.
+ * @param {{place: string, dropped: {fields: string[], flags: string[]}}[]} rooms
+ * @param {{knownDroppedFlags?: string[], knownUnknownFields?: string[]} | null} previous  the last report
+ * @returns {{droppedFlags: object[], unknownFields: object[], knownDroppedFlags: string[], knownUnknownFields: string[]}}
  */
-export function droppedOf(place, rooms) {
+export function droppedOf(rooms, previous) {
   const flags = new Map();
   const fields = new Map();
-  const add = (map, name, id) => map.set(name, [...(map.get(name) ?? []), id]);
-  for (const { id, dropped } of rooms) {
-    for (const flag of new Set(dropped.flags)) add(flags, flag, id);
-    for (const field of new Set(dropped.fields)) if (!DROPPED_FIELDS.includes(field)) add(fields, field, id);
+  const add = (map, name, place) => map.set(name, (map.get(name) ?? new Set()).add(place));
+  for (const { place, dropped } of rooms) {
+    for (const flag of dropped.flags) add(flags, flag, place);
+    for (const field of dropped.fields) if (!DROPPED_FIELDS.includes(field)) add(fields, field, place);
   }
+  const fresh = (map, known = []) =>
+    [...map].filter(([name]) => !known.includes(name)).map(([name, places]) => ({ name, places: [...places].sort() })).sort(byValues);
   return {
-    droppedFlags: [...flags].map(([flag, ids]) => ({ place, flag, rooms: ids.sort() })),
-    unknownFields: [...fields].map(([field, ids]) => ({ place, field, rooms: ids.sort() })),
+    droppedFlags: fresh(flags, previous?.knownDroppedFlags),
+    unknownFields: fresh(fields, previous?.knownUnknownFields),
+    knownDroppedFlags: [...flags.keys()].sort(),
+    knownUnknownFields: [...fields.keys()].sort(),
   };
 }
 
@@ -102,13 +112,16 @@ function byValues(a, b) {
 /** The report with every list sorted, in place. */
 export function sortReport(report) {
   for (const list of lists(report)) list[1].sort(byValues);
+  report.knownDroppedFlags.sort();
+  report.knownUnknownFields.sort();
   return report;
 }
 
-/** [label, list] for every list of a report, in the report's order. */
+/** [label, list] for every list of a report that may need John, in the report's order. */
 function lists(report) {
   return [
     ["new places", report.newPlaces],
+    ["places removed", report.removedPlaces],
     ["new places, no builder", report.noBuilder],
     ["rooms added", report.rooms.added],
     ["rooms removed", report.rooms.removed],
@@ -127,8 +140,7 @@ function entryText(e) {
   if (e.from) return `${e.from} -> ${e.to}`;
   if (e.dir) return `${e.room} ${e.dir} -> ${e.to}`;
   if (e.key) return `${e.place}: ${e.key}`;
-  if (e.flag) return `${e.place}: ${e.flag} (${e.rooms.join(", ")})`;
-  if (e.field) return `${e.place}: ${e.field} (${e.rooms.join(", ")})`;
+  if (e.name) return `${e.name} (${e.places.join(", ")})`;
   return e.id ?? e.place;
 }
 

@@ -44,17 +44,28 @@ describe("diffRooms", () => {
 });
 
 describe("droppedOf", () => {
-  it("groups dropped flags and unknown fields by name, leaving out the fields dropped on purpose", () => {
-    const d = droppedOf("p", [
-      { id: "p.a", dropped: { fields: ["desc", "lore"], flags: ["shop"] } },
-      { id: "p.b", dropped: { fields: ["off", "lore"], flags: ["shop", "charger"] } },
-      { id: "p.0", dropped: { fields: [], flags: ["charger"] } },
-    ]);
+  const rooms = [
+    { place: "p", dropped: { fields: ["desc", "lore"], flags: ["shop"] } },
+    { place: "q", dropped: { fields: ["off", "lore"], flags: ["shop", "charger"] } },
+    { place: "p", dropped: { fields: [], flags: ["charger"] } },
+  ];
+
+  it("lists every dropped name, with its places, when there is no previous report", () => {
+    const d = droppedOf(rooms, null);
     expect(d.droppedFlags).toEqual([
-      { place: "p", flag: "shop", rooms: ["p.a", "p.b"] },
-      { place: "p", flag: "charger", rooms: ["p.0", "p.b"] },
+      { name: "charger", places: ["p", "q"] },
+      { name: "shop", places: ["p", "q"] },
     ]);
-    expect(d.unknownFields).toEqual([{ place: "p", field: "lore", rooms: ["p.a", "p.b"] }]);
+    expect(d.unknownFields).toEqual([{ name: "lore", places: ["p", "q"] }]);
+    expect(d.knownDroppedFlags).toEqual(["charger", "shop"]);
+    expect(d.knownUnknownFields).toEqual(["lore"]);
+  });
+
+  it("lists only names the previous report didn't know", () => {
+    const d = droppedOf(rooms, { knownDroppedFlags: ["shop"], knownUnknownFields: ["lore"] });
+    expect(d.droppedFlags).toEqual([{ name: "charger", places: ["p", "q"] }]);
+    expect(d.unknownFields).toEqual([]);
+    expect(d.knownDroppedFlags).toEqual(["charger", "shop"]);
   });
 });
 
@@ -69,6 +80,7 @@ describe("sortReport and formatReport", () => {
     expect(Object.keys(emptyReport(null))).toEqual([
       "commit",
       "newPlaces",
+      "removedPlaces",
       "noBuilder",
       "rooms",
       "exits",
@@ -76,11 +88,15 @@ describe("sortReport and formatReport", () => {
       "orphans",
       "droppedFlags",
       "unknownFields",
+      "knownDroppedFlags",
+      "knownUnknownFields",
     ]);
   });
 
-  it("says nothing needs you when every list is empty", () => {
-    expect(formatReport(emptyReport("abc"))).toBe("nothing needs you");
+  it("says nothing needs you when every list is empty, whatever names are known", () => {
+    const r = emptyReport("abc");
+    r.knownDroppedFlags.push("shop");
+    expect(formatReport(r)).toBe("nothing needs you");
   });
 
   it("prints one line per non-empty list", () => {
@@ -88,10 +104,14 @@ describe("sortReport and formatReport", () => {
     r.newPlaces.push({ place: "mini", builder: "decks" });
     r.rooms.renamed.push({ place: "mini", from: "mini.a", to: "mini.b" });
     r.orphans.push({ place: "mini", key: "paint.gone" });
+    r.droppedFlags.push({ name: "shop", places: ["mini"] });
+    r.removedPlaces.push({ place: "old" });
     const lines = formatReport(r).split("\n");
-    expect(lines).toHaveLength(3);
+    expect(lines).toHaveLength(5);
     expect(lines[0]).toMatch(/new places.*mini \(decks\)/);
-    expect(lines[1]).toMatch(/renamed.*mini\.a -> mini\.b/);
-    expect(lines[2]).toMatch(/orphan.*mini: paint\.gone/);
+    expect(lines[1]).toMatch(/places removed.*old/);
+    expect(lines[2]).toMatch(/renamed.*mini\.a -> mini\.b/);
+    expect(lines[3]).toMatch(/orphan.*mini: paint\.gone/);
+    expect(lines[4]).toMatch(/flags dropped.*shop \(mini\)/);
   });
 });

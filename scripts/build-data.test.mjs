@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse, stringify } from "yaml";
 import { build } from "./build-data.mjs";
@@ -46,7 +46,7 @@ function setup(places = placed) {
 
 const load = async (file) => (await import(`data:text/javascript,${encodeURIComponent(readFileSync(file, "utf8"))}`)).default;
 
-const lists = (r) => [r.newPlaces, r.noBuilder, ...Object.values(r.rooms), ...Object.values(r.exits), r.unplaced, r.orphans, r.droppedFlags, r.unknownFields];
+const lists = (r) => [r.newPlaces, r.removedPlaces, r.noBuilder, ...Object.values(r.rooms), ...Object.values(r.exits), r.unplaced, r.orphans, r.droppedFlags, r.unknownFields];
 
 describe("build", () => {
   it("lists both fixture areas as new places on the first build, and writes them and the index", async () => {
@@ -107,13 +107,28 @@ describe("build", () => {
     }
   });
 
-  it("reports a new place's dropped flags, but not the fields dropped on purpose", async () => {
+  it("names each dropped flag on a fresh build, but not the fields dropped on purpose", async () => {
     const { report } = await build(setup());
     expect(report.droppedFlags).toEqual([
-      { place: "mini", flag: "shop", rooms: ["mini.store"] },
-      { place: "wheelie", flag: "charger", rooms: ["wheelie.rim-12"] },
+      { name: "charger", places: ["wheelie"] },
+      { name: "shop", places: ["mini"] },
     ]);
+    expect(report.knownDroppedFlags).toEqual(["charger", "shop"]);
     expect(report.unknownFields).toEqual([]);
+  });
+
+  it("names a flag new to the source even on a room already on the map, and a new field", async () => {
+    const opts = setup();
+    await build(opts);
+    editArea(opts.source, "mini.yaml", (doc) => {
+      const hall = doc.rooms.find((r) => r.id === "mini.hall");
+      hall.flags = ["listed", "vault"];
+      hall.lore = "old";
+    });
+    const { report } = await build(opts);
+    expect(report.droppedFlags).toEqual([{ name: "vault", places: ["mini"] }]);
+    expect(report.unknownFields).toEqual([{ name: "lore", places: ["mini"] }]);
+    expect(report.knownDroppedFlags).toEqual(["charger", "shop", "vault"]);
   });
 
   it("lists a wheel room the rules can't place, with no place tweak, as unplaced", async () => {
@@ -158,6 +173,36 @@ describe("build", () => {
     expect(report.exits.removed).toEqual([{ place: "mini", room: "mini.hall", dir: "up", to: "mini.bridge" }]);
     expect(report.orphans).toEqual([{ place: "mini", key: "paint.bridge" }]);
     expect((await load(join(opts.outDir, "mini.js"))).rooms).toHaveLength(3);
+  });
+
+  it("lists an area gone from the source under removedPlaces and deletes its generated file only", async () => {
+    const opts = setup();
+    await build(opts);
+    writeFileSync(join(opts.outDir, "hand.js"), "export default { rooms: [] };\n");
+    rmSync(join(opts.source, "content/areas/mini.yaml"));
+    const { report } = await build(opts);
+    expect(report.removedPlaces).toEqual([{ place: "mini" }]);
+    expect(existsSync(join(opts.outDir, "mini.js"))).toBe(false);
+    expect(existsSync(join(opts.outDir, "hand.js"))).toBe(true);
+    expect((await load(join(opts.outDir, "places.js"))).map((p) => p.id)).toEqual(["wheelie"]);
+    expect((await build(opts)).report.removedPlaces).toEqual([]);
+  });
+
+  it("refuses an area called places, and writes nothing", async () => {
+    const opts = setup();
+    writeFileSync(
+      join(opts.source, "content/areas/places.yaml"),
+      stringify({ area: { id: "places", name: "P", gravity: 1, layout: { kind: "decks" } }, rooms: [] }),
+    );
+    await expect(build(opts)).rejects.toThrow(/places/);
+    expect(existsSync(opts.outDir)).toBe(false);
+  });
+
+  it("leaves no temp files behind", async () => {
+    const opts = setup();
+    await build(opts);
+    expect(readdirSync(opts.outDir).sort()).toEqual(["mini.js", "places.js", "wheelie.js"]);
+    expect(readdirSync(dirname(opts.reportPath)).filter((f) => f !== "out")).toEqual(["report.json"]);
   });
 
   it("lists a none area with no drum or town tweak under noBuilder and writes no file for it", async () => {
