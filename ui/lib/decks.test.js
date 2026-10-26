@@ -649,4 +649,36 @@ describe("footprints and hull paths", () => {
       });
     });
   });
+
+  describe("decks whose paths don't follow the cells", () => {
+    const R = [[-1.5, 0.5], [1.5, 0.5], [1.5, 3.5], [-1.5, 3.5]];
+    const CHAMFER = [[-1.5, 0.5], [1.5, 0.5], [1.5, 2.7], [0.7, 3.5], [-1.5, 3.5]];
+    const area = (pts) => Math.abs(pts.reduce((s, [x, y], i) => s + x * pts[(i + 1) % pts.length][1] - pts[(i + 1) % pts.length][0] * y, 0)) / 2;
+    const flat = (f) => Math.abs(normal(f.pts)[0]) < 1e-6 && Math.abs(normal(f.pts)[2]) < 1e-6;
+    // in cells², the flat outer faces facing up (or down) of a deck, lids left out
+    const sum = (faces, deck, up) =>
+      faces
+        .filter((f) => f.kind === "outer" && f.deck === deck && flat(f) && normal(f.pts)[1] * up > 0)
+        .reduce((s, f) => s + area(f.pts.map((p) => [p[0], p[2]])), 0) / (CELL.side * CELL.frame);
+    const model = (hull) => {
+      const data = tweak({}, hull);
+      return buildDecksModel(indexDecks(data), data);
+    };
+
+    it("leaves no hole in the top under a chamfered deck", () => {
+      const faces = model({ 3: CHAMFER, 2: R });
+      expect(sum(faces, 2, 1) + sum(faces, 3, 1)).toBeGreaterThanOrEqual(area(R) - 1e-6);
+      expect(sum(faces, 2, 1)).toBeCloseTo(1); // the whole cell piece the chamfer uncovers, as roof
+    });
+
+    it("leaves no hole in the bottom of a deck over a chamfered one", () => {
+      const faces = model({ 3: R, 2: CHAMFER });
+      expect(sum(faces, 3, -1) + sum(faces, 2, -1)).toBeGreaterThanOrEqual(area(R) - 1e-6);
+    });
+
+    it("leaves no hole in the top of a box deck under a chamfered path", () => {
+      const faces = model({ 3: CHAMFER });
+      expect(sum(faces, 2, 1) + sum(faces, 3, 1)).toBeGreaterThanOrEqual(area(R) - 1e-6);
+    });
+  });
 });

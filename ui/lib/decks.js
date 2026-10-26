@@ -144,14 +144,27 @@ export function buildDecksModel(index, data) {
     return [c[0], c[1] + up * half[1], c[2]];
   };
 
-  // a cell of the grid is in the hull if its deck's path takes its centre, or it has no path
+  // whether a deck's hull is over (or under) the whole of a piece, in cells: every corner and the
+  // middle of every edge on it or inside it, so a piece it only partly covers keeps its own top
+  const covers = (z, piece) => {
+    if (z < grid.z0 || z > grid.z1) return false;
+    const on = paths[z]
+      ? (p) => within(paths[z], p) || onPath(paths[z], p)
+      : ([x, y]) => x >= hull.x0 - 0.5 - 1e-9 && x <= hull.x1 + 0.5 + 1e-9 && y >= hull.y0 - 0.5 - 1e-9 && y <= hull.y1 + 0.5 + 1e-9;
+    return piece.every((p, i) => on(p) && on(centre2([p, piece[(i + 1) % piece.length]])));
+  };
+  // a cell's square as the box draws it, its outer cells reaching to the hull
+  const square = (x, y) => {
+    const x0 = x === grid.x0 ? hull.x0 - 0.5 : x - 0.5;
+    const x1 = x === grid.x1 ? hull.x1 + 0.5 : x + 0.5;
+    const y0 = y === grid.y0 ? hull.y0 - 0.5 : y - 0.5;
+    const y1 = y === grid.y1 ? hull.y1 + 0.5 : y + 0.5;
+    return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  };
+  // a cell of the grid is in the hull if it has no path or its deck's path takes all of it
   const inHull = (x, y, z) =>
     x >= grid.x0 && x <= grid.x1 && y >= grid.y0 && y <= grid.y1 && z >= grid.z0 && z <= grid.z1 &&
-    (!paths[z] || within(paths[z], [x, y]));
-  // whether a deck's hull is over (or under) a point, in cells
-  const covers = (z, p) =>
-    z >= grid.z0 && z <= grid.z1 &&
-    (paths[z] ? within(paths[z], p) : p[0] >= hull.x0 - 0.5 && p[0] <= hull.x1 + 0.5 && p[1] >= hull.y0 - 0.5 && p[1] <= hull.y1 + 0.5);
+    (!paths[z] || covers(z, square(x, y)));
   const roomAt = new Map();
   for (const r of index.byId.values()) if (!r.blister) roomAt.set(`${r.cell.x}:${r.cell.y}:${r.cell.z}`, r);
   // model axis k (X, Y, Z) -> the cell's step along it (side, deck, frame)
@@ -238,7 +251,8 @@ export function buildDecksModel(index, data) {
         hullFace(pts, [true, ends[0], true, ends[1]], tintAt(along((cuts[j] + cuts[j + 1]) / 2), z), { deck: z, outline: true });
       }
     });
-    // the top, a lid where the deck above is over it, else the roof; the bottom where none is under
+    // the top, a lid where the deck above is over all of it, else the roof; the bottom unless a
+    // deck is under all of it
     const bx = [-Infinity, ...xs, Infinity];
     const by = [-Infinity, ...ys, Infinity];
     for (let i = 0; i + 1 < bx.length; i++) {
@@ -249,14 +263,13 @@ export function buildDecksModel(index, data) {
         if (by[j] > -Infinity) piece = clip(piece, 1, by[j], 1);
         if (by[j + 1] < Infinity) piece = clip(piece, 1, by[j + 1], -1);
         if (piece.length < 3 || Math.abs(area2(piece)) < 1e-9) continue;
-        const middle = inner(piece);
         const tint = roomAt.get(`${grid.x0 + i}:${grid.y0 + j}:${z}`)?.tint ?? null;
         const edges = piece.map((p, k) => onPath(path, centre2([p, piece[(k + 1) % piece.length]])));
         // counter-clockwise seen from above is the bottom's winding, outward
         const top = piece.map((p) => level(p, z, 1)).reverse();
         const topEdges = edges.slice(0, -1).reverse().concat(edges.slice(-1));
-        hullFace(top, topEdges, tint, covers(z + 1, middle) ? { lid: z } : { deck: z, outline: true });
-        if (!covers(z - 1, middle)) hullFace(piece.map((p) => level(p, z, -1)), edges, tint, { deck: z, outline: true });
+        hullFace(top, topEdges, tint, covers(z + 1, piece) ? { lid: z } : { deck: z, outline: true });
+        if (!covers(z - 1, piece)) hullFace(piece.map((p) => level(p, z, -1)), edges, tint, { deck: z, outline: true });
       }
     }
   }
@@ -361,21 +374,6 @@ function area2(points) {
 }
 
 const centre2 = (points) => points.reduce((s, p) => [s[0] + p[0] / points.length, s[1] + p[1] / points.length], [0, 0]);
-
-/** A point inside a polygon, concave or not: the middle of the widest run across its middle. */
-function inner(points) {
-  const ys = points.map((p) => p[1]);
-  const y = (Math.min(...ys) + Math.max(...ys)) / 2 + 1e-7;
-  const xs = [];
-  points.forEach(([ax, ay], i) => {
-    const [bx, by] = points[(i + 1) % points.length];
-    if (ay > y !== by > y) xs.push(ax + ((y - ay) / (by - ay)) * (bx - ax));
-  });
-  xs.sort((a, b) => a - b);
-  let best = [xs[0], xs[1]];
-  for (let i = 2; i + 1 < xs.length; i += 2) if (xs[i + 1] - xs[i] > best[1] - best[0]) best = [xs[i], xs[i + 1]];
-  return [(best[0] + best[1]) / 2, y];
-}
 
 /** Whether a point is inside a polygon (its edge counts as either). */
 function within(points, [x, y]) {
