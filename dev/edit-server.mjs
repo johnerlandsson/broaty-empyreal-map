@@ -28,6 +28,9 @@ const TYPES = {
 /** A tweak file's name in a URL: a plain lower-case name. The palette has its own route. */
 const NAME = /^[a-z0-9_-]+$/;
 
+/** The largest request body taken, in bytes. */
+const MAX_BODY = 1024 * 1024;
+
 /** How long the watcher waits for a burst of changes to settle. */
 const DEBOUNCE_MS = 200;
 
@@ -74,7 +77,13 @@ function sendJson(res, status, body) {
 
 async function readBody(req) {
   const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
+  let size = 0;
+  // Read to the end even past the cap, so the client hears the 413 rather than a reset.
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size <= MAX_BODY) chunks.push(chunk);
+  }
+  if (size > MAX_BODY) throw new HttpError(413, `the body is over ${MAX_BODY} bytes`);
   let body;
   try {
     body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
@@ -89,10 +98,11 @@ async function readBody(req) {
 
 /**
  * Starts the server.
- * @param {{root: string, source: string, port?: number}} opts
+ * @param {{root: string, source: string, port?: number, build?: typeof build}} opts `build` is the
+ *   build to run, for tests to wrap; the build's own by default.
  * @returns {Promise<{url: string, close(): Promise<void>}>}
  */
-export async function startServer({ root, source, port = 8766 }) {
+export async function startServer({ root, source, port = 8766, build: runBuild = build }) {
   root = resolve(root);
   const tweaksDir = join(root, "data/tweaks");
   const outDir = join(root, "ui/data");
@@ -132,7 +142,7 @@ export async function startServer({ root, source, port = 8766 }) {
       const reportPath = join(temp, "sync-report.json");
       if (existsSync(syncReport)) cpSync(syncReport, reportPath);
       const before = snapshot(outDir);
-      ({ report } = await build({ source, tweaksDir, outDir, reportPath }));
+      ({ report } = await runBuild({ source, tweaksDir, outDir, reportPath }));
       const changed = changedIds(before, snapshot(outDir));
       announce({ type: "built", changed, version: buildVersion() });
       return changed;
@@ -153,19 +163,28 @@ export async function startServer({ root, source, port = 8766 }) {
       try {
         cpSync(tweaksDir, join(temp, "tweaks"), { recursive: true });
         writeFileSync(join(temp, "tweaks", file), text);
-        await build({ source, tweaksDir: join(temp, "tweaks"), outDir: join(temp, "out"), reportPath: join(temp, "report.json") });
+        await runBuild({ source, tweaksDir: join(temp, "tweaks"), outDir: join(temp, "out"), reportPath: join(temp, "report.json") });
       } catch (err) {
         throw new HttpError(422, err.message);
       } finally {
         rmSync(temp, { recursive: true, force: true });
       }
 
+      // A hand edit during the candidate build wins. From this check to the rename nothing awaits.
+      const now = versionOf(path);
+      if (now !== current) throw new HttpError(409, "changed on disk", { version: now });
       // Known before written, so the watcher sees no change. Renamed into place, never torn.
       known.set(file, text);
       const partial = join(tweaksDir, `.${file}.${process.pid}.tmp`);
       writeFileSync(partial, text);
       renameSync(partial, path);
-      const changed = await realBuild();
+      let changed;
+      try {
+        changed = await realBuild();
+      } catch (err) {
+        announce({ type: "error", error: err.message });
+        throw err;
+      }
       return { ok: true, version: versionOf(path), changed };
     });
   }
@@ -190,12 +209,19 @@ export async function startServer({ root, source, port = 8766 }) {
       });
     }, DEBOUNCE_MS);
   });
+  watcher.on("error", (err) => console.error(`edit: watching ${tweaksDir}: ${err.message}`));
 
   function state() {
     const tweaks = {};
     for (const f of tweakFiles()) {
       const path = join(tweaksDir, f);
-      tweaks[f.slice(0, -".json".length)] = { json: JSON.parse(readFileSync(path, "utf8")), version: versionOf(path) };
+      const entry = { json: null, version: versionOf(path) };
+      try {
+        entry.json = JSON.parse(readFileSync(path, "utf8"));
+      } catch (err) {
+        entry.error = `data/tweaks/${f}: ${err.message}`;
+      }
+      tweaks[f.slice(0, -".json".length)] = entry;
     }
     return { places: placesOf(join(outDir, "places.js")), report, palette: tweaks.palette?.json ?? {}, tweaks };
   }
@@ -222,7 +248,11 @@ export async function startServer({ root, source, port = 8766 }) {
     req.on("close", () => clients.delete(res));
   }
 
+  // Only this machine's names for the server, so a page on another site can't reach it by DNS rebinding.
+  const hosts = () => [`localhost:${server.address().port}`, `127.0.0.1:${server.address().port}`];
+
   async function handle(req, res) {
+    if (!hosts().includes(req.headers.host)) throw new HttpError(403, "unknown host");
     const { pathname } = new URL(req.url, "http://localhost");
     if (req.method === "GET" && pathname === "/api/state") return sendJson(res, 200, state());
     if (req.method === "GET" && pathname === "/api/events") return events(req, res);

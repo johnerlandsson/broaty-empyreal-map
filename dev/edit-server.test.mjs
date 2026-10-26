@@ -1,4 +1,5 @@
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -21,7 +22,7 @@ afterEach(async () => {
  * (the repo's own ui/data names places the fixture hasn't, and the build refuses to remove them
  * all), then a server on it.
  */
-async function setup() {
+async function setup({ build: buildWith } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "edit-server-"));
   cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
   const root = join(dir, "root");
@@ -38,12 +39,12 @@ async function setup() {
   writeFileSync(join(root, "index.html"), "<p>hi</p>\n");
   writeFileSync(join(dir, "secret.txt"), "secret\n");
 
-  const server = await startServer({ root, source, port: 0 });
+  const server = await startServer({ root, source, port: 0, ...(buildWith ? { build: buildWith } : {}) });
   cleanup.push(() => server.close());
   const read = (rel) => readFileSync(join(root, rel), "utf8");
   const put = (name, json, version) =>
     fetch(`${server.url}/api/tweaks/${name}`, { method: "PUT", body: JSON.stringify({ json, version }) });
-  return { root, dir, url: server.url, read, put };
+  return { root, dir, source, url: server.url, read, put };
 }
 
 const tweakText = (t) => `${JSON.stringify(t, null, 2)}\n`;
@@ -192,8 +193,10 @@ describe("edit server", () => {
   it("checks each save's version only once the save before it is written, so two on one version can't both win", async () => {
     const { put, read } = await setup();
     const [a, b] = await Promise.all([put("mini", { paint: { hall: "docks" } }, 0), put("mini", { paint: { hall: "industrial" } }, 0)]);
-    expect([a.status, b.status]).toEqual([200, 409]);
-    expect(read("data/tweaks/mini.json")).toBe(tweakText({ paint: { hall: "docks" } }));
+    // whichever the server takes first wins; the other's version is then stale
+    expect([a.status, b.status].sort()).toEqual([200, 409]);
+    const won = a.status === 200 ? "docks" : "industrial";
+    expect(read("data/tweaks/mini.json")).toBe(tweakText({ paint: { hall: won } }));
   });
 
   // Review Focus 2
@@ -211,6 +214,77 @@ describe("edit server", () => {
     expect(body.error).toBe("changed on disk");
     expect(body.version).toBe(statSync(file).mtimeMs);
     expect(read("data/tweaks/kilmar.json")).toBe(hand);
+  });
+
+  it("refuses a save when the file is hand-edited during its candidate build, and keeps the hand edit", async () => {
+    let hand = null;
+    const ctx = await setup({
+      // the candidate build (into a temp out dir) is where the hand edit lands
+      build: async (opts) => {
+        if (hand && !opts.outDir.startsWith(ctx.root)) {
+          writeFileSync(join(ctx.root, "data/tweaks/kilmar.json"), hand);
+          const later = new Date(Date.now() + 5000);
+          utimesSync(join(ctx.root, "data/tweaks/kilmar.json"), later, later);
+        }
+        return build(opts);
+      },
+    });
+    const state = await (await fetch(`${ctx.url}/api/state`)).json();
+    hand = tweakText({ ...state.tweaks.kilmar.json, paint: { market: "docks" } });
+    const res = await ctx.put("kilmar", { like: "orrin" }, state.tweaks.kilmar.version);
+    expect(res.status).toBe(409);
+    expect((await res.json()).version).toBe(statSync(join(ctx.root, "data/tweaks/kilmar.json")).mtimeMs);
+    expect(ctx.read("data/tweaks/kilmar.json")).toBe(hand);
+  });
+
+  it("announces a real build that fails after its candidate passed as an error event", async () => {
+    const ctx = await setup({
+      build: async (opts) => {
+        if (opts.outDir.startsWith(ctx.root)) throw new Error("the real build broke");
+        return build(opts);
+      },
+    });
+    const { next } = await events(ctx.url);
+    const res = await ctx.put("mini", { paint: { hall: "docks" } }, 0);
+    expect(res.status).toBe(500);
+    expect(await next(2000)).toEqual({ type: "error", error: "the real build broke" });
+  });
+
+  it("refuses a request for another host, against DNS rebinding", async () => {
+    const { url } = await setup();
+    const { port } = new URL(url);
+    const status = (host) =>
+      new Promise((resolve, reject) => {
+        const req = request({ host: "localhost", port, path: "/api/state", headers: { host } }, (res) => {
+          res.resume();
+          resolve(res.statusCode);
+        });
+        req.on("error", reject);
+        req.end();
+      });
+    expect(await status(`evil.example:${port}`)).toBe(403);
+    expect(await status("localhost:1")).toBe(403);
+    expect(await status(`127.0.0.1:${port}`)).toBe(200);
+    expect(await status(`localhost:${port}`)).toBe(200);
+  });
+
+  it("lists a tweak file that isn't JSON with its error, not failing the state", async () => {
+    const { root, url } = await setup();
+    writeFileSync(join(root, "data/tweaks/mini.json"), "{ nope");
+    const res = await fetch(`${url}/api/state`);
+    expect(res.status).toBe(200);
+    const { tweaks } = await res.json();
+    expect(tweaks.mini.json).toBeNull();
+    expect(tweaks.mini.version).toBe(statSync(join(root, "data/tweaks/mini.json")).mtimeMs);
+    expect(tweaks.mini.error).toMatch(/JSON/);
+    expect(tweaks.orrin.json).toBeTruthy();
+  });
+
+  it("refuses a body over 1 MB with 413, writing nothing", async () => {
+    const { put, root } = await setup();
+    const res = await put("mini", { paint: { hall: "docks" }, pad: "x".repeat(1024 * 1024) }, 0);
+    expect(res.status).toBe(413);
+    expect(existsSync(join(root, "data/tweaks/mini.json"))).toBe(false);
   });
 
   // Review Focus 5
