@@ -6,6 +6,8 @@
 // uses the other stations' frame (X = 3 o'clock, starboard; Y = 12 o'clock, up; Z = fore), so the
 // one camera and renderer draw it. Pure; no DOM.
 
+import { boundsOf, noseAt, outlineOf, pathOf } from "./footprint.js";
+
 // --- addresses and the index -----------------------------------------------------------------
 
 const ADDRESS = /^\s*deck\s+(\d+)\s*,?\s*frame\s+(\d+)(?:\s*,?\s*(port|starboard)(?:\s+(\d+))?)?\s*$/i;
@@ -22,31 +24,44 @@ export function parseAddress(address) {
 /**
  * The station's rooms by id, each with its `cell` from its address, whether it's a `passage` (an
  * unnamed cell, named by its address) or a `blister`, its `tint` (the colour the look paints it,
- * or null), and its `level`: the plan it's on, the top
- * deck first. `hull` is the box the cells that aren't blisters fill, in cells. Rooms without an
- * address the grid knows are left out.
+ * or null), its `footprint` (the look's, or null) and its `level`: the plan it's on, the top deck
+ * first. `grid` is the box the cells that aren't blisters fill, in whole cells; `hull` the box their
+ * outlines fill, in cells (a cell centre at its side and frame, so it's `grid` unless a footprint
+ * reaches past its cell); `hullPaths` each deck's hull path from the look, rounded corners expanded
+ * (pathOf), where it has one. Rooms without an address the grid knows are left out.
  * @param {{rooms: object[], look?: object}} data a generated decks file
  */
 export function indexDecks(data) {
   const byId = new Map();
-  const { paint, palette, fixtures } = data?.look ?? {};
+  const { paint, palette, fixtures, footprints, hull: paths } = data?.look ?? {};
   const blisters = (fixtures ?? []).filter((f) => f.type === "blister").map((f) => `${data.id}.${f.room}`);
   for (const room of data?.rooms ?? []) {
     const cell = parseAddress(room.address);
     if (!cell) continue;
     const passage = String(room.name).toLowerCase() === String(room.address).toLowerCase();
     const local = room.id.slice(data.id.length + 1);
-    byId.set(room.id, { ...room, cell, passage, blister: blisters.includes(room.id), tint: palette?.[paint?.[local]] ?? null });
+    const tint = palette?.[paint?.[local]] ?? null;
+    byId.set(room.id, { ...room, cell, passage, blister: blisters.includes(room.id), tint, footprint: footprints?.[local] ?? null });
   }
   const decks = [...new Set([...byId.values()].map((r) => r.cell.z))].sort((a, b) => b - a);
   for (const room of byId.values()) room.level = decks.indexOf(room.cell.z);
 
-  const cells = [...byId.values()].filter((r) => !r.blister).map((r) => r.cell);
-  const span = (k) => [Math.min(...cells.map((c) => c[k])), Math.max(...cells.map((c) => c[k]))];
+  const solid = [...byId.values()].filter((r) => !r.blister);
+  if (!solid.length) return { byId, decks, grid: null, hull: null, hullPaths: {} };
+  const span = (k) => [Math.min(...solid.map((r) => r.cell[k])), Math.max(...solid.map((r) => r.cell[k]))];
   const [x0, x1] = span("x");
   const [y0, y1] = span("y");
   const [z0, z1] = span("z");
-  return { byId, decks, hull: cells.length ? { x0, x1, y0, y1, z0, z1 } : null };
+  // each outline's reach past its cell centre, the half cell a plain one has taken off
+  const reach = solid.map((r) => ({ cell: r.cell, b: boundsOf(outlineOf(r.footprint)) }));
+  const lo = (k, e) => Math.min(...reach.map(({ cell, b }) => cell[k] + b[e] + 0.5));
+  const hi = (k, e) => Math.max(...reach.map(({ cell, b }) => cell[k] + b[e] - 0.5));
+  const hull = { x0: lo("x", "x0"), x1: hi("x", "x1"), y0: lo("y", "y0"), y1: hi("y", "y1"), z0, z1 };
+  const hullPaths = {};
+  for (const [deck, points] of Object.entries(paths ?? {})) {
+    if (points && Number(deck) >= z0 && Number(deck) <= z1) hullPaths[deck] = pathOf(points);
+  }
+  return { byId, decks, grid: { x0, x1, y0, y1, z0, z1 }, hull, hullPaths };
 }
 
 /** The player's place: a room on the station and the plan it's on, or "off". Never throws. */
@@ -91,17 +106,19 @@ const DOME = [[0.66, 0], [0.66, 0.2], [1, 0.34], [0.96, 0.66], [0.76, 0.94], [0.
 const DOME_SIDES = 12;
 
 /**
- * The hull, a box of cells whose faces are tinted by the room behind them, cut away above the
- * player's deck (`deck`, `outline` and `lid`, see ModelView.draw); each room's cell as a ghost
- * box (`ghost`: drawn only when lit); the blisters in glass outside the hull, and the cradles fore
- * of the nose. Nothing turns.
+ * The hull, cut away above the player's deck (`deck`, `outline` and `lid`, see ModelView.draw):
+ * each deck a box of cells whose faces are tinted by the room behind them, or, where the look gives
+ * the deck a hull path, that path raised through the deck, tinted the same way. Each room's outline
+ * through its deck as a ghost (`ghost`: drawn only when lit), a box for a plain one; the blisters in
+ * glass outside the hull, and the cradles fore of the nose. Nothing turns.
  * @param {ReturnType<typeof indexDecks>} index
  * @param {{look?: {fixtures?: object[]}}} data the generated decks file the index was made from
  */
 export function buildDecksModel(index, data) {
   const faces = [];
-  const { hull } = index;
+  const { hull, grid } = index;
   if (!hull) return faces;
+  const paths = index.hullPaths ?? {};
   const fixtures = (type) => (data.look?.fixtures ?? []).filter((f) => f.type === type);
   const add = (pts, kind, key, extra) =>
     faces.push({
@@ -121,9 +138,20 @@ export function buildDecksModel(index, data) {
   const at = (x, y, z) => [(x - mid[0]) * CELL.side, (z - mid[2]) * CELL.deck, (y - mid[1]) * CELL.frame];
   const half = [CELL.side / 2, CELL.deck / 2, CELL.frame / 2];
   const corner = (c, s) => c.map((v, k) => v + s[k] * half[k]);
+  // a point on a deck's plane, in cells, to model space: up -1 its floor, 1 its top
+  const level = ([x, y], z, up) => {
+    const c = at(x, y, z);
+    return [c[0], c[1] + up * half[1], c[2]];
+  };
 
+  // a cell of the grid is in the hull if its deck's path takes its centre, or it has no path
   const inHull = (x, y, z) =>
-    x >= hull.x0 && x <= hull.x1 && y >= hull.y0 && y <= hull.y1 && z >= hull.z0 && z <= hull.z1;
+    x >= grid.x0 && x <= grid.x1 && y >= grid.y0 && y <= grid.y1 && z >= grid.z0 && z <= grid.z1 &&
+    (!paths[z] || within(paths[z], [x, y]));
+  // whether a deck's hull is over (or under) a point, in cells
+  const covers = (z, p) =>
+    z >= grid.z0 && z <= grid.z1 &&
+    (paths[z] ? within(paths[z], p) : p[0] >= hull.x0 - 0.5 && p[0] <= hull.x1 + 0.5 && p[1] >= hull.y0 - 0.5 && p[1] <= hull.y1 + 0.5);
   const roomAt = new Map();
   for (const r of index.byId.values()) if (!r.blister) roomAt.set(`${r.cell.x}:${r.cell.y}:${r.cell.z}`, r);
   // model axis k (X, Y, Z) -> the cell's step along it (side, deck, frame)
@@ -131,13 +159,22 @@ export function buildDecksModel(index, data) {
     const [x, y, z] = cell;
     return k === 0 ? [x + s, y, z] : k === 1 ? [x, y, z + s] : [x, y + s, z];
   };
+  // how far the box's outer cells reach past their own, by model axis, toward s: where a room's
+  // outline takes the hull past the grid
+  const past = (x, y, s) => [
+    x === grid.x0 && s[0] < 0 ? grid.x0 - hull.x0 : x === grid.x1 && s[0] > 0 ? hull.x1 - grid.x1 : 0,
+    0,
+    y === grid.y0 && s[2] < 0 ? grid.y0 - hull.y0 : y === grid.y1 && s[2] > 0 ? hull.y1 - grid.y1 : 0,
+  ];
+  const unit = [CELL.side, CELL.deck, CELL.frame];
 
-  // the hull: a facet for every cell face on the box's outside, tinted by the room behind it and
-  // edged only where the box is, so a deck above the cut is an outline; and each deck's top, the
-  // lid it shows when the decks above it are cut away
-  for (let x = hull.x0; x <= hull.x1; x++) {
-    for (let y = hull.y0; y <= hull.y1; y++) {
-      for (let z = hull.z0; z <= hull.z1; z++) {
+  // a deck without a path: a facet for every cell face on the box's outside, tinted by the room
+  // behind it and edged only where the box is, so a deck above the cut is an outline; and each
+  // deck's top, the lid it shows when the decks above it are cut away
+  for (let x = grid.x0; x <= grid.x1; x++) {
+    for (let y = grid.y0; y <= grid.y1; y++) {
+      for (let z = grid.z0; z <= grid.z1; z++) {
+        if (paths[z]) continue;
         const c = at(x, y, z);
         const room = roomAt.get(`${x}:${y}:${z}`);
         for (const { n, c: signs } of CUBE) {
@@ -150,7 +187,7 @@ export function buildDecksModel(index, data) {
             return !inHull(...step([x, y, z], e, a[e]));
           });
           faces.push({
-            pts: signs.map((s) => corner(c, s)),
+            pts: signs.map((s) => corner(c, s).map((v, j) => v + s[j] * past(x, y, s)[j] * unit[j])),
             kind: "outer",
             key: null,
             tint: room?.tint ?? null,
@@ -165,10 +202,82 @@ export function buildDecksModel(index, data) {
     }
   }
 
-  // each room's cell, for the highlight
+  // a deck with a path: walls along every edge and its top and bottom, each in a piece a cell so
+  // it takes the tint of the room behind it and the painter's sort stays sane on a concave deck
+  const xs = Array.from({ length: grid.x1 - grid.x0 }, (_, i) => grid.x0 + i + 0.5);
+  const ys = Array.from({ length: grid.y1 - grid.y0 }, (_, i) => grid.y0 + i + 0.5);
+  const cellOf = ([x, y]) => [
+    Math.min(grid.x1, Math.max(grid.x0, Math.round(x))),
+    Math.min(grid.y1, Math.max(grid.y0, Math.round(y))),
+  ];
+  const tintAt = (p, z) => roomAt.get(`${cellOf(p).join(":")}:${z}`)?.tint ?? null;
+  const hullFace = (pts, edges, tint, extra) =>
+    faces.push({ ...convexFirst(pts, edges), kind: "outer", key: null, tint, turns: false, cull: true, layer: 0, ...extra });
+  for (let z = grid.z0; z <= grid.z1; z++) {
+    const path = paths[z];
+    if (!path) continue;
+    const n = path.length;
+    // a wall's upright edge is drawn only at a corner, not along a rounded one's arc
+    const sharp = path.map((p, i) => turnAt(path[(i + n - 1) % n], p, path[(i + 1) % n]) > SHARP);
+    path.forEach((a, i) => {
+      const b = path[(i + 1) % n];
+      const cuts = [0, 1];
+      for (const [k, lines] of [[0, xs], [1, ys]]) {
+        for (const v of lines) {
+          const t = (v - a[k]) / (b[k] - a[k]);
+          if (t > 1e-6 && t < 1 - 1e-6) cuts.push(t);
+        }
+      }
+      cuts.sort((u, v) => u - v);
+      const along = (t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      for (let j = 0; j + 1 < cuts.length; j++) {
+        const [p, q] = [along(cuts[j]), along(cuts[j + 1])];
+        const ends = [j + 2 === cuts.length && sharp[(i + 1) % n], j === 0 && sharp[i]];
+        // wound outward: the path is counter-clockwise, so out is to its right
+        const pts = [level(p, z, 1), level(q, z, 1), level(q, z, -1), level(p, z, -1)];
+        hullFace(pts, [true, ends[0], true, ends[1]], tintAt(along((cuts[j] + cuts[j + 1]) / 2), z), { deck: z, outline: true });
+      }
+    });
+    // the top, a lid where the deck above is over it, else the roof; the bottom where none is under
+    const bx = [-Infinity, ...xs, Infinity];
+    const by = [-Infinity, ...ys, Infinity];
+    for (let i = 0; i + 1 < bx.length; i++) {
+      for (let j = 0; j + 1 < by.length; j++) {
+        let piece = path;
+        if (bx[i] > -Infinity) piece = clip(piece, 0, bx[i], 1);
+        if (bx[i + 1] < Infinity) piece = clip(piece, 0, bx[i + 1], -1);
+        if (by[j] > -Infinity) piece = clip(piece, 1, by[j], 1);
+        if (by[j + 1] < Infinity) piece = clip(piece, 1, by[j + 1], -1);
+        if (piece.length < 3 || Math.abs(area2(piece)) < 1e-9) continue;
+        const middle = inner(piece);
+        const tint = roomAt.get(`${grid.x0 + i}:${grid.y0 + j}:${z}`)?.tint ?? null;
+        const edges = piece.map((p, k) => onPath(path, centre2([p, piece[(k + 1) % piece.length]])));
+        // counter-clockwise seen from above is the bottom's winding, outward
+        const top = piece.map((p) => level(p, z, 1)).reverse();
+        const topEdges = edges.slice(0, -1).reverse().concat(edges.slice(-1));
+        hullFace(top, topEdges, tint, covers(z + 1, middle) ? { lid: z } : { deck: z, outline: true });
+        if (!covers(z - 1, middle)) hullFace(piece.map((p) => level(p, z, -1)), edges, tint, { deck: z, outline: true });
+      }
+    }
+  }
+
+  // each room's cell, for the highlight: a box, or its outline through the deck
   for (const room of roomAt.values()) {
     const c = at(room.cell.x, room.cell.y, room.cell.z);
-    for (const { c: signs } of CUBE) add(signs.map((s) => corner(c, s)), "cell", room.id, { ghost: true, tint: null });
+    const outline = outlineOf(room.footprint);
+    if (isUnit(outline)) {
+      for (const { c: signs } of CUBE) add(signs.map((s) => corner(c, s)), "cell", room.id, { ghost: true, tint: null });
+      continue;
+    }
+    const pts = outline.map(([x, y]) => [room.cell.x + x, room.cell.y + y]);
+    const z = room.cell.z;
+    const ghost = (ps, edges) => add(ps, "cell", room.id, { ghost: true, tint: null, ...(edges ? convexFirst(ps, edges) : {}) });
+    pts.forEach((a, i) => {
+      const b = pts[(i + 1) % pts.length];
+      ghost([level(a, z, 1), level(b, z, 1), level(b, z, -1), level(a, z, -1)]);
+    });
+    ghost(pts.map((p) => level(p, z, 1)).reverse(), pts.map(() => true));
+    ghost(pts.map((p) => level(p, z, -1)), pts.map(() => true));
   }
 
   // blisters: a glass dome hanging off the hull face nearest them, under it or on top
@@ -200,9 +309,13 @@ export function buildDecksModel(index, data) {
     add(outward(rings[0], [cx, y0 + down, cz]), "blister-cap", room.id, { layer: -1 });
   }
 
-  // cradles fore of the nose: compartments, never lit
-  const fore = at(0, hull.y1, 0)[2] + half[2];
+  // cradles fore of the nose (on a deck with a path, its nose on the cradle's side): compartments,
+  // never lit
+  const box = at(0, hull.y1, 0)[2] + half[2];
   for (const { side: x, deck: z, hw: hx, hh: hy, len } of fixtures("cradle")) {
+    const nose = paths[z] ? noseAt(paths[z], x) : null;
+    if (paths[z] && nose === null) continue; // off its deck's hull; the build won't let this through
+    const fore = nose === null ? box : at(0, nose, 0)[2];
     const [cx, cy] = at(x, 0, z);
     const c = [cx, cy, fore + (len * CELL.frame) / 2];
     const h = [hx * CELL.side, hy * CELL.deck, (len * CELL.frame) / 2];
@@ -214,14 +327,14 @@ export function buildDecksModel(index, data) {
   // masts up off the roof, each a lamp at its top, burning whatever the light; they go with the top
   // deck when it's cut away, as the cradles do
   const roof = at(0, 0, hull.z1)[1] + half[1];
-  const box = (c, h, kind, layer) => {
+  const cuboid = (c, h, kind, layer) => {
     for (const { c: signs } of CUBE) add(signs.map((s) => c.map((v, k) => v + s[k] * h[k])), kind, null, { layer, deck: hull.z1 });
   };
   for (const { side: x, frame: y, height } of fixtures("mast")) {
     const [cx, , cz] = at(x, y, 0);
     const tall = height * CELL.deck;
-    box([cx, roof + tall / 2, cz], [MAST, tall / 2, MAST], "mast", 1);
-    box([cx, roof + tall, cz], [LAMP, LAMP, LAMP], "lamp", 2);
+    cuboid([cx, roof + tall / 2, cz], [MAST, tall / 2, MAST], "mast", 1);
+    cuboid([cx, roof + tall, cz], [LAMP, LAMP, LAMP], "lamp", 2);
   }
 
   return faces;
@@ -229,6 +342,110 @@ export function buildDecksModel(index, data) {
 
 const MAST = 3.5; // a mast's half-width, in model units
 const LAMP = 11; // its lamp's
+
+/** A wall's upright edge is drawn where the path turns by more than this (radians), so not along an arc. */
+const SHARP = (35 * Math.PI) / 180;
+
+/** How far a path turns at b, coming from a and going on to c, in radians. */
+function turnAt(a, b, c) {
+  const t = Math.abs(Math.atan2(c[1] - b[1], c[0] - b[0]) - Math.atan2(b[1] - a[1], b[0] - a[0]));
+  return t > Math.PI ? 2 * Math.PI - t : t;
+}
+
+/** Twice a polygon's signed area, in its own plane's x and y: positive for counter-clockwise. */
+function area2(points) {
+  return points.reduce((s, [x, y], i) => {
+    const [u, v] = points[(i + 1) % points.length];
+    return s + x * v - u * y;
+  }, 0);
+}
+
+const centre2 = (points) => points.reduce((s, p) => [s[0] + p[0] / points.length, s[1] + p[1] / points.length], [0, 0]);
+
+/** A point inside a polygon, concave or not: the middle of the widest run across its middle. */
+function inner(points) {
+  const ys = points.map((p) => p[1]);
+  const y = (Math.min(...ys) + Math.max(...ys)) / 2 + 1e-7;
+  const xs = [];
+  points.forEach(([ax, ay], i) => {
+    const [bx, by] = points[(i + 1) % points.length];
+    if (ay > y !== by > y) xs.push(ax + ((y - ay) / (by - ay)) * (bx - ax));
+  });
+  xs.sort((a, b) => a - b);
+  let best = [xs[0], xs[1]];
+  for (let i = 2; i + 1 < xs.length; i += 2) if (xs[i + 1] - xs[i] > best[1] - best[0]) best = [xs[i], xs[i + 1]];
+  return [(best[0] + best[1]) / 2, y];
+}
+
+/** Whether a point is inside a polygon (its edge counts as either). */
+function within(points, [x, y]) {
+  let inside = false;
+  points.forEach(([ax, ay], i) => {
+    const [bx, by] = points[(i + 1) % points.length];
+    if (ay > y !== by > y && x < ax + ((y - ay) / (by - ay)) * (bx - ax)) inside = !inside;
+  });
+  return inside;
+}
+
+/** Whether a point lies on one of a closed path's edges. */
+function onPath(path, [x, y]) {
+  return path.some(([ax, ay], i) => {
+    const [bx, by] = path[(i + 1) % path.length];
+    const len = Math.hypot(bx - ax, by - ay);
+    const t = ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / (len * len);
+    return Math.abs((x - ax) * (by - ay) - (y - ay) * (bx - ax)) / len < 1e-6 && t > -1e-6 && t < 1 + 1e-6;
+  });
+}
+
+/** A polygon cut by the line where its axis k is v, keeping the side `keep` (1 above, -1 below). */
+function clip(points, k, v, keep) {
+  const kept = (p) => (p[k] - v) * keep >= -1e-9;
+  const out = [];
+  points.forEach((p, i) => {
+    const q = points[(i + 1) % points.length];
+    if (kept(p)) out.push(p);
+    if (kept(p) !== kept(q)) {
+      const t = (v - p[k]) / (q[k] - p[k]);
+      out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+    }
+  });
+  return out;
+}
+
+/** Whether an outline is the plain unit square, drawn as a box. */
+function isUnit(outline) {
+  return outline.length === 4 && outline.every(([x, y]) => Math.abs(x) === 0.5 && Math.abs(y) === 0.5);
+}
+
+/**
+ * A flat face's points and edges started at its most convex corner, so the renderer's normal (from
+ * the first three points) is the face's own on a concave piece too.
+ */
+function convexFirst(pts, edges) {
+  const n = pts.length;
+  const normalAt = (i) => {
+    const [a, b, c] = [pts[i], pts[(i + 1) % n], pts[(i + 2) % n]];
+    const u = b.map((v, k) => v - a[k]);
+    const w = c.map((v, k) => v - a[k]);
+    return [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+  };
+  // the face's normal (Newell's), then the corner turning most its way
+  const N = [0, 0, 0];
+  pts.forEach((p, i) => {
+    const q = pts[(i + 1) % n];
+    N[0] += (p[1] - q[1]) * (p[2] + q[2]);
+    N[1] += (p[2] - q[2]) * (p[0] + q[0]);
+    N[2] += (p[0] - q[0]) * (p[1] + q[1]);
+  });
+  let best = 0;
+  let most = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const d = normalAt(i).reduce((s, v, k) => s + v * N[k], 0);
+    if (d > most) [best, most] = [i, d];
+  }
+  const turn = (xs) => xs.slice(best).concat(xs.slice(0, best));
+  return { pts: turn(pts), edges: turn(edges) };
+}
 
 /** pts wound so their normal points away from `from`. */
 function outward(pts, from) {
@@ -250,16 +467,20 @@ const ACROSS = { east: [1, 0], west: [-1, 0], north: [0, -1], south: [0, 1] }; /
 
 /**
  * One deck's plan: every room on it in its cell, the passages between them, and the hatches up and
- * down. A named room is a room box; a passage a band through its cell, running on through every
- * side it opens to; a blister a round glass room. `footprint` is the hull's outline, the same on
- * every deck so the frames line up; `onHull` says whether this deck is inside it.
+ * down. A named room is a room box, its `points` its outline inset as a box is (a box unless its
+ * footprint reshapes it, and then `cx`, `cy`, `w` and `h` are the outline's bounds); a passage a
+ * band through its cell, running on through every side it opens to; a blister a round glass room.
+ * `footprint` is the box round the hull, the same on every deck so the frames line up; `plate` the
+ * deck's hull path, where it has one (else null, and the plate is the footprint); `onHull` says
+ * whether this deck is inside the hull.
  * @param {ReturnType<typeof indexDecks>} index
  * @param {number} deck
  */
 export function decksLayout(index, deck) {
-  const { hull } = index;
+  const { hull, grid } = index;
   const mid = hull ? [(hull.x0 + hull.x1) / 2, (hull.y0 + hull.y1) / 2] : [0, 0];
   const centre = ({ x, y }) => [(x - mid[0]) * PLAN.w, -(y - mid[1]) * PLAN.h];
+  const toPlan = ([x, y]) => centre({ x, y });
   const rooms = [...index.byId.values()].filter((r) => r.cell.z === deck);
   const here = (id) => rooms.find((r) => r.id === id);
 
@@ -267,7 +488,11 @@ export function decksLayout(index, deck) {
     const [cx, cy] = centre(room.cell);
     if (room.blister) return { room, kind: "blister", cx, cy, r: PLAN.blister };
     if (!room.passage) {
-      return { room, kind: "room", cx, cy, w: PLAN.w - 2 * PLAN.inset, h: PLAN.h - 2 * PLAN.inset };
+      const outline = outlineOf(room.footprint);
+      const points = inset(outline.map(([x, y]) => [x * PLAN.w, y * PLAN.h]), PLAN.inset).map(([x, y]) => [cx + x, cy - y]);
+      if (isUnit(outline)) return { room, kind: "room", cx, cy, w: PLAN.w - 2 * PLAN.inset, h: PLAN.h - 2 * PLAN.inset, points };
+      const b = boundsOf(points);
+      return { room, kind: "room", cx: (b.x0 + b.x1) / 2, cy: (b.y0 + b.y1) / 2, w: b.x1 - b.x0, h: b.y1 - b.y0, points, shaped: true };
     }
     // a band through the cell: to the cell's edge on every side it opens to, else to where the
     // rooms beside it end
@@ -315,8 +540,8 @@ export function decksLayout(index, deck) {
       const [x, y] = centre(c.room.cell);
       if (c.kind === "passage") hatches.push({ dir, cx: x, cy: y, side: "below" });
       else if (c.kind === "blister") hatches.push({ dir, cx: x, cy: y - c.r / 2 + 2, side: "right" });
-      else if (dir === "down" && c.room.exits.up) hatches.push({ dir, cx: x + c.w / 2 - 14, cy: y + c.h / 2 - 30, side: "below" });
-      else hatches.push({ dir, cx: x + c.w / 2 - 14, cy: y - c.h / 2 + 14, side: "below" });
+      else if (dir === "down" && c.room.exits.up) hatches.push({ dir, cx: c.cx + c.w / 2 - 14, cy: c.cy + c.h / 2 - 30, side: "below" });
+      else hatches.push({ dir, cx: c.cx + c.w / 2 - 14, cy: c.cy - c.h / 2 + 14, side: "below" });
     }
   }
 
@@ -325,22 +550,62 @@ export function decksLayout(index, deck) {
     .filter((r) => r.blister && Math.abs(r.cell.z - deck) === 1)
     .map((room) => ({ room, cx: centre(room.cell)[0], cy: centre(room.cell)[1], r: PLAN.blister, below: room.cell.z < deck }));
 
-  const footprint = hull && {
+  // the box round the hull, and round every deck's path where one reaches past it
+  let footprint = hull && {
     x: (hull.x0 - mid[0] - 0.5) * PLAN.w - PLAN.pad,
     y: -(hull.y1 - mid[1] + 0.5) * PLAN.h - PLAN.pad,
     w: (hull.x1 - hull.x0 + 1) * PLAN.w + 2 * PLAN.pad,
     h: (hull.y1 - hull.y0 + 1) * PLAN.h + 2 * PLAN.pad,
   };
-  const frames = hull ? Array.from({ length: hull.y1 - hull.y0 + 1 }, (_, i) => ({ n: hull.y1 - i, cy: centre({ x: 0, y: hull.y1 - i })[1] })) : [];
+  const paths = Object.values(index.hullPaths ?? {});
+  if (footprint && paths.length) {
+    const b = boundsOf(paths.flat().map(toPlan));
+    const x0 = Math.min(footprint.x, b.x0);
+    const y0 = Math.min(footprint.y, b.y0);
+    const x1 = Math.max(footprint.x + footprint.w, b.x1);
+    const y1 = Math.max(footprint.y + footprint.h, b.y1);
+    footprint = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+  const path = index.hullPaths?.[deck];
+  const plate = path ? path.map(toPlan) : null;
+  const frames = grid ? Array.from({ length: grid.y1 - grid.y0 + 1 }, (_, i) => ({ n: grid.y1 - i, cy: centre({ x: 0, y: grid.y1 - i })[1] })) : [];
   const onHull = !!hull && deck >= hull.z0 && deck <= hull.z1;
-  return { deck, cells, links, hatches, nearby, footprint, frames, onHull, centre };
+  return { deck, cells, links, hatches, nearby, footprint, plate, frames, onHull, centre };
 }
 
-/** The glowing shape for the player's place on a deck's plan, or null. */
+/** A polygon's outline as an SVG path, to a tenth of a unit. */
+export function pathD(points) {
+  return `M${points.map((p) => p.map((v) => +v.toFixed(1)).join(",")).join("L")}Z`;
+}
+
+/**
+ * A counter-clockwise polygon moved in by d, each edge along its normal and each corner where its
+ * two edges meet; as a room box is inset in its cell, so a box stays a box.
+ */
+function inset(points, d) {
+  const n = points.length;
+  const line = (i) => {
+    const [a, b] = [points[i], points[(i + 1) % n]];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const dir = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+    return { at: [a[0] - dir[1] * d, a[1] + dir[0] * d], dir }; // in is to the left
+  };
+  return points.map((_, i) => {
+    const p = line((i + n - 1) % n);
+    const q = line(i);
+    const cross = p.dir[0] * q.dir[1] - p.dir[1] * q.dir[0];
+    if (Math.abs(cross) < 1e-9) return q.at;
+    const t = ((q.at[0] - p.at[0]) * q.dir[1] - (q.at[1] - p.at[1]) * q.dir[0]) / cross;
+    return [p.at[0] + p.dir[0] * t, p.at[1] + p.dir[1] * t];
+  });
+}
+
+/** The glowing shape for the player's place on a deck's plan, or null: a reshaped room's outline as a path. */
 export function decksShape(layout, where) {
   if (!layout || where?.kind !== "room") return null;
   const c = layout.cells.find((x) => x.room.id === where.id);
   if (!c) return null;
   if (c.kind === "blister") return { kind: "circle", cx: c.cx, cy: c.cy, r: c.r };
+  if (c.shaped) return { kind: "path", d: pathD(c.points), cx: c.cx, cy: c.cy };
   return { kind: "rect", x: c.cx - c.w / 2, y: c.cy - c.h / 2, width: c.w, height: c.h, rx: c.kind === "room" ? 5 : 3 };
 }

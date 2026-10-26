@@ -9,6 +9,7 @@ import orrin from "../../tests/fixtures/generated/orrin.js";
 import places, { data as generated } from "../data/places.js";
 import {
   CELL,
+  PLAN,
   buildDecksModel,
   decksCut,
   decksKey,
@@ -18,6 +19,7 @@ import {
   locateDecks,
   parseAddress,
 } from "./decks.js";
+import { boundsOf, noseAt, pathOf } from "./footprint.js";
 import { DISTRICT_COLOURS } from "./geometry.js";
 import { infoLine } from "./locate.js";
 
@@ -472,5 +474,179 @@ describe("the generated look", () => {
   it("reads a look without view or footprints, as the frozen files have it", () => {
     expect(orrin.look.footprints).toBeUndefined();
     expect(buildDecksModel(indexDecks(orrin), orrin).length).toBeGreaterThan(0);
+  });
+});
+
+// Orrin copied, with footprints and hull paths as the tweak files would give them (tweaks can't
+// exist for a test): the three of the footprint mockups, and the hull paths of the hull path mockup
+describe("footprints and hull paths", () => {
+  const T3 = { freight: { span: { aft: 1 } }, market: { corners: "rounded" }, charts: { corners: "cut" } };
+  const M = 0.5 + 0.12;
+  const HULL = {
+    3: [
+      [-M, 1 - M], [M, 1 - M], [M, 2 - M], [1 + M, 2 - M], [1 + M, 2 + M], [M, 2 + M],
+      [M, 3 + M - 0.3], [M - 0.3, 3 + M], [-M + 0.3, 3 + M], [-M, 3 + M - 0.3],
+      [-M, 2 + M], [-1 - M, 2 + M], [-1 - M, 2 - M], [-M, 2 - M],
+    ],
+    2: [[-M, 1 - M], [M, 1 - M], [M, 2 + M], [-1 - M, 2 + M, 0.35], [-1 - M, 2 - M], [-M, 2 - M]],
+  };
+  const tweak = (footprints, hull) => ({ ...orrin, look: { ...orrin.look, footprints, hull: hull ?? {} } });
+  const numbers = (d) => d.match(/-?\d+(\.\d+)?/g).map(Number);
+  const pairs = (d) => numbers(d).reduce((out, v, i) => (i % 2 ? (out[out.length - 1].push(v), out) : [...out, [v]]), []);
+  const bounds = (pts) => boundsOf(pts);
+  const span = (fs, k) => {
+    const v = fs.flatMap((f) => f.pts.map((p) => p[k]));
+    return [Math.min(...v), Math.max(...v)];
+  };
+
+  describe("rooms with the footprint mockups' three tweaks", () => {
+    const data = tweak(T3);
+    const index = indexDecks(data);
+    const layout = (deck) => decksLayout(index, deck);
+    const cellOf = (deck, id) => layout(deck).cells.find((c) => c.room.id === id);
+
+    it("carries each room's footprint on the index", () => {
+      expect(index.byId.get("orrin.freight").footprint).toEqual({ span: { aft: 1 } });
+      expect(index.byId.get("orrin.berth").footprint).toBe(null);
+    });
+
+    it("reaches the Freight Office's plan box one frame aft, inset as a box is", () => {
+      const c = cellOf(3, "orrin.freight");
+      const [x, y] = layout(3).centre(c.room.cell);
+      const b = bounds(c.points);
+      expect(b.x0).toBeCloseTo(x - PLAN.w / 2 + PLAN.inset);
+      expect(b.x1).toBeCloseTo(x + PLAN.w / 2 - PLAN.inset);
+      expect(b.y0).toBeCloseTo(y - PLAN.h / 2 + PLAN.inset);
+      expect(b.y1).toBeCloseTo(y + PLAN.h / 2 - PLAN.inset + PLAN.h);
+    });
+
+    it("keeps a plain room's box as it was, its points its corners", () => {
+      const c = cellOf(3, "orrin.berth");
+      expect(decksShape(layout(3), { kind: "room", id: "orrin.berth" }).kind).toBe("rect");
+      expect(bounds(c.points)).toEqual({ x0: c.cx - c.w / 2, x1: c.cx + c.w / 2, y0: c.cy - c.h / 2, y1: c.cy + c.h / 2 });
+    });
+
+    it("lights the Exchange as a path the size of its plan box", () => {
+      const s = decksShape(layout(2), { kind: "room", id: "orrin.market" });
+      expect(s.kind).toBe("path");
+      const c = cellOf(2, "orrin.market");
+      const b = bounds(pairs(s.d));
+      expect(b.x0).toBeCloseTo(c.cx - c.w / 2, 0);
+      expect(b.x1).toBeCloseTo(c.cx + c.w / 2, 0);
+      expect(b.y0).toBeCloseTo(c.cy - c.h / 2, 0);
+      expect(b.y1).toBeCloseTo(c.cy + c.h / 2, 0);
+      expect(pairs(s.d).length).toBe(16);
+    });
+
+    it("lights the Chart Office in the model as its cut outline through the deck: 8 sides and 2 caps", () => {
+      const faces = buildDecksModel(index, data);
+      const lit = faces.filter((f) => f.key === "orrin.charts" && f.ghost);
+      expect(lit.length).toBe(10);
+      const mid = centroid(lit.flatMap((f) => f.pts));
+      for (const f of lit) expect(dot(normal(f.pts), sub(centroid(f.pts), mid))).toBeGreaterThan(0);
+    });
+
+    it("keeps the hull's box: every outline is inside the cells", () => {
+      expect(index.hull).toEqual({ x0: -1, x1: 1, y0: 1, y1: 3, z0: 2, z1: 3 });
+    });
+  });
+
+  describe("a nose that reaches fore (Review Focus 2)", () => {
+    const data = tweak({ berth: { span: { fore: 0.5 } } });
+    const index = indexDecks(data);
+    const plain = indexDecks(orrin);
+
+    it("grows the hull half a frame fore", () => {
+      expect(index.hull.y1).toBe(plain.hull.y1 + 0.5);
+      expect(decksLayout(index, 3).frames.map((f) => f.n)).toEqual([3, 2, 1]);
+    });
+
+    it("grows the plan's plate by half a frame", () => {
+      expect(decksLayout(index, 3).footprint.h).toBeCloseTo(decksLayout(plain, 3).footprint.h + 0.5 * PLAN.h);
+      expect(decksLayout(index, 3).footprint.w).toBeCloseTo(decksLayout(plain, 3).footprint.w);
+    });
+
+    it("stands every cradle fore of the new nose", () => {
+      const faces = buildDecksModel(index, data);
+      const hull = faces.filter((f) => f.outline);
+      const before = buildDecksModel(plain, orrin).filter((f) => f.outline);
+      const nose = span(hull, 2)[1];
+      expect(nose - span(hull, 2)[0]).toBeCloseTo(span(before, 2)[1] - span(before, 2)[0] + 0.5 * CELL.frame);
+      const docks = faces.filter((f) => f.kind === "dock");
+      expect(docks.length).toBeGreaterThan(0);
+      for (const f of docks) for (const p of f.pts) expect(p[2]).toBeGreaterThanOrEqual(nose - 1e-9);
+      const berth = faces.filter((f) => f.key === "orrin.berth");
+      expect(span(berth, 2)[1]).toBeCloseTo(nose);
+    });
+  });
+
+  describe("Orrin with the hull path mockup's paths", () => {
+    const data = tweak({}, HULL);
+    const index = indexDecks(data);
+    const faces = buildDecksModel(index, data);
+    const mid = [(index.hull.x0 + index.hull.x1) / 2, (index.hull.y0 + index.hull.y1) / 2];
+    const toPlan = ([x, y]) => [(x - mid[0]) * PLAN.w, -(y - mid[1]) * PLAN.h];
+    const toModel = ([x, y]) => [(x - mid[0]) * CELL.side, (y - mid[1]) * CELL.frame];
+
+    it("puts each deck's path, rounded, on the index", () => {
+      expect(index.hullPaths[3]).toEqual(pathOf(HULL[3]));
+      expect(index.hullPaths[2]).toEqual(pathOf(HULL[2]));
+      expect(index.hullPaths[1]).toBeUndefined();
+    });
+
+    it("plates Deck 3's plan with its path", () => {
+      const l = decksLayout(index, 3);
+      const want = bounds(pathOf(HULL[3]).map(toPlan));
+      const got = bounds(l.plate);
+      for (const k of ["x0", "x1", "y0", "y1"]) expect(got[k]).toBeCloseTo(want[k]);
+      expect(decksLayout(index, 1).plate).toBe(null);
+    });
+
+    it("walls every edge of each deck's path, facing out", () => {
+      for (const z of [2, 3]) {
+        const path = pathOf(HULL[z]);
+        const walls = faces.filter((f) => f.kind === "outer" && f.deck === z && Math.abs(normal(f.pts)[1]) < 1e-6);
+        path.forEach((a, i) => {
+          const b = path[(i + 1) % path.length];
+          const [A, B] = [toModel(a), toModel(b)];
+          const len = Math.hypot(B[0] - A[0], B[1] - A[1]);
+          const on = (p) => {
+            const t = ((p[0] - A[0]) * (B[0] - A[0]) + (p[2] - A[1]) * (B[1] - A[1])) / (len * len);
+            return Math.abs((p[0] - A[0]) * (B[1] - A[1]) - (p[2] - A[1]) * (B[0] - A[0])) / len < 1e-6 && t > -1e-6 && t < 1 + 1e-6;
+          };
+          const along = walls.filter((f) => f.pts.every(on));
+          const length = (f) => Math.hypot(span([f], 0)[1] - span([f], 0)[0], span([f], 2)[1] - span([f], 2)[0]);
+          const covered = along.reduce((s, f) => s + length(f), 0);
+          expect(covered, `deck ${z} edge ${i}`).toBeCloseTo(len);
+          // outward: to the right of a counter-clockwise path
+          const out = [B[1] - A[1], 0, -(B[0] - A[0])];
+          for (const f of along) expect(dot(normal(f.pts), out), `deck ${z} edge ${i}`).toBeGreaterThan(0);
+        });
+      }
+    });
+
+    it("roofs the top deck with its path and gives Deck 2 its lid, both facing up", () => {
+      const area = (pts) => Math.abs(pts.reduce((s, [x, y], i) => s + x * pts[(i + 1) % pts.length][1] - pts[(i + 1) % pts.length][0] * y, 0)) / 2;
+      const flat = (f) => Math.abs(normal(f.pts)[0]) < 1e-6 && Math.abs(normal(f.pts)[2]) < 1e-6;
+      const roof = faces.filter((f) => f.kind === "outer" && f.deck === 3 && flat(f) && normal(f.pts)[1] > 0);
+      const lid = faces.filter((f) => f.lid === 2);
+      const sum = (fs) => fs.reduce((s, f) => s + area(f.pts.map((p) => [p[0], p[2]])), 0);
+      expect(sum(roof)).toBeCloseTo(area(pathOf(HULL[3])) * CELL.side * CELL.frame);
+      expect(sum(lid)).toBeCloseTo(area(pathOf(HULL[2])) * CELL.side * CELL.frame);
+      for (const f of lid) expect(normal(f.pts)[1]).toBeGreaterThan(0);
+      expect(faces.some((f) => f.lid === 3)).toBe(false);
+    });
+
+    it("roots the cradles at the nose of the path on their deck, leaving out one off it", () => {
+      const docks = faces.filter((f) => f.kind === "dock");
+      // the mockup's L on Deck 2 doesn't reach the starboard cradle's side; the build won't pass that
+      const cradles = orrin.look.fixtures.filter((f) => f.type === "cradle" && noseAt(pathOf(HULL[f.deck]), f.side) !== null);
+      expect(cradles.length).toBe(5);
+      expect(docks.length).toBe(cradles.length * 6);
+      cradles.forEach((c, i) => {
+        const box = docks.slice(i * 6, i * 6 + 6);
+        expect(span(box, 2)[0]).toBeCloseTo((noseAt(pathOf(HULL[c.deck]), c.side) - mid[1]) * CELL.frame);
+      });
+    });
   });
 });

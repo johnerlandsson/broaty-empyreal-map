@@ -70,18 +70,15 @@ export function hover(node, room) {
   node.addEventListener("mouseleave", () => window.panel?.tooltip?.hide?.());
 }
 
-/** A room box tinted by district, labelled; closed rooms are dashed and dimmed. */
-export function roomBox(parent, room, cx, cy, col, w, h) {
+/** A room box tinted by district, labelled; closed rooms are dashed and dimmed. Given `d`, the box
+ *  is that path instead (a decks room its footprint reshapes), labelled at cx, cy. */
+export function roomBox(parent, room, cx, cy, col, w, h, d) {
   const g = el("g", {}, parent);
   const open = !room.closed;
   el(
-    "rect",
+    d ? "path" : "rect",
     {
-      x: cx - w / 2,
-      y: cy - h / 2,
-      width: w,
-      height: h,
-      rx: 5,
+      ...(d ? { d, "stroke-linejoin": "round" } : { x: cx - w / 2, y: cy - h / 2, width: w, height: h, rx: 5 }),
       fill: col,
       "fill-opacity": open ? 0.22 : 0.07,
       stroke: col,

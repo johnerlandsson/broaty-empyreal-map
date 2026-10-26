@@ -1,10 +1,11 @@
 // A decks station's plans (Orrin Station): one per deck, top deck first, fore up and starboard
-// right, each room in the cell its address names. The hull's footprint is the same on every deck
-// so the frames line up; a deck outside it (a blister's) shows it dashed. Layout maths lives in
+// right, each room in the cell its address names, in its footprint's shape. The hull's footprint is
+// the same on every deck so the frames line up; a deck with a hull path is plated with it instead;
+// a deck outside the hull (a blister's) shows the footprint dashed. Layout maths lives in
 // lib/decks.js.
 
 import { DISTRICT_COLOURS as DC } from "./lib/geometry.js";
-import { PLAN, decksLayout, decksShape } from "./lib/decks.js";
+import { PLAN, decksLayout, decksShape, pathD } from "./lib/decks.js";
 import { el } from "./lib/svg.js";
 import { DIM, PASSAGE, PLATE, hover, label, roomBox } from "./deck-view.js";
 
@@ -28,12 +29,14 @@ export function decksPlans() {
 
 function buildDeckPlan(svg, index, deck, level) {
   const layout = decksLayout(index, deck);
-  const { cells, links, hatches, footprint: fp, frames, onHull } = layout;
+  const { cells, links, hatches, footprint: fp, plate, frames, onHull } = layout;
   const g = el("g", { display: "none" }, svg);
 
-  // the hull: a plate with its walls on a deck inside it, else its outline, dashed, and a plate
-  // round each blister
-  if (fp && onHull) {
+  // the hull: a plate with its walls on a deck inside it (its path, where it has one), else its
+  // outline, dashed, and a plate round each blister
+  if (plate && onHull) {
+    el("path", { d: pathD(plate), fill: PLATE, stroke: EDGE, "stroke-width": 3, "stroke-linejoin": "round" }, g);
+  } else if (fp && onHull) {
     el("rect", { x: fp.x, y: fp.y, width: fp.w, height: fp.h, rx: 12, fill: PLATE, stroke: EDGE, "stroke-width": 3 }, g);
   } else if (fp) {
     el("rect", { x: fp.x, y: fp.y, width: fp.w, height: fp.h, rx: 12, fill: "none", stroke: EDGE, "stroke-width": 1.5, "stroke-dasharray": "6 5" }, g);
@@ -50,7 +53,7 @@ function buildDeckPlan(svg, index, deck, level) {
       const [x, y] = layout.centre(c.room.cell);
       if (!c.room.exits?.up && !c.room.exits?.down) el("circle", { cx: x, cy: y, r: 4, fill: STOP, ...none }, g);
     } else if (c.kind === "room") {
-      roomBox(g, c.room, c.cx, c.cy, c.room.tint ?? DC.industrial, c.w, c.h);
+      roomBox(g, c.room, c.cx, c.cy, c.room.tint ?? DC.industrial, c.w, c.h, c.shaped ? pathD(c.points) : undefined);
       if (c.room.flags?.includes("berth")) airlocks(g, c);
     } else {
       blister(g, c);
