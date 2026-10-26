@@ -22,9 +22,10 @@
 </style></head><body>
 <script type="module">
 import orrin from "../../../ui/data/orrin.js";
-import station from "../../../ui/data/station.js";
+import tiss from "../../../ui/data/tiss.js";
 import { ModelView } from "../../../ui/model-view.js";
-import { DECKS, buildDecksModel, decksCut, decksKey, indexDecks } from "../../../ui/lib/decks.js";
+import { buildDecksModel, decksCut, decksKey, indexDecks } from "../../../ui/lib/decks.js";
+import { decksSpec, tissRooms } from "../../../ui/lib/look.js";
 import { indexStation } from "../../../ui/lib/locate.js";
 import { Starfield } from "../../../ui/lib/space.js";
 import { rng } from "../../../ui/lib/svg.js";
@@ -33,11 +34,12 @@ const W = 170, H = 118, STAR = "223,231,241", BEACON = "232,176,74", GLASS = "#c
 const ease = (t) => t * t * (3 - 2 * t);
 const clamp = (t) => Math.max(0, Math.min(1, t));
 
-const tissIndex = indexStation(station);
-const orrinIndex = indexDecks(orrin, DECKS.orrin);
+const tissIndex = indexStation(tissRooms(tiss));
+const orrinSpec = decksSpec(orrin);
+const orrinIndex = indexDecks(orrin, orrinSpec);
 const build = {
   tiss: (el) => new ModelView(el, tissIndex),
-  orrin: (el) => new ModelView(el, orrinIndex, { faces: buildDecksModel(orrinIndex, DECKS.orrin), keyOf: decksKey, hourOf: () => null, cutOf: (w) => decksCut(orrinIndex, w), labels: false }),
+  orrin: (el) => new ModelView(el, orrinIndex, { faces: buildDecksModel(orrinIndex, orrinSpec), keyOf: decksKey, hourOf: () => null, cutOf: (w) => decksCut(orrinIndex, w), labels: false }),
 };
 
 /** The parked starfield, as space-view.js draws it, at alpha a. */

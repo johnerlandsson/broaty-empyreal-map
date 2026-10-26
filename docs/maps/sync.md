@@ -9,13 +9,28 @@ source is only ever read. Never edit it.
 1. `git -C ~/dev/empyreal pull`
 2. `npm run build:data`
 3. Read the report to John: what changed, and what needs a human.
-4. `npm test`, then look at the preview (`dev/preview.html`).
+4. `npm test`, then look at the preview (`dev/preview.html`). A golden render
+   (`tests/golden/`) that fails for a place the report names is expected: the
+   source changed it. Check that place in `dev/preview.html`, then
+   `GOLDEN_RECORD=1 npx vitest run tests/golden` and commit the goldens with
+   the sync. A new place fails until its golden is recorded the same way. A
+   golden that fails for a place the report does not name is a real problem:
+   stop and find out why before recording anything.
 5. Commit as `data: sync with empyreal <sha>`, with the generated files and
    `data/sync-report.json`.
 
 The build prints the report as short text, one line per list that has
 anything in it, or `nothing needs you`. The same report is written to
 `data/sync-report.json`.
+
+The report is what changed since the last commit: in a git checkout the
+build compares with the files and the report as `HEAD` has them, so running
+it again before you commit gives the same report. Outside git it compares
+with the files on disk.
+
+The build stops with one message, and writes nothing, when the source has no
+area files or when it would remove every place the map has. Either means the
+checkout is partial.
 
 Flags, all optional:
 
@@ -64,7 +79,9 @@ Each list is empty when there is nothing to say.
   `place: key`. Fix the id, or delete the key.
 - `droppedFlags`, `unknownFields`: room flags and source fields the map
   drops on purpose, listed by name with the places they occur in, the first
-  time a name appears only. Nothing is wrong. Decide if the map should use
+  time a name appears only. A field inside a car, an exit, a layout or a
+  district is named by its dotted path, such as `car.perStop` or
+  `exits.*.hidden`. Nothing is wrong. Decide if the map should use
   it. `knownDroppedFlags` and `knownUnknownFields` remember every name seen,
   so it is not reported twice.
 
@@ -94,8 +111,8 @@ The top-level keys:
     (Lamorna's)
   - `drum-cradle`: `{ "type": "drum-cradle", "hour": -0.3, "z": -12, "hw": 8, "h": 20, "hl": 11 }`
     (Wenna's)
-- `place`: a room's position, where the source gives none or the build
-  cannot find one. T.I.S.S. has
+- `place`: a wheel room's position, where the build cannot place it from
+  its address. It applies only to wheels. T.I.S.S. has
   `"place": { "transfer": { "x": 0, "y": -1, "z": 3 } }`.
 - `drum`: a drum's layout. `rooms` places each room by `x`, `y`, `z`,
   `hour`, `band` and `terrain`, and there are also `axis` and `way`. See
@@ -111,7 +128,7 @@ The top-level keys:
 When `newPlaces` names one, the build has already drawn it plainly, and
 `places.js` already lists it. Add `data/tweaks/<place>.json` with a `like`
 and any `paint` you want, run `npm run build:data` again, and look at the
-preview.
+preview. Then record its golden render, as in step 4.
 
 If the place is in `noBuilder` instead, nothing was drawn. A drum needs a
 `drum` section and a town a `town` section in its tweak file.

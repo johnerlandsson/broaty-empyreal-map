@@ -190,7 +190,7 @@ Removed by the end: `scripts/build-station.mjs`, `scripts/station-data.mjs` (and
 - Consumes: Tasks 2–4.
 - Produces:
   - `build({ source, tweaksDir, outDir, reportPath }): { report }`
-  - For each area with a builder (layout `decks` or `wheel`, or `none` with a `drum` or `town` tweak section), it writes `ui/data/<areaId>.js` in the spec's shape: `{source, id, kind:"area", layout, levels, districts?, rooms, look}`. `source.commit` is the short sha. Rooms are sorted by id, and keys are in a fixed order.
+  - For each area with a builder (layout `decks` or `wheel`, or `none` with a `drum` or `town` tweak section), it writes `ui/data/<areaId>.js` in the spec's shape: `{source, id, kind:"area", layout, levels, districts?, rooms, look}`. `source.commit` is the short sha. Rooms are sorted by id (superseded: source order, ruling R10), and keys are in a fixed order.
   - Plans are read and checked but not written in stage 1. Stage 4 writes them.
   - `ui/data/places.js` is `export default [{id, prefix, builder: "decks"|"wheel"|"drum"|"town", docks: string[]}]`. `docks` holds the world place ids whose `berth` room is in this area (`orrin_station` → `orrin`).
   - `data/sync-report.json`: `{commit, newPlaces, noBuilder, rooms: {added, removed, renamed}, exits: {added, removed}, unplaced, orphans, droppedFlags, unknownFields}`. Each list is sorted and has `place` on each entry.
