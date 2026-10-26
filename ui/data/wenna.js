@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/wenna.json"
   },
   "id": "wenna",
+  "name": "Wenna Halt",
   "kind": "area",
+  "gravity": 0.6,
   "layout": {
     "kind": "none"
   },

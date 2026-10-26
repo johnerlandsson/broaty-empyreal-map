@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/penwith.json"
   },
   "id": "penwith",
+  "name": "Penwith Vats",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

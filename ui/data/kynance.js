@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/kynance.json"
   },
   "id": "kynance",
+  "name": "Kynance Spindle",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

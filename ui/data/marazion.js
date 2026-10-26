@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/marazion.json"
   },
   "id": "marazion",
+  "name": "Marazion Quay",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

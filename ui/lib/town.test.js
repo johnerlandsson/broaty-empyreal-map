@@ -97,7 +97,7 @@ describe("Zennor's data", () => {
   it("has the 45 rooms of content/areas/zennor.yaml in its seven districts at 1 g, all placed", () => {
     expect(zennor.rooms.length).toBe(45);
     expect(index.byId.size).toBe(45);
-    expect(zennor.area).toMatchObject({ id: "zennor", gravity: 1 });
+    expect(zennor.area).toMatchObject({ id: "zennor", name: "Zennor", gravity: 1 });
     expect(zennor.area.districts.map((d) => d.id)).toEqual(["downs", "old-town", "market-quarter", "courts", "rows", "riverside", "terraces"]);
     for (const r of index.byId.values()) {
       expect(r.gravity, r.id).toBe(1);
@@ -344,11 +344,11 @@ describe("locateTown and townInfo", () => {
   });
 
   it("says the room, its district, the town and the gravity", () => {
-    // the generated file has no area name: the town's is the game's, which every room message has
+    // the town's name is the game's, which every room message has, else the area's
     const line = (msg) => townInfo(locateTown(index, msg), msg, index);
     expect(line({ roomId: "zennor.exchange-square", name: "Conduit Square", areaName: "Zennor", gravity: 1 })).toBe("CONDUIT SQUARE · the Market Quarter · Zennor · 1 g");
-    expect(line({ roomId: "zennor.overlook", areaName: "Zennor" })).toBe("THE OVERLOOK · the Old Town · Zennor · 1 g");
-    expect(line({ roomId: "zennor.embankment", areaName: "Zennor" })).toBe("THE EMBANKMENT · Riverside · Zennor · 1 g");
+    expect(line({ roomId: "zennor.overlook", areaName: "Zennor Town" })).toBe("THE OVERLOOK · the Old Town · Zennor Town · 1 g");
+    expect(line({ roomId: "zennor.embankment" })).toBe("THE EMBANKMENT · Riverside · Zennor · 1 g");
     expect(line({ roomId: "zennor.tram", name: "The Tram" })).toBe("THE TRAM");
     expect(line({ roomId: "ship.41.cockpit", name: "Cockpit of the Magpie" })).toBe("COCKPIT OF THE MAGPIE");
     expect(townInfo(null, null, index)).toBe("");

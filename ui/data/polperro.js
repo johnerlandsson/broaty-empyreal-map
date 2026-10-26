@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/polperro.json"
   },
   "id": "polperro",
+  "name": "Polperro Old Dock",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

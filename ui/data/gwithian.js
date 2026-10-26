@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/gwithian.json"
   },
   "id": "gwithian",
+  "name": "Gwithian Reach",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

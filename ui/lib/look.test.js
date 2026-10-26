@@ -119,7 +119,7 @@ describe("townSpec and townData", () => {
         stops: ["zennor.tram-riverside", "zennor.tram-market", "zennor.tram-uptown", "zennor.tram-downs"],
       },
     ]);
-    expect(data.area).toMatchObject({ id: "zennor", gravity: 1 });
+    expect(data.area).toMatchObject({ id: "zennor", name: "Zennor", gravity: 1 });
     expect(data.area.districts.map((d) => d.id)).toEqual(["downs", "old-town", "market-quarter", "courts", "rows", "riverside", "terraces"]);
   });
 });

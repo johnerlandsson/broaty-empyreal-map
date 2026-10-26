@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/zennor.json"
   },
   "id": "zennor",
+  "name": "Zennor",
   "kind": "area",
+  "gravity": 1,
   "layout": {
     "kind": "none"
   },

@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/botallack.json"
   },
   "id": "botallack",
+  "name": "Botallack Head",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

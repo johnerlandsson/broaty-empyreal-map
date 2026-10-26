@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/caradon.json"
   },
   "id": "caradon",
+  "name": "Caradon Works",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

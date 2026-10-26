@@ -98,12 +98,11 @@ export function townSpec(data) {
   };
 }
 
-/** The town as indexTown takes it: the area with its districts and gravity, the rooms on foot,
+/** The town as indexTown takes it: the area with its name, gravity and districts, the rooms on foot,
  *  and the cars (the tram), each car's stops bottom to top. */
 export function townData(data) {
-  const gravities = new Set(data.rooms.map((r) => r.gravity));
   return {
-    area: { id: data.id, gravity: gravities.size === 1 ? [...gravities][0] : null, districts: data.districts ?? [] },
+    area: { id: data.id, name: data.name, gravity: data.gravity, districts: data.districts ?? [] },
     rooms: data.rooms.filter((r) => !r.car),
     cars: data.rooms.filter((r) => r.car).map((r) => ({ id: r.id, name: r.name, kind: r.car.kind, stops: r.car.stops.map((s) => s.room) })),
   };

@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/lanyon.json"
   },
   "id": "lanyon",
+  "name": "Lanyon High",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

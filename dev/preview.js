@@ -79,8 +79,8 @@ import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts, senaraContacts } 
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
 const zennor = townData(zennorFile); // its rooms on foot, and the tram as a car
-// the area's gravity and name, as the game sends them (the generated file has no area name)
-const town = zennor.rooms.map((r) => ({ ...r, gravity: zennor.area.gravity, areaName: "Zennor" }));
+// the area's gravity and name, as the game sends them
+const town = zennor.rooms.map((r) => ({ ...r, gravity: zennor.area.gravity, areaName: zennor.area.name }));
 const DATA = [
   station.rooms,
   orrin.rooms,

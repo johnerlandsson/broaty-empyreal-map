@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/morvah.json"
   },
   "id": "morvah",
+  "name": "Morvah Deep",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

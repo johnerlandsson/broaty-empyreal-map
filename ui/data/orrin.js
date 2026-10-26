@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/orrin.json"
   },
   "id": "orrin",
+  "name": "Orrin Station",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

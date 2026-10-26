@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/lamorna.json"
   },
   "id": "lamorna",
+  "name": "Lamorna Light",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

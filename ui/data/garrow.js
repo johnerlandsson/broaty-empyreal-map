@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/garrow.json"
   },
   "id": "garrow",
+  "name": "Garrow Stop",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

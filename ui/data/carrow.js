@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/carrow.json"
   },
   "id": "carrow",
+  "name": "Carrow Yard",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

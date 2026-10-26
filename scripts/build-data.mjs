@@ -128,7 +128,12 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
       continue;
     }
 
-    const { rooms: placed, unplaced } = placeRooms(area, raw, tweak.place ?? {});
+    const { rooms: all, unplaced } = placeRooms(area, raw, tweak.place ?? {});
+    // A drum places only the rooms its tweak's drum.rooms lists; any other is unplaced, as a
+    // wheel room the rules can't place is.
+    const onDrum = builder === "drum" ? new Set(Object.keys(tweak.drum.rooms ?? {}).map((local) => `${id}.${local}`)) : null;
+    const placed = onDrum ? all.filter((r) => onDrum.has(r.id)) : all;
+    if (onDrum) unplaced.push(...all.filter((r) => !onDrum.has(r.id)).map((r) => r.id));
     report.unplaced.push(...unplaced.map((u) => ({ place: id, id: u })));
     // In the source's order, not sorted: the builders draw rooms in the order they come, and a
     // tie (which cell a district's label takes) goes to the first, so the order is on screen.
@@ -154,14 +159,16 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
         ["commit", "file", "tweaks"],
       ),
       id,
+      name: kept.name,
       kind: "area",
+      gravity: kept.gravity,
       layout,
       levels: levelsOf(layout, rooms),
       districts: kept.districts,
       rooms,
       look: ordered({ ...look, palette: tweaks.palette }, LOOK_KEYS),
     };
-    files.set(path, moduleText(src.commit, ordered(data, ["source", "id", "kind", "layout", "levels", "districts", "rooms", "look"])));
+    files.set(path, moduleText(src.commit, ordered(data, ["source", "id", "name", "kind", "gravity", "layout", "levels", "districts", "rooms", "look"])));
 
     const own = new Set(raw.map((r) => r.id));
     const docks = src.world.filter((w) => own.has(w.berth)).map((w) => w.id).sort();

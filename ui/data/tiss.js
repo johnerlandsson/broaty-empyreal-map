@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/tiss.json"
   },
   "id": "tiss",
+  "name": "Tamsin International Space Station",
   "kind": "area",
+  "gravity": 0.9,
   "layout": {
     "kind": "wheel",
     "rings": {

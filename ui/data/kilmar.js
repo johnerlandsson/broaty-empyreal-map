@@ -6,7 +6,9 @@ export default {
     "tweaks": "data/tweaks/kilmar.json"
   },
   "id": "kilmar",
+  "name": "Kilmar Steading",
   "kind": "area",
+  "gravity": 0,
   "layout": {
     "kind": "decks"
   },

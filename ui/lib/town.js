@@ -272,7 +272,7 @@ export function townInfo(where, msg, index) {
     const room = index?.byId?.get(where.id);
     const parts = [(s(msg?.name) ?? s(room?.name) ?? "").toUpperCase()];
     if (s(room?.districtName)) parts.push(room.districtName);
-    const town = s(index?.area?.name) ?? s(msg?.areaName);
+    const town = s(msg?.areaName) ?? s(index?.area?.name); // the game always sends it
     if (town) parts.push(town);
     const g = msg?.gravity ?? room?.gravity;
     if (g !== undefined && g !== null) parts.push(`${String(g)} g`);
