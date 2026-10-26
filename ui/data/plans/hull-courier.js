@@ -47,7 +47,7 @@ export default {
         "room": "cockpit",
         "at": [
           0,
-          -0.02
+          -0.2
         ],
         "size": [
           0.2,
@@ -57,7 +57,7 @@ export default {
           1,
           2
         ],
-        "gap": 0.17
+        "gap": 0.06
       },
       {
         "type": "prop",

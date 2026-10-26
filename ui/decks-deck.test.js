@@ -119,32 +119,30 @@ describe("ship room names on the plan", () => {
     });
   }
 
-  it("keeps the freighter's cockpit name off her seats, fore of them, where the box has room for it", () => {
-    const lines = named(freighterPlan, "Mallard")("cockpit").lines;
-    const place = buildPlace(freighterPlan, "decks", document.createElement("div"), document.createElement("div"));
-    const { layout } = place.deck.plans[0];
-    const room = layout.cells.find((c) => c.room.id === "freighter.cockpit").room;
-    const P = ([x, y]) => layout.centre({ x, y });
-    const seats = seatBoxes(freighterPlan, "cockpit")
-      .flatMap((f) => propBoxes(f, { side: room.cell.x, frame: room.cell.y }))
-      .map(([x0, y0, x1, y1]) => {
-        const [a, b] = [P([x0, y1]), P([x1, y0])];
-        return { x0: a[0], y0: a[1], x1: b[0], y1: b[1] };
-      });
-    expect(seats.length).toBe(2);
-    for (const l of lines) {
-      expect(l.halo).toBe(false);
-      for (const s of seats) {
-        expect(meets(l, s), `${l.text} over a seat`).toBe(false);
-        expect(l.y1).toBeLessThanOrEqual(s.y0);
+  for (const [plan, ship] of [[freighterPlan, "Mallard"], [courierPlan, "Swift"]]) {
+    it(`keeps the ${plan.id} cockpit's name off her seats, fore of them, where the box has room for it`, () => {
+      const lines = named(plan, ship)("cockpit").lines;
+      const place = buildPlace(plan, "decks", document.createElement("div"), document.createElement("div"));
+      const { layout } = place.deck.plans[0];
+      const room = layout.cells.find((c) => c.room.id === `${plan.id}.cockpit`).room;
+      const P = ([x, y]) => layout.centre({ x, y });
+      const seats = seatBoxes(plan, "cockpit")
+        .filter((f) => f.kind === "seat")
+        .flatMap((f) => propBoxes(f, { side: room.cell.x, frame: room.cell.y }))
+        .map(([x0, y0, x1, y1]) => {
+          const [a, b] = [P([x0, y1]), P([x1, y0])];
+          return { x0: a[0], y0: a[1], x1: b[0], y1: b[1] };
+        });
+      expect(seats.length).toBe(2);
+      for (const l of lines) {
+        expect(l.halo).toBe(false);
+        for (const s of seats) {
+          expect(meets(l, s), `${l.text} over a seat`).toBe(false);
+          expect(l.y1).toBeLessThanOrEqual(s.y0);
+        }
       }
-    }
-  });
-
-  it("puts the courier's cockpit name over her seats with a halo: her box leaves no band that takes it", () => {
-    const lines = named(courierPlan, "Swift")("cockpit").lines;
-    for (const l of lines) expect(l.halo).toBe(true);
-  });
+    });
+  }
 
   it("names a room over its props with a halo when they leave no room", () => {
     const fit = fitLabel("Cockpit of the Swift", { x0: 0, y0: 0, x1: 70, y1: 90 }, [{ x0: 5, y0: 5, x1: 65, y1: 85 }]);
