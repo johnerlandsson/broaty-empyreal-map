@@ -66,6 +66,12 @@ with no plan. `ui/data/ships.js` indexes them: each hull's `id`, `name`,
 or a plan and a place share an id, or when a hull names a plan that
 `content/plans/` doesn't have. See [ship-plans.md](ship-plans.md).
 
+When the game gives a planless hull a plan of its own, the report lists
+`hull-<id>` under `removedPlaces` (kind `plan`) and the new plan under
+`newPlaces`. Her look stays behind in `data/tweaks/hull-<id>.json`: move it
+by hand into `data/tweaks/<plan>.json`, fix any room keys the new plan
+names differently, and delete the old file.
+
 The build never writes tweak files. It reads them.
 
 ## The report

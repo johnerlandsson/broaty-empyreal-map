@@ -137,7 +137,9 @@ A ship's plan is made from cells, as a station's is. Each hull in the game
   (`hull-skiff`, `hull-courier`): one room, the cockpit, at Deck 1, frame 1.
   Its name, address, flags and canopy are the game's own cockpit's, as the
   game's loader gives a ship with no plan. Anyone who adds a plan to a hull
-  in the game gets the real one on the next sync.
+  in the game gets the real one on the next sync. Her look doesn't follow:
+  move `data/tweaks/hull-<id>.json` into `data/tweaks/<plan>.json` by hand
+  (see [sync.md](sync.md)).
 - `ui/data/ships.js`, the index: each hull's `id`, `name`, `class` and
   `plan`, and every plan by id.
 
