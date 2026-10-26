@@ -66,6 +66,20 @@ function corners(loop) {
   });
 }
 
+/** A deck's room cells, "x,y", its blisters left out. */
+function cellsOf(index, deck) {
+  const cells = new Set();
+  for (const room of index.byId.values()) {
+    if (room.cell.z === Number(deck) && !room.blister) cells.add(`${room.cell.x},${room.cell.y}`);
+  }
+  return cells;
+}
+
+/** How many pieces a deck's rooms make (cells touching only at a corner are apart); hullFromRooms goes round the largest. */
+export function roomPieces(index, deck) {
+  return loops(cellsOf(index, deck)).filter((loop) => area2(loop) > 0).length;
+}
+
 /**
  * The outline of the union of a deck's room cells (its blisters left out; they sit outside the
  * hull), as a counter-clockwise path of corner points only, OFFSET outside the cells: a hull path
@@ -76,10 +90,7 @@ function corners(loop) {
  * @returns {number[][]}
  */
 export function hullFromRooms(index, deck) {
-  const cells = new Set();
-  for (const room of index.byId.values()) {
-    if (room.cell.z === Number(deck) && !room.blister) cells.add(`${room.cell.x},${room.cell.y}`);
-  }
+  const cells = cellsOf(index, deck);
   if (!cells.size) return [];
   const loop = corners(loops(cells).sort((a, b) => area2(b) - area2(a))[0]).map(([i, j]) => [i - 0.5, j - 0.5]);
   // each corner moves out along both its edges' outward normals; on a grid they're square to each other

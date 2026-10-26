@@ -61,6 +61,7 @@ beforeEach(() => {
   window.location.hash = "";
 });
 afterEach(() => {
+  editor?.stop();
   delete window.editor;
 });
 
@@ -92,6 +93,13 @@ describe("the editor page", () => {
     expect(editor.place.views.model.key).toBe("orrin.market");
     expect(editor.place.views.deck.where.id).toBe("orrin.market");
     expect(root.querySelector("#pretend").value).toBe("orrin.market");
+  });
+
+  it("names the plan's deck in its tag", async () => {
+    await start("#orrin/orrin.market");
+    expect(root.querySelector("#plan-tag").textContent).toBe("plan · Deck 2");
+    editor.select("orrin.berth");
+    expect(root.querySelector("#plan-tag").textContent).toBe("plan · Deck 3");
   });
 
   it("opens the place and room the hash names", async () => {

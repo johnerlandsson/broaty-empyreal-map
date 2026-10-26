@@ -70,6 +70,7 @@ beforeEach(() => {
   window.location.hash = "";
 });
 afterEach(() => {
+  editor?.stop();
   delete window.editor;
 });
 

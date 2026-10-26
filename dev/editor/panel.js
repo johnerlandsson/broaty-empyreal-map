@@ -6,12 +6,16 @@
 // the page holds, one save at a time. A save the build refuses (422) shows its message in the bar
 // over the plan and puts the inputs back; one beaten by a hand edit (409) reloads the state.
 // What each kind of place allows matches the build: footprints only on decks rooms that aren't
-// passages or blisters, a cutaway only on decks, a camera on anything but a town.
+// passages or blisters, a cutaway and a hull only on decks, a camera on anything but a town.
+// The hull section is the plan's deck's: a path made from the rooms or back to the box, and the r
+// of the point picked on the plan (handles.js draws and drags the path).
 
 import { CAM } from "../../ui/lib/geometry.js";
 import { CORNER_R } from "../../ui/lib/footprint.js";
 import { PALETTE_NAME } from "../../scripts/source/schema.mjs";
-import { origin, reset, setFootprint, setPaint, setView } from "./ops.js";
+import { hullFromRooms, roomPieces } from "./hull.js";
+import { ownHull } from "./handles.js";
+import { boxHull, origin, reset, setFootprint, setHull, setHullCorner, setPaint, setView } from "./ops.js";
 
 const CORNERS = ["square", "rounded", "cut"];
 const CUTAWAYS = [
@@ -42,11 +46,15 @@ const numberOf = (input) => (input.value.trim() === "" || !Number.isFinite(Numbe
  * Starts the panel in its two elements.
  * @param {{inspector: Element, view: Element, put: (url: string, body: object) => Promise<{status: number, body: object}>,
  *   place: () => object | null, state: () => object, reload: () => Promise<void>, showError: (text: string | null) => void,
- *   run: (p: Promise<void>) => void}} deps `place` and `state` are the page's; `reload` re-reads the
- *   state and rebuilds the open place; `run` is handed each save, for the page's `busy`.
- * @returns {{render: () => void}}
+ *   run: (p: Promise<void>) => void, hullPoint?: () => number | null}} deps `place` and `state` are
+ *   the page's; `reload` re-reads the state and rebuilds the open place; `run` is handed each save,
+ *   for the page's `busy`; `hullPoint` is the point of the plan's deck's path picked on the plan.
+ * @returns {{render: () => void, save: (name: string, edit: (t: object) => object) => Promise<number | undefined>,
+ *   resolved: (placeId: string, keyPath: string[]) => {value: unknown, from: string | null, own: boolean},
+ *   broken: (name: string) => string | null}} `save` resolves to the PUT's status (undefined where it
+ *   never got one)
  */
-export function createPanel({ inspector, view, put, place: currentPlace, state: currentState, reload, showError, run }) {
+export function createPanel({ inspector, view, put, place: currentPlace, state: currentState, reload, showError, run, hullPoint = () => null }) {
   let queue = Promise.resolve();
 
   /** The tweaks as scripts/source/tweaks.mjs takes them: the palette and each place's own JSON. */
@@ -75,7 +83,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
    */
   function save(name, edit) {
     const url = name === "palette" ? "/api/palette" : `/api/tweaks/${encodeURIComponent(name)}`;
-    queue = queue
+    const step = queue
       .then(async () => {
         if (brokenError(name)) return render();
         const entry = entryOf(name);
@@ -95,12 +103,15 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
           showError(body?.error ?? `PUT ${url}: ${status}`);
           render();
         }
+        return status;
       })
       .catch((err) => {
         showError(err.message);
         render();
       });
+    queue = step.then(() => {});
     run(queue);
+    return step;
   }
 
   /** "set here · reset", "from <place>" or "default", for the value at keyPath. */
@@ -326,6 +337,64 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     view.append(m);
   }
 
+  /** The plan's deck's hull: its path from the rooms or back to the box, and the picked point's r. */
+  function renderHull(p, disabled) {
+    const { index } = p.views;
+    const deck = index.decks[p.views.deck.level];
+    const layout = p.views.deck.plans[p.views.deck.level]?.layout;
+    if (deck == null || !layout?.onHull) return;
+    const key = String(deck);
+    const sec = h("div", "sec", `Hull · Deck ${deck}`);
+    sec.dataset.sec = "hull";
+    view.append(sec);
+    const points = p.data.look?.hull?.[key];
+    const path = () => resolved(p.id, ["hull", key]).value;
+    const button = (name, text, click) => {
+      const b = h("button", "btn", text);
+      b.name = name;
+      b.disabled = disabled;
+      b.addEventListener("click", click);
+      return b;
+    };
+    const m = h("div", "row");
+    if (!Array.isArray(points) || !points.length) {
+      m.append(
+        button("hull-from-rooms", "make hull from rooms", () => {
+          const traced = hullFromRooms(index, deck);
+          if (!traced.length) return showError(`Deck ${deck} has no rooms to make a hull from`);
+          const pieces = roomPieces(index, deck);
+          const step = save(p.id, (t) => setHull(t, key, traced)).then((status) => {
+            if (status === 200 && pieces > 1) showError(`warning: the rooms on Deck ${deck} make ${pieces} pieces; the hull goes round the largest only`);
+          });
+          run(step);
+        }),
+      );
+    } else {
+      m.append(
+        button("hull-box", "back to the box", () => {
+          const like = tweaks().places[p.id]?.like;
+          const inherited = !!like && Array.isArray(resolved(like, ["hull", key]).value);
+          save(p.id, (t) => boxHull(t, key, inherited));
+        }),
+      );
+    }
+    m.append(mark(p.id, ["hull", key], disabled));
+    view.append(m);
+    if (!Array.isArray(points) || !points.length) return;
+    const i = hullPoint();
+    if (i != null && points[i]) {
+      view.append(
+        row(
+          `point ${i} r`,
+          numberInput("hull-r", points[i][2], { step: 0.05, min: 0, placeholder: 0, disabled }, (n) =>
+            save(p.id, (t) => setHullCorner(ownHull(t, key, path()), key, i, n ?? 0)),
+          ),
+        ),
+      );
+    }
+    view.append(h("div", "note", "Drag a point to move it, double-click an edge to add one; Delete removes the picked one."));
+  }
+
   let drawn = null; // the place and room last drawn: "<place>/<room>"
 
   /**
@@ -379,7 +448,8 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     const room = p?.roomId ? p.views.index.byId.get(p.roomId) : null;
     if (room) renderRoom(p, room, disabled);
     renderView(p, disabled);
+    if (p?.builder === "decks") renderHull(p, disabled);
   }
 
-  return { render };
+  return { render, save, resolved, broken: brokenError };
 }

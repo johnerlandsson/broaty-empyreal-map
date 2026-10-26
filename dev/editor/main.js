@@ -6,8 +6,12 @@
 // its data and rebuilds the views, keeping the selection, the plan's deck and both view boxes.
 // The URL hash (#<placeId>/<roomId>) holds the place and room, so a reload or a headless
 // screenshot opens them. window.editor has small hooks for later tasks and tests.
+// On a decks place the plan carries drag handles (handles.js): a drag patches the open place's
+// look in memory and the views are rebuilt from it at most once a frame, the plan's cells kept
+// where they were on the screen, until the save on release.
 
 import { buildPlace } from "../../ui/place-views.js";
+import { createHandles } from "./handles.js";
 import { createPanel } from "./panel.js";
 
 /** The builders a station is drawn with; any other place is a ship class (stage 4). */
@@ -92,6 +96,25 @@ export function startEditor({
     reload: () => reload(),
     showError: (text) => showError(text),
     run: (p) => (editor.busy = p),
+    hullPoint: () => handles.picked(),
+  });
+  const handles = createHandles({
+    place: () => place,
+    resolved: panel.resolved,
+    save: panel.save,
+    preview: (look) => preview(look),
+    flush: () => flush(),
+    restore: (look) => {
+      preview(look);
+      flush();
+    },
+    run: (p) => (editor.busy = p),
+    changed: () => {
+      handles.draw();
+      panel.render();
+    },
+    editable: () => !!place && !panel.broken(place.id),
+    showError: (text) => showError(text),
   });
 
   let state = { places: [], report: null, palette: {}, tweaks: {} };
@@ -165,7 +188,7 @@ export function startEditor({
 
   function renderPlanTag() {
     const level = place?.views.deck.level;
-    const deck = place?.builder === "decks" ? place.data.levels?.[level] : undefined;
+    const deck = place?.builder === "decks" ? place.views.index.decks[level] : undefined; // top deck first, as the plans are
     planTag.textContent = deck != null ? `plan · Deck ${deck}` : "plan";
   }
 
@@ -188,6 +211,7 @@ export function startEditor({
     pretend.value = place.roomId ?? "";
     renderPlanTag();
     writeHash();
+    handles.draw();
     panel.render();
   }
 
@@ -203,16 +227,45 @@ export function startEditor({
     select(roomId);
     if (keep) {
       if (keep.level >= 0 && keep.level < views.deck.plans.length && views.deck.level !== keep.level) views.deck.show(keep.level);
-      views.deck.setView(keep.deck);
+      // where the hull's box has moved (a footprint reaching past it), move the view with it
+      const origin = views.deck.plans[views.deck.level]?.layout?.centre?.({ x: 0, y: 0 });
+      const [dx, dy] = keep.origin && origin ? [origin[0] - keep.origin[0], origin[1] - keep.origin[1]] : [0, 0];
+      views.deck.setView([keep.deck[0] + dx, keep.deck[1] + dy, keep.deck[2], keep.deck[3]]);
       views.model.setView(keep.model);
       if (keep.phi != null && "phi" in views.model) {
         views.model.phi = keep.phi;
         views.model.draw?.();
       }
       renderPlanTag();
+      handles.draw();
+      panel.render();
     }
     renderPicker();
     renderRail();
+  }
+
+  /** The open place's views as they are, for build to restore. */
+  function keepOf() {
+    const { views, lastLevel } = place;
+    const origin = views.deck.plans[views.deck.level]?.layout?.centre?.({ x: 0, y: 0 });
+    return { model: views.model.vb.slice(), deck: views.deck.cur.slice(), level: views.deck.level, phi: views.model.phi, lastLevel, origin };
+  }
+
+  let frame = null; // the rebuild a preview has asked for, at the next frame
+
+  /** Sets the open place's look in memory and rebuilds its views within a frame. */
+  function preview(look) {
+    if (!place) return;
+    place.data = { ...place.data, look };
+    frame ??= requestAnimationFrame(() => flush());
+  }
+
+  /** Rebuilds the open place's views now from its look in memory, if a preview asked for it. */
+  function flush() {
+    if (frame == null) return;
+    cancelAnimationFrame(frame);
+    frame = null;
+    if (place) build(place.id, place.builder, place.data, place.roomId, keepOf());
   }
 
   async function openPlace(id, roomId = null) {
@@ -223,8 +276,8 @@ export function startEditor({
 
   /** Re-import the open place and rebuild its views as they were. */
   async function rebuild() {
-    const { id, builder, roomId, lastLevel, views } = place;
-    const keep = { model: views.model.vb.slice(), deck: views.deck.cur.slice(), level: views.deck.level, phi: views.model.phi, lastLevel };
+    const { id, builder, roomId } = place;
+    const keep = keepOf();
     const fresh = await load(id);
     if (place?.id !== id) return; // another place was opened meanwhile
     build(id, builder, fresh, roomId, keep);
@@ -268,18 +321,30 @@ export function startEditor({
     select,
     reload: () => (editor.busy = reload().catch((err) => showError(err.message))),
     open: (id, roomId) => (editor.busy = openPlace(id, roomId).catch((err) => showError(err.message))),
+    /** Rebuilds the views now if a drag's preview is waiting for its frame. */
+    flush,
+    /** Stops listening on the window and to the server, so a test's editor is gone after it. */
+    stop: () => {
+      window.removeEventListener("hashchange", onHash);
+      handles.stop();
+      events.close?.();
+      if (frame != null) cancelAnimationFrame(frame);
+      frame = null;
+      place?.views.model.stop?.();
+    },
     busy: Promise.resolve(),
     ready: null,
   };
 
   pretend.addEventListener("change", () => select(pretend.value || null));
-  window.addEventListener("hashchange", () => {
+  function onHash() {
     const { placeId, roomId, error } = parseHash(window.location.hash);
     if (error) return showError(error);
     if (!placeId) return;
     if (placeId !== place?.id) editor.open(placeId, roomId);
     else if (roomId !== place.roomId) select(roomId);
-  });
+  }
+  window.addEventListener("hashchange", onHash);
 
   // The stream drops while the server is down; EventSource reconnects by itself. A build announced
   // meanwhile is lost, so on each reopen after the first the page reloads (which clears the bar).

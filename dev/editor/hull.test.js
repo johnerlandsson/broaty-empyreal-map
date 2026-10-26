@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import generated from "../../tests/fixtures/generated/orrin.js";
 import { indexDecks } from "../../ui/lib/decks.js";
 import { boundsOf } from "../../ui/lib/footprint.js";
-import { hullFromRooms } from "./hull.js";
+import { hullFromRooms, roomPieces } from "./hull.js";
 
 const index = indexDecks(generated);
 
@@ -66,5 +66,15 @@ describe("hullFromRooms", () => {
   it("leaves blisters out, and gives nothing for a deck with no rooms", () => {
     expect(hullFromRooms(index, 1)).toEqual([]);
     expect(hullFromRooms(index, 7)).toEqual([]);
+  });
+});
+
+describe("roomPieces", () => {
+  it("counts the pieces a deck's rooms make, corner-touching squares apart, a ring once", () => {
+    expect(roomPieces(index, 3)).toBe(1);
+    const at = (cells) => ({ byId: new Map(cells.map(([x, y], i) => [`p.${i}`, { cell: { x, y, z: 1 }, blister: false }])) });
+    expect(roomPieces(at([[0, 0], [1, 1], [2, 1]]), 1)).toBe(2);
+    expect(roomPieces(at([[0, 0], [1, 0], [2, 0], [0, 1], [2, 1], [0, 2], [1, 2], [2, 2]]), 1)).toBe(1);
+    expect(roomPieces(index, 7)).toBe(0);
   });
 });
