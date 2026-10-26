@@ -4,31 +4,26 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { boundsOf, outlineOf, pathOf, reachesOf } from "../../ui/lib/footprint.js";
 import { crosses } from "./footprints.mjs";
+import {
+  AXIS_KEYS,
+  CAMERA_KEYS,
+  DRUM_ROOM_KEYS,
+  FIXTURE_KEYS,
+  FOOTPRINT_KEYS,
+  MERGED_KEYS,
+  originOf,
+  SECTION_KEYS,
+  SPAN_KEYS,
+  TOP_KEYS,
+  VIEW_KEYS,
+} from "./schema.mjs";
 
-const TOP_KEYS = ["like", "paint", "paintDistricts", "fixtures", "footprints", "hull", "view", "place", "drum", "town", "wheel"];
-/** The builder sections: allowed keys of each (stage 1). `wheel` is empty. */
-const SECTION_KEYS = {
-  drum: ["rooms", "axis", "way"],
-  town: ["root", "uphill", "ground", "gate", "wells", "river", "scarp"],
-  wheel: [],
-};
-const DRUM_ROOM_KEYS = ["x", "y", "z", "hour", "band", "terrain"];
-const AXIS_KEYS = ["room", "r", "len"];
-const FIXTURE_KEYS = {
-  blister: ["type", "room"],
-  cradle: ["type", "side", "deck", "hw", "hh", "len"],
-  mast: ["type", "side", "frame", "height"],
-  "drum-cradle": ["type", "hour", "z", "hw", "h", "hl"],
-};
+export { originOf };
 
-const FOOTPRINT_KEYS = ["span", "corners", "r", "outline"];
-const SPAN_KEYS = ["fore", "aft", "port", "starboard"];
 const CORNERS = ["square", "rounded", "cut"];
 /** How far an outline point may lie from its cell's centre, in cells. */
 const OUTLINE_REACH = 1.5;
-const VIEW_KEYS = ["cutaway", "camera"];
 const CUTAWAYS = ["off", "hide-above", "ghost-above"];
-const CAMERA_KEYS = ["yaw", "pitch", "zoom"];
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const local = (id) => id.slice(id.indexOf(".") + 1);
@@ -131,7 +126,14 @@ function checkView(file, view) {
   }
 }
 
-function checkTweak(file, tweak, palette) {
+/**
+ * Checks one tweak file's keys and values, throwing with the file and key path of the first that
+ * is wrong. `like` isn't followed: a file is checked as it is.
+ * @param {string} file  the name messages give it
+ * @param {object} tweak
+ * @param {Record<string, string>} palette
+ */
+export function checkTweak(file, tweak, palette) {
   expectObject(file, "(top level)", tweak);
   unknownKeys(file, "", tweak, TOP_KEYS);
   if (tweak.like !== undefined && typeof tweak.like !== "string") throw new Error(`${file}: like must be a place name`);
@@ -242,28 +244,10 @@ function merged(placeId, tweaks, chain = []) {
   if (!tweaks.places[own.like]) throw new Error(`data/tweaks/${placeId}.json: like names ${own.like}, which has no tweak file`);
   const base = merged(own.like, tweaks, [...chain, placeId]);
   const out = { ...base, ...own };
-  for (const key of ["paint", "paintDistricts", "footprints", "hull", "view", ...Object.keys(SECTION_KEYS), "place"]) {
+  for (const key of MERGED_KEYS) {
     if (base[key] || own[key]) out[key] = { ...base[key], ...own[key] };
   }
   return out;
-}
-
-/**
- * The place whose own file gives a place's resolved `key` (and, with `sub`, its `key.sub`): the
- * place itself, else the nearest down its `like` chain; null where none does.
- * @param {string} placeId
- * @param {{places: Record<string, object>}} tweaks
- * @param {string} key
- * @param {string} [sub]
- * @returns {string | null}
- */
-export function originOf(placeId, tweaks, key, sub) {
-  for (let id = placeId, seen = new Set(); id && !seen.has(id); id = tweaks.places[id]?.like) {
-    seen.add(id);
-    const own = tweaks.places[id]?.[key];
-    if (own !== undefined && (sub === undefined || Object.hasOwn(own ?? {}, sub))) return id;
-  }
-  return null;
 }
 
 /** " (from <base>.json via like)" for a value a place inherits, else "". */
