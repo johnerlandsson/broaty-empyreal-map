@@ -103,6 +103,14 @@ travels, the station while she's docked at one. This follows the ship you can fl
 crew. Aboard someone else's ship as a guest, the station model stays,
 because the game doesn't tell the plugin where that ship is.
 
+Your own ship is there too: out in space, her model stands in front of the
+scene, with the room you're in lit through the hull. Her drive bells, the
+laser boom and the collar's ring are on it. While she docks or undocks she
+steps aside to the lower right, so the station coming and going stays clear.
+She isn't shown while you're docked at a station, while the chart, the lanes
+map or the belt map covers the band, or when you're a guest on someone else's
+ship.
+
 **The chart.** Once the game has sent the system's charts, a ◎ button appears
 beside the top band's zoom buttons. It swaps the band for a true-scale chart of
 the star system you're in: the star, planets and stations, each where it is now
@@ -225,9 +233,9 @@ on it, at its stop or midway between two with an arrow the way it's going.
 
 **Aboard a ship.** The bottom band shows the ship's plan in place of the
 station's: the whole hull from above, fore up, with the room you're in lit
-and the ship's name and class under it. Each class has its own drawing (the
-prospecting skiff, the courier and the medium freighter); a class without a
-drawing yet shows a plain generic hull. On the freighter the light follows
+and the ship's name and class under it. Each class has its own plan (the
+prospecting skiff, the courier, the medium freighter and the tug), built from
+the game's own cells; a class without one yet shows the skiff's. On the freighter the light follows
 you between her six rooms: the cockpit in the blister on her nose, the
 passage with the airlock to port and the docking collar to starboard, the
 hold and the engine room, with a bar across each way through. Hover over a

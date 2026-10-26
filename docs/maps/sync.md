@@ -57,6 +57,15 @@ the Empyreal source.
 `ui/data/places.js` is generated too. It imports every place's file and
 exports the index and the data by id, so a new place needs no code change.
 
+Ships are the same. `ui/data/plans/<plan>.js` is one ship plan, from
+`content/plans/` (the freighter's, the tug's), and `hull-<id>` for a hull
+with no plan of its own: one room, the cockpit, as the game gives a ship
+with no plan. `ui/data/ships.js` indexes them: each hull's `id`, `name`,
+`class` and `plan`, and every plan by id. A plan's gravity is its own, else
+`shipGravity` in `world.yaml`. The build stops, naming both, when two plans
+or a plan and a place share an id, or when a hull names a plan that
+`content/plans/` doesn't have. See [ship-plans.md](ship-plans.md).
+
 The build never writes tweak files. It reads them.
 
 ## The report
@@ -116,6 +125,8 @@ The top-level keys:
     (Lamorna's)
   - `drum-cradle`: `{ "type": "drum-cradle", "hour": -0.3, "z": -12, "hw": 8, "h": 20, "hl": 11 }`
     (Wenna's)
+  - the ship fixtures, on a ship plan only. See "Ships" below.
+- `profile`, `surface`, `greebles`: a ship plan's looks. See "Ships" below.
 - `footprints`: room to the shape it is drawn in, on a decks plan. See
   "Footprints" below.
 - `hull`: deck to the path of its hull, on a decks plan. See "The hull" below.
@@ -132,8 +143,9 @@ The top-level keys:
 
 `scripts/source/tweaks.mjs` lists every allowed key.
 
-No tweak file shipped with the plugin uses `footprints`, `hull` or `view`
-yet. Every place looks as it did before them.
+Of the tweak files shipped with the plugin, only the ship plans use
+`footprints` and `hull`. No station uses `view` yet. Every station looks as
+it did before them.
 
 ### Footprints
 
@@ -233,6 +245,51 @@ Anything else makes the build stop with an error naming the file.
   `zoom`, more than 0, where 1 frames the whole model and 2 is twice as
   close. All three are needed. The default is yaw 16, pitch 38, zoom 1. A
   town has no 3D overview, so no camera.
+
+### Ships
+
+A ship plan's tweak is `data/tweaks/<plan>.json`: `freighter.json`,
+`tug.json`, `hull-skiff.json` and `hull-courier.json`. It takes `paint`,
+`footprints`, `hull`, `view` and `like` as a station's does, and these. The
+editor edits them (see [editor.md](editor.md)).
+
+The fixtures only a ship plan has:
+
+- `bell`: `{ "type": "bell", "side": -0.5, "deck": 1, "r": 0.23, "len": 0.42 }`,
+  a drive bell out of the hull's aft end at that side. `r` and `len` are in
+  cells and more than 0.
+- `boom`: `{ "type": "boom", "side": 0, "deck": 1, "len": 0.83 }`, the mining
+  laser's boom out of the nose.
+- `chevrons`: `{ "type": "chevrons", "room": "collar", "wall": "starboard" }`,
+  the collar's ring on that wall of the room (`port`, `starboard`, `fore` or
+  `aft`).
+- `prop`: `{ "type": "prop", "kind": "crate", "room": "cockpit", "at": [0, -1.23], "size": [0.35, 0.42], "grid": [3, 2], "gap": 0.08 }`,
+  a thing standing in a room. `kind` is `crate`, `seat`, `core`, `bulkhead`,
+  `slot` or `rails`. `at` is an offset from the room's cell and `size` is
+  `[width, length]`, both in cells. `grid` (`[across, along]`, whole numbers)
+  and `gap` repeat it; `ribs` (2 or more) is for a `core` only. Props show
+  on the plan, not on the model.
+
+The look of the hull in 3D:
+
+- `profile`: `bevel` (0 up to under 0.5, default 0.12), `noseDrop` (0 up to
+  under 1, 0.35), `noseLength` (more than 0, 0.8) and `spine`, `null` or
+  `{ "from", "to", "width", "height" }` (`to` more than `from`, `height`
+  0 to 1; the default is none).
+- `surface`: `seams` and `navLights` (true or false, both true), `windows`
+  (a list of room ids; the default is every room with a canopy) and
+  `stripe`, `null` or `{ "paint", "at", "width" }` (a palette name, where
+  along the wall the stripe starts, 0 to 1, and how wide; `at + width` at
+  most 1; the default is `residential`, 0.3, 0.14).
+- `greebles`: a list of things on the roof. `vent` has `side` and `frame`;
+  `antenna` also `height`; `dish` also `r`.
+
+The build stops, naming the file and key, on a key it doesn't know, a stripe
+paint the palette lacks, a bevel bigger than a hull corner's radius, a greeble
+half on the spine and half off, or a fixture or greeble outside the hull. A
+room-bound fixture whose room is gone is reported as an orphan. The ship
+fixtures and `profile`, `surface` and `greebles` on any other kind of place
+stop the build.
 
 ### Not yet
 

@@ -10,24 +10,28 @@ the user's pick), and your note on her from
 `docs/maps/reference/ship-note-mockup.html` (option A, a quiet second line,
 the user's pick, 2026-10-26; rendered in `ship-note-options.png`). Open them
 in a browser, served over http. They're
-throwaways: take their look, not their code.
+throwaways: take their look, not their code. Stage 4 added
+`ships-from-cells-mockup.html` (the plans from cells), `ship-hull-looks-mockup.html`
+(the hull's look, John's pick C) and `own-ship-band-mockup.html` (your ship in
+the top band).
 
 ## What it is and when it shows
 
 A top-down plan of the whole ship you're aboard, in the bottom band, in
 place of the station's deck plan. It shows whenever you're aboard a ship,
 docked or out in space, your own or someone else's. Each hull class has its
-own drawing, so a skiff and a courier never look alike, and each is drawn
-from that hull's description in the game.
+own plan, built from the game's cells as a station's is, so a skiff and a
+courier never look alike.
 
 The skiff and the courier have one room, the cockpit. The medium freighter
 has six, and the plan works as a station plan does: the room you're in is
 lit as you walk between them.
 
-The top band doesn't change: the station model while docked (where you're
-docked), a space scene while out in your own ship. Aboard someone else's
-ship the game doesn't say where that ship is, so the top band keeps the
-station it last showed. That's accepted for now: you can't travel in someone
+The top band shows the station model while docked (where you're docked) and
+a space scene while out in your own ship, with her model in front of it
+(see "Your ship in the top band"). Aboard someone else's ship the game
+doesn't say where that ship is, so the top band keeps the station it last
+showed. That's accepted for now: you can't travel in someone
 else's ship until joint travel comes, and the maintainer will look at sending
 the ship's whereabouts then (2026-10-22).
 
@@ -38,13 +42,13 @@ nothing lit. Your ship is a place too, and soon one with several rooms.
 
 - Show which ship you're in and where in it you are, at a glance.
 - Each class distinct and recognisable from its description.
-- Clear at a glance which spaces are rooms and which are compartments.
+- Clear at a glance which spaces are rooms and which are fixtures outside the hull.
 - Ready for multi-room ships without redrawing the plan code.
 
 ### Non-goals
 
-- Hulls other than the skiff, the courier and the freighter. New hulls get
-  drawings when they're added to the game.
+- Hulls the game doesn't have. A new hull gets a one-room plan on the next
+  sync, and a tweak file when someone draws it.
 - Showing fittings, attachments, cargo, fuel, damage or anything that
   changes. The plan is the hull as built. Your note on her is the one
   exception, as words under the hull, not on the drawing.
@@ -57,8 +61,8 @@ nothing lit. Your ship is a place too, and soon one with several rooms.
 
 ### Anti-goals
 
-- A compartment that looks like somewhere you could go.
-- Labels or legends on compartments.
+- A fixture that looks like somewhere you could go.
+- Labels or legends on fixtures.
 - A busy drawing: detail beyond what the description names.
 
 ## Where its data comes from
@@ -120,133 +124,135 @@ sent only when it changes.
 
 ## Bottom band: the plan
 
-### Look
+### How a ship is built
 
-Style A from the mockup, "blueprint line":
+A ship's plan is made from cells, as a station's is. Each hull in the game
+(`content/game/hulls.yaml`) names a plan in `content/plans/` or has none.
+`npm run build:data` reads them and writes:
 
-- **The hull is an outline**: Ladder / hull line (`#9fb0c3`), width 1.6, no
-  plate. *My call:* filled with the Background colour so the stars don't show
-  through the ship.
-- **Fore up.** Centred in the band and scaled to fit it, with the zoom
-  buttons and wheel zoom as on every plan (*my call:* consistency).
-- **Rooms** are the only filled shapes: the room you're in is lit (§6 of the
-  style guide). Other rooms, once there are some, are room boxes with no
-  district tint: *my call:* Dim at the room box's opacities, until ships have
-  something that plays the part of a district.
-- **Room labels:** the drawing's own short name ("Cockpit"), not the game's
-  room name ("Cockpit of the Mule"), which is too long for a small room.
-- **Compartments** are line drawings in Dim (style guide §7), with no labels
-  and no hover.
-- **Under the hull**, in Dim at 9 to 10: the ship's name and class,
-  `Mule · prospecting skiff`. The name from `areaName`, the class from
-  `ship.kind` (*my call:* the game's own word, as on the info line, rather
-  than the id); with no class, the name alone.
-- **Your note**, aboard your own ship when she has one, on a second line
-  under that: Dim, italic, at 9, as you typed it (`hauls ore to Orrin`).
-  No quotes, no label. A full 60 characters fits on one line under every
-  hull at the home zoom, so it's never wrapped or cut (option A, the
-  user's pick).
+- `ui/data/plans/<plan>.js`, one for each plan, with its rooms, gravity and
+  look. The freighter has `content/plans/freighter.yaml`, so
+  `plans/freighter.js`. The tug has its own too.
+- `hull-<id>`, a plan the build makes for a hull with no plan of its own
+  (`hull-skiff`, `hull-courier`): one room, the cockpit, at Deck 1, frame 1.
+  Its name, address, flags and canopy are the game's own cockpit's, as the
+  game's loader gives a ship with no plan. Anyone who adds a plan to a hull
+  in the game gets the real one on the next sync.
+- `ui/data/ships.js`, the index: each hull's `id`, `name`, `class` and
+  `plan`, and every plan by id.
 
-### The skiff
+A plan's gravity is its own, else the world's `shipGravity`, as the game has
+it; a room's is its own, else the plan's. The build stops, naming both, when
+two plans or a plan and a place share an id, or when a hull names a plan the
+source doesn't have.
 
-From `content/game/hulls.yaml`: *"One cockpit, every console within reach. A
-hold behind your seat, a mining laser on a stubby boom out front, and a drive
-that gets you to the belts and back if you mind the fuel."* Exterior: *"A
-blunt little hull, most of it cockpit and hold, with a mining laser on a
-stubby boom out front and the drive bells clustered at the stern."*
+Her look is `data/tweaks/<plan>.json`: `freighter.json`, `tug.json`,
+`hull-skiff.json` and `hull-courier.json`. The keys are in
+[sync.md](sync.md). Those four files are the editor's too ([editor.md](editor.md)).
 
-- **Hull:** short and wide, with a blunt nose and cut corners at the stern.
-- **Cockpit** (room): the front of the hull, nearly its full width.
-- **Hold** (compartment): behind the cockpit, six crates in two rows of
-  three, each a square with one diagonal.
-- **Laser boom** (compartment): a short line out from the nose, a crossbar
-  on it, a diamond lens at the tip with three small beam ticks ahead.
-- **Drive bells** (compartment): three flared bells clustered at the stern.
+### What the plan draws
 
-### The courier
+The decks builder draws the plan, with a few things only a ship has
+(`ui/decks-deck.js`):
 
-From `content/game/hulls.yaml`: *"A narrow cockpit, two seats in line, the
-consoles close on either side. Behind the bulkhead a small hold, and behind
-that the long lane-rated drive that's most of her length. A second slot sits
-empty under its cover plate."* Exterior: *"A long, slim hull, all drive and
-not much else..."*
+- **The hull** is its deck's path, plated, with an edge line. A deck with no
+  path has its box.
+- **Rooms** are room boxes in their footprints, with no district tint. The
+  room you're in is lit (below).
+- **Fixtures**, from the look:
+  - `bell`: a drive bell out of the hull's aft end at its side.
+  - `boom`: the mining laser's boom out of the nose.
+  - `chevrons`: the collar's ring where its room's wall meets the hull, with
+    two chevrons in the status lights' yellow (`#e8b04a`: the game says
+    yellow).
+  - `prop`: something standing in a room, drawn over it. A `kind` of
+    `crate`, `seat`, `core`, `bulkhead`, `slot` or `rails`, `size` cells
+    big, `at` an offset from the room's cell, and a `grid` of them with a
+    `gap` between. A core has `ribs` across it. Props are on the plan only,
+    not on the model.
+- **Names:** each room's short name, fitted to its box clear of its props;
+  where a name has to go over them it gets a halo. Under the hull, the ship's
+  name and class, and your note.
 
-- **Hull:** long and slim, with a pointed nose.
-- **Cockpit** (room): narrow, at the nose, with **two seats in line** drawn
-  inside it in Text-coloured lines. They're part of the room, not
-  compartments.
-- **Bulkhead:** a hull-line rule across the hull behind the cockpit.
-- **Hold** (compartment): small, two crates side by side.
-- **Empty slot** (compartment): a plate with a bolt at each corner, in
-  Passage (`#56657a`), a little quieter than the rest.
-- **Drive** (compartment): most of the hull's length, a core down the
-  middle with coil ribs across it.
-- **Drive bells** (compartment): two long bells at the stern.
+Bells, boom and ring are under the plate; props are over the rooms. The
+build stops, listing them all, when a hull path cuts through a room or leaves
+a fixture or a greeble outside it.
 
-### The medium freighter
+The profile (`bevel`, `noseDrop`, `noseLength`, `spine`), the surface
+(`seams`, `windows`, `stripe`, `navLights`) and the greebles (`vent`,
+`antenna`, `dish`) belong to the 3D model in the top band, not to this plan.
 
-From `content/game/hulls.yaml`: *"A working ship you can walk around in: a
-cockpit forward, a passage with an airlock to port and a docking collar to
-starboard, a hold behind it, and the engine room aft."* Exterior: *"A boxy
-hull three times a skiff's girth, mostly hold, with the cockpit a blunt
-blister on her nose and a docking collar ringed in yellow chevrons on her
-starboard flank."* Her rooms are in `content/plans/freighter.yaml`, one deck,
-frames 4 to 1 fore to aft; the game sends them `coords`, but the drawing
-sizes each room by what it is rather than drawing equal cells (option C in
-the mockup, turned down because the hold looked no bigger than the airlock).
+### The hulls
 
-- **Hull:** boxy and wide, with the cockpit's blister on the nose and cut
-  corners at the stern.
-- **Rooms**, all six inside the hull:
-  - **Cockpit** (`cockpit`): in the blister, with two seats side by side as
-    fixtures and its name above them. *(The user: the box sits well inside
-    the blister, not filling it.)*
-  - **Airlock** (`airlock`), **Passage** (`passage`) and **Collar**
-    (`collar`, the game's Docking Collar): one row across her, port to
-    starboard.
-  - **Hold** (`hold`): most of the hull, with tie-down rails along its port
-    and starboard walls as fixtures, quieter than the seats.
-  - **Engine Room** (`engine`): aft, full width.
-- **Exits:** a Passage bar (`#56657a`) across each way the game's exits go,
-  as the station plans join rooms (the user's pick): cockpit to passage,
-  passage to airlock and to collar, passage to hold (wider: "the hold's wide
-  hatch"), hold to engine room, and the airlock and collar out to the hull.
-  Each bar spans the gap from the outside of one room's outline to the
-  outside of the other's and never overlaps a room (the user, 2026-10-22;
-  `doorway()` works them out from the rooms, and a test holds them to it).
-  The rooms are 8 apart to leave the bars room to show.
-- **Compartments:** the airlock's outer hatch on the port flank, in Glass; the
-  collar's ring on the starboard flank, its chevrons in the status lights'
-  yellow (`#e8b04a`, the user's call: the game says yellow); two drive
-  bells at the stern.
+- **The prospecting skiff** (`hull-skiff`): one room, the cockpit, with six
+  crates in two rows of three (the hold, as props), three drive bells at the
+  stern and the laser boom out front. Short and wide.
+- **The courier** (`hull-courier`): one room, the cockpit, long and slim.
+  Props in it, fore to aft: two seats in line, a bulkhead, two crates, an
+  empty slot under its cover plate (a `slot` prop) and the drive as a `core`
+  with ribs. Two bells at the stern. Attachments don't change it: a laser with a cartridge deck is still a laser
+  (the user, 2026-10-22).
+- **The medium freighter** (`freighter`): six rooms on one deck, frames 4 to
+  1 fore to aft. The cockpit sits in the blister on her nose, with two seats
+  as props. The airlock, the passage and the collar are one row across her,
+  port to starboard; the hold is most of the hull with tie-down `rails`; the
+  engine room is aft. Two bells at the stern, the collar's ring on the
+  starboard flank. The rooms are sized by what they are, not drawn as equal
+  cells. Each way through is a Passage bar (`#56657a`) across the gap
+  between two rooms, never over a room.
+- **The tug** (`tug`): her own plan, with a collar whose ring is on the aft
+  wall and two small bells at the stern.
+
+The look of each is in its tweak file; read that for the numbers.
 
 ### The generic ship
 
-For a ship whose class isn't known (no `ship` in the frame) or has no
-drawing (a hull added to the game before its drawing): *my call:* a plain
-rounded hull with a lit cockpit at the nose, no compartments, and the ship's
-name under it. It shouldn't look like either real class.
+For a ship whose class isn't known (no `ship` in the frame) or has no entry
+in `ships.js`: the skiff's one-room plan, named "ship" until the game says
+otherwise. *My call:* it is a real hull's drawing, not a made-up one, so it
+never looks broken.
 
-### Attachments don't change the plan
+## Rooms and the highlight
 
-Slots and attachments only add to a device; they don't replace it. A laser
-with a cartridge deck or a heat sink is still a laser, and the courier's
-cover plate stays drawn as its description has it (the user, 2026-10-22).
-
-## Rooms, compartments and the highlight
-
-- **The room you're in is lit:** each hull's drawing maps a room key to its
-  shape, and the highlight moves to the room whose key ends your room's id
-  (`ship.<n>.hold`), as on a station (the user, 2026-10-22). A key the
-  drawing doesn't have lights the first room, the cockpit. The skiff and the
-  courier have only their cockpit (`ship.<n>.cockpit`).
+- **The room you're in is lit.** `buildShip` maps `ship.<n>.<key>` to the
+  plan's `<plan>.<key>`; a key the plan hasn't is drawn with nothing lit. On
+  the plan the room is lit as on a station's; on the 3D model a lit room
+  shows as its own shape, kept just inside the hull, so you see where she
+  is through the hull.
 - **Walking between her rooms** keeps the hull: `mudstd.room.info` comes
   before `Empyreal.Room`, so the location reducer keeps the hull when the new
   room is in the same ship's area, rather than drawing the generic ship for a
   moment.
 - **Hover** the room you're in for its name from the game; the other rooms
-  show the drawing's short name, since the game hasn't sent theirs.
-  Compartments have no hover.
+  show the plan's short name, since the game hasn't sent theirs.
+
+## Your ship in the top band
+
+Aboard your own ship, once she is out, her model stands in front of the
+space scene (`ui/main.js`, `runShip()`): the same plan as the bottom band's,
+built as a model with the room you're in lit.
+
+It shows only when all of these hold:
+
+- you are in a ship room, and the panel knows a space scene for the ship you
+  are aboard (so your own, or one you crew), or a dock or undock is under
+  way;
+- the scene isn't the station (docked at a station, the station shows as it
+  always did);
+- the chart, the lanes map and the belt map aren't open (they cover her as
+  they cover the scene).
+
+A guest aboard someone else's ship has no scene, so no ship: the top band
+keeps the station, as before.
+
+During a dock or an undock (the `manoeuvre` message) her box gets a
+`manoeuvre` class, and she stands aside, smaller, in the lower right
+(`ui/map.css`), clear of the station drawing near or falling away. When it ends she is
+centred again.
+
+She is drawn with no background or stars of her own, so the scene shows
+round her. The hull is in layer 0 and cut into pieces of a quarter cell at
+most, so the hull hides what is behind it as it turns (`ui/lib/ship-hull.js`).
 
 ## Info line
 
@@ -254,17 +260,20 @@ The room name from GMCP in capitals, then the class where it's known:
 `COCKPIT OF THE MULE · prospecting skiff`. *My call:* the room name already
 names the ship, and `hullName` is the game's own word for the class.
 
+
 ## Code
 
 Following the drum stations' pattern:
 
 - `ui/data/ships.js` and `ui/data/plans/*.js` (generated by `npm run build:data`):
   each hull's entry (`id`, `name`, `class`, `plan`) and its plan in cells,
-  with the look from `data/tweaks/<plan>.json`. (The hand drawings in
-  `ui/lib/hulls.js` were retired in stage 4.)
+  with the look from `data/tweaks/<plan>.json`.
 - `ui/lib/ships.js`: the pure helpers: `isShipRoom()`, `shipKey()` (the
   room's key from `ship.<n>.<key>`), `hullFor()` and `planFor()` (an unknown
   hull gets the generic one-cell plan), `shipCaption()` and `shipInfo()`.
+- `ui/decks-deck.js` and `ui/lib/decks.js`: the decks builder's plan and
+  model, with the ship's fixtures and props on the plan; `ui/lib/ship-hull.js`
+  builds her hull, roof, windows and fixtures as the model's faces.
 - `ui/place-views.js` `buildShip(plan, modelEl, deckEl, {name})`: the plan
   built by the decks builder, `{name}` in its room names filled with the
   ship's; its `locate()` maps `ship.<n>.<key>` to `<plan>.<key>` (a key the
@@ -274,7 +283,8 @@ Following the drum stations' pattern:
   clear of her bells (`captionShip()`, `updateShip()`).
 - `ui/main.js`: one ship view per plan, built on first use and again for a
   ship of another name; aboard a ship (any `ship.` room) it takes the bottom
-  band and the info line.
+  band and the info line, and `runShip()` puts her model in the top band
+  (above).
 - `dev/preview.js`, `dev/preview.html`: boarding steps for the generic ship,
   a skiff (with a note) and a courier (with a full 60-character note), a walk through the freighter's six rooms, and a hull
   menu (`?hull=`, every hull in `ui/data/ships.js`) that re-sends the ship room with that hull.
