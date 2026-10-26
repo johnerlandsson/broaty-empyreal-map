@@ -726,7 +726,9 @@ export default {
       "tram": "industrial"
     },
     "fixtures": [],
-    "view": {},
+    "view": {
+      "cutaway": "off"
+    },
     "town": {
       "root": "square",
       "uphill": "east",

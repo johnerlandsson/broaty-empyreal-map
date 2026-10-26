@@ -1,3 +1,6 @@
+import { cpSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadTweaks, resolveLook, resolveTweak } from "./tweaks.mjs";
 
@@ -22,6 +25,57 @@ describe("loadTweaks", () => {
 
   it("names the file of a JSON error", () => {
     expect(() => loadTweaks(dir("bad-json"))).toThrow(/x\.json/);
+  });
+});
+
+describe("loadTweaks footprints and view", () => {
+  /** A tweaks dir with the fixture palette and x.json holding the tweak. */
+  const loadOne = (tweak) => {
+    const d = mkdtempSync(join(tmpdir(), "tweaks-"));
+    cpSync(dir("palette.json"), join(d, "palette.json"));
+    writeFileSync(join(d, "x.json"), JSON.stringify(tweak));
+    return () => loadTweaks(d);
+  };
+
+  it("takes spans, corners, r and outlines", () => {
+    const footprints = { hold: { span: { aft: 1, port: 0.5 }, corners: "rounded", r: 0.3 }, bay: { outline: [[0, 0], [1, 0], [0.8, 1], [0.2, 1]] } };
+    const view = { cutaway: "ghost-above", camera: { yaw: 30, pitch: 25, zoom: 1.5 } };
+    expect(loadOne({ footprints, view })().places.x).toEqual({ footprints, view });
+  });
+
+  it("names the key path of a negative span", () => {
+    expect(loadOne({ footprints: { hold: { span: { aft: -1 } } } })).toThrow(/x\.json: footprints\.hold\.span\.aft/);
+  });
+
+  it("names an unknown key in a footprint or its span", () => {
+    expect(loadOne({ footprints: { hold: { size: 2 } } })).toThrow(/x\.json: footprints\.hold\.size/);
+    expect(loadOne({ footprints: { hold: { span: { up: 1 } } } })).toThrow(/x\.json: footprints\.hold\.span\.up/);
+  });
+
+  it("refuses unknown corners", () => {
+    expect(loadOne({ footprints: { hold: { corners: "oval" } } })).toThrow(/x\.json: footprints\.hold\.corners.*oval/);
+  });
+
+  it("refuses an outline point outside -1.5 to 1.5", () => {
+    expect(loadOne({ footprints: { hold: { outline: [[0, 0], [2, 0], [0, 1]] } } })).toThrow(/x\.json: footprints\.hold\.outline\[1\]/);
+  });
+
+  it("refuses an outline of fewer than 3 points", () => {
+    expect(loadOne({ footprints: { hold: { outline: [[0, 0], [1, 0]] } } })).toThrow(/x\.json: footprints\.hold\.outline/);
+  });
+
+  it("refuses a self-crossing outline, naming the room", () => {
+    expect(loadOne({ footprints: { hold: { outline: [[0, 0], [1, 1], [1, 0], [0, 1]] } } })).toThrow(/x\.json: footprints\.hold\.outline.*cross/);
+  });
+
+  it("refuses an unknown cutaway", () => {
+    expect(loadOne({ view: { cutaway: "sideways" } })).toThrow(/x\.json: view\.cutaway.*sideways/);
+  });
+
+  it("refuses a camera without all of yaw, pitch and zoom", () => {
+    expect(loadOne({ view: { camera: { yaw: 30 } } })).toThrow(/x\.json: view\.camera\.pitch/);
+    expect(loadOne({ view: { camera: { yaw: 30, pitch: 20, zoom: 1, roll: 0 } } })).toThrow(/x\.json: view\.camera\.roll/);
+    expect(loadOne({ view: { zoom: 1 } })).toThrow(/x\.json: view\.zoom/);
   });
 });
 
@@ -64,7 +118,7 @@ describe("resolveLook paint", () => {
 
   it("resolves a place with no file as plain", () => {
     const out = resolveLook("nowhere", [room("a")], "decks", tweaks);
-    expect(out.look).toEqual({ paint: { a: "industrial" }, fixtures: [], view: {} });
+    expect(out.look).toEqual({ paint: { a: "industrial" }, fixtures: [], footprints: {}, view: { cutaway: "hide-above" } });
     expect(out.orphans).toEqual([]);
   });
 });
@@ -78,7 +132,7 @@ describe("resolveLook inheritance", () => {
     expect(look.paint).toEqual({ market: "market", gate: "midring", yard: "industrial" });
     expect(look.fixtures).toEqual([{ type: "mast", side: 1, frame: 2, height: 3 }]);
     expect(look.drum).toEqual({ way: "straight", axis: { room: "gate", r: 2, len: 10 } });
-    expect(look.view).toEqual({});
+    expect(look.view).toEqual({ cutaway: "hide-above" });
   });
 
   it("inherits fixtures when the file has none", () => {
@@ -92,6 +146,42 @@ describe("resolveLook inheritance", () => {
   it("reports a like to a missing place", () => {
     const t = { ...tweaks, places: { x: { like: "gone" } } };
     expect(() => resolveLook("x", [], "decks", t)).toThrow(/x\.json: like.*gone/);
+  });
+});
+
+describe("resolveLook footprints and view", () => {
+  const palette = { industrial: "#3" };
+  const fp = (span) => ({ span });
+  const tweaks = {
+    palette,
+    places: {
+      base: { footprints: { a: fp({ aft: 1 }), b: fp({ fore: 1 }) }, view: { cutaway: "ghost-above", camera: { yaw: 1, pitch: 2, zoom: 3 } } },
+      child: { like: "base", footprints: { b: fp({ port: 1 }) }, view: { cutaway: "off" } },
+    },
+  };
+
+  it("defaults the view by kind", () => {
+    expect(resolveLook("p", [room("a")], "decks", { palette, places: {} }).look.view).toEqual({ cutaway: "hide-above" });
+    expect(resolveLook("p", [room("a")], "wheel", { palette, places: {} }).look.view).toEqual({ cutaway: "off" });
+    expect(resolveLook("p", [room("a")], "none", { palette, places: {} }).look.view).toEqual({ cutaway: "off" });
+  });
+
+  it("puts the tweak's view over the default", () => {
+    expect(resolveLook("base", [room("a")], "decks", tweaks).look.view).toEqual({ cutaway: "ghost-above", camera: { yaw: 1, pitch: 2, zoom: 3 } });
+  });
+
+  it("inherits footprints and view key by key through like", () => {
+    const { look } = resolveLook("child", [room("a"), room("b")], "decks", tweaks);
+    expect(look.footprints).toEqual({ a: fp({ aft: 1 }), b: fp({ port: 1 }) });
+    expect(look.view).toEqual({ cutaway: "off", camera: { yaw: 1, pitch: 2, zoom: 3 } });
+  });
+
+  it("leaves footprints out of a place that isn't decks", () => {
+    expect(resolveLook("base", [room("a"), room("b")], "wheel", tweaks).look).not.toHaveProperty("footprints");
+  });
+
+  it("reports a footprint for a room the place lacks", () => {
+    expect(resolveLook("base", [room("a")], "decks", tweaks).orphans).toEqual(["footprints.b"]);
   });
 });
 

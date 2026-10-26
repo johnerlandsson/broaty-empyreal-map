@@ -2184,7 +2184,9 @@ export default {
       "blister": "docks"
     },
     "fixtures": [],
-    "view": {},
+    "view": {
+      "cutaway": "off"
+    },
     "palette": {
       "concourse": "#d9a441",
       "residential": "#5b8def",

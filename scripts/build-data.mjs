@@ -9,6 +9,7 @@ import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { keepArea, keepRoom, ROOM_FIELDS } from "./source/filter.mjs";
+import { overlaps } from "./source/footprints.mjs";
 import { placeRooms } from "./source/place.mjs";
 import { loadSource } from "./source/read.mjs";
 import { diffRooms, droppedOf, emptyReport, formatReport, sortReport } from "./source/report.mjs";
@@ -20,7 +21,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** A generated room's keys, in order: the kept fields, with `at` and `terrain` after the address. */
 const ROOM_KEYS = ["id", "name", "address", "at", "terrain", ...ROOM_FIELDS.slice(3)];
 /** The look's keys, in order (resolveLook's, then the palette). */
-const LOOK_KEYS = ["paint", "fixtures", "view", "drum", "town", "wheel", "palette"];
+const LOOK_KEYS = ["paint", "fixtures", "footprints", "view", "drum", "town", "wheel", "palette"];
 /** What a checkout must have; loadSource reads each. */
 const SOURCE_PATHS = ["content/areas", "content/plans", "content/game/hulls.yaml", "content/game/world.yaml"];
 
@@ -151,6 +152,19 @@ function writeIfChanged(file, text) {
 }
 
 /**
+ * Throws, naming the tweak file and both rooms, when a reshaped decks room's outline overlaps
+ * another room's on its deck. Rooms neither of which has a footprint are left to the source.
+ */
+function checkFootprints(id, rooms, footprints) {
+  const local = (roomId) => roomId.slice(roomId.indexOf(".") + 1);
+  const cells = rooms.filter((r) => r.at).map((r) => ({ id: r.id, cell: { x: r.at.side, y: r.at.frame, z: r.at.deck }, fp: footprints[local(r.id)] }));
+  const reshaped = new Set(cells.filter((c) => c.fp).map((c) => c.id));
+  if (!reshaped.size) return;
+  const clash = overlaps(cells).find(([a, b]) => reshaped.has(a) || reshaped.has(b));
+  if (clash) throw new Error(`data/tweaks/${id}.json: footprints: ${clash[0]} and ${clash[1]} overlap. Nothing written`);
+}
+
+/**
  * Builds every place, the index and the report. Reads and checks everything before writing
  * anything, so a missing source, a bad tweak or a partial checkout writes nothing. What changed is
  * against the last commit when the out dir is in a git work tree, else against the files there.
@@ -206,6 +220,7 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
 
     const { look, orphans } = resolveLook(id, placed, layout.kind, tweaks);
     report.orphans.push(...orphans.map((key) => ({ place: id, key })));
+    if (look.footprints) checkFootprints(id, placed, look.footprints);
 
     // A new place is listed whole; an existing one diffs against its file.
     const path = join(outDir, `${id}.js`);

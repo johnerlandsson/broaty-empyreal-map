@@ -131,7 +131,9 @@ export default {
         "hl": 11
       }
     ],
-    "view": {},
+    "view": {
+      "cutaway": "off"
+    },
     "drum": {
       "rooms": {
         "concourse": {

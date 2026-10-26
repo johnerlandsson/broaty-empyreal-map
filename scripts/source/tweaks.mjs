@@ -2,8 +2,10 @@
 // place's look from them. The build only ever reads these files.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { boundsOf, outlineOf } from "../../ui/lib/footprint.js";
+import { crosses } from "./footprints.mjs";
 
-const TOP_KEYS = ["like", "paint", "paintDistricts", "fixtures", "place", "drum", "town", "wheel"];
+const TOP_KEYS = ["like", "paint", "paintDistricts", "fixtures", "footprints", "view", "place", "drum", "town", "wheel"];
 /** The builder sections: allowed keys of each (stage 1). `wheel` is empty. */
 const SECTION_KEYS = {
   drum: ["rooms", "axis", "way"],
@@ -18,6 +20,15 @@ const FIXTURE_KEYS = {
   mast: ["type", "side", "frame", "height"],
   "drum-cradle": ["type", "hour", "z", "hw", "h", "hl"],
 };
+
+const FOOTPRINT_KEYS = ["span", "corners", "r", "outline"];
+const SPAN_KEYS = ["fore", "aft", "port", "starboard"];
+const CORNERS = ["square", "rounded", "cut"];
+/** How far an outline point may lie from its cell's centre, in cells. */
+const OUTLINE_REACH = 1.5;
+const VIEW_KEYS = ["cutaway", "camera"];
+const CUTAWAYS = ["off", "hide-above", "ghost-above"];
+const CAMERA_KEYS = ["yaw", "pitch", "zoom"];
 
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const local = (id) => id.slice(id.indexOf(".") + 1);
@@ -45,6 +56,55 @@ function checkFixture(file, path, fixture) {
   unknownKeys(file, path, fixture, allowed);
 }
 
+const isNumber = (v) => typeof v === "number" && Number.isFinite(v);
+
+function expectOneOf(file, path, value, allowed) {
+  if (!allowed.includes(value)) throw new Error(`${file}: ${path}: ${JSON.stringify(value)} is not one of ${allowed.join(", ")}`);
+}
+
+function checkFootprint(file, path, fp) {
+  expectObject(file, path, fp);
+  unknownKeys(file, path, fp, FOOTPRINT_KEYS);
+  if (fp.span !== undefined) {
+    expectObject(file, `${path}.span`, fp.span);
+    unknownKeys(file, `${path}.span`, fp.span, SPAN_KEYS);
+    for (const [key, n] of Object.entries(fp.span)) {
+      if (!isNumber(n) || n < 0) throw new Error(`${file}: ${path}.span.${key} must be a number of cells, 0 or more`);
+    }
+  }
+  if (fp.corners !== undefined) expectOneOf(file, `${path}.corners`, fp.corners, CORNERS);
+  if (fp.r !== undefined) {
+    const { x0, x1, y0, y1 } = boundsOf(outlineOf({ span: fp.span }));
+    if (!isNumber(fp.r) || fp.r < 0 || fp.r >= Math.min(x1 - x0, y1 - y0) / 2) {
+      throw new Error(`${file}: ${path}.r must be 0 or more and under half the footprint's narrower side`);
+    }
+  }
+  if (fp.outline !== undefined) {
+    if (!Array.isArray(fp.outline) || fp.outline.length < 3) throw new Error(`${file}: ${path}.outline must be a list of 3 or more [x, y] points`);
+    fp.outline.forEach((p, i) => {
+      if (!Array.isArray(p) || p.length !== 2 || !p.every(isNumber)) throw new Error(`${file}: ${path}.outline[${i}] must be an [x, y] point`);
+      if (p.some((v) => Math.abs(v) > OUTLINE_REACH)) {
+        throw new Error(`${file}: ${path}.outline[${i}] is outside -${OUTLINE_REACH} to ${OUTLINE_REACH} cells`);
+      }
+    });
+    if (crosses(fp.outline)) throw new Error(`${file}: ${path}.outline crosses itself`);
+  }
+}
+
+function checkView(file, view) {
+  expectObject(file, "view", view);
+  unknownKeys(file, "view", view, VIEW_KEYS);
+  if (view.cutaway !== undefined) expectOneOf(file, "view.cutaway", view.cutaway, CUTAWAYS);
+  if (view.camera !== undefined) {
+    expectObject(file, "view.camera", view.camera);
+    unknownKeys(file, "view.camera", view.camera, CAMERA_KEYS);
+    for (const key of CAMERA_KEYS) {
+      if (!isNumber(view.camera[key])) throw new Error(`${file}: view.camera.${key} must be a number (the camera needs ${CAMERA_KEYS.join(", ")})`);
+    }
+    if (view.camera.zoom <= 0) throw new Error(`${file}: view.camera.zoom must be more than 0`);
+  }
+}
+
 function checkTweak(file, tweak, palette) {
   expectObject(file, "(top level)", tweak);
   unknownKeys(file, "", tweak, TOP_KEYS);
@@ -64,6 +124,12 @@ function checkTweak(file, tweak, palette) {
     if (!Array.isArray(tweak.fixtures)) throw new Error(`${file}: fixtures must be a list`);
     tweak.fixtures.forEach((f, i) => checkFixture(file, `fixtures[${i}]`, f));
   }
+
+  if (tweak.footprints !== undefined) {
+    expectObject(file, "footprints", tweak.footprints);
+    for (const [id, fp] of Object.entries(tweak.footprints)) checkFootprint(file, `footprints.${id}`, fp);
+  }
+  if (tweak.view !== undefined) checkView(file, tweak.view);
 
   if (tweak.place !== undefined) {
     expectObject(file, "place", tweak.place);
@@ -149,7 +215,7 @@ function merged(placeId, tweaks, chain = []) {
   if (!tweaks.places[own.like]) throw new Error(`data/tweaks/${placeId}.json: like names ${own.like}, which has no tweak file`);
   const base = merged(own.like, tweaks, [...chain, placeId]);
   const out = { ...base, ...own };
-  for (const key of ["paint", "paintDistricts", ...Object.keys(SECTION_KEYS), "place"]) {
+  for (const key of ["paint", "paintDistricts", "footprints", "view", ...Object.keys(SECTION_KEYS), "place"]) {
     if (base[key] || own[key]) out[key] = { ...base[key], ...own[key] };
   }
   return out;
@@ -159,6 +225,7 @@ function merged(placeId, tweaks, chain = []) {
 function namedRooms(tweak) {
   const named = [];
   for (const id of Object.keys(tweak.paint ?? {})) named.push([`paint.${id}`, id]);
+  for (const id of Object.keys(tweak.footprints ?? {})) named.push([`footprints.${id}`, id]);
   for (const id of Object.keys(tweak.place ?? {})) named.push([`place.${id}`, id]);
   (tweak.fixtures ?? []).forEach((f, i) => {
     if (f.room !== undefined) named.push([`fixtures[${i}].room`, f.room]);
@@ -176,7 +243,8 @@ function namedRooms(tweak) {
 /**
  * One place's full look. Paint gives every room a palette name: its own, else its district's in
  * `paintDistricts`, else its district if that is a palette name, else a default by kind (a decks
- * passage, whose name is its address: midring; a berth: docks; otherwise industrial).
+ * passage, whose name is its address: midring; a berth: docks; otherwise industrial). A decks
+ * place has its footprints, by local id; every place has its view, the tweak's over its kind's.
  * @param {string} placeId
  * @param {object[]} rooms  the place's placed rooms (full ids, `name`, `address`, `flags`, `district`)
  * @param {string} layoutKind  the area's layout kind
@@ -204,7 +272,9 @@ export function resolveLook(placeId, rooms, layoutKind, tweaks) {
     paint[id] = name;
   }
 
-  const look = { paint, fixtures: tweak.fixtures ?? [], view: {} };
+  const look = { paint, fixtures: tweak.fixtures ?? [] };
+  if (layoutKind === "decks") look.footprints = tweak.footprints ?? {};
+  look.view = { cutaway: layoutKind === "decks" ? "hide-above" : "off", ...tweak.view };
   for (const name of Object.keys(SECTION_KEYS)) if (tweak[name]) look[name] = tweak[name];
 
   const own = tweaks.places[placeId] ?? {};

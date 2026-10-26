@@ -161,7 +161,10 @@ export default {
         "len": 0.55
       }
     ],
-    "view": {},
+    "footprints": {},
+    "view": {
+      "cutaway": "hide-above"
+    },
     "palette": {
       "concourse": "#d9a441",
       "residential": "#5b8def",

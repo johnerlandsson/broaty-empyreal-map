@@ -227,7 +227,10 @@ export default {
         "height": 1.65
       }
     ],
-    "view": {},
+    "footprints": {},
+    "view": {
+      "cutaway": "hide-above"
+    },
     "palette": {
       "concourse": "#d9a441",
       "residential": "#5b8def",

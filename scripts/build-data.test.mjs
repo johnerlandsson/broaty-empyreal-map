@@ -341,6 +341,36 @@ describe("build", () => {
     expect(n.look.drum).toEqual({ way: "spiral", rooms: { hall } });
   });
 
+  it("writes the view of every place and the footprints of a decks place", async () => {
+    const opts = setup({ ...placed, mini: { footprints: { hall: { corners: "cut" } } } });
+    await build(opts);
+    const m = await load(join(opts.outDir, "mini.js"));
+    expect(Object.keys(m.look)).toEqual(["paint", "fixtures", "footprints", "view", "palette"]);
+    expect(m.look.footprints).toEqual({ hall: { corners: "cut" } });
+    expect(m.look.view).toEqual({ cutaway: "hide-above" });
+    const w = await load(join(opts.outDir, "wheelie.js"));
+    expect(w.look).not.toHaveProperty("footprints");
+    expect(w.look.view).toEqual({ cutaway: "off" });
+  });
+
+  // a room to starboard of the hall on the same deck: beside it, or with a cell between
+  const locker = (side) => (doc) => doc.rooms.push({ id: "mini.locker", name: "Locker", address: `Deck 1, frame 2, ${side}`, exits: {} });
+
+  it("stops on a footprint reaching into another room's cell, naming both and the file, and writes nothing", async () => {
+    const opts = setup({ ...placed, mini: { footprints: { hall: { span: { starboard: 0.6 } } } } });
+    editArea(opts.source, "mini.yaml", locker("starboard"));
+    await expect(build(opts)).rejects.toThrow(/data\/tweaks\/mini\.json.*mini\.hall.*mini\.locker/);
+    expect(existsSync(opts.outDir)).toBe(false);
+    expect(existsSync(opts.reportPath)).toBe(false);
+  });
+
+  it("builds a footprint that only touches another room's cell", async () => {
+    const opts = setup({ ...placed, mini: { footprints: { hall: { span: { starboard: 1 } } } } });
+    editArea(opts.source, "mini.yaml", locker("starboard 2"));
+    await build(opts);
+    expect((await load(join(opts.outDir, "mini.js"))).look.footprints).toEqual({ hall: { span: { starboard: 1 } } });
+  });
+
   it("diffs against a hand-made file already in the out dir", async () => {
     const opts = setup();
     await build({ ...opts, outDir: join(opts.outDir, "..", "seed") });
