@@ -6,7 +6,7 @@
 // plate, and the props in her rooms over them. Layout maths lives in lib/decks.js.
 
 import { DISTRICT_COLOURS as DC } from "./lib/geometry.js";
-import { PLAN, decksLayout, decksShape, pathD } from "./lib/decks.js";
+import { PLAN, decksLayout, decksShape, fitLabel, pathD } from "./lib/decks.js";
 import { noseAt, propBoxes, tailAt, wallAt } from "./lib/footprint.js";
 import { boxPath } from "./lib/solid.js";
 import { el } from "./lib/svg.js";
@@ -34,7 +34,8 @@ const none = { "pointer-events": "none" };
  */
 export function decksPlans(data) {
   const fixtures = data?.kind === "plan" ? (data.look?.fixtures ?? []) : [];
-  return (svg, index, opts) => index.decks.map((deck, level) => buildDeckPlan(svg, index, deck, level, opts?.pick, { id: data?.id, fixtures }));
+  const ship = { id: data?.id, plan: data?.kind === "plan", fixtures };
+  return (svg, index, opts) => index.decks.map((deck, level) => buildDeckPlan(svg, index, deck, level, opts?.pick, ship));
 }
 
 function buildDeckPlan(svg, index, deck, level, pick, ship) {
@@ -65,7 +66,8 @@ function buildDeckPlan(svg, index, deck, level, pick, ship) {
       const [x, y] = layout.centre(c.room.cell);
       if (!c.room.exits?.up && !c.room.exits?.down) el("circle", { cx: x, cy: y, r: 4, fill: STOP, ...none }, g);
     } else if (c.kind === "room") {
-      roomBox(g, c.room, c.cx, c.cy, c.room.tint ?? DC.industrial, c.w, c.h, c.shaped ? pathD(c.points) : undefined, pick);
+      const box = roomBox(g, c.room, c.cx, c.cy, c.room.tint ?? DC.industrial, c.w, c.h, c.shaped ? pathD(c.points) : undefined, pick, !ship.plan);
+      if (ship.plan) shipName(box, c, fixtures.propsIn(c.room));
       if (c.room.flags?.includes("berth")) airlocks(g, c);
     } else {
       blister(g, c, pick);
@@ -157,6 +159,16 @@ function shipFixtures(index, layout, { id, fixtures }) {
         }
       });
     },
+    /** The plan boxes of a room's props. */
+    propsIn(room) {
+      return fixtures
+        .filter((f) => f.type === "prop" && roomOf(f) === room)
+        .flatMap((f) => propBoxes(f, { side: room.cell.x, frame: room.cell.y }))
+        .map(([x0, y0, x1, y1]) => {
+          const [a, b] = [P([x0, y1]), P([x1, y0])];
+          return { x0: a[0], y0: a[1], x1: b[0], y1: b[1] };
+        });
+    },
     inside(g) {
       fixtures.forEach((f, i) => {
         const room = f.type === "prop" ? roomOf(f) : null;
@@ -164,6 +176,15 @@ function shipFixtures(index, layout, { id, fixtures }) {
       });
     },
   };
+}
+
+/** A ship room's name, fitted to its box clear of its props (fitLabel), a halo where it must go over them. */
+function shipName(g, c, props) {
+  const box = { x0: c.cx - c.w / 2, y0: c.cy - c.h / 2, x1: c.cx + c.w / 2, y1: c.cy + c.h / 2 };
+  const name = c.room.name && c.room.name !== "?" ? c.room.name : "?";
+  const fit = fitLabel(name, box, props);
+  const halo = fit.halo ? { stroke: PLATE, "stroke-width": 3, "stroke-linejoin": "round", "paint-order": "stroke" } : {};
+  for (const l of fit.lines) label(g, l.x, l.y, l.text, +fit.size.toFixed(1), { opacity: c.room.closed ? 0.6 : 1, ...halo });
 }
 
 /** A drive bell out of the hull's aft end at its side: a throat flaring to its mouth, and the mouth's rim. */

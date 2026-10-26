@@ -116,6 +116,36 @@ export function facing(pts, edges, from) {
   return convexFirst(back, back.map((_, j) => edges[(2 * n - 2 - j) % n]));
 }
 
+/** Whether a counter-clockwise polygon is convex (straight runs allowed). */
+export function isConvex(points) {
+  const n = points.length;
+  return points.every((p, i) => {
+    const [a, c] = [points[(i + n - 1) % n], points[(i + 1) % n]];
+    return (p[0] - a[0]) * (c[1] - p[1]) - (p[1] - a[1]) * (c[0] - p[0]) >= -1e-12;
+  });
+}
+
+/** The part of a polygon inside a counter-clockwise convex one (Sutherland-Hodgman). */
+export function clipTo(subject, convex) {
+  let out = subject;
+  convex.forEach((a, i) => {
+    const b = convex[(i + 1) % convex.length];
+    const side = (p) => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+    const input = out;
+    out = [];
+    input.forEach((p, j) => {
+      const q = input[(j + 1) % input.length];
+      const [sp, sq] = [side(p), side(q)];
+      if (sp >= 0) out.push(p);
+      if ((sp >= 0) !== (sq >= 0)) {
+        const t = sp / (sp - sq);
+        out.push([p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])]);
+      }
+    });
+  });
+  return out;
+}
+
 /** pts wound so their normal points away from `from`. */
 export function outward(pts, from) {
   const [a, b, c] = pts;

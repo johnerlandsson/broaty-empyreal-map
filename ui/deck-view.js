@@ -74,8 +74,8 @@ export function hover(node, room, pick) {
 
 /** A room box tinted by district, labelled; closed rooms are dashed and dimmed. Given `d`, the box
  *  is that path instead (a decks room its footprint reshapes), labelled at cx, cy. With pick, it
- *  carries the room's id for picking. */
-export function roomBox(parent, room, cx, cy, col, w, h, d, pick) {
+ *  carries the room's id for picking. With `named` false its name is left for the caller to place. */
+export function roomBox(parent, room, cx, cy, col, w, h, d, pick, named = true) {
   const g = el("g", {}, parent);
   const open = !room.closed;
   el(
@@ -96,7 +96,7 @@ export function roomBox(parent, room, cx, cy, col, w, h, d, pick) {
   const half = Math.ceil(words.length / 2);
   const lines =
     name.length > 14 && words.length > 1 ? [words.slice(0, half).join(" "), words.slice(half).join(" ")] : [name];
-  lines.forEach((t, i) => label(g, cx, cy + (i - (lines.length - 1) / 2) * 14, t, 12, { opacity: open ? 1 : 0.6 }));
+  if (named) lines.forEach((t, i) => label(g, cx, cy + (i - (lines.length - 1) / 2) * 14, t, 12, { opacity: open ? 1 : 0.6 }));
   if (!open) label(g, cx, cy + h / 2 - 8, "closed", 9, { fill: DIM });
   hover(g, room, pick);
   return g;

@@ -6,7 +6,9 @@
 import { describe, expect, it } from "vitest";
 import freighterPlan from "../data/plans/freighter.js";
 import skiffPlan from "../data/plans/hull-skiff.js";
-import { buildDecksModel, indexDecks } from "./decks.js";
+import orrin from "../../tests/fixtures/generated/orrin.js";
+import { plans } from "../data/ships.js";
+import { buildDecksModel, CELL, indexDecks } from "./decks.js";
 import { camera } from "./geometry.js";
 
 const ROW_C = {
@@ -110,4 +112,63 @@ describe("the painter's sort on a ship, row C", () => {
       });
     }
   }
+});
+
+describe("a ship's lit room", () => {
+  const smooth = (t) => {
+    const u = Math.min(1, Math.max(0, t));
+    return u * u * (3 - 2 * u);
+  };
+  const toEdge = ([x, y], path) =>
+    Math.min(
+      ...path.map((a, i) => {
+        const b = path[(i + 1) % path.length];
+        const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+        const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+        return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy);
+      }),
+    );
+  const inPath = ([x, y], path) => {
+    let odd = false;
+    path.forEach((a, i) => {
+      const b = path[(i + 1) % path.length];
+      if (a[1] > y !== b[1] > y && x < a[0] + ((y - a[1]) / (b[1] - a[1])) * (b[0] - a[0])) odd = !odd;
+    });
+    return odd;
+  };
+
+  for (const [id, plan] of Object.entries(plans)) {
+    it(`lights each of the ${id}'s rooms as its own shape, under her roof and inside her hull past the bevel`, () => {
+      const index = indexDecks(plan);
+      const faces = buildDecksModel(index, plan);
+      const { hull } = index;
+      const mid = [(hull.x0 + hull.x1) / 2, (hull.y0 + hull.y1) / 2, (hull.z0 + hull.z1) / 2];
+      const { bevel, noseDrop, noseLength } = plan.look.profile;
+      for (const room of index.byId.values()) {
+        if (room.blister) continue;
+        const lit = faces.filter((f) => f.key === room.id);
+        expect(lit.length, room.id).toBeGreaterThan(5);
+        const z = room.cell.z;
+        const path = index.hullPaths[z] ?? [[hull.x0 - 0.5, hull.y0 - 0.5], [hull.x1 + 0.5, hull.y0 - 0.5], [hull.x1 + 0.5, hull.y1 + 0.5], [hull.x0 - 0.5, hull.y1 + 0.5]];
+        const nose = Math.max(...path.map((p) => p[1]));
+        for (const f of lit) {
+          expect(f.ghost).toBe(true);
+          for (const p of f.pts) {
+            const at = [p[0] / CELL.side + mid[0], p[2] / CELL.frame + mid[1]];
+            const drop = z === hull.z1 ? smooth((at[1] - (nose - noseLength)) / noseLength) * noseDrop * CELL.deck : 0;
+            const roof = (z - mid[2]) * CELL.deck + CELL.deck / 2 - drop;
+            expect(p[1], `${room.id} under the roof at frame ${at[1].toFixed(2)}`).toBeLessThan(roof);
+            expect(inPath(at, path), `${room.id} inside the hull`).toBe(true);
+            expect(toEdge(at, path), `${room.id} past the bevel`).toBeGreaterThanOrEqual(bevel);
+          }
+        }
+      }
+    });
+  }
+
+  it("keeps a station's lit rooms as boxes through the deck", () => {
+    const index = indexDecks(orrin);
+    const lit = buildDecksModel(index, orrin).filter((f) => f.key === "orrin.market");
+    expect(lit.length).toBe(6);
+  });
 });

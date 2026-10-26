@@ -272,8 +272,8 @@ export function buildDecksModel(index, data) {
     }
   }
 
-  // each room's cell, for the highlight: a box, or its outline through the deck
-  for (const room of roomAt.values()) {
+  // each room's cell, for the highlight: a box, or its outline through the deck (a ship's are her own)
+  for (const room of ship ? [] : roomAt.values()) {
     const c = at(room.cell.x, room.cell.y, room.cell.z);
     const outline = outlineOf(room.footprint);
     if (isUnit(outline)) {
@@ -525,4 +525,75 @@ export function decksShape(layout, where) {
   if (c.kind === "blister") return { kind: "circle", cx: c.cx, cy: c.cy, r: c.r };
   if (c.shaped) return { kind: "path", d: pathD(c.points), cx: c.cx, cy: c.cy };
   return { kind: "rect", x: c.cx - c.w / 2, y: c.cy - c.h / 2, width: c.w, height: c.h, rx: c.kind === "room" ? 5 : 3 };
+}
+
+// --- ship room names ---------------------------------------------------------------------------
+
+/** A ship room's name on the plan: its size, the floor it may shrink to, and its pad in the box. */
+export const LABEL = { size: 12, floor: 8.4, pad: 2, line: 1.2 };
+const CHAR_EM = 0.58; // a character's width, in ems, near enough for Inter's capitals and lower case
+
+/** A line of plan text's width at a size, estimated: the plan has no DOM to measure it. */
+export const textWidth = (s, size) => s.length * size * CHAR_EM;
+
+/** A name as one line, or as two at each space. */
+function splits(name) {
+  const words = name.split(" ");
+  const two = words.slice(1).map((_, i) => [words.slice(0, i + 1).join(" "), words.slice(i + 1).join(" ")]);
+  return [[name], ...two];
+}
+
+/** The biggest size, up to LABEL.size, and its lines, that a name takes in a w by h space. */
+function fitIn(name, w, h) {
+  let best = { size: 0, lines: [name] };
+  for (const lines of splits(name)) {
+    const longest = Math.max(...lines.map((l) => textWidth(l, 1)));
+    const size = Math.min(LABEL.size, w / longest, h / (lines.length * LABEL.line));
+    if (size > best.size + 1e-9) best = { size, lines };
+  }
+  return best;
+}
+
+/**
+ * A ship room's name fitted to its box on the plan: on one line or two, shrunk as far as
+ * LABEL.floor, in the part of the box its props leave free (a band across it fore of them, between
+ * them or aft of them, or one down it beside them: whichever takes it biggest, the foremost on a
+ * tie); where none does, over them with a halo, at the floor if it must.
+ * @param {string} name
+ * @param {{x0: number, y0: number, x1: number, y1: number}} box  the room box on the plan
+ * @param {{x0: number, y0: number, x1: number, y1: number}[]} props  the props' pieces on the plan
+ * @returns {{size: number, lines: {text: string, x: number, y: number}[], halo: boolean}}
+ */
+export function fitLabel(name, box, props) {
+  const inBox = props.filter((p) => p.x1 > box.x0 && p.x0 < box.x1 && p.y1 > box.y0 && p.y0 < box.y1);
+  // the bands across the box (and down it) that no prop reaches into: fore of them, between
+  // them, aft of them; to port, between, to starboard
+  const gaps = (lo, hi, k0, k1) => {
+    const spans = inBox.map((p) => [Math.max(lo, p[k0]), Math.min(hi, p[k1])]).sort((a, b) => a[0] - b[0]);
+    const out = [];
+    let at = lo;
+    for (const [a, b] of spans) {
+      if (a > at) out.push([at, a]);
+      at = Math.max(at, b);
+    }
+    if (hi > at) out.push([at, hi]);
+    return out;
+  };
+  const regions = [
+    ...gaps(box.y0, box.y1, "y0", "y1").map(([y0, y1]) => ({ ...box, y0, y1 })),
+    ...gaps(box.x0, box.x1, "x0", "x1").map(([x0, x1]) => ({ ...box, x0, x1 })),
+  ];
+  const pad = LABEL.pad;
+  const fits = regions
+    .map((r) => ({ r, ...fitIn(name, r.x1 - r.x0 - 2 * pad, r.y1 - r.y0 - 2 * pad) }))
+    .filter((f) => f.size >= LABEL.floor - 1e-9);
+  const free = fits.reduce((a, b) => (b.size > a.size + 1e-9 ? b : a), fits[0]);
+  const { r, size, lines } = free ?? { r: box, ...fitIn(name, box.x1 - box.x0 - 2 * pad, box.y1 - box.y0 - 2 * pad) };
+  const s = Math.max(size, LABEL.floor);
+  const [cx, cy] = [(r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2];
+  return {
+    size: s,
+    lines: lines.map((text, i) => ({ text, x: cx, y: cy + (i - (lines.length - 1) / 2) * s * LABEL.line })),
+    halo: !free && inBox.length > 0,
+  };
 }

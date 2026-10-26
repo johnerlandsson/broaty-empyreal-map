@@ -7,7 +7,7 @@
 // what's behind it. A deck with no path is its box. Pure; no DOM.
 
 import { boundsOf, noseAt, outlineOf, tailAt, wallAt } from "./footprint.js";
-import { area2, boxPath, CELL, clip, CUBE, facing, onPath, outward, SHARP, turnAt, within } from "./solid.js";
+import { area2, boxPath, CELL, clip, clipTo, CUBE, facing, isConvex, onPath, outward, SHARP, turnAt, within } from "./solid.js";
 
 /** The finest the hull is cut, in cells: every wall, roof and floor piece is this long at most. */
 export const TILE = 0.25;
@@ -18,6 +18,8 @@ export const NAV = { port: "#ff3b30", starboard: "#2fe06a" };
 
 const VENT_TOP = "#0d1218";
 const WINDOW_EVERY = 0.18; // cells of wall a window pane takes, with its gap
+const ROOM_GAP = 0.03; // cells a lit room keeps inside the hull (past its bevel)
+const ROOM_LIFT = 1.5; // model units a lit room keeps off the floor and under the roof
 const PANE = [0.66, 0.84]; // a window's sill and lintel, as fractions of the way up the wall
 const SEAM = 0.62; // the plating seam along the flank
 /** Each greeble's foot on the roof: half its width across and along, in model units. */
@@ -79,7 +81,8 @@ function insetPath(pts, d) {
  *   t1})` a wall piece's extra (lo and hi the fractions of its rings, null for a bevel's), so the
  *   stripe and the window panes are pieces of the wall itself; `along(edge)` extra cuts along a path
  *   edge, as fractions of it; `tint(x, y)`; `seams`; `skip(x, y)` for top tiles under something;
- *   `cuts` {x, y} extra tile lines; `kind`; `bottomCap` (default true); `baseEdge` (default true);
+ *   `cuts` {x, y} extra lines through the top and the bottom; `tiled` false for a solid cut only
+ *   at them, walls too (never sorted, so whole faces will do); `kind`; `bottomCap` (default true); `baseEdge` (default true);
  *   `extra` for every face; `capExtra(piece, up)`, a cap tile's extra, or null to leave it out
  */
 function loft(M, path, o) {
@@ -109,12 +112,14 @@ function loft(M, path, o) {
     const cuts = new Set([0, 1]);
     for (const k of [0, 1]) {
       const [u, v] = [Math.min(a[k], c[k]), Math.max(a[k], c[k])];
-      for (let s = Math.ceil(u - 0.5) + 0.5; s < v; s++) {
+      // the cell boundaries; a solid cut only where it's told, there
+      const lines = o.tiled === false ? ((k ? o.cuts?.y : o.cuts?.x) ?? []) : Array.from({ length: Math.max(0, Math.ceil(v - u) + 1) }, (_, j) => Math.ceil(u - 0.5) + 0.5 + j);
+      for (const s of lines) {
         const t = (s - a[k]) / (c[k] - a[k]);
         if (t > 1e-6 && t < 1 - 1e-6) cuts.add(t);
       }
     }
-    const m = Math.ceil(len / TILE - 1e-9);
+    const m = o.tiled === false ? 1 : Math.ceil(len / TILE - 1e-9);
     for (let j = 1; j < m; j++) cuts.add(j / m);
     for (const t of o.along?.(i) ?? []) if (t > 1e-6 && t < 1 - 1e-6) cuts.add(t);
     const ts = [...cuts].sort((p, q) => p - q);
@@ -147,7 +152,8 @@ function loft(M, path, o) {
     const lines = (vs, extra) => {
       const [lo0, hi0] = [Math.min(...vs), Math.max(...vs)];
       const out = new Set(extra.filter((e) => e > lo0 && e < hi0).map((e) => +e.toFixed(6)));
-      for (let t = Math.floor(lo0 / TILE) * TILE; t <= hi0 + TILE; t += TILE) out.add(+t.toFixed(6));
+      if (o.tiled === false) out.add(lo0).add(hi0);
+      else for (let t = Math.floor(lo0 / TILE) * TILE; t <= hi0 + TILE; t += TILE) out.add(+t.toFixed(6));
       return [...out].sort((p, q) => p - q);
     };
     const LX = lines(P.map((p) => p[0]), o.cuts?.x ?? []);
@@ -214,8 +220,9 @@ function tube(c, k, [s0, s1], [r0, r1], n, extra, paint = () => ({})) {
 
 /**
  * A ship's hull, its looks and its fixtures in 3D, from a plan's look (`profile`, `surface`,
- * `greebles`, `fixtures`): faces for the ModelView, all in layer 0, each with its deck. The rooms'
- * own cells and the blisters are the decks builder's.
+ * `greebles`, `fixtures`): faces for the ModelView, all in layer 0, each with its deck; and each
+ * room as its own shape inside her, for the highlight (`ghost`: drawn only when lit). The
+ * blisters are the decks builder's.
  * @param {ReturnType<import("./decks.js").indexDecks>} index
  * @param {{id: string, look?: object}} data  a generated plan
  * @returns {object[]}
@@ -355,6 +362,32 @@ export function buildShipModel(index, data) {
       }),
     );
   }
+  // each room, for the highlight: its outline clipped to the hull brought in past the bevel, from
+  // just over the floor to just under the roof, so it follows the dropped nose and stays inside her
+  for (const r of rooms) {
+    const z = r.cell.z;
+    const bevelled = z === grid.z0 || z === grid.z1 ? profile.bevel : 0;
+    const inner = insetPath(pathOf(z), bevelled + ROOM_GAP);
+    const outline = outlineOf(r.footprint).map(([x, y]) => [x + r.cell.x, y + r.cell.y]);
+    const shape = isConvex(outline) ? clipTo(inner, outline) : isConvex(inner) ? clipTo(outline, inner) : outline;
+    if (shape.length < 3 || Math.abs(area2(shape)) < 1e-6) continue;
+    const [bot, top] = [botOf(z), topOf(z)];
+    // whole faces (the highlight is drawn over everything, never sorted), cut along only where the nose drops
+    const nose = Math.max(...pathOf(z).map((p) => p[1]));
+    const drops = profile.noseDrop > 0 && (z === grid.z0 || z === grid.z1);
+    const ys = drops ? Array.from({ length: Math.ceil(profile.noseLength / TILE) + 1 }, (_, j) => nose - profile.noseLength + j * TILE) : [];
+    faces.push(
+      ...loft(M, shape, {
+        bot: (x, y) => bot(x, y) + ROOM_LIFT,
+        top: (x, y) => top(x, y) - ROOM_LIFT,
+        tiled: false,
+        cuts: { x: [], y: ys },
+        kind: "cell",
+        extra: { key: r.id, ghost: true, tint: null },
+      }),
+    );
+  }
+
   const onTop = { deck: grid.z1, outline: true };
   if (spine) {
     const w = spine.width / 2;
