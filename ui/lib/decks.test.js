@@ -859,18 +859,21 @@ describe("ships: greebles", () => {
     { type: "dish", side: 0.65, frame: -0.65, r: 0.14 },
   ];
   const plain = ship(skiffPlan, { hull: { 1: SKIFF_HULL } });
-  const base = buildDecksModel(indexDecks(plain), plain).length;
   const count = (g) => {
     const data = ship(skiffPlan, { hull: { 1: SKIFF_HULL }, greebles: [g] });
     return buildDecksModel(indexDecks(data), data);
   };
 
   it("stands a vent (two boxes), an antenna (a mast and its lamp) and a dish (a stalk and a bowl) on the roof", () => {
-    expect(count(greebles[0]).length - base).toBe(12);
+    const docks = (fs) => fs.filter((f) => f.kind === "dock").length;
+    const lamps = (fs) => fs.filter((f) => f.kind === "lamp").length;
+    const vent = count(greebles[0]);
+    expect(docks(vent)).toBe(6);
+    expect(vent.filter((f) => f.tint === "#0d1218").length).toBe(6);
     const antenna = count(greebles[1]);
-    expect(antenna.length - base).toBe(12);
-    expect(antenna.filter((f) => f.kind === "dock").length).toBe(6); // its mast; its lamp burns
-    expect(count(greebles[2]).length - base).toBe(6 + 14 + 2);
+    expect(docks(antenna)).toBe(6);
+    expect(lamps(antenna) - lamps(buildDecksModel(indexDecks(plain), plain))).toBe(6);
+    expect(docks(count(greebles[2]))).toBe(6 + 14 + 2);
   });
 
   it("puts each on the roof at its side and frame, depth-sorted with the hull", () => {

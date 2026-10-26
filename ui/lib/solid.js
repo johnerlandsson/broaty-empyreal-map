@@ -68,6 +68,18 @@ export function clip(points, k, v, keep) {
   return out;
 }
 
+/** Newell's normal of a flat polygon: the right way for a concave one too. */
+export function newell(pts) {
+  const N = [0, 0, 0];
+  pts.forEach((p, i) => {
+    const q = pts[(i + 1) % pts.length];
+    N[0] += (p[1] - q[1]) * (p[2] + q[2]);
+    N[1] += (p[2] - q[2]) * (p[0] + q[0]);
+    N[2] += (p[0] - q[0]) * (p[1] + q[1]);
+  });
+  return N;
+}
+
 /**
  * A flat face's points and edges started at its most convex corner, so the renderer's normal (from
  * the first three points) is the face's own on a concave piece too.
@@ -81,13 +93,7 @@ export function convexFirst(pts, edges) {
     return [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
   };
   // the face's normal (Newell's), then the corner turning most its way
-  const N = [0, 0, 0];
-  pts.forEach((p, i) => {
-    const q = pts[(i + 1) % n];
-    N[0] += (p[1] - q[1]) * (p[2] + q[2]);
-    N[1] += (p[2] - q[2]) * (p[0] + q[0]);
-    N[2] += (p[0] - q[0]) * (p[1] + q[1]);
-  });
+  const N = newell(pts);
   let best = 0;
   let most = -Infinity;
   for (let i = 0; i < n; i++) {
@@ -96,6 +102,18 @@ export function convexFirst(pts, edges) {
   }
   const turn = (xs) => xs.slice(best).concat(xs.slice(0, best));
   return { pts: turn(pts), edges: turn(edges) };
+}
+
+/**
+ * A flat face's points and edges wound so its normal (Newell's) points away from `from`, each edge
+ * kept with its side, then started at its most convex corner (convexFirst).
+ */
+export function facing(pts, edges, from) {
+  const n = pts.length;
+  const mid = pts.reduce((s, p) => s.map((v, i) => v + p[i] / n), [0, 0, 0]);
+  if (newell(pts).reduce((s, v, i) => s + v * (mid[i] - from[i]), 0) >= 0) return convexFirst(pts, edges);
+  const back = pts.slice().reverse();
+  return convexFirst(back, back.map((_, j) => edges[(2 * n - 2 - j) % n]));
 }
 
 /** pts wound so their normal points away from `from`. */
@@ -107,4 +125,11 @@ export function outward(pts, from) {
   const mid = pts.reduce((s, p) => s.map((v, i) => v + p[i] / pts.length), [0, 0, 0]);
   const d = n.reduce((s, v, i) => s + v * (mid[i] - from[i]), 0);
   return d >= 0 ? pts : pts.slice().reverse();
+}
+
+/** A box hull's path, in cells, counter-clockwise: the box round its cells (none without one). */
+export function boxPath(hull) {
+  if (!hull) return [];
+  const [x0, x1, y0, y1] = [hull.x0 - 0.5, hull.x1 + 0.5, hull.y0 - 0.5, hull.y1 + 0.5];
+  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 }

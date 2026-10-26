@@ -3,6 +3,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { boundsOf, outlineOf, pathOf, reachesOf } from "../../ui/lib/footprint.js";
+import { greebleReach } from "../../ui/lib/ship-hull.js";
 import { crosses } from "./footprints.mjs";
 import {
   AXIS_KEYS,
@@ -369,7 +370,7 @@ function merged(placeId, tweaks, chain = []) {
 /**
  * A ship plan's profile, surface and greebles: the tweak's over row C's defaults. Throws on a stripe
  * paint the palette lacks and on a bevel bigger than a rounded corner of a hull path, which would
- * turn the bevel's arc inside out.
+ * turn the bevel's arc inside out, and on a greeble half on the spine and half off it.
  */
 function shipLooks(file, rooms, hull, tweak, palette) {
   const canopies = rooms.filter((r) => r.canopy).map((r) => local(r.id));
@@ -386,7 +387,20 @@ function shipLooks(file, rooms, hull, tweak, palette) {
       }
     });
   }
-  return { profile, surface, greebles: tweak.greebles ?? [] };
+  const greebles = tweak.greebles ?? [];
+  // a greeble stands on the roof or on the spine, never half on each: it would stand into the spine's side
+  const spine = profile.spine;
+  if (spine) {
+    greebles.forEach((g, i) => {
+      const [rx, ry] = greebleReach(g);
+      const [x0, x1, y0, y1] = [g.side - rx, g.side + rx, g.frame - ry, g.frame + ry];
+      const [sx0, sx1] = [-spine.width / 2, spine.width / 2];
+      const meets = x1 > sx0 && x0 < sx1 && y1 > spine.from && y0 < spine.to;
+      const on = x0 >= sx0 && x1 <= sx1 && y0 >= spine.from && y1 <= spine.to;
+      if (meets && !on) throw new Error(`${file}: greebles[${i}] (${g.type}) straddles the edge of profile.spine; put it on the spine or clear of it`);
+    });
+  }
+  return { profile, surface, greebles };
 }
 
 /** " (from <base>.json via like)" for a value a place inherits, else "". */

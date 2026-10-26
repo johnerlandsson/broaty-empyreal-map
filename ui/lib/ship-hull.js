@@ -7,7 +7,7 @@
 // what's behind it. A deck with no path is its box. Pure; no DOM.
 
 import { boundsOf, noseAt, outlineOf, tailAt, wallAt } from "./footprint.js";
-import { CELL, clip, CUBE, onPath, SHARP, turnAt, within } from "./solid.js";
+import { area2, boxPath, CELL, clip, CUBE, facing, onPath, outward, SHARP, turnAt, within } from "./solid.js";
 
 /** The finest the hull is cut, in cells: every wall, roof and floor piece is this long at most. */
 export const TILE = 0.25;
@@ -18,10 +18,25 @@ export const NAV = { port: "#ff3b30", starboard: "#2fe06a" };
 
 const VENT_TOP = "#0d1218";
 const WINDOW_EVERY = 0.18; // cells of wall a window pane takes, with its gap
+const PANE = [0.66, 0.84]; // a window's sill and lintel, as fractions of the way up the wall
+const SEAM = 0.62; // the plating seam along the flank
+/** Each greeble's foot on the roof: half its width across and along, in model units. */
+const GREEBLE_BASE = { vent: [0.1 * CELL.side, 0.07 * CELL.frame], antenna: [1.1, 1.1], dish: [1.4, 1.4] };
+
+/**
+ * How far a greeble reaches from its point, in cells: half its width across and along (a dish's
+ * bowl, a vent's body, an antenna's lamp).
+ * @param {{type: string, r?: number}} g
+ * @returns {number[]}
+ */
+export function greebleReach(g) {
+  if (g.type === "dish") return [g.r, (g.r * CELL.side) / CELL.frame];
+  if (g.type === "vent") return [GREEBLE_BASE.vent[0] / CELL.side, GREEBLE_BASE.vent[1] / CELL.frame];
+  return [2.2 / CELL.side, 2.2 / CELL.frame];
+}
 const SIDES = 14; // a bell's or dish's sides
 const RING_SIDES = 12;
 
-const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const mean = (pts) => pts.reduce((s, p) => s.map((v, i) => v + p[i] / pts.length), pts[0].map(() => 0));
 /** smoothstep on 0 to 1, clamped */
 const smooth = (t) => {
@@ -31,52 +46,8 @@ const smooth = (t) => {
 /** A cell boundary: k + 0.5. */
 const onSeam = (v) => Math.abs(v - Math.round(v - 0.5) - 0.5) < 1e-6;
 
-/** Newell's normal of a polygon. */
-function newell(P) {
-  const N = [0, 0, 0];
-  P.forEach((p, i) => {
-    const q = P[(i + 1) % P.length];
-    N[0] += (p[1] - q[1]) * (p[2] + q[2]);
-    N[1] += (p[2] - q[2]) * (p[0] + q[0]);
-    N[2] += (p[0] - q[0]) * (p[1] + q[1]);
-  });
-  return N;
-}
-
-/**
- * A flat face wound away from `from`, its edges kept with their sides, and started at the corner
- * whose three points give its true normal (the renderer takes the normal from the first three).
- */
-function oriented(pts, edges, from, extra) {
-  let P = pts;
-  let E = edges;
-  const n = P.length;
-  if (dot(newell(P), mean(P).map((v, i) => v - from[i])) < 0) {
-    P = P.slice().reverse();
-    E = P.map((_, j) => edges[(n - 2 - j + 2 * n) % n]);
-  }
-  const N = newell(P);
-  let best = 0;
-  let most = -Infinity;
-  for (let i = 0; i < n; i++) {
-    const [a, b, c] = [P[i], P[(i + 1) % n], P[(i + 2) % n]];
-    const u = b.map((v, k) => v - a[k]);
-    const w = c.map((v, k) => v - a[k]);
-    const d = dot([u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]], N);
-    if (d > most) [best, most] = [i, d];
-  }
-  const turn = (xs) => xs.slice(best).concat(xs.slice(0, best));
-  return { pts: turn(P), edges: turn(E), kind: "outer", key: null, tint: null, turns: false, cull: true, layer: 0, ...extra };
-}
-
-/** pts wound so their normal points away from `from` (three points give it). */
-function away(pts, from) {
-  const [a, b, c] = pts;
-  const u = b.map((v, i) => v - a[i]);
-  const w = c.map((v, i) => v - a[i]);
-  const n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
-  return dot(n, mean(pts).map((v, i) => v - from[i])) >= 0 ? pts : pts.slice().reverse();
-}
+/** A hull face: wound away from `from` (its edges kept with their sides), plain unless `extra` says. */
+const oriented = (pts, edges, from, extra) => ({ ...facing(pts, edges, from), kind: "outer", key: null, tint: null, turns: false, cull: true, layer: 0, ...extra });
 
 /** A counter-clockwise path moved in by d cells, each corner along its bisector (its mitre kept to 3d). */
 function insetPath(pts, d) {
@@ -96,8 +67,6 @@ function insetPath(pts, d) {
   });
 }
 
-const polyArea = (P) => P.reduce((s, [x, y], i) => s + x * P[(i + 1) % P.length][1] - P[(i + 1) % P.length][0] * y, 0) / 2;
-
 /**
  * A solid lofted from a counter-clockwise path in cells, in model space by M(x, y, h): its walls
  * between rings (a bottom bevel, the bands, a top bevel), each path edge cut at the cell boundaries
@@ -105,11 +74,13 @@ const polyArea = (P) => P.reduce((s, [x, y], i) => s + x * P[(i + 1) % P.length]
  * @param {(x: number, y: number, h: number) => number[]} M
  * @param {number[][]} path
  * @param {object} o  `bot(x, y)` and `top(x, y)` in model units; `bevelTop` and `bevelBottom` in
- *   cells (also their height); `bands`, fractions up the wall between the bevels; `band(i)` the
- *   extra for the wall over band boundary i (0 the lowest piece); `tint(x, y)`; `seams`; `skip(x, y)`
- *   for top tiles under something; `cuts` {x, y} extra tile lines; `kind`; `bottomCap` (default
- *   true); `baseEdge` (default true); `extra` for every face; `capExtra(piece, up)`, a cap tile's
- *   extra, or null to leave it out
+ *   cells (also their height); `bands`, rings up the wall between the bevels, each `{at, line}` (at
+ *   a fraction of the way up; `line` false for one drawn without an edge); `wall({lo, hi, edge, t0,
+ *   t1})` a wall piece's extra (lo and hi the fractions of its rings, null for a bevel's), so the
+ *   stripe and the window panes are pieces of the wall itself; `along(edge)` extra cuts along a path
+ *   edge, as fractions of it; `tint(x, y)`; `seams`; `skip(x, y)` for top tiles under something;
+ *   `cuts` {x, y} extra tile lines; `kind`; `bottomCap` (default true); `baseEdge` (default true);
+ *   `extra` for every face; `capExtra(piece, up)`, a cap tile's extra, or null to leave it out
  */
 function loft(M, path, o) {
   const faces = [];
@@ -119,11 +90,11 @@ function loft(M, path, o) {
   const lo = (x, y) => o.bot(x, y) + bb * CELL.side;
   const hi = (x, y) => o.top(x, y) - bt * CELL.side;
   const rings = [];
-  if (bb) rings.push({ P: innerBottom, h: o.bot });
-  rings.push({ P: path, h: lo });
-  for (const f of o.bands ?? []) rings.push({ P: path, h: (x, y) => lo(x, y) + (hi(x, y) - lo(x, y)) * f });
-  rings.push({ P: path, h: hi });
-  if (bt) rings.push({ P: innerTop, h: o.top });
+  if (bb) rings.push({ P: innerBottom, h: o.bot, at: null, line: true });
+  rings.push({ P: path, h: lo, at: 0, line: true });
+  for (const { at, line = true } of o.bands ?? []) rings.push({ P: path, h: (x, y) => lo(x, y) + (hi(x, y) - lo(x, y)) * at, at, line });
+  rings.push({ P: path, h: hi, at: 1, line: true });
+  if (bt) rings.push({ P: innerTop, h: o.top, at: null, line: true });
   const n = path.length;
   const sharp = path.map((p, i) => turnAt(path[(i + n - 1) % n], p, path[(i + 1) % n]) > SHARP);
   const tint = o.tint ?? (() => null);
@@ -145,6 +116,7 @@ function loft(M, path, o) {
     }
     const m = Math.ceil(len / TILE - 1e-9);
     for (let j = 1; j < m; j++) cuts.add(j / m);
+    for (const t of o.along?.(i) ?? []) if (t > 1e-6 && t < 1 - 1e-6) cuts.add(t);
     const ts = [...cuts].sort((p, q) => p - q);
     const [nx, ny] = [(c[1] - a[1]) / len, -(c[0] - a[0]) / len]; // outward: right of a counter-clockwise path
     const seamAt = (t) => !!o.seams && [0, 1].some((k) => Math.abs(c[k] - a[k]) > 1e-9 && onSeam(a[k] + (c[k] - a[k]) * t));
@@ -161,8 +133,9 @@ function loft(M, path, o) {
         const [R0, R1] = [rings[r], rings[r + 1]];
         const pts = [at(R0, t0), at(R0, t1), at(R1, t1), at(R1, t0)];
         const from = M(mx - nx * 0.3, my - ny * 0.3, (R0.h(mx, my) + R1.h(mx, my)) / 2);
-        const band = o.band?.(r - (bb ? 1 : 0)) ?? {};
-        faces.push(oriented(pts, [r > 0 || o.baseEdge !== false, upright(t1, 1), true, upright(t0, 0)], from, { kind, tint: tint(mx, my), ...o.extra, ...band }));
+        const own = o.wall?.({ lo: R0.at, hi: R1.at, edge: i, t0, t1 }) ?? {};
+        const edges = [(r > 0 || o.baseEdge !== false) && R0.line, upright(t1, 1), R1.line, upright(t0, 0)];
+        faces.push(oriented(pts, edges, from, { kind, tint: tint(mx, my), ...o.extra, ...own }));
       }
     }
   }
@@ -182,7 +155,7 @@ function loft(M, path, o) {
     for (let ix = 0; ix + 1 < LX.length; ix++) {
       for (let iy = 0; iy + 1 < LY.length; iy++) {
         const piece = clip(clip(clip(clip(P, 0, LX[ix], 1), 0, LX[ix + 1], -1), 1, LY[iy], 1), 1, LY[iy + 1], -1);
-        if (piece.length < 3 || Math.abs(polyArea(piece)) < 1e-6) continue;
+        if (piece.length < 3 || Math.abs(area2(piece)) < 2e-6) continue;
         const [cx, cy] = mean(piece);
         if (up > 0 && o.skip?.(cx, cy)) continue;
         const extra = o.capExtra ? o.capExtra(piece, up) : {};
@@ -227,7 +200,7 @@ function tube(c, k, [s0, s1], [r0, r1], n, extra, paint = () => ({})) {
   axis[k] = (s0 + s1) / 2;
   for (let i = 0; i < n; i++) {
     const i1 = (i + 1) % n;
-    out.push(face(away([A[i], A[i1], B[i1], B[i]], axis), { ...extra, edges: [false, true, false, true], ...paint(i) }));
+    out.push(face(outward([A[i], A[i1], B[i1], B[i]], axis), { ...extra, edges: [false, true, false, true], ...paint(i) }));
   }
   // a point just inside the tube from each end, so each cap faces out of it
   const inside = (s, toward) => {
@@ -235,7 +208,7 @@ function tube(c, k, [s0, s1], [r0, r1], n, extra, paint = () => ({})) {
     p[k] = s + Math.sign(toward - s) * Math.min(1, Math.abs(toward - s) / 2);
     return p;
   };
-  out.push(face(away(A, inside(s0, s1)), extra), face(away(B, inside(s1, s0)), extra));
+  out.push(face(outward(A, inside(s0, s1)), extra), face(outward(B, inside(s1, s0)), extra));
   return out;
 }
 
@@ -259,7 +232,7 @@ export function buildShipModel(index, data) {
   const H = CELL.deck / 2;
   const M = (x, y, h) => [(x - mid[0]) * CELL.side, h, (y - mid[1]) * CELL.frame];
   const at = (x, y, z) => M(x, y, (z - mid[2]) * CELL.deck);
-  const box = [[hull.x0 - 0.5, hull.y0 - 0.5], [hull.x1 + 0.5, hull.y0 - 0.5], [hull.x1 + 0.5, hull.y1 + 0.5], [hull.x0 - 0.5, hull.y1 + 0.5]];
+  const box = boxPath(hull);
   const pathOf = (z) => index.hullPaths?.[z] ?? box;
   const rooms = [...index.byId.values()].filter((r) => !r.blister);
   const roomAt = new Map(rooms.map((r) => [`${r.cell.x}:${r.cell.y}:${r.cell.z}`, r]));
@@ -308,33 +281,72 @@ export function buildShipModel(index, data) {
       const [cx, hw] = [(b.x0 + b.x1) / 2, (b.x1 - b.x0) / 2 - 0.12];
       return { x0: cx - hw, x1: cx + hw, y0: (b.y0 + b.y1) / 2 - 0.05, y1: b.y1 - 0.08 };
     });
-  const stands = [...canopies, ...(spine ? [{ x0: -spine.width / 2, x1: spine.width / 2, y0: spine.from, y1: spine.to }] : [])];
-  const under = (x, y) => stands.some((s) => x > s.x0 && x < s.x1 && y > s.y0 && y < s.y1);
+  // what stands on the roof, in cells: the roof (and the spine's top) is cut round each and left
+  // out under it, so no tile there is sorted over it
+  const rect = (x, y, hx, hy) => ({ x0: x - hx, x1: x + hx, y0: y - hy, y1: y + hy });
+  const greebles = (look.greebles ?? []).map((g) => {
+    const [hx, hy] = GREEBLE_BASE[g.type];
+    return rect(g.side, g.frame, hx / CELL.side, hy / CELL.frame);
+  });
+  const spineRect = spine ? [{ x0: -spine.width / 2, x1: spine.width / 2, y0: spine.from, y1: spine.to }] : [];
+  const inRect = (rs) => (x, y) => rs.some((s) => x > s.x0 && x < s.x1 && y > s.y0 && y < s.y1);
+  const cutsOf = (rs) => ({ x: rs.flatMap((s) => [s.x0, s.x1]), y: rs.flatMap((s) => [s.y0, s.y1]) });
+  const stands = [...canopies, ...spineRect, ...greebles];
 
-  // the stripe and the seam line along the flank, as bands up the wall
+  // the windows: on each deck, panes along every path edge beside a windowed room, each the piece
+  // of wall between two rings, so it's sorted as the wall is
+  const byLocal = new Map(rooms.map((r) => [local(r), r]));
+  const windowed = (surface.windows ?? []).map((id) => byLocal.get(id)).filter(Boolean);
+  const panesOf = (z) => {
+    const near = windowed.filter((r) => r.cell.z === z).map(bounds);
+    const path = pathOf(z);
+    return path.map((a, i) => {
+      const c = path[(i + 1) % path.length];
+      const len = Math.hypot(c[0] - a[0], c[1] - a[1]);
+      if (!near.length || len < 1e-9) return [];
+      const count = Math.max(1, Math.round(len / WINDOW_EVERY));
+      const panes = [];
+      for (let j = 0; j < count; j++) {
+        const [t0, t1] = [(j + 0.18) / count, (j + 0.82) / count];
+        const [mx, my] = [a[0] + ((c[0] - a[0]) * (t0 + t1)) / 2, a[1] + ((c[1] - a[1]) * (t0 + t1)) / 2];
+        if (near.some((b) => mx >= b.x0 - 0.3 && mx <= b.x1 + 0.3 && my >= b.y0 - 0.05 && my <= b.y1 + 0.05)) panes.push([t0, t1]);
+      }
+      return panes;
+    });
+  };
+
+  // the stripe, the seam line along the flank and the windows' sill and lintel, as rings up the wall
   const stripe = surface.stripe;
-  const bands = stripe ? [stripe.at, stripe.at + stripe.width] : [];
-  if (surface.seams) bands.push(0.62);
-  bands.sort((p, q) => p - q);
-  const stripeBand = stripe ? bands.indexOf(stripe.at) + 1 : -1;
   const stripePaint = stripe ? { kind: "fore", tint: palette[stripe.paint] ?? null } : null;
+  const bandsOf = (lit) =>
+    [
+      ...(stripe ? [{ at: stripe.at }, { at: stripe.at + stripe.width }] : []),
+      ...(surface.seams ? [{ at: SEAM }] : []),
+      ...(lit ? [{ at: PANE[0], line: false }, { at: PANE[1], line: false }] : []),
+    ].sort((p, q) => p.at - q.at);
 
   // each deck: its path lofted floor to top, bevelled and dropped at the ship's top and bottom
   for (let z = grid.z0; z <= grid.z1; z++) {
     const [top, bottom] = [z === grid.z1, z === grid.z0];
+    const panes = panesOf(z);
     faces.push(
       ...loft(M, pathOf(z), {
         bot: botOf(z),
         top: topOf(z),
         bevelTop: top ? profile.bevel : 0,
         bevelBottom: bottom ? profile.bevel : 0,
-        bands,
-        band: (i) => (i === stripeBand ? stripePaint : null),
+        bands: bandsOf(panes.some((p) => p.length)),
+        along: (i) => panes[i].flat(),
+        wall: ({ lo, edge, t0, t1 }) => {
+          if (stripe && lo === stripe.at) return stripePaint;
+          const pane = lo === PANE[0] && panes[edge].some(([p0, p1]) => t0 >= p0 - 1e-9 && t1 <= p1 + 1e-9);
+          return pane ? { kind: "lamp", tint: null, edges: [false, false, false, false] } : null;
+        },
         tint: tintAt(z),
         seams: surface.seams,
         extra: { deck: z, outline: true },
-        skip: top ? under : undefined,
-        cuts: { x: stands.flatMap((s) => [s.x0, s.x1]), y: stands.flatMap((s) => [s.y0, s.y1]) },
+        skip: top ? inRect(stands) : undefined,
+        cuts: cutsOf(stands),
         // a top under the deck above is its lid, shown when cut to it; a bottom over the deck below isn't there
         capExtra: (piece, up) => {
           if (up > 0) return !top && covers(z + 1, piece) ? { lid: z, deck: undefined, outline: undefined } : {};
@@ -356,7 +368,8 @@ export function buildShipModel(index, data) {
         tint: tintAt(grid.z1),
         seams: surface.seams,
         extra: onTop,
-        skip: (x, y) => canopies.some((s) => x > s.x0 && x < s.x1 && y > s.y0 && y < s.y1),
+        skip: inRect([...canopies, ...greebles]),
+        cuts: cutsOf([...canopies, ...greebles]),
       }),
     );
   }
@@ -372,39 +385,6 @@ export function buildShipModel(index, data) {
         extra: onTop,
       }),
     );
-  }
-
-  // lit window strips on the walls beside each windowed room, a pane a piece of wall
-  const byLocal = new Map(rooms.map((r) => [local(r), r]));
-  for (const id of surface.windows ?? []) {
-    const r = byLocal.get(id);
-    if (!r) continue;
-    const z = r.cell.z;
-    const b = bounds(r);
-    const path = pathOf(z);
-    const [bevelTop, bevelBottom] = [z === grid.z1 ? profile.bevel : 0, z === grid.z0 ? profile.bevel : 0];
-    const [bot, top] = [botOf(z), topOf(z)];
-    const hAt = ([x, y], f) => {
-      const [lo, hi] = [bot(x, y) + bevelBottom * CELL.side, top(x, y) - bevelTop * CELL.side];
-      return lo + (hi - lo) * f;
-    };
-    path.forEach((a, i) => {
-      const c = path[(i + 1) % path.length];
-      const len = Math.hypot(c[0] - a[0], c[1] - a[1]);
-      if (len < 1e-9) return;
-      const pieces = Math.max(1, Math.round(len / WINDOW_EVERY));
-      const [nx, ny] = [(c[1] - a[1]) / len, -(c[0] - a[0]) / len];
-      const off = 0.8 / CELL.side;
-      for (let j = 0; j < pieces; j++) {
-        const along = (t) => [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t];
-        const [p0, p1] = [along((j + 0.18) / pieces), along((j + 0.82) / pieces)];
-        const m = mean([p0, p1]);
-        if (m[0] < b.x0 - 0.3 || m[0] > b.x1 + 0.3 || m[1] < b.y0 - 0.05 || m[1] > b.y1 + 0.05) continue;
-        const [q0, q1] = [[p0[0] + nx * off, p0[1] + ny * off], [p1[0] + nx * off, p1[1] + ny * off]];
-        const pts = [M(...q0, hAt(p0, 0.66)), M(...q1, hAt(p1, 0.66)), M(...q1, hAt(p1, 0.84)), M(...q0, hAt(p0, 0.84))];
-        faces.push(oriented(pts, [false, false, false, false], M(m[0] - nx * 0.3, m[1] - ny * 0.3, hAt(m, 0.75)), { kind: "lamp", deck: z }));
-      }
-    });
   }
 
   // nav lights at her widest each side, the point nearest her middle frame, and one astern
@@ -476,7 +456,7 @@ function shipFixtures(index, data, { at, pathOf }) {
       const [hx, hy, hz] = [0.11 * u * CELL.side, 0.08 * u * CELL.side, 0.14 * u * CELL.frame];
       const V = [[h[0] + hx, h[1], h[2]], [h[0], h[1] + hy, h[2]], [h[0] - hx, h[1], h[2]], [h[0], h[1] - hy, h[2]]];
       for (const tip of [[h[0], h[1], h[2] + hz], [h[0], h[1], h[2] - hz]]) {
-        for (let i = 0; i < 4; i++) faces.push(face(away([tip, V[i], V[(i + 1) % 4]], h), extra));
+        for (let i = 0; i < 4; i++) faces.push(face(outward([tip, V[i], V[(i + 1) % 4]], h), extra));
       }
       const [t0, t1] = [p(0.88), p(1)];
       faces.push(...cuboid([t0[0], t0[1], (t0[2] + t1[2]) / 2], [1.2, 1.2, (t1[2] - t0[2]) / 2], extra));

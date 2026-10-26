@@ -8,6 +8,7 @@
 import { DISTRICT_COLOURS as DC } from "./lib/geometry.js";
 import { PLAN, decksLayout, decksShape, pathD } from "./lib/decks.js";
 import { noseAt, propBoxes, tailAt, wallAt } from "./lib/footprint.js";
+import { boxPath } from "./lib/solid.js";
 import { el } from "./lib/svg.js";
 import { DIM, PASSAGE, PLATE, TXT, hover, label, roomBox } from "./deck-view.js";
 
@@ -163,13 +164,6 @@ function shipFixtures(index, layout, { id, fixtures }) {
       });
     },
   };
-}
-
-/** A box hull's path, in cells: the box round the cells. */
-function boxPath(hull) {
-  if (!hull) return [];
-  const [x0, x1, y0, y1] = [hull.x0 - 0.5, hull.x1 + 0.5, hull.y0 - 0.5, hull.y1 + 0.5];
-  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
 }
 
 /** A drive bell out of the hull's aft end at its side: a throat flaring to its mouth, and the mouth's rim. */

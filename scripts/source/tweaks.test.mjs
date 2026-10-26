@@ -470,10 +470,10 @@ describe("resolveLook ship plans", () => {
   });
 
   it("puts the tweak's keys over the defaults, and turns a detail off", () => {
-    const { look } = plan({ profile: { bevel: 0, spine: { from: 0, to: 1, width: 1, height: 0.3 } }, surface: { stripe: null, windows: [] }, greebles: [{ type: "vent", side: 0, frame: 0 }] });
+    const { look } = plan({ profile: { bevel: 0, spine: { from: 0, to: 1, width: 1, height: 0.3 } }, surface: { stripe: null, windows: [] }, greebles: [{ type: "vent", side: 0, frame: 0.5 }] });
     expect(look.profile).toEqual({ bevel: 0, noseDrop: 0.35, noseLength: 0.8, spine: { from: 0, to: 1, width: 1, height: 0.3 } });
     expect(look.surface).toEqual({ seams: true, windows: [], stripe: null, navLights: true });
-    expect(look.greebles).toEqual([{ type: "vent", side: 0, frame: 0 }]);
+    expect(look.greebles).toEqual([{ type: "vent", side: 0, frame: 0.5 }]);
   });
 
   it("inherits profile and surface key by key through like", () => {
@@ -502,6 +502,14 @@ describe("resolveLook ship plans", () => {
     const hull = { 1: [[-0.6, -0.6], [0.6, -0.6], [0.6, 1.6, 0.1], [-0.6, 1.6, 0.3]] };
     expect(() => plan({ hull })).toThrow(/data\/tweaks\/p\.json: profile\.bevel 0\.12 \(the default\) is more than hull\.1\[2\]'s corner radius 0\.1/);
     expect(() => plan({ hull, profile: { bevel: 0.1 } })).not.toThrow();
+  });
+
+  it("refuses a greeble half on the spine and half off it", () => {
+    const spine = { from: -1.1, to: 0.25, width: 1.25, height: 0.3 };
+    const dish = (side) => ({ profile: { spine }, greebles: [{ type: "vent", side: 0, frame: 0 }, { type: "dish", side, frame: -0.65, r: 0.14 }] });
+    expect(() => plan(dish(0.65))).toThrow(/data\/tweaks\/p\.json: greebles\[1\] \(dish\) straddles the edge of profile\.spine/);
+    expect(() => plan(dish(0.8))).not.toThrow();
+    expect(() => plan(dish(0.3))).not.toThrow();
   });
 
   it("refuses a stripe paint the palette lacks, the default's too", () => {
