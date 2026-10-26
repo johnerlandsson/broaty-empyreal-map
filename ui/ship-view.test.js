@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { planFor } from "./lib/ships.js";
 import { buildShip } from "./place-views.js";
+import tugPlain from "../tests/fixtures/generated/plans/tug-plain.js";
 
 const aboard = (msg) => {
   const deckEl = document.createElement("div");
@@ -60,10 +61,15 @@ describe("buildShip", () => {
     expect(texts(deckEl)).toContain("hauls ore to Orrin");
   });
 
-  it("draws the plain tug (no tweaks) and lights her collar", () => {
-    const { ship, where } = aboard({ roomId: "ship.5.collar", areaName: "Brock", hull: "tug", hullName: "tug", shipRoom: "collar" });
+  it("draws a plan with no tweaks (the tug, frozen with the untweaked look) and lights her collar", () => {
+    const deckEl = document.createElement("div");
+    const ship = buildShip(tugPlain, document.createElement("div"), deckEl, { name: "Brock" });
+    const where = ship.update({ roomId: "ship.5.collar", areaName: "Brock", hull: "tug", hullName: "tug", shipRoom: "collar" });
     expect(where).toMatchObject({ kind: "room", id: "tug.collar" });
     expect(lit(ship.deck)).toBe(true);
+    expect(shown(ship.deck)).toBe(1);
+    expect(deckEl.querySelectorAll("path, rect").length).toBeGreaterThan(0);
+    expect(texts(deckEl)).toContain("Brock · tug");
   });
 
   it("draws an unknown hull's plan, the generic one, with nothing lit if the room isn't in it", () => {

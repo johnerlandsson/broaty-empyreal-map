@@ -76,16 +76,21 @@ beforeEach(async () => {
   globalThis.requestAnimationFrame = (fn) => frames.push(fn);
   globalThis.cancelAnimationFrame = () => {};
   await mount();
+  watchSets();
+});
+afterEach(() => {
+  vi.doUnmock("./data/ships.js");
+  delete window.panel;
+});
+/** Record every ModelView.set from here on, in `sets`. */
+function watchSets() {
   sets = [];
   const set = ModelView.prototype.set;
   ModelView.prototype.set = function (where, msg) {
     sets.push({ view: this, where });
     return set.call(this, where, msg);
   };
-});
-afterEach(() => {
-  delete window.panel;
-});
+}
 
 /** The ModelView whose div is the shown ship's. */
 const shipView = () => {
@@ -180,6 +185,27 @@ describe("your own ship in the top band", () => {
     emit("scene", { scene: "station", station: "orrin_station" });
     emit("manoeuvre", { verb: null });
     expect(shipShown()).toBe(false);
+  });
+
+  it("shows a plan with no tweaks (the tug, frozen with the untweaked look), her collar lit", async () => {
+    vi.doMock("./data/ships.js", async (importOriginal) => {
+      const real = await importOriginal();
+      const tugPlain = (await import("../tests/fixtures/generated/plans/tug-plain.js")).default;
+      return { ...real, plans: { ...real.plans, tug: tugPlain } };
+    });
+    await mount();
+    watchSets();
+    const tugPlain = (await import("../tests/fixtures/generated/plans/tug-plain.js")).default;
+    expect((await import("./lib/ships.js")).planFor("tug")).toBe(tugPlain); // main.js got the frozen plan
+    emit("scene", { scene: "parked" });
+    emit("location", { roomId: "ship.5.collar", name: "Docking Collar", area: "ship.5", areaName: "Brock", hull: "tug", hullName: "tug", shipRoom: "collar" });
+    expect(shipShown()).toBe(true);
+    const view = shipView();
+    expect(view).toBeDefined();
+    expect(view.faces.length).toBeGreaterThan(0);
+    expect(view.faces.every((f) => f.key == null || f.key.startsWith("tug."))).toBe(true);
+    expect(view.key).toBe("tug.collar");
+    expect(view.shapes.childNodes.length).toBeGreaterThan(0); // the collar's faces, lit
   });
 
   it("shows no ship model to a guest aboard another's ship (no scene)", () => {
