@@ -11,20 +11,13 @@ describe("station time", () => {
     expect(stationTime(utc(23, 59, 59)).time).toBe("23:59");
   });
 
-  it("names the shift as help people does: first 06:00 to 14:00, second 14:00 to 22:00, the night watch otherwise", () => {
-    const shift = (h, m) => stationTime(utc(h, m)).shift;
-    expect(shift(5, 59)).toBe("night watch");
-    expect(shift(6, 0)).toBe("first shift");
-    expect(shift(13, 59)).toBe("first shift");
-    expect(shift(14, 0)).toBe("second shift");
-    expect(shift(21, 59)).toBe("second shift");
-    expect(shift(22, 0)).toBe("night watch");
-    expect(shift(0, 0)).toBe("night watch");
+  it("goes by UTC, whatever the local zone", () => {
+    // 23:30 UTC is the next day in Stockholm; the clock still says 23:30
+    expect(stationTime(new Date("2026-10-26T23:30:00Z")).time).toBe("23:30");
   });
 
-  it("goes by UTC, whatever the local zone", () => {
-    // 23:30 UTC is the next day in Stockholm; the clock still says the night watch at 23:30
-    expect(stationTime(new Date("2026-10-26T23:30:00Z"))).toMatchObject({ time: "23:30", shift: "night watch" });
+  it("names no shift: shifts are T.I.S.S.'s own, not the game's", () => {
+    expect(Object.keys(stationTime(utc(13, 52))).sort()).toEqual(["ms", "time"]);
   });
 
   it("says how long until the minute turns, so the clock can wake for it", () => {

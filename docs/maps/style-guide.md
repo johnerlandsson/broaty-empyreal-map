@@ -64,7 +64,7 @@ Two bands, split about 42 / 58 by a 1 px rule (`#2b3646`):
   ([action-card.md](action-card.md)). It's chrome, the same size at any zoom,
   and it's hidden when you're doing nothing.
 - **Station time**, a tab on the rule between the bands at the right, says
-  the time on the station (UTC) and its shift: `13:52 · first shift`
+  the time on the station (UTC): `13:52`
   ([station-clock.md](station-clock.md)). It always shows, and turns with the
   minute on its own.
 

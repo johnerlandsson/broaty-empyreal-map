@@ -10,7 +10,7 @@
 // top band, one at a time; while one does, the space scene doesn't draw. Docking and undocking, the station
 // model shows through the space scene, drawing near or falling away on the game's clock. What you're
 // doing (Char.Action) is a card in the deck band's corner, over whichever plan shows; the overview is
-// left as it is. Station time (UTC) and its shift are a tab on the rule between the bands, always.
+// left as it is. Station time (UTC) is a tab on the rule between the bands, always.
 // Until the game says where you are, both bands show an unknown location (unknown-view.js), and no
 // station is built till one is picked.
 
