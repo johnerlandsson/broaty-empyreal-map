@@ -35,7 +35,11 @@ body {
   bottom: 4%;
   z-index: 3;
   pointer-events: none;
+  transition: left .6s, right .6s, top .6s, bottom .6s;
 }
+/* docking or undocking: smaller in the lower right, clear of the station shrinking or growing in the
+ * middle; she glides back to the middle when it ends */
+.own-ship.manoeuvre { left: 56%; right: 4%; top: 52%; bottom: 4%; }
 .own-ship .model { cursor: default !important; }
 .own-ship button, .own-ship .zoom { display: none !important; }
 

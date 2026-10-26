@@ -98,6 +98,7 @@ describe("your own ship in the top band", () => {
     emit("scene", { scene: "belt" });
     emit("location", FREIGHTER);
     expect(shipShown()).toBe(true);
+    expect(ownShip().classList.contains("manoeuvre")).toBe(false); // in the middle, no manoeuvre
     const view = shipView();
     expect(view).toBeDefined();
     expect(view.faces.some((f) => f.key?.startsWith("freighter."))).toBe(true);
@@ -157,6 +158,7 @@ describe("your own ship in the top band", () => {
     // the scene stays "station" till she's clear; the space view draws the station falling away
     emit("manoeuvre", { verb: "undock", left: 5, total: 10, at: "tiss" });
     expect(shipShown()).toBe(true);
+    expect(ownShip().classList.contains("manoeuvre")).toBe(true); // aside, the station in the middle
     expect(shipView().key).toBe("hull-skiff.cockpit");
     runFrames(performance.now() + 16);
     const station = awayCalls.filter((c) => c.view !== shipView() && c.away > 0);
@@ -166,6 +168,7 @@ describe("your own ship in the top band", () => {
     emit("scene", { scene: "parked" });
     emit("manoeuvre", { verb: null });
     expect(shipShown()).toBe(true);
+    expect(ownShip().classList.contains("manoeuvre")).toBe(false); // back to the middle
   });
 
   it("stays through a dock and goes once she's docked", () => {
@@ -173,6 +176,7 @@ describe("your own ship in the top band", () => {
     emit("scene", { scene: "parked" });
     emit("manoeuvre", { verb: "dock", left: 20, total: 20, at: "orrin_station" });
     expect(shipShown()).toBe(true);
+    expect(ownShip().classList.contains("manoeuvre")).toBe(true);
     emit("scene", { scene: "station", station: "orrin_station" });
     emit("manoeuvre", { verb: null });
     expect(shipShown()).toBe(false);

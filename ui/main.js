@@ -199,12 +199,14 @@ function shipView(msg) {
 
 /** Your ship's model in the top band: shown aboard a ship while the band is the space view (a
  *  space scene, or a dock or an undock under way) and nothing covers it; that ship's alone. A guest
- *  aboard another's ship has no scene, so none. */
+ *  aboard another's ship has no scene, so none. During a dock or an undock she stands aside, smaller
+ *  in the lower right, clear of the station drawing near or falling away. */
 function runShip() {
   const out = (scene != null && scene !== "station") || manoeuvring;
   const covered = chart.shown || lanes.shown || belt.shown;
   const view = isShipRoom(last?.roomId) && out && !covered ? ships[planFor(last?.hull).id] : null;
   shipModels.style.display = view ? "" : "none";
+  shipModels.classList.toggle("manoeuvre", manoeuvring); // aside, so the station coming and going shows
   for (const v of Object.values(ships)) v.model.div.style.display = v === view ? "" : "none";
 }
 
