@@ -31,7 +31,8 @@ describe("picking", () => {
     expect(picked).toEqual([ID]);
     pointer("pointerdown", node, 100, 100);
     pointer("pointermove", node, 120, 100);
-    pointer("pointerup", node, 120, 100);
+    pointer("pointermove", node, 101, 100);
+    pointer("pointerup", node, 101, 100);
     expect(picked).toEqual([ID]);
   });
 });

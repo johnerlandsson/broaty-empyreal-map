@@ -7,7 +7,7 @@ import orrin from "../tests/fixtures/generated/orrin.js";
 import { buildDecksModel, decksCut, decksKey, indexDecks } from "./lib/decks.js";
 import { data } from "./data/places.js";
 import { CAM, FRONT, camera } from "./lib/geometry.js";
-import { indexStation } from "./lib/locate.js";
+import { indexStation, locate } from "./lib/locate.js";
 import { awayLook } from "./lib/space.js";
 import { tissRooms } from "./lib/look.js";
 import { ModelView } from "./model-view.js";
@@ -157,7 +157,42 @@ describe("picking", () => {
     expect(picked).toEqual([ID]);
     pointer("pointerdown", 50);
     pointer("pointermove", 70);
-    pointer("pointerup", 70);
+    pointer("pointermove", 51);
+    pointer("pointerup", 51);
     expect(picked).toEqual([ID]);
+  });
+});
+
+describe("picking on a wheel", () => {
+  const index = indexStation(tissRooms(data.tiss));
+  const m = new ModelView(document.createElement("div"), index, { pick: true });
+  const picked = [];
+  m.onPick((id) => picked.push(id));
+  const click = (face) => {
+    picked.length = 0;
+    face.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 5, clientY: 5, button: 0, pointerId: 1 }));
+    face.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, clientX: 5, clientY: 5, button: 0, pointerId: 1 }));
+    return picked[0];
+  };
+  const faces = [...m.geo.querySelectorAll("path[data-room]")];
+
+  it("marks faces with room ids only, never face keys", () => {
+    expect(faces.length).toBeGreaterThan(0);
+    for (const f of faces) expect(index.byId.has(f.getAttribute("data-room"))).toBe(true);
+  });
+
+  it("gives a ring face's room, which locate resolves", () => {
+    const ring = faces.find((f) => index.byId.get(f.getAttribute("data-room")).z < 3 && !f.getAttribute("data-room").includes("ladderway"));
+    const id = click(ring);
+    expect(id).toMatch(/^tiss\./);
+    expect(locate(index, { roomId: id }, null).kind).toBe("room");
+  });
+
+  it("gives a spoke face its ladderway", () => {
+    const spoke = m.faces.find((f) => f.key?.startsWith("spoke:") && m.roomOf.has(f.key));
+    const id = m.roomOf.get(spoke.key);
+    expect(id).toMatch(/ladderway/);
+    const face = faces.find((f) => f.getAttribute("data-room") === id);
+    expect(click(face)).toBe(id);
   });
 });

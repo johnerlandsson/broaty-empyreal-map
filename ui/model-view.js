@@ -94,6 +94,22 @@ function edgePath(P, edges) {
   }).join("");
 }
 
+/**
+ * For picking: each face key a room is drawn with, to that room's id, through the place's keyOf and
+ * the where its locate gives for the room (a wheel's rooms by x, y and z, a decks station's by
+ * cell and level; a drum's key is the id). On a wheel a ring's key is its stretch of corridor or
+ * its units, and a spoke's its ladderway.
+ */
+function roomsByKey(index, keyOf) {
+  const out = new Map();
+  for (const room of index?.byId?.values() ?? []) {
+    const where = { kind: "room", id: room.id, level: room.level ?? room.z, x: room.cell?.x ?? room.x, y: room.cell?.y ?? room.y };
+    const key = keyOf(where);
+    if (key != null && !out.has(key)) out.set(key, room.id);
+  }
+  return out;
+}
+
 export class ModelView {
   /**
    * @param {HTMLElement} containerEl element the model fills
@@ -119,6 +135,7 @@ export class ModelView {
     this.cutaway = opts.view?.cutaway ?? "hide-above";
     this.cam = camera(opts.view?.camera ?? CAM);
     this.pick = !!opts.pick;
+    if (this.pick) this.roomOf = roomsByKey(index, this.keyOf);
     this.normals = this.faces.map((f) => normalOf(f.pts));
 
     const div = document.createElement("div");
@@ -176,7 +193,8 @@ export class ModelView {
     if (this.pick) attachPick(div, (id) => this.picked?.(id));
   }
 
-  /** With pick: fn(key) on a click (not a pan) on a face; a room's id but on T.I.S.S.'s rings and spokes. */
+  /** With pick: fn(roomId) on a click (not a pan) on a face of a room; a face no room has (a hull)
+   *  isn't picked. */
   onPick(fn) {
     this.picked = fn;
   }
@@ -317,14 +335,18 @@ export class ModelView {
 
     // picking: a keyed face carries its key; the pointer goes through a keyless one (a hull), so a
     // room inside it is picked through it
-    const room = (f) => (!this.pick ? {} : f.key != null ? { "data-room": f.key } : { "pointer-events": "none" });
+    const room = (f) => {
+      if (!this.pick) return {};
+      const id = this.roomOf.get(f.key);
+      return id ? { "data-room": id } : { "pointer-events": "none" };
+    };
     const geo = document.createDocumentFragment();
     const hot = document.createDocumentFragment();
     for (const { f, P, n } of quads) {
       const d = `M${P.map((p) => `${num(p[0])},${num(p[1])}`).join("L")}Z`;
       // a ghost face is drawn only when lit (a room's cell inside a hull, seen through it), and
       // unseen for picking
-      if (f.ghost && this.pick && f.key != null) el("path", { d, fill: "transparent", stroke: "none", ...room(f) }, geo);
+      if (f.ghost && this.roomOf?.has(f.key)) el("path", { d, fill: "transparent", stroke: "none", ...room(f) }, geo);
       if (!f.ghost) {
         const fill = fillOf(f, Math.abs(n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]));
         el("path", { d, fill, stroke: fill, "stroke-width": 0.8, "stroke-linejoin": "round", ...room(f) }, geo);
