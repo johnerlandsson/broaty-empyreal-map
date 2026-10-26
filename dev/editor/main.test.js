@@ -132,7 +132,7 @@ describe("the editor page", () => {
     expect(editor.place.views).toBe(before);
   });
 
-  it("shows a failed build in a bar over the plan, cleared by the next build", async () => {
+  it("shows a failed build in a bar at the plan's foot, cleared by the next build", async () => {
     await start("#orrin");
     FakeEvents.last.emit({ type: "error", error: "orrin: bad paint" });
     const bar = root.querySelector(".errbar");

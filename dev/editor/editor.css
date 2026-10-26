@@ -25,10 +25,11 @@ body {
 }
 .rule { background: #2b3646; }
 
-/* a failed build, over the plan */
+/* a failed build, at the plan's foot: clear of its tag and of the zoom buttons in the top right,
+ * a long list scrolling in no more than 40% of the plan */
 .errbar {
-  position: absolute; left: 0; right: 0; top: 0; z-index: 6;
-  padding: 6px 12px; background: #3a1b1b; color: #ff7b7b; border-bottom: 1px solid #5a2a2a;
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; max-height: 40%; overflow-y: auto; box-sizing: border-box;
+  padding: 6px 12px; background: #3a1b1b; color: #ff7b7b; border-top: 1px solid #5a2a2a;
   font: 11.5px "DejaVu Sans Mono", monospace; white-space: pre-wrap;
 }
 .errbar[hidden] { display: none; }

@@ -16,6 +16,13 @@ The server listens on `localhost`, port 8766, and nowhere else. It answers
 only to the host names `localhost:8766` and `127.0.0.1:8766`, so a web page
 from another site cannot reach it. Stop it with Ctrl-C.
 
+To use another port, give it with `--port`:
+
+```bash
+npm run edit -- --port 8770
+# Editor: http://localhost:8770/dev/edit.html
+```
+
 It reads the Empyreal source at `~/dev/empyreal`, as `npm run build:data`
 does. It never writes there.
 
@@ -23,7 +30,10 @@ does. It never writes there.
 
 Only `data/tweaks/*.json` and, through the build, `ui/data/`. It never
 writes `data/sync-report.json` or the source. The report you see in the
-editor is the one from the last `npm run build:data`.
+editor is the one from the last `npm run build:data`. After each save the
+editor updates only its orphans, unplaced rooms and places with no builder,
+which follow the tweaks. The new places and changed rooms stay as the sync
+found them.
 
 A save goes like this:
 
@@ -33,6 +43,11 @@ A save goes like this:
    refused save".
 3. If the build passes, the server writes the file and rebuilds `ui/data/`.
 4. The page loads the new data and redraws.
+
+If the file is written but the rebuild of `ui/data/` then fails, the bar
+says `saved data/tweaks/<file>, but rebuilding ui/data failed:` and the
+message. The save stands, and the inputs keep the new value. The next build
+that works, from a save or a hand edit, fixes the map.
 
 A tweak file is written in a fixed order of keys, two spaces of indent, so
 a save may reorder a file you wrote by hand.
@@ -111,11 +126,14 @@ replaces the span and corners, and the editor does not change it.
 ### Hull
 
 Decks places only. This is the plan's deck: change the deck on the plan to
-change which hull the panel shows.
+change which hull the panel shows. A deck outside the hull, such as one with
+only a blister, has no hull, so the section is not shown there.
 
-- **make hull from rooms** draws a path round the deck's rooms. If the rooms
-  make more than one piece, the path goes round the largest, and the editor
-  warns you. If the deck has no rooms, it says so.
+- **make hull from rooms** draws a path round the deck's rooms, each with its
+  footprint: its span, or the box round its outline. A footprint the place
+  gets through `like` counts too. If the rooms make more than one piece, the
+  path goes round the largest, and the editor warns you. If the deck has no
+  rooms, it says so.
 - **back to the box** puts the deck back to its box. If the hull comes from
   your own file, that removes it. If it comes through `like`, the editor
   writes `null` over it, which opts out. See "The hull" in
@@ -139,9 +157,10 @@ On a decks place the plan carries handles in blue.
 - Press Delete or Backspace to remove the picked point. A path needs three
   points at least, and the editor says so if you try to go below that. The
   keys do nothing while you type in a field.
-- A diamond marks each cradle and mast. A cradle drags along its side. A mast
-  drags in side and frame. Both snap to 0.05 cells. A dashed box shows the
-  cradle.
+- A diamond marks each cradle and mast, on its own deck only: a cradle on
+  the deck it is on, a mast on the top deck. A cradle drags along its side. A
+  mast drags in side and frame. Both snap to 0.05 cells. A dashed box shows
+  the cradle.
 
 A drag redraws as you go and saves when you let go. A drag that ends where it
 started saves nothing.
@@ -168,8 +187,9 @@ When the build stops, the file is not written. Then:
 - the inputs go back to the last saved value;
 - after a drag, the plan goes back to the last saved look.
 
-The message is the one `npm run build:data` would give, with the file and
-the key. Fix what it names and try again. The bar clears at the next
+The message is the one `npm run build:data` would give, with the file
+(`data/tweaks/<file>`) and the key, and it ends `Nothing written`. Fix what
+it names and try again. The bar clears at the next
 save that works.
 
 If a tweak file does not parse, the bar shows the error. The panel says to fix

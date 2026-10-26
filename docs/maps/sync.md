@@ -13,7 +13,7 @@ source is only ever read. Never edit it.
    key), use the tweak editor (`npm run edit`, see [editor.md](editor.md))
    or edit the tweak file by hand.
 4. `npm test`, then look at the preview (`dev/preview.html`), or the editor
-   (`npm run edit`), which draws the same places. A golden render
+   (`npm run edit`), which draws the station places. A golden render
    (`tests/golden/`) that fails for a place the report names is expected: the
    source changed it. Check that place in `dev/preview.html`, then
    `GOLDEN_RECORD=1 npx vitest run tests/golden` and commit the goldens with

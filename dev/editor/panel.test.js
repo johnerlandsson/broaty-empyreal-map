@@ -113,7 +113,7 @@ describe("the side panel", () => {
     expect(side().querySelector('[data-key="paint.kitchen"]').textContent).toContain("set here");
   });
 
-  it("shows a 422's message over the plan and puts the swatch back", async () => {
+  it("shows a 422's message at the plan's foot and puts the swatch back", async () => {
     await start("#kilmar/kilmar.market");
     replies.push({ status: 422, body: { error: "data/tweaks/kilmar.json: paint.market: bad" } });
     swatch("offices").click();

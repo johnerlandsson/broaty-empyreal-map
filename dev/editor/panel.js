@@ -4,9 +4,9 @@
 // or "from <place>" through `like`) and, where it's the place's own, has a reset.
 // Every change runs one of ops.js's edits on the place's own tweak and PUTs it with the version
 // the page holds, one save at a time. A save the build refuses (422) shows its message in the bar
-// over the plan and puts the inputs back; one beaten by a hand edit (409) reloads the state. One
-// written whose rebuild of ui/data then failed (a 500 with a version) is held as saved, its message
-// shown; the next build fixes the view.
+// at the plan's foot and puts the inputs back; one beaten by a hand edit (409) reloads the state.
+// One written whose rebuild of ui/data then failed (a 500 with a version) is held as saved, its
+// message shown; the next build fixes the view.
 // What each kind of place allows matches the build: footprints only on decks rooms that aren't
 // passages or blisters, a cutaway and a hull only on decks, a camera on anything but a town.
 // The hull section is the plan's deck's: a path made round the rooms' footprints or back to the
