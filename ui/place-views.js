@@ -79,8 +79,8 @@ function named(plan, name) {
  * with `opts.name` (the ship's name; "ship" if none), and her caption and note under the hull.
  * `locate(index, msg)` takes the game's room id aboard, "ship.<n>.<key>", to the plan's
  * "<plan>.<key>"; a key the plan hasn't, or none, is "off": the plan drawn with nothing lit.
- * `update(msg)` lights the room the location message puts you in, sets the lines under the hull,
- * and returns where it put you. Never throws on a message.
+ * `update(msg)` lights the room the location message puts you in, on the plan and her model, sets
+ * the lines under the hull, and returns where it put you. Never throws on a message.
  * @param {object} plan a generated plan (data/plans), as lib/ships.js planFor gives it
  */
 export function buildShip(plan, modelEl, deckEl, opts = {}) {
@@ -100,6 +100,7 @@ export function buildShip(plan, modelEl, deckEl, opts = {}) {
     update(msg) {
       const where = locate(place.index, msg);
       place.deck.set(where);
+      place.model.set(where, msg);
       updateShip(place.deck, msg);
       return where;
     },

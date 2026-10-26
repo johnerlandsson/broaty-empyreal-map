@@ -22,6 +22,23 @@ body {
 
 .separator { background: #2b3646; }
 
+/* Your own ship in the top band (main.js), out in space: her model in front of the space scene,
+ * framed in the band's lower middle as in docs/maps/reference/own-ship-band-mockup.html (option 2).
+ * In z-order she is "3.5": over the scene's canvas (z 3, and she comes after it in the band, so
+ * she's drawn over it at the same z-index) and under the chart, lanes and belt maps (z 4). A
+ * picture, not a control: no zoom buttons, and the pointer goes through her. */
+.own-ship {
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  top: 26%;
+  bottom: 4%;
+  z-index: 3;
+  pointer-events: none;
+}
+.own-ship .model { cursor: default !important; }
+.own-ship button, .own-ship .zoom { display: none !important; }
+
 #info {
   position: absolute;
   left: 8px;

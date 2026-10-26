@@ -15,7 +15,9 @@
 //             orbit over Tamsin, which also emits charts and chart-ship putting her on that side, or on no
 //             side known); the bar's menu switches it
 //   ?hull=H   aboard a ship, send hull H (skiff, courier, freighter or tug: ui/data/ships.js) as the server will;
-//             the bar's menu switches it
+//             the bar's menu switches it. With no ?step (and no manoeuvre, action or sky) it opens aboard the
+//             Magpie with that hull, in her room ?room=K (cockpit when absent; the hold, the engine...), so
+//             with ?scene (belt, port-day...) your own ship stands in front of the scene in the top band
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
 //             docked-tiss, landed-zennor, none, maelor, maelor-lanes, edge, to-mouth, adrift, from-stop, to-tamsin,
 //             high-orbit or high-orbit-unknown; sweep: Space.Contacts at Gannet Belt, chase: after contact-1 from it),
@@ -954,8 +956,15 @@ function start() {
     walk(n ?? 0, Math.min(until, ROUTE.length - 1));
     return;
   }
+  if (n === null && q.has("hull") && !q.has("manoeuvre")) {
+    // aboard her, in your room: with a space scene, her model in front of it
+    const key = q.get("room") || "cockpit";
+    emitLocation(withHull({ ...COCKPIT, roomId: `ship.41.${key}`, name: key === "cockpit" ? COCKPIT.name : key }, true));
+    status.textContent = `Aboard the Magpie (${hullMenu.value || "no hull"}), ${key}`;
+    return;
+  }
   if (n === null) {
-    show(1); // Main Concourse
+    if (!q.has("manoeuvre")) show(1); // Main Concourse
     return;
   }
   show(n);

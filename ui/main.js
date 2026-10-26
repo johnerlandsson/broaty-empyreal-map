@@ -3,7 +3,8 @@
 // model and plan (a town on the ground has a skyline for its model); only the one you're on (or
 // docked or landed at) shows. Aboard a ship (any "ship." room) the bottom band shows that ship's
 // generated plan instead (data/ships.js), one view per plan, built on first use and again for a
-// ship of another name; riding a car (a lift or the tram),
+// ship of another name; and while she's out in space (a space scene, or a dock or an undock under
+// way) her model stands in front of the scene in the top band, your room lit; riding a car (a lift or the tram),
 // the car and its line of stops, one view per kind.
 // The Lua side holds all state and replays it when we post "ready", so this file keeps only the
 // last location, the docked station, and the level each plan last showed (a lift between floors
@@ -57,9 +58,14 @@ function built(key) {
   return stations[key];
 }
 const ships = {}; // plan id -> that plan's views (buildShip), for the ship of its `name`, built on first use
-const shipModels = document.createElement("div"); // a ship's model isn't shown yet: built off the page
 const cars = {}; // car kind (lift, tram) -> the DeckView drawing it, built on first use
 const space = new SpaceView(modelEl);
+// your ship's model, over the space scene's canvas (after it, at its z-index) and under the chart,
+// the lanes map and the belt map; framed in the band's lower middle (map.css)
+const shipModels = document.createElement("div");
+shipModels.className = "own-ship";
+shipModels.style.display = "none";
+space.cv.after(shipModels);
 space.onAway = (away) => stations[current]?.model.setAway?.(away);
 let unknown = new UnknownView(modelEl, deckEl); // both bands until the game says where you are
 const doing = new ActionCard(deckEl);
@@ -109,6 +115,7 @@ const CHART_SMOOTH = 100; // ms between redraws while she's under way
  *  drawing under it. */
 function runChart() {
   runSky();
+  runShip();
   const view = chart.shown ? chart : lanes.shown ? lanes : belt.shown ? belt : null;
   space.setCovered(!!view);
   clearInterval(chartTimer);
@@ -153,6 +160,7 @@ const UNKNOWN_LINE = "LOCATION UNKNOWN";
 let current; // the station showing: undefined till one is picked, null for one there's no plan of
 let docked = null; // where your ship is docked (a place id), from the scene message
 let approaching = null; // the station a dock under way is drawing near (its place id), from the manoeuvre message
+let manoeuvring = false; // a dock or an undock under way: the band is the space view, the station near or far
 let last = null; // the last location message
 
 /** Show the station model for key; the bottom band is render()'s, since a ship can take it. */
@@ -183,10 +191,21 @@ function shipView(msg) {
   if (ships[plan.id]?.name !== name) {
     ships[plan.id]?.deck.div.remove();
     ships[plan.id]?.model.div.remove();
-    ships[plan.id] = buildShip(plan, shipModels, deckEl, { name });
+    ships[plan.id] = buildShip(plan, shipModels, deckEl, { name, transparent: true });
     ships[plan.id].deck.div.style.display = "none"; // so showDeck() frames it once it's the only deck
   }
   return ships[plan.id];
+}
+
+/** Your ship's model in the top band: shown aboard a ship while the band is the space view (a
+ *  space scene, or a dock or an undock under way) and nothing covers it; that ship's alone. A guest
+ *  aboard another's ship has no scene, so none. */
+function runShip() {
+  const out = (scene != null && scene !== "station") || manoeuvring;
+  const covered = chart.shown || lanes.shown || belt.shown;
+  const view = isShipRoom(last?.roomId) && out && !covered ? ships[planFor(last?.hull).id] : null;
+  shipModels.style.display = view ? "" : "none";
+  for (const v of Object.values(ships)) v.model.div.style.display = v === view ? "" : "none";
 }
 
 function carView(kind) {
@@ -225,6 +244,7 @@ function render() {
     updateCar(view, last.lift, stopNames(s.index));
     view.set({ kind: "room", id: last.lift.id, level: 0 });
     info.textContent = carInfo(last, s.index);
+    runShip();
     return;
   }
   if (isShipRoom(last?.roomId)) {
@@ -232,9 +252,11 @@ function render() {
     if (showDeck(ship.deck)) ship.deck.home();
     ship.update(last);
     info.textContent = shipInfo(last);
+    runShip();
     return;
   }
   showDeck(s?.deck ?? null);
+  runShip();
   info.textContent = s ? (s.info ?? infoLine)(where, last, s.index) : unknown ? UNKNOWN_LINE : noPlanLine(last);
 }
 
@@ -264,6 +286,7 @@ panel.on("manoeuvre", (msg) => {
   const total = Number(msg?.total);
   const timed = (verb === "dock" || verb === "undock") && key && Number.isFinite(left) && Number.isFinite(total);
   approaching = timed && verb === "dock" ? msg.at : null;
+  manoeuvring = !!timed;
   if (timed) {
     const end = Date.now() + left * 1000;
     space.setManoeuvre({ verb, start: end - Math.max(total, left) * 1000, end });

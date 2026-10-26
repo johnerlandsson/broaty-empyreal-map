@@ -117,14 +117,15 @@ export class ModelView {
    * @param {{faces?: object[], keyOf?: (where: object) => string|null,
    *   hourOf?: (where: object) => number|null, cutOf?: (where: object) => number|null,
    *   labels?: boolean, view?: {cutaway?: "off"|"hide-above"|"ghost-above",
-   *   camera?: {yaw: number, pitch: number, zoom: number}}, pick?: boolean}} [opts] another station's model: its faces, the face key and hour for a
+   *   camera?: {yaw: number, pitch: number, zoom: number}}, pick?: boolean, transparent?: boolean}} [opts] another station's model: its faces, the face key and hour for a
    *   place, the deck to cut the model away above (faces with a higher `deck` are drawn as a
    *   dashed outline, and those with that `lid` as its top), and whether to draw T.I.S.S.'s ring
    *   names, and how the place is viewed: `cutaway` is whether cutting away happens at all ("off"),
    *   leaves the decks above out ("hide-above", as when absent) or draws them as a ghost
    *   ("ghost-above"), and `camera` is the angle it's seen from (CAM when absent) and how close its
    *   home framing is (`zoom`: 1 frames the whole model, 2 is twice as close); `pick` (the tweak
-   *   editor's) marks each face with a key for picking, and a click on one calls onPick's callback
+   *   editor's) marks each face with a key for picking, and a click on one calls onPick's callback;
+   *   `transparent` (your ship over the space scene) draws no background and no stars of its own
    */
   constructor(containerEl, index, opts = {}) {
     this.faces = opts.faces ?? buildModel(index);
@@ -145,7 +146,7 @@ export class ModelView {
       width: "100%",
       height: "100%",
       overflow: "hidden",
-      background: "#04060c",
+      background: opts.transparent ? "transparent" : "#04060c",
       cursor: "grab",
       touchAction: "none",
     });
@@ -165,7 +166,7 @@ export class ModelView {
     const id = `glow-model-${++instances}`;
     glowFilter(el("defs", {}, svg), id);
     this.backdrop = el("g", {}, svg);
-    stars(this.backdrop, -2500, -2500, 5000, 5000, 1200, 21);
+    if (!opts.transparent) stars(this.backdrop, -2500, -2500, 5000, 5000, 1200, 21);
     this.geo = el("g", {}, svg);
     this.hot = el("g", { filter: `url(#${id})`, "pointer-events": "none" }, svg);
     this.pulse = el("g", {}, this.hot);
