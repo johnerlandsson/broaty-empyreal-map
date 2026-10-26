@@ -1,0 +1,452 @@
+<!doctype html>
+<!-- Reshaped rooms and the ghosted cutaway, 2026-10-26: three ways a room's footprint could meet
+     Orrin's hull, and the two cutaway styles. Orrin with three tweaks: the Freight Office spans one
+     frame aft, the Exchange has rounded corners, the Chart Office cut ones. The overview and the plan
+     are the plugin's own ModelView and DeckView; the faces and plans they're handed are built here,
+     adapted from buildDecksModel and decksPlans. Serve the repo root over http to open it.
+     A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Footprints and cutaway: options</title>
+<style>
+  body { margin:0; background:#0b0f16; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:12px 20px; width:1620px; }
+  h2 { color:#e3eaf2; font-size:16px; margin:16px 0 2px; }
+  h2 small { color:#8f9bab; font-weight:400; font-size:12.5px; margin-left:8px; }
+  .row { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-top:6px; }
+  .pane { position:relative; height:330px; background:#04060c; border-radius:6px; outline:1px solid #222c3a; overflow:hidden; }
+  .pane .tag { position:absolute; left:8px; top:6px; z-index:4; font:10.5px "DejaVu Sans Mono", monospace; color:#9aa7b7; letter-spacing:.5px; text-transform:uppercase; pointer-events:none; }
+  .pane .slot { position:absolute; inset:0; }
+  .pane button, .pane .zoom { display:none !important; }
+  .top { color:#8f9bab; font-size:12.5px; line-height:1.5; }
+</style></head><body>
+<div class="top">Orrin Station with three tweaks: the <b style="color:#e3eaf2">Freight Office</b> (Deck 3) spans one frame aft into the empty cell at frame 1, port 1; the <b style="color:#e3eaf2">Exchange</b> (Deck 2) has rounded corners; the <b style="color:#e3eaf2">Chart Office</b> (Deck 3) has cut corners. Each row: the overview at the Freight Office, the plan of Deck 3, the overview at the Exchange with Deck 3 cut away, the plan of Deck 2.</div>
+<script type="module">
+import orrin from "../../../ui/data/orrin.js";
+import { ModelView } from "../../../ui/model-view.js";
+import { DeckView, DIM, PASSAGE, PLATE, hover, label } from "../../../ui/deck-view.js";
+import { DISTRICT_COLOURS as DC, project } from "../../../ui/lib/geometry.js";
+import { CELL, PLAN, buildDecksModel, decksCut, decksKey, decksLayout, indexDecks, locateDecks } from "../../../ui/lib/decks.js";
+import { outlineOf, boundsOf } from "../../../ui/lib/footprint.js";
+import { el } from "../../../ui/lib/svg.js";
+
+const FOOTPRINTS = {
+  "orrin.freight": { span: { aft: 1 } },
+  "orrin.market": { corners: "rounded" },
+  "orrin.charts": { corners: "cut" },
+};
+const index = indexDecks(orrin);
+const { hull } = index;
+const fpOf = (room) => FOOTPRINTS[room.id];
+const solid = [...index.byId.values()].filter((r) => !r.blister);
+
+// --- cells a room covers, and its outline in station cells -----------------------------------
+function cellsOf(room) {
+  const b = boundsOf(outlineOf(fpOf(room)));
+  const out = [];
+  for (let dx = Math.round(b.x0 + 0.5); dx <= Math.round(b.x1 - 0.5); dx++)
+    for (let dy = Math.round(b.y0 + 0.5); dy <= Math.round(b.y1 - 0.5); dy++) out.push([room.cell.x + dx, room.cell.y + dy]);
+  return out;
+}
+const occupied = new Map(); // "x:y:z" -> room
+for (const r of solid) for (const [x, y] of cellsOf(r)) occupied.set(`${x}:${y}:${r.cell.z}`, r);
+const occ = (x, y, z) => occupied.has(`${x}:${y}:${z}`);
+
+/** The room's outline in station cells; `outsideOnly` keeps a corner square unless it's on the hull's outside. */
+function stationOutline(room, outsideOnly) {
+  const fp = fpOf(room);
+  const pts = outlineOf(fp);
+  const { x, y, z } = room.cell;
+  if (!outsideOnly || !fp?.corners || fp.corners === "square") return pts.map(([u, v]) => [x + u, y + v]);
+  const box = outlineOf(fp.span ? { span: fp.span } : undefined);
+  const per = pts.length / 4;
+  const out = [];
+  box.forEach(([u, v], i) => {
+    const sx = Math.sign(u), sy = Math.sign(v);
+    const cx = x + Math.round(u - sx * 0.5), cy = y + Math.round(v - sy * 0.5); // the cell at this corner
+    const outside = !occ(cx + sx, cy, z) && !occ(cx, cy + sy, z) && !occ(cx + sx, cy + sy, z);
+    if (outside) out.push(...pts.slice(i * per, (i + 1) * per));
+    else out.push([u, v]);
+  });
+  return out.map(([u, v]) => [x + u, y + v]);
+}
+
+// --- union of a deck's room outlines: the boundary pieces, each owned by a room ---------------
+const K = (p) => `${p[0].toFixed(4)}:${p[1].toFixed(4)}`;
+function onSeg(p, a, b) {
+  const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+  const L = Math.hypot(dx, dy);
+  const cross = Math.abs((p[0] - a[0]) * dy - (p[1] - a[1]) * dx) / L;
+  const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (L * L);
+  return cross < 1e-6 && t > -1e-6 && t < 1 + 1e-6;
+}
+function inside(p, pts) {
+  let c = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if (yi > p[1] !== yj > p[1] && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) c = !c;
+  }
+  return c;
+}
+function splitAtGrid(a, b) {
+  const out = [a];
+  for (const k of [0, 1]) {
+    if (Math.abs(a[1 - k] - b[1 - k]) > 1e-9) continue; // only along an axis
+    const lo = Math.min(a[k], b[k]), hi = Math.max(a[k], b[k]);
+    const cuts = [];
+    for (let g = Math.ceil(lo - 0.5) + 0.5; g < hi - 1e-9; g++) if (g > lo + 1e-9) cuts.push(g);
+    if (a[k] > b[k]) cuts.reverse();
+    for (const g of cuts) out.push(k === 0 ? [g, a[1]] : [a[0], g]);
+  }
+  out.push(b);
+  return out.slice(0, -1).map((p, i) => [p, out[i + 1]]);
+}
+function unionPieces(z) {
+  const polys = solid.filter((r) => r.cell.z === z).map((room) => ({ room, pts: stationOutline(room, true) }));
+  const pieces = [];
+  for (const P of polys) {
+    P.pts.forEach((a, i) => {
+      const b = P.pts[(i + 1) % P.pts.length];
+      for (const [p, q] of splitAtGrid(a, b)) {
+        const m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+        const covered = polys.some((O) => O !== P && (inside(m, O.pts) || O.pts.some((u, j) => onSeg(m, u, O.pts[(j + 1) % O.pts.length]))));
+        if (!covered) pieces.push({ room: P.room, a: p, b: q, poly: P, edge: i });
+      }
+    });
+  }
+  const ending = new Map(pieces.map((s) => [K(s.b), s]));
+  const dir = (s) => Math.atan2(s.b[1] - s.a[1], s.b[0] - s.a[0]);
+  for (const s of pieces) {
+    const prev = ending.get(K(s.a));
+    let turn = prev ? Math.abs(dir(s) - dir(prev)) : Math.PI;
+    if (turn > Math.PI) turn = 2 * Math.PI - turn;
+    s.sharp = turn > (35 * Math.PI) / 180;
+  }
+  for (const s of pieces) s.sharpEnd = pieces.find((t) => K(t.a) === K(s.b))?.sharp ?? true;
+  return { polys, pieces };
+}
+
+// --- model space -----------------------------------------------------------------------------
+const mid = [(hull.x0 + hull.x1) / 2, (hull.y0 + hull.y1) / 2, (hull.z0 + hull.z1) / 2];
+const at = (x, y, z) => [(x - mid[0]) * CELL.side, (z - mid[2]) * CELL.deck, (y - mid[1]) * CELL.frame];
+const half = [CELL.side / 2, CELL.deck / 2, CELL.frame / 2];
+const P3 = ([x, y], z, up) => { const c = at(x, y, z); return [c[0], c[1] + up * half[1], c[2]]; };
+const CUBE = [
+  { n: [0, 0, 1], c: [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]] },
+  { n: [0, 0, -1], c: [[-1, 1, -1], [1, 1, -1], [1, -1, -1], [-1, -1, -1]] },
+  { n: [0, -1, 0], c: [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]] },
+  { n: [0, 1, 0], c: [[-1, 1, 1], [1, 1, 1], [1, 1, -1], [-1, 1, -1]] },
+  { n: [1, 0, 0], c: [[1, -1, -1], [1, 1, -1], [1, 1, 1], [1, -1, 1]] },
+  { n: [-1, 0, 0], c: [[-1, -1, 1], [-1, 1, 1], [-1, 1, -1], [-1, -1, -1]] },
+];
+function orient(pts, edges, from) {
+  const [a, b, c] = pts;
+  const u = b.map((v, i) => v - a[i]), w = c.map((v, i) => v - a[i]);
+  const n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+  const m = pts.reduce((s, p) => s.map((v, i) => v + p[i] / pts.length), [0, 0, 0]);
+  if (n.reduce((s, v, i) => s + v * (m[i] - from[i]), 0) >= 0) return { pts, edges };
+  const N = pts.length;
+  return { pts: pts.slice().reverse(), edges: pts.map((_, i) => edges[(N - 2 - i + 2 * N) % N]) };
+}
+const face = (pts, edges, from, extra) => ({ ...orient(pts, edges, from), turns: false, cull: true, layer: 0, key: null, tint: null, kind: "outer", ...extra });
+const centroid = (pts) => pts.reduce((s, p) => [s[0] + p[0] / pts.length, s[1] + p[1] / pts.length], [0, 0]);
+
+/** A room's outline as a prism: lit only (ghost), keyed by the room. */
+function prism(room) {
+  const pts = stationOutline(room, false);
+  const z = room.cell.z;
+  const c = centroid(pts);
+  const from = P3(c, z, 0);
+  const out = [];
+  pts.forEach((a, i) => {
+    const b = pts[(i + 1) % pts.length];
+    out.push(face([P3(a, z, -1), P3(b, z, -1), P3(b, z, 1), P3(a, z, 1)], [1, 1, 1, 1].map(Boolean), from, { kind: "cell", key: room.id, ghost: true }));
+  });
+  for (const up of [1, -1]) out.push(face(pts.map((p) => P3(p, z, up)), pts.map(() => true), P3(c, z, -up), { kind: "cell", key: room.id, ghost: true }));
+  return out;
+}
+const reshaped = solid.filter(fpOf);
+const today = buildDecksModel(index, orrin);
+
+/** Option A: the box, its faces tinted by whatever room covers the cell (a span too), each
+ *  reshaped room's top drawn on its deck's roof or lid in its tint, and lit as its prism. */
+function facesA() {
+  const faces = [];
+  const inHull = (x, y, z) => x >= hull.x0 && x <= hull.x1 && y >= hull.y0 && y <= hull.y1 && z >= hull.z0 && z <= hull.z1;
+  const step = ([x, y, z], k, s) => (k === 0 ? [x + s, y, z] : k === 1 ? [x, y, z + s] : [x, y + s, z]);
+  for (let x = hull.x0; x <= hull.x1; x++) for (let y = hull.y0; y <= hull.y1; y++) for (let z = hull.z0; z <= hull.z1; z++) {
+    const c = at(x, y, z);
+    const room = occupied.get(`${x}:${y}:${z}`);
+    for (const { n, c: signs } of CUBE) {
+      const k = n.findIndex((v) => v !== 0);
+      const outside = !inHull(...step([x, y, z], k, n[k]));
+      if (!outside && n[1] !== 1) continue;
+      const edges = signs.map((a, i) => { const b = signs[(i + 1) % 4]; const e = [0, 1, 2].find((j) => j !== k && a[j] === b[j]); return !inHull(...step([x, y, z], e, a[e])); });
+      faces.push({ pts: signs.map((s) => c.map((v, j) => v + s[j] * half[j])), kind: "outer", key: null, tint: room?.tint ?? null, edges, turns: false, cull: true, layer: 0, ...(outside ? { deck: z, outline: true } : { lid: z }) });
+    }
+  }
+  for (const room of reshaped) {
+    const z = room.cell.z;
+    const pts = stationOutline(room, false).map((p) => { const q = P3(p, z, 1); q[1] += 0.6; return q; });
+    const top = z === hull.z1 ? { deck: z } : { lid: z };
+    faces.push(face(pts, pts.map(() => true), [0, -1e4, 0], { kind: "fore", tint: room.tint, layer: 0.5, ...top }));
+  }
+  for (const r of solid) faces.push(...(fpOf(r) ? prism(r) : today.filter((f) => f.kind === "cell" && f.key === r.id)));
+  return faces.concat(today.filter((f) => !["outer", "cell"].includes(f.kind)));
+}
+
+/** Option B: each deck the union of its rooms' outlines, a reshaped corner on the outside showing
+ *  on the hull; the cradles moved back to the deck's fore end at their side. */
+function facesB() {
+  const faces = [];
+  for (let z = hull.z0; z <= hull.z1; z++) {
+    const { polys, pieces } = unionPieces(z);
+    for (const s of pieces) {
+      const from = P3(centroid(s.poly.pts), z, 0);
+      faces.push(face([P3(s.a, z, -1), P3(s.b, z, -1), P3(s.b, z, 1), P3(s.a, z, 1)], [true, s.sharpEnd, true, s.sharp], from, { tint: s.room.tint, deck: z, outline: true }));
+    }
+    for (const P of polys) {
+      const edges = P.pts.map((_, i) => pieces.some((s) => s.poly === P && s.edge === i));
+      const top = z === hull.z1 ? { deck: z, outline: true } : { lid: z };
+      faces.push(face(P.pts.map((p) => P3(p, z, 1)), edges, P3(centroid(P.pts), z, 0), { tint: P.room.tint, ...top }));
+    }
+  }
+  for (const r of solid) faces.push(...(fpOf(r) ? prism(r) : today.filter((f) => f.kind === "cell" && f.key === r.id)));
+  // cradles, at the fore end of their side on their deck
+  for (const { side: x, deck: z, hw, hh, len } of (orrin.look.fixtures ?? []).filter((f) => f.type === "cradle")) {
+    const ys = solid.filter((r) => r.cell.z === z).flatMap(cellsOf).filter(([cx]) => cx === x).map(([, cy]) => cy);
+    if (!ys.length) continue;
+    const [cx, cy] = at(x, 0, z);
+    const fore = at(0, Math.max(...ys), 0)[2] + half[2];
+    const c = [cx, cy, fore + (len * CELL.frame) / 2];
+    const h = [hw * CELL.side, hh * CELL.deck, (len * CELL.frame) / 2];
+    for (const { c: signs } of CUBE) faces.push(face(signs.map((s) => c.map((v, k) => v + s[k] * h[k])), [1, 1, 1, 1].map(Boolean), c, { kind: "dock", layer: 1, deck: z }));
+  }
+  return faces.concat(today.filter((f) => !["outer", "cell", "dock"].includes(f.kind)));
+}
+
+/** Option C: today's box exactly; only the lit room is its outline prism. */
+function facesC() {
+  return today.filter((f) => !(f.kind === "cell" && FOOTPRINTS[f.key])).concat(reshaped.flatMap(prism));
+}
+
+// --- ModelView with a ghost-above cutaway ------------------------------------------------------
+const TONES = ["#3a4556", "#58667b", "#7e8da3"];
+const EDGE = "#0d1218", HL = "#ffb347", HL_STROKE = "#fff3df", GLASS = "#cfe3ff";
+const LIGHT = (() => { const v = [-0.5, 0.75, 0.45]; const m = Math.hypot(...v); return v.map((c) => c / m); })();
+function mix(a, b, t) { const p = (s) => [1, 3, 5].map((i) => parseInt(s.slice(i, i + 2), 16)); const A = p(a), B = p(b); return `#${A.map((c, i) => Math.round(c + (B[i] - c) * t).toString(16).padStart(2, "0")).join("")}`; }
+function fillOf(f, lit) {
+  if (f.kind === "lamp") return "#fff4d6";
+  let fill = TONES[lit > 0.66 ? 2 : lit > 0.33 ? 1 : 0];
+  if (f.kind === "fore" && f.tint) fill = mix(fill, f.tint, 0.7);
+  else if (f.kind === "outer" && f.tint) fill = mix(fill, f.tint, 0.25);
+  if (f.kind.startsWith("blister")) fill = mix(fill, GLASS, 0.45);
+  return fill;
+}
+const num = (n) => n.toFixed(1);
+const edgePath = (P, edges) => P.map((p, i) => { if (edges && !edges[i]) return ""; const q = P[(i + 1) % P.length]; return `M${num(p[0])},${num(p[1])}L${num(q[0])},${num(q[1])}`; }).join("");
+
+class Model extends ModelView {
+  constructor(node, opts) { super(node, index, opts); this.mode = opts.cutaway ?? "hide"; }
+  draw() {
+    if (this.mode !== "ghost") return super.draw();
+    const { key, cut } = this;
+    const away = (v) => project(v)[2] < 0;
+    const quads = [], ghosts = [];
+    this.faces.forEach((f, i) => {
+      if (f.lid != null && f.lid !== cut) return;
+      const n = this.normals[i];
+      if (f.cull && away(n)) return;
+      const P = f.pts.map((p) => project(p));
+      const q = { f, P, n, layer: f.layer ?? 0, depth: P.reduce((s, p) => s + p[2], 0) / P.length };
+      (cut != null && f.deck != null && f.deck > cut ? ghosts : quads).push(q);
+    });
+    const byDepth = (a, b) => a.layer - b.layer || a.depth - b.depth;
+    quads.sort(byDepth); ghosts.sort(byDepth);
+    const geo = document.createDocumentFragment(), hot = document.createDocumentFragment();
+    const path = (P) => `M${P.map((p) => `${num(p[0])},${num(p[1])}`).join("L")}Z`;
+    for (const { f, P, n } of quads) {
+      const d = path(P);
+      if (!f.ghost) {
+        const fill = fillOf(f, Math.abs(n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]));
+        el("path", { d, fill, stroke: fill, "stroke-width": 0.8, "stroke-linejoin": "round" }, geo);
+        const e = edgePath(P, f.edges);
+        if (e) el("path", { d: e, fill: "none", stroke: EDGE, "stroke-width": 1.3, "stroke-linecap": "round" }, geo);
+      }
+      if (key != null && f.key === key) el("path", { d, fill: HL, "fill-opacity": 0.55, stroke: HL_STROKE, "stroke-width": 1.4, "stroke-linejoin": "round" }, hot);
+    }
+    for (const { f, P, n } of ghosts) {
+      if (f.ghost) continue;
+      const fill = fillOf(f, Math.abs(n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]));
+      el("path", { d: path(P), fill, "fill-opacity": 0.15, stroke: "none" }, geo);
+      const e = edgePath(P, f.edges);
+      if (e) el("path", { d: e, fill: "none", stroke: "#9aa7b7", "stroke-opacity": 0.55, "stroke-width": 1, "stroke-linecap": "round" }, geo);
+    }
+    this.geo.replaceChildren(geo);
+    this.shapes.replaceChildren(hot);
+  }
+}
+
+// --- the plans ---------------------------------------------------------------------------------
+const PEDGE = "#3b4a5c", CORR = "#262f3b", FIXTURE = "#0e131a", HATCH = "#9fb0c3", STOP = "#aab8c8";
+const LIGHTS = ["#59d18a", "#e8b04a", "#59d18a", "#3a4556", "#59d18a", "#59d18a", "#3a4556"];
+const DECK_OF = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
+const none = { "pointer-events": "none" };
+const toPlan = ([x, y]) => [(x - mid[0]) * PLAN.w, -(y - mid[1]) * PLAN.h];
+
+/** A room box drawn as its outline, inset in the cells it covers. */
+function roomOutline(room) {
+  const pts = outlineOf(fpOf(room));
+  const b = boundsOf(pts);
+  const [X0, Ytop] = toPlan([room.cell.x + b.x0, room.cell.y + b.y1]);
+  const [X1, Ybot] = toPlan([room.cell.x + b.x1, room.cell.y + b.y0]);
+  const [x0, x1, y0, y1] = [X0 + PLAN.inset, X1 - PLAN.inset, Ytop + PLAN.inset, Ybot - PLAN.inset];
+  const P = pts.map(([u, v]) => [x0 + ((u - b.x0) / (b.x1 - b.x0)) * (x1 - x0), y0 + ((b.y1 - v) / (b.y1 - b.y0)) * (y1 - y0)]);
+  return { P, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0, d: `M${P.map((p) => p.map(num).join(",")).join("L")}Z` };
+}
+function roomShape(g, room, o) {
+  const col = room.tint ?? DC.industrial;
+  const s = el("g", {}, g);
+  if (fpOf(room)) el("path", { d: o.d, fill: col, "fill-opacity": 0.22, stroke: col, "stroke-opacity": 0.85, "stroke-width": 1.6, "stroke-linejoin": "round" }, s);
+  else el("rect", { x: o.cx - o.w / 2, y: o.cy - o.h / 2, width: o.w, height: o.h, rx: 5, fill: col, "fill-opacity": 0.22, stroke: col, "stroke-opacity": 0.85, "stroke-width": 1.6 }, s);
+  const words = room.name.split(" ");
+  const lines = room.name.length > 14 && words.length > 1 ? [words.slice(0, Math.ceil(words.length / 2)).join(" "), words.slice(Math.ceil(words.length / 2)).join(" ")] : [room.name];
+  lines.forEach((t, i) => label(s, o.cx, o.cy + (i - (lines.length - 1) / 2) * 14, t, 12));
+  hover(s, room);
+}
+
+function plans(plate) {
+  return (svg, idx) => idx.decks.map((deck, level) => {
+    const layout = decksLayout(idx, deck);
+    // a reshaped room's box: its outline's bounds
+    const outlines = new Map();
+    for (const c of layout.cells) if (c.kind === "room") {
+      const o = roomOutline(c.room);
+      outlines.set(c.room.id, o);
+      Object.assign(c, { cx: o.cx, cy: o.cy, w: o.w, h: o.h });
+    }
+    const { cells, hatches, footprint: fp, frames, onHull } = layout;
+    const links = linksOf(cells, layout.centre);
+    const g = el("g", { display: "none" }, svg);
+    if (fp && onHull && plate === "union") {
+      const polys = solid.filter((r) => r.cell.z === deck).map((r) => stationOutline(r, true).map(toPlan));
+      const d = (P) => `M${P.map((p) => p.map(num).join(",")).join("L")}Z`;
+      for (const P of polys) el("path", { d: d(P), fill: PEDGE, stroke: PEDGE, "stroke-width": 2 * PLAN.pad + 6, "stroke-linejoin": "round" }, g);
+      for (const P of polys) el("path", { d: d(P), fill: PLATE, stroke: PLATE, "stroke-width": 2 * PLAN.pad, "stroke-linejoin": "round" }, g);
+    } else if (fp && onHull) {
+      el("rect", { x: fp.x, y: fp.y, width: fp.w, height: fp.h, rx: 12, fill: PLATE, stroke: PEDGE, "stroke-width": 3 }, g);
+    } else if (fp) {
+      el("rect", { x: fp.x, y: fp.y, width: fp.w, height: fp.h, rx: 12, fill: "none", stroke: PEDGE, "stroke-width": 1.5, "stroke-dasharray": "6 5" }, g);
+    }
+    for (const c of cells) if (c.kind === "blister") el("circle", { cx: c.cx, cy: c.cy, r: c.r + 14, fill: PLATE, stroke: PEDGE, "stroke-width": 2 }, g);
+    for (const l of links) el("rect", { x: l.x, y: l.y, width: l.w, height: l.h, fill: PASSAGE }, g);
+    for (const c of cells) {
+      if (c.kind === "passage") {
+        el("rect", { x: c.cx - c.w / 2, y: c.cy - c.h / 2, width: c.w, height: c.h, fill: CORR }, g);
+        const [x, y] = layout.centre(c.room.cell);
+        if (!c.room.exits?.up && !c.room.exits?.down) el("circle", { cx: x, cy: y, r: 4, fill: STOP, ...none }, g);
+      } else if (c.kind === "room") {
+        roomShape(g, c.room, outlines.get(c.room.id));
+        if (c.room.flags?.includes("berth")) airlocks(g, c);
+      } else {
+        const gl = el("g", {}, g);
+        el("circle", { cx: c.cx, cy: c.cy, r: c.r, fill: GLASS, "fill-opacity": 0.14, stroke: GLASS, "stroke-opacity": 0.6, "stroke-width": 1.6 }, gl);
+        for (const k of [0.72, 0.42]) el("circle", { cx: c.cx, cy: c.cy, r: c.r * k, fill: "none", stroke: GLASS, "stroke-opacity": 0.22, "stroke-width": 1 }, gl);
+        label(gl, c.cx, c.cy + 10, c.room.name, 12);
+      }
+    }
+    for (const h of hatches) {
+      el("circle", { cx: h.cx, cy: h.cy, r: 9, fill: FIXTURE, stroke: HATCH, "stroke-width": 1.4, ...none }, g);
+      el("circle", { cx: h.cx, cy: h.cy, r: 3.5, fill: "none", stroke: HATCH, "stroke-width": 1.1, ...none }, g);
+      if (h.side === "right") label(g, h.cx + 13, h.cy, h.dir, 9, { fill: DIM, "text-anchor": "start" });
+      else label(g, h.cx, h.cy + 17, h.dir, 9, { fill: DIM });
+    }
+    if (fp) {
+      label(g, fp.x, fp.y - 26, "FORE ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
+      label(g, fp.x, fp.y - 11, `DECK ${deck}`, 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
+      for (const f of frames) label(g, fp.x - 8, f.cy, `frame ${f.n}`, 9, { fill: DIM, "text-anchor": "end" });
+    }
+    const hl = el("g", { "pointer-events": "none" }, g);
+    const extent = fp ? { w: fp.w + 2 * 70, h: fp.h + 2 * 44 } : { w: 400, h: 300 };
+    const home = fp ? [fp.x + fp.w / 2, fp.y + fp.h / 2] : [0, 0];
+    const shape = (where) => {
+      if (where?.kind !== "room") return null;
+      const o = outlines.get(where.id);
+      if (o) return { kind: "path", d: o.d, cx: o.cx, cy: o.cy };
+      const c = cells.find((x) => x.room.id === where.id);
+      return c ? { kind: "rect", x: c.cx - c.w / 2, y: c.cy - c.h / 2, width: c.w, height: c.h, rx: 3 } : null;
+    };
+    return { z: level, g, hl, layout, ring: false, length: 0, home, extent, offsets: [0], margin: 0.42, shape };
+  });
+}
+/** decksLayout's links, from the cells as reshaped. */
+function linksOf(cells, centre) {
+  const ACROSS = { east: [1, 0], west: [-1, 0], north: [0, -1], south: [0, 1] };
+  const cellOf = (id) => cells.find((c) => c.room.id === id);
+  const reach = (c, hz) => (c.kind === "blister" ? c.r : (hz ? c.w : c.h) / 2);
+  const links = [];
+  for (const a of cells) for (const [dir, [dx, dy]] of Object.entries(ACROSS)) {
+    const b = cellOf(a.room.exits?.[dir]);
+    if (!b || a.room.id > b.room.id) continue;
+    const [ax, ay] = centre(a.room.cell);
+    if (dx) { const from = a.cx + dx * reach(a, true), to = b.cx - dx * reach(b, true); if ((to - from) * dx > 0.5) links.push({ x: Math.min(from, to), y: ay - 8, w: Math.abs(to - from), h: 16 }); }
+    else { const from = a.cy + dy * reach(a, false), to = b.cy - dy * reach(b, false); if ((to - from) * dy > 0.5) links.push({ x: ax - 8, y: Math.min(from, to), w: 16, h: Math.abs(to - from) }); }
+  }
+  return links;
+}
+function airlocks(g, c) {
+  let n = 0;
+  for (const [dir, [dx, dy]] of Object.entries(DECK_OF)) {
+    if (c.room.exits?.[dir]) continue;
+    const long = dx ? c.h : c.w;
+    const count = Math.max(1, Math.round(long / 40));
+    for (let i = 0; i < count; i++) {
+      const t = -long / 2 + ((i + 0.5) * long) / count;
+      const x = c.cx + (dx ? (dx * c.w) / 2 : t), y = c.cy + (dy ? (dy * c.h) / 2 : t);
+      const [w, h] = dx ? [8, 16] : [16, 8];
+      el("rect", { x: x - w / 2 + dx * 1.5, y: y - h / 2 + dy * 1.5, width: w, height: h, rx: 2, fill: FIXTURE, stroke: GLASS, "stroke-width": 1.2, ...none }, g);
+      el("circle", { cx: x + (dx ? dx * 11 : 11), cy: y + (dx ? 11 : dy * 11), r: 2.2, fill: LIGHTS[n++ % LIGHTS.length], ...none }, g);
+    }
+  }
+}
+
+// --- the page ------------------------------------------------------------------------------------
+const FREIGHT = locateDecks(index, { roomId: "orrin.freight" });
+const MARKET = locateDecks(index, { roomId: "orrin.market" });
+const OPTIONS = [
+  { title: "A · The hull stays a box; the room is its own prism inside it", note: "The box's faces take the Freight Office's tint where it spans, and each reshaped room's outline is drawn on its deck's roof in its colour; the plan's plate stays a box.", faces: facesA(), plate: "box" },
+  { title: "B · The hull is the union of the rooms on each deck", note: "Every deck is only the cells its rooms fill, so the Exchange's and Chart Office's outside corners round and cut the hull itself, in the overview and on the plan (Orrin's empty cells become notches; the cradles are moved back to the deck's fore end).", faces: facesB(), plate: "union" },
+  { title: "C · The plan follows the rooms; the 3D hull stays today's box", note: "The plan's plate is the union as in B, but the overview is exactly today's box and only the lit room shows its outline, as a glowing prism.", faces: facesC(), plate: "union" },
+];
+
+function pane(row, tag) {
+  const p = row.appendChild(document.createElement("div"));
+  p.className = "pane";
+  p.innerHTML = `<span class="tag">${tag}</span><div class="slot"></div>`;
+  return p.querySelector(".slot");
+}
+const model = (slot, faces, where, cutaway = "hide") => {
+  const v = new Model(slot, { faces, keyOf: decksKey, hourOf: () => null, cutOf: (w) => decksCut(index, w), labels: false, cutaway });
+  v.set(where);
+};
+const plan = (slot, plate, where) => new DeckView(slot, index, plans(plate)).set(where);
+
+for (const opt of OPTIONS) {
+  const h = document.body.appendChild(document.createElement("h2"));
+  h.innerHTML = `${opt.title}<br><small style="margin-left:0">${opt.note}</small>`;
+  const row = document.body.appendChild(document.createElement("div"));
+  row.className = "row";
+  model(pane(row, "overview · Freight Office · Deck 3"), opt.faces, FREIGHT);
+  plan(pane(row, "plan · Deck 3"), opt.plate, FREIGHT);
+  model(pane(row, "overview · Exchange · Deck 3 cut away"), opt.faces, MARKET);
+  plan(pane(row, "plan · Deck 2"), opt.plate, MARKET);
+}
+{
+  const h = document.body.appendChild(document.createElement("h2"));
+  h.innerHTML = `Cutaway · today's hide-above beside ghost-above<br><small style="margin-left:0">At the Exchange: hide-above draws the decks above as a dashed outline; ghost-above draws them at 15% fill with their edges. Shown on the box hull (A and C) and on the union hull (B).</small>`;
+  const row = document.body.appendChild(document.createElement("div"));
+  row.className = "row";
+  model(pane(row, "box hull · hide above"), OPTIONS[0].faces, MARKET, "hide");
+  model(pane(row, "box hull · ghost above"), OPTIONS[0].faces, MARKET, "ghost");
+  model(pane(row, "union hull · hide above"), OPTIONS[1].faces, MARKET, "hide");
+  model(pane(row, "union hull · ghost above"), OPTIONS[1].faces, MARKET, "ghost");
+}
+</script>
+</body></html>
