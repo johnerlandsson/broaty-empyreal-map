@@ -7,6 +7,7 @@ export default {
   "id": "hull-skiff",
   "name": "prospecting skiff",
   "kind": "plan",
+  "gravity": 0,
   "hulls": [
     "skiff"
   ],
@@ -19,15 +20,19 @@ export default {
   "rooms": [
     {
       "id": "hull-skiff.cockpit",
-      "name": "Cockpit",
+      "name": "Cockpit of the {name}",
       "address": "Deck 1, frame 1",
       "at": {
         "deck": 1,
         "frame": 1,
         "side": 0
       },
-      "gravity": 1,
-      "flags": []
+      "exits": {},
+      "gravity": 0,
+      "flags": [
+        "airlock"
+      ],
+      "canopy": true
     }
   ],
   "look": {

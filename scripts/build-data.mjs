@@ -215,12 +215,13 @@ function hullLines(id, rooms, look, tweaks) {
 }
 
 /**
- * The plan a ship hull without one gets: `hull-<id>`, on decks, one room, its cockpit, at Deck 1,
- * frame 1. hulls.yaml gives a hull no gravity, so the cockpit's is 1.
+ * The plan a ship hull without one gets: `hull-<id>`, on decks, one room at Deck 1, frame 1, her
+ * cockpit as the game's cockpitPlan (loader.ts) has it, its kept fields only. Its gravity is the
+ * plan's, which build() gives.
  */
 function oneRoomPlan(hull) {
   const id = `hull-${hull.id}`;
-  const cockpit = { id: `${id}.cockpit`, name: "Cockpit", address: "Deck 1, frame 1", flags: [], gravity: 1 };
+  const cockpit = { id: `${id}.cockpit`, name: "Cockpit of the {name}", address: "Deck 1, frame 1", exits: {}, flags: ["airlock"], canopy: true };
   return { file: "content/game/hulls.yaml", area: { id, name: hull.name, layout: { kind: "decks" } }, raw: [cockpit], hulls: [hull.id], synthesised: true };
 }
 
@@ -359,9 +360,11 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   }
   const planIds = [];
   for (const plan of plans) {
-    // A plan's name is its own, else its first hull's.
+    // A plan's name is its own, else its first hull's; its gravity its own, else the world's
+    // for ships (loader.ts), and a room's its own, else the plan's.
     const name = plan.area.name ?? ships.find((h) => h.id === plan.hulls[0])?.name;
-    const built = await placeFile(ctx, { kind: "plan", ...plan, area: { ...plan.area, name }, path: join(outDir, "plans", `${plan.area.id}.js`) });
+    const area = { ...plan.area, name, gravity: plan.area.gravity ?? src.shipGravity };
+    const built = await placeFile(ctx, { kind: "plan", ...plan, area, path: join(outDir, "plans", `${plan.area.id}.js`) });
     if (built) planIds.push(plan.area.id);
   }
 

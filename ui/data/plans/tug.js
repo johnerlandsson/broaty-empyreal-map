@@ -7,6 +7,7 @@ export default {
   "id": "tug",
   "name": "tug",
   "kind": "plan",
+  "gravity": 0,
   "hulls": [
     "tug"
   ],
@@ -29,6 +30,7 @@ export default {
       "exits": {
         "south": "tug.collar"
       },
+      "gravity": 0,
       "flags": [
         "airlock"
       ],
@@ -46,6 +48,7 @@ export default {
       "exits": {
         "north": "tug.cockpit"
       },
+      "gravity": 0,
       "flags": [
         "berth"
       ]

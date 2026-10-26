@@ -7,6 +7,7 @@ export default {
   "id": "freighter",
   "name": "medium freighter",
   "kind": "plan",
+  "gravity": 0,
   "hulls": [
     "freighter"
   ],
@@ -29,6 +30,7 @@ export default {
       "exits": {
         "south": "freighter.passage"
       },
+      "gravity": 0,
       "canopy": true
     },
     {
@@ -45,7 +47,8 @@ export default {
         "south": "freighter.hold",
         "west": "freighter.airlock",
         "east": "freighter.collar"
-      }
+      },
+      "gravity": 0
     },
     {
       "id": "freighter.airlock",
@@ -59,6 +62,7 @@ export default {
       "exits": {
         "east": "freighter.passage"
       },
+      "gravity": 0,
       "flags": [
         "airlock"
       ]
@@ -75,6 +79,7 @@ export default {
       "exits": {
         "west": "freighter.passage"
       },
+      "gravity": 0,
       "flags": [
         "berth"
       ]
@@ -91,7 +96,8 @@ export default {
       "exits": {
         "north": "freighter.passage",
         "south": "freighter.engine"
-      }
+      },
+      "gravity": 0
     },
     {
       "id": "freighter.engine",
@@ -104,7 +110,8 @@ export default {
       },
       "exits": {
         "north": "freighter.hold"
-      }
+      },
+      "gravity": 0
     }
   ],
   "look": {

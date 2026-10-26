@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -24,6 +24,15 @@ describe("loadSource", () => {
       { id: "mini", name: "Mini Outpost", berth: "mini.dock" },
       { id: "wheelie", name: "Wheelie Station", berth: "wheelie.rim-12" },
     ]);
+    expect(src.shipGravity).toBe(0.25);
+  });
+
+  it("gives ships no gravity when world.yaml has no shipGravity, as the game does", () => {
+    const copy = mkdtempSync(join(tmpdir(), "empyreal-"));
+    cpSync(fixtures, copy, { recursive: true });
+    const world = join(copy, "content/game/world.yaml");
+    writeFileSync(world, readFileSync(world, "utf8").replace("  shipGravity: 0.25\n", ""));
+    expect(loadSource(copy).shipGravity).toBe(0);
   });
 
   it("has no commit for a directory that isn't a git checkout", () => {

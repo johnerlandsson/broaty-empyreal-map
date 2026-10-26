@@ -51,7 +51,7 @@ function pick(obj, keys) {
 
 /**
  * @param {string} dir  the Empyreal checkout
- * @returns {{commit: string|null, areas: object[], plans: object[], hulls: object[], world: object[]}}
+ * @returns {{commit: string|null, areas: object[], plans: object[], hulls: object[], world: object[], shipGravity: number}}
  */
 export function loadSource(dir) {
   const content = join(dir, "content");
@@ -60,6 +60,9 @@ export function loadSource(dir) {
   const hullsPath = join(content, "game/hulls.yaml");
   const worldPath = join(content, "game/world.yaml");
   const hulls = need(hullsPath, readYaml(hullsPath), "hulls").map((h) => pick(h, ["id", "name", "class", "plan"]));
-  const world = need(worldPath, readYaml(worldPath), "world.stations").map((s) => pick(s, ["id", "name", "berth"]));
-  return { commit: commitOf(dir), areas, plans, hulls, world };
+  const worldDoc = readYaml(worldPath);
+  const world = need(worldPath, worldDoc, "world.stations").map((s) => pick(s, ["id", "name", "berth"]));
+  // A ship's gravity where her plan gives none; none at all without it, as the game's loader has it.
+  const shipGravity = worldDoc.world.shipGravity ?? 0;
+  return { commit: commitOf(dir), areas, plans, hulls, world, shipGravity };
 }

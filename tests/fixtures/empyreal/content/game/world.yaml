@@ -11,3 +11,4 @@ world:
       berth: wheelie.rim-12
       hull: wheel
   speed: 10
+  shipGravity: 0.25
