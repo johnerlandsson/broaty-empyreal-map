@@ -99,6 +99,7 @@ function checkHull(file, hull) {
   for (const [deck, points] of Object.entries(hull)) {
     const path = `hull.${deck}`;
     if (!DECK.test(deck)) throw new Error(`${file}: ${path}: a hull is keyed by deck number`);
+    if (points === null) continue; // the deck back to its box, over a path from `like`
     if (!Array.isArray(points) || points.length < 3) throw new Error(`${file}: ${path} must be a list of 3 or more [x, y] or [x, y, r] points`);
     points.forEach((p, i) => {
       if (!Array.isArray(p) || p.length < 2 || p.length > 3 || !p.every(isNumber)) throw new Error(`${file}: ${path}[${i}] must be an [x, y] or [x, y, r] point`);
@@ -270,8 +271,8 @@ function namedRooms(tweak) {
  * One place's full look. Paint gives every room a palette name: its own, else its district's in
  * `paintDistricts`, else its district if that is a palette name, else a default by kind (a decks
  * passage, whose name is its address: midring; a berth: docks; otherwise industrial). A decks
- * place has its footprints, by local id, and its hull paths, by deck; every place has its view, the
- * tweak's over its kind's.
+ * place has its footprints, by local id, and its hull paths, by deck (a deck whose tweak is null
+ * keeps its box); every place has its view, the tweak's over its kind's.
  * @param {string} placeId
  * @param {object[]} rooms  the place's placed rooms (full ids, `name`, `address`, `flags`, `district`)
  * @param {string} layoutKind  the area's layout kind
@@ -302,7 +303,7 @@ export function resolveLook(placeId, rooms, layoutKind, tweaks) {
   const look = { paint, fixtures: tweak.fixtures ?? [] };
   if (layoutKind === "decks") {
     look.footprints = tweak.footprints ?? {};
-    look.hull = tweak.hull ?? {};
+    look.hull = Object.fromEntries(Object.entries(tweak.hull ?? {}).filter(([, points]) => points !== null));
   }
   look.view = { cutaway: layoutKind === "decks" ? "hide-above" : "off", ...tweak.view };
   for (const name of Object.keys(SECTION_KEYS)) if (tweak[name]) look[name] = tweak[name];

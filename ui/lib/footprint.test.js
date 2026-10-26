@@ -66,6 +66,19 @@ describe("pathOf", () => {
     expect(pts[2][1]).toBeCloseTo(1.5, 9);
   });
 
+  it("has no point twice where rounded corners meet, or a corner's arc reaches the next point", () => {
+    const once = (pts) => pts.every((p, i) => {
+      const q = pts[(i + 1) % pts.length];
+      return Math.hypot(q[0] - p[0], q[1] - p[1]) > 1e-9;
+    });
+    const nose = pathOf([[0, 0], [2, 0], [2, 2, 1], [0, 2, 1]]);
+    expect(nose).toHaveLength(9);
+    expect(once(nose)).toBe(true);
+    const quarter = pathOf([[0, 0], [2, 0], [2, 2, 2], [0, 2]]);
+    expect(quarter).toHaveLength(5);
+    expect(once(quarter)).toBe(true);
+  });
+
   it("rounds a corner the same way round a clockwise path", () => {
     const pts = pathOf([[0, 2], [2, 2, 0.5], [2, 0], [0, 0]]);
     expect(pts).toHaveLength(7);

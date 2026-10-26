@@ -404,6 +404,26 @@ describe("build", () => {
     expect(existsSync(opts.reportPath)).toBe(false);
   });
 
+  it("stops on a hull cutting 0.15 into a room's cell, but lets one trim its corner outside the drawn box", async () => {
+    await expect(build(setup({ ...placed, mini: { hull: { 1: deck1(3.35) } } }))).rejects.toThrow(/hull\.1.*mini\.store/);
+    const trimmed = [[-0.5, 0.5], [0.5, 0.5], [0.5, 3.4], [0.4, 3.5], [-0.5, 3.5]];
+    await build(setup({ ...placed, mini: { hull: { 1: trimmed } } }));
+  });
+
+  it("builds a deck put back to the box with null, though the path it inherits cuts its rooms", async () => {
+    const opts = setup({ ...placed, shape: { hull: { 1: deck1(3) } }, mini: { like: "shape", hull: { 1: null } } });
+    await build(opts);
+    expect((await load(join(opts.outDir, "mini.js"))).look.hull).toEqual({});
+  });
+
+  it("stops on a mast outside the top deck's hull, naming it, the deck and the file, and writes nothing", async () => {
+    const mast = (side) => ({ type: "mast", side, frame: 2, height: 1 });
+    await build(setup({ ...placed, mini: { hull: { 2: deck1(2.5) }, fixtures: [mast(0)] } }));
+    const opts = setup({ ...placed, mini: { hull: { 2: deck1(2.5) }, fixtures: [mast(0), mast(1)] } });
+    await expect(build(opts)).rejects.toThrow(/data\/tweaks\/mini\.json.*fixtures\[1\] \(mast\).*hull\.2/);
+    expect(existsSync(opts.outDir)).toBe(false);
+  });
+
   it("reports a hull for a deck the place lacks as an orphan", async () => {
     const { report } = await build(setup({ ...placed, mini: { hull: { 7: deck1(3.5) } } }));
     expect(report.orphans).toEqual([{ place: "mini", key: "hull.7" }]);

@@ -1,6 +1,7 @@
-// Build-time checks on decks footprints: an outline that crosses itself, and rooms whose drawn
-// outlines overlap on a deck. The outlines are ui/lib/footprint.js's, as the map draws them.
-import { boundsOf, outlineOf } from "../../ui/lib/footprint.js";
+// Build-time checks on decks footprints: an outline that crosses itself, rooms whose drawn
+// outlines overlap on a deck, and hull paths that cut a room or leave a fixture outside. The
+// outlines and paths are ui/lib/footprint.js's, as the map draws them.
+import { boundsOf, noseAt, outlineOf, pathOf } from "../../ui/lib/footprint.js";
 
 /** An overlap smaller than this, in square cells, is a shared edge, not an overlap. */
 const EPS = 1e-6;
@@ -117,6 +118,76 @@ export function overlaps(rooms) {
  * @param {number[][]} points
  * @param {number[][]} path
  */
-export function inside(points, path) {
+function inside(points, path) {
   return Math.abs(area(points)) - shared(points, path) <= EPS;
+}
+
+/** How far inside its outline a room must be in its deck's hull, in cells: the drawn room box. */
+const INSET = 0.1;
+
+const isConvex = (points) => points.every((p, i) => cross(points[(i + points.length - 1) % points.length], p, points[(i + 1) % points.length]) >= -1e-12);
+
+/**
+ * A counter-clockwise outline brought in by d: each edge moved d inward where the outline is
+ * convex; a concave one scaled about its centroid by 1 - 2d / its narrower side.
+ */
+function inset(points, d) {
+  const n = points.length;
+  if (!isConvex(points)) {
+    const { x0, x1, y0, y1 } = boundsOf(points);
+    const k = 1 - (2 * d) / Math.min(x1 - x0, y1 - y0);
+    const [cx, cy] = points.reduce(([sx, sy], [x, y]) => [sx + x / n, sy + y / n], [0, 0]);
+    return points.map(([x, y]) => [cx + (x - cx) * k, cy + (y - cy) * k]);
+  }
+  // left of each edge is inward; a corner moves to where its two edges' moved lines meet
+  const normal = (a, b) => {
+    const m = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    return [-(b[1] - a[1]) / m, (b[0] - a[0]) / m];
+  };
+  return points.map((p, i) => {
+    const [ax, ay] = normal(points[(i + n - 1) % n], p);
+    const [bx, by] = normal(p, points[(i + 1) % n]);
+    const det = ax * by - ay * bx;
+    if (Math.abs(det) < 1e-12) return [p[0] + ax * d, p[1] + ay * d];
+    return [p[0] + (d * by - ay * d) / det, p[1] + (ax * d - d * bx) / det];
+  });
+}
+
+/** Whether a point is inside a path (even-odd), its edges counting as inside. */
+function contains(path, [x, y]) {
+  let odd = false;
+  for (let i = 0; i < path.length; i++) {
+    const [a, b] = [path[i], path[(i + 1) % path.length]];
+    if (cross(a, b, [x, y]) === 0 && meet(a, b, [x, y], [x, y])) return true;
+    if ((a[1] > y) !== (b[1] > y) && x < a[0] + ((y - a[1]) / (b[1] - a[1])) * (b[0] - a[0])) odd = !odd;
+  }
+  return odd;
+}
+
+/**
+ * The first thing a deck's hull path leaves out, or null: a room on that deck whose outline,
+ * brought in 0.1 to the drawn room box, isn't inside it; a cradle on it whose side misses the path;
+ * a mast whose point isn't inside the top deck's path. Decks with no path keep their box.
+ * @param {{id: string, at?: {deck: number, frame: number, side: number}}[]} rooms
+ * @param {{hull: Record<string, number[][]>, footprints: Record<string, object>, fixtures: object[]}} look
+ * @returns {{deck: string, room: string} | {deck: string, fixture: number, type: string} | null}
+ */
+export function hullClash(rooms, look) {
+  const local = (id) => id.slice(id.indexOf(".") + 1);
+  const decks = rooms.filter((r) => r.at).map((r) => r.at.deck);
+  const top = decks.length ? String(Math.max(...decks)) : null;
+  for (const [deck, points] of Object.entries(look.hull)) {
+    const path = pathOf(points);
+    for (const r of rooms.filter((room) => String(room.at?.deck) === deck)) {
+      const outline = inset(outlineOf(look.footprints[local(r.id)]), INSET).map(([x, y]) => [x + r.at.side, y + r.at.frame]);
+      if (!inside(outline, path)) return { deck, room: r.id };
+    }
+    for (const [i, f] of look.fixtures.entries()) {
+      const out =
+        (f.type === "cradle" && String(f.deck) === deck && noseAt(path, f.side) === null) ||
+        (f.type === "mast" && deck === top && !contains(path, [f.side, f.frame]));
+      if (out) return { deck, fixture: i, type: f.type };
+    }
+  }
+  return null;
 }

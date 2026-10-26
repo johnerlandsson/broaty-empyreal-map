@@ -73,6 +73,15 @@ describe("loadTweaks footprints and view", () => {
     expect(loadOne({ hull })().places.x).toEqual({ hull });
   });
 
+  it("takes rounded corners that meet, or reach the next point", () => {
+    expect(loadOne({ hull: { 1: [[0, 0], [2, 0], [2, 2, 1], [0, 2, 1]] } })).not.toThrow();
+    expect(loadOne({ hull: { 1: [[0, 0], [2, 0], [2, 2, 2], [0, 2]] } })).not.toThrow();
+  });
+
+  it("takes null for a deck, putting it back to the box", () => {
+    expect(loadOne({ hull: { 3: null } })().places.x).toEqual({ hull: { 3: null } });
+  });
+
   it("refuses a hull of fewer than 3 points, naming the deck", () => {
     expect(loadOne({ hull: { 1: [[0, 0], [1, 0]] } })).toThrow(/x\.json: hull\.1/);
   });
@@ -231,6 +240,11 @@ describe("resolveLook hull", () => {
   it("reports a hull for a deck the place lacks, but not an inherited one", () => {
     expect(resolveLook("child", decks, "decks", tweaks).orphans).toEqual(["hull.5"]);
     expect(resolveLook("base", decks.slice(0, 1), "decks", tweaks).orphans).toEqual(["hull.2"]);
+  });
+
+  it("puts a deck back to the box with null, over an inherited path", () => {
+    const t = { palette, places: { ...tweaks.places, box: { like: "base", hull: { 2: null } } } };
+    expect(resolveLook("box", decks, "decks", t).look.hull).toEqual({ 1: tri(1) });
   });
 
   it("leaves the hull out of a place that isn't decks", () => {

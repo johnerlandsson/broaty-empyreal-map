@@ -111,7 +111,8 @@ export function reachesOf(points) {
 /**
  * A hull path, closed and counter-clockwise, with each rounded corner (a point `[x, y, r]`)
  * expanded to the arc of radius r tangent to both its edges: 4 points, 3 arcs, as for a room's
- * rounded corner. Points with no r are kept as they are.
+ * rounded corner. Points with no r are kept as they are. Where two arcs meet, or an arc ends on the
+ * next point, that point is there once.
  * @param {number[][]} points  [x, y] or [x, y, r], in cells
  * @returns {number[][]}
  */
@@ -127,7 +128,8 @@ export function pathOf(points) {
       out.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
     }
   });
-  return out;
+  const same = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) <= 1e-9;
+  return out.filter((p, i) => !same(p, out[(i + out.length - 1) % out.length]));
 }
 
 /**

@@ -8,9 +8,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { noseAt, outlineOf, pathOf } from "../ui/lib/footprint.js";
 import { keepArea, keepRoom, ROOM_FIELDS } from "./source/filter.mjs";
-import { inside, overlaps } from "./source/footprints.mjs";
+import { hullClash, overlaps } from "./source/footprints.mjs";
 import { placeRooms } from "./source/place.mjs";
 import { loadSource } from "./source/read.mjs";
 import { diffRooms, droppedOf, emptyReport, formatReport, sortReport } from "./source/report.mjs";
@@ -166,25 +165,15 @@ function checkFootprints(id, rooms, footprints) {
 }
 
 /**
- * Throws, naming the tweak file and the deck's hull, when a deck's hull path cuts through a room's
- * outline on it, or a cradle on it has no nose to sit at (its side misses the path). Decks with no
- * hull path keep their box and aren't checked.
+ * Throws, naming the tweak file and the deck's hull, when a deck's hull path cuts through a room
+ * on it or leaves a cradle or mast outside (footprints.mjs's hullClash).
  */
 function checkHull(id, rooms, look) {
+  const clash = hullClash(rooms, look);
+  if (!clash) return;
   const file = `data/tweaks/${id}.json`;
-  const local = (roomId) => roomId.slice(roomId.indexOf(".") + 1);
-  for (const [deck, points] of Object.entries(look.hull)) {
-    const path = pathOf(points);
-    for (const r of rooms.filter((room) => String(room.at?.deck) === deck)) {
-      const outline = outlineOf(look.footprints[local(r.id)]).map(([x, y]) => [x + r.at.side, y + r.at.frame]);
-      if (!inside(outline, path)) throw new Error(`${file}: hull.${deck} cuts through ${r.id}. Nothing written`);
-    }
-    look.fixtures.forEach((f, i) => {
-      if (f.type === "cradle" && String(f.deck) === deck && noseAt(path, f.side) === null) {
-        throw new Error(`${file}: fixtures[${i}] (cradle) at side ${f.side} is outside hull.${deck}. Nothing written`);
-      }
-    });
-  }
+  if (clash.room) throw new Error(`${file}: hull.${clash.deck} cuts through ${clash.room}. Nothing written`);
+  throw new Error(`${file}: fixtures[${clash.fixture}] (${clash.type}) is outside hull.${clash.deck}. Nothing written`);
 }
 
 /**
