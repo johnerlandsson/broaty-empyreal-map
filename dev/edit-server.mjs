@@ -4,7 +4,7 @@
 // tweaks; only if that build passes is the file written and ui/data rebuilt. Builds go one at a
 // time, and each, a hand edit's included, is announced over server-sent events. It writes only
 // data/tweaks/*.json and, through the build, ui/data; never data/sync-report.json, never the source.
-// Usage: npm run edit
+// Usage: npm run edit [-- --port N]   (8766 by default)
 
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -107,7 +107,10 @@ export async function startServer({ root, source, port = 8766, build: runBuild =
   const tweaksDir = join(root, "data/tweaks");
   const outDir = join(root, "ui/data");
   const syncReport = join(root, "data/sync-report.json");
-  let report = JSON.parse(read(syncReport) ?? "null");
+  // The last sync's report, read once: an editor build diffs ui/data against itself, so only the
+  // lists that follow the tweaks (orphans, unplaced, noBuilder) are taken from it.
+  const synced = JSON.parse(read(syncReport) ?? "null");
+  let report = synced;
   let lastVersion = 0;
   const clients = new Set();
 
@@ -142,7 +145,9 @@ export async function startServer({ root, source, port = 8766, build: runBuild =
       const reportPath = join(temp, "sync-report.json");
       if (existsSync(syncReport)) cpSync(syncReport, reportPath);
       const before = snapshot(outDir);
-      ({ report } = await runBuild({ source, tweaksDir, outDir, reportPath }));
+      const built = (await runBuild({ source, tweaksDir, outDir, reportPath })).report;
+      const { orphans, unplaced, noBuilder } = built;
+      report = synced ? { ...synced, orphans, unplaced, noBuilder } : built;
       const changed = changedIds(before, snapshot(outDir));
       announce({ type: "built", changed, version: buildVersion() });
       return changed;
@@ -163,9 +168,15 @@ export async function startServer({ root, source, port = 8766, build: runBuild =
       try {
         cpSync(tweaksDir, join(temp, "tweaks"), { recursive: true });
         writeFileSync(join(temp, "tweaks", file), text);
-        await runBuild({ source, tweaksDir: join(temp, "tweaks"), outDir: join(temp, "out"), reportPath: join(temp, "report.json") });
+        await runBuild({
+          source,
+          tweaksDir: join(temp, "tweaks"),
+          tweaksShownAs: "data/tweaks",
+          outDir: join(temp, "out"),
+          reportPath: join(temp, "report.json"),
+        });
       } catch (err) {
-        throw new HttpError(422, err.message);
+        throw new HttpError(422, err.message.includes("Nothing written") ? err.message : `${err.message}. Nothing written`);
       } finally {
         rmSync(temp, { recursive: true, force: true });
       }
@@ -182,8 +193,9 @@ export async function startServer({ root, source, port = 8766, build: runBuild =
       try {
         changed = await realBuild();
       } catch (err) {
+        // The file is saved; say so, with its version, and the next build fixes the view.
         announce({ type: "error", error: err.message });
-        throw err;
+        throw new HttpError(500, `saved data/tweaks/${file}, but rebuilding ui/data failed: ${err.message}`, { version: versionOf(path) });
       }
       return { ok: true, version: versionOf(path), changed };
     });
@@ -300,6 +312,13 @@ export async function startServer({ root, source, port = 8766, build: runBuild =
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-  const { url } = await startServer({ root, source: join(homedir(), "dev/empyreal") });
+  const args = process.argv.slice(2);
+  let port = 8766;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] !== "--port") throw new Error(`Unknown argument: ${args[i]}`);
+    port = Number(args[++i]);
+    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`--port needs a port number, not ${args[i]}`);
+  }
+  const { url } = await startServer({ root, source: join(homedir(), "dev/empyreal"), port });
   console.log(`Editor: ${url}/dev/edit.html`);
 }

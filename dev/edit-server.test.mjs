@@ -1,5 +1,6 @@
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
-import { request } from "node:http";
+import { spawn } from "node:child_process";
+import { createServer, request } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -22,7 +23,7 @@ afterEach(async () => {
  * (the repo's own ui/data names places the fixture hasn't, and the build refuses to remove them
  * all), then a server on it.
  */
-async function setup({ build: buildWith } = {}) {
+async function setup({ build: buildWith, syncReport } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "edit-server-"));
   cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
   const root = join(dir, "root");
@@ -36,6 +37,7 @@ async function setup({ build: buildWith } = {}) {
   writeFileSync(area, stringify(doc));
   mkdirSync(join(root, "ui"), { recursive: true });
   await build({ source, tweaksDir: join(root, "data/tweaks"), outDir: join(root, "ui/data"), reportPath: join(dir, "seed-report.json") });
+  if (syncReport) writeFileSync(join(root, "data/sync-report.json"), `${JSON.stringify(syncReport, null, 2)}\n`);
   writeFileSync(join(root, "index.html"), "<p>hi</p>\n");
   writeFileSync(join(dir, "secret.txt"), "secret\n");
 
@@ -250,6 +252,54 @@ describe("edit server", () => {
     expect(await next(2000)).toEqual({ type: "error", error: "the real build broke" });
   });
 
+  it("answers a save written whose real build then fails with 500, saying it saved, and the new version", async () => {
+    const ctx = await setup({
+      build: async (opts) => {
+        if (opts.outDir.startsWith(ctx.root)) throw new Error("the real build broke");
+        return build(opts);
+      },
+    });
+    const res = await ctx.put("mini", { paint: { hall: "docks" } }, 0);
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("saved data/tweaks/mini.json, but rebuilding ui/data failed: the real build broke");
+    expect(body.version).toBe(statSync(join(ctx.root, "data/tweaks/mini.json")).mtimeMs);
+    expect(ctx.read("data/tweaks/mini.json")).toBe(tweakText({ paint: { hall: "docks" } }));
+  });
+
+  it("keeps the sync report's lists after a save, refreshing only orphans, unplaced and noBuilder", async () => {
+    const synced = JSON.parse(readFileSync(join(repo, "data/sync-report.json"), "utf8"));
+    const syncReport = {
+      ...synced,
+      newPlaces: [{ place: "mini", builder: "decks" }],
+      rooms: { added: [{ place: "mini", id: "mini.locker" }], removed: [], renamed: [] },
+      orphans: [{ place: "wheelie", key: "paint.stale" }],
+      unplaced: [{ place: "wheelie", id: "wheelie.stale" }],
+      noBuilder: [{ place: "stale", file: "content/areas/stale.yaml" }],
+    };
+    const { put, url } = await setup({ syncReport });
+    expect((await put("mini", { paint: { hall: "docks", nowhere: "docks" } }, 0)).status).toBe(200);
+    const { report } = await (await fetch(`${url}/api/state`)).json();
+    expect(report.newPlaces).toEqual(syncReport.newPlaces);
+    expect(report.rooms).toEqual(syncReport.rooms);
+    expect(report.commit).toBe(syncReport.commit);
+    expect(report.orphans).toEqual([{ place: "mini", key: "paint.nowhere" }]);
+    expect(report.unplaced).toEqual([{ place: "wheelie", id: "wheelie.hub-freight" }]);
+    expect(report.noBuilder).toEqual([]);
+  });
+
+  it("names a trial build's file as data/tweaks/<file>, not the temp copy, and says nothing was written", async () => {
+    const { put, url } = await setup();
+    const { tweaks } = await (await fetch(`${url}/api/state`)).json();
+    const json = { ...tweaks.kilmar.json, hull: { 2: [[0, 0], [2, 2], [2, 0], [0, 2]] } };
+    const res = await put("kilmar", json, tweaks.kilmar.version);
+    expect(res.status).toBe(422);
+    const { error } = await res.json();
+    expect(error).toMatch(/^data\/tweaks\/kilmar\.json: hull\.2 crosses itself/);
+    expect(error).toMatch(/Nothing written$/);
+    expect(error).not.toContain(tmpdir());
+  });
+
   it("refuses a request for another host, against DNS rebinding", async () => {
     const { url } = await setup();
     const { port } = new URL(url);
@@ -327,5 +377,24 @@ describe("edit server", () => {
     expect(event).toMatchObject({ type: "built", changed: ["mini"] });
     await new Promise((r) => setTimeout(r, 600));
     expect(seen).toEqual([]);
+  });
+
+  it("listens on the port --port names", async () => {
+    const free = createServer();
+    await new Promise((done) => free.listen(0, "localhost", done));
+    const { port } = free.address();
+    await new Promise((done) => free.close(done));
+    const child = spawn(process.execPath, [join(repo, "dev/edit-server.mjs"), "--port", String(port)], { stdio: ["ignore", "pipe", "pipe"] });
+    cleanup.push(() => child.kill());
+    let out = "";
+    await new Promise((done, fail) => {
+      const timer = setTimeout(() => fail(new Error(`no URL printed: ${out}`)), 5000);
+      child.stdout.on("data", (chunk) => {
+        out += chunk;
+        if (out.includes("\n")) (clearTimeout(timer), done());
+      });
+      child.on("exit", (code) => (clearTimeout(timer), fail(new Error(`exited ${code}: ${out}`))));
+    });
+    expect(out).toBe(`Editor: http://localhost:${port}/dev/edit.html\n`);
   });
 });
