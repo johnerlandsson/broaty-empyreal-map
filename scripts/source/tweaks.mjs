@@ -12,6 +12,7 @@ import {
   FOOTPRINT_KEYS,
   MERGED_KEYS,
   originOf,
+  PALETTE_NAME,
   SECTION_KEYS,
   SPAN_KEYS,
   TOP_KEYS,
@@ -207,6 +208,9 @@ export function loadTweaks(dir) {
   const palette = readJson(palettePath);
   expectObject(shown(palettePath), "(top level)", palette);
   for (const [name, colour] of Object.entries(palette)) {
+    if (!PALETTE_NAME.test(name)) {
+      throw new Error(`${shown(palettePath)}: ${JSON.stringify(name)} is not a palette name (lower-case letters, digits and hyphens, starting with a letter)`);
+    }
     if (typeof colour !== "string") throw new Error(`${shown(palettePath)}: ${name} must be a colour string`);
   }
 

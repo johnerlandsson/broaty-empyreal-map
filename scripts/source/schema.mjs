@@ -21,6 +21,8 @@ export const FOOTPRINT_KEYS = ["span", "corners", "r", "outline"];
 export const SPAN_KEYS = ["fore", "aft", "port", "starboard"];
 export const VIEW_KEYS = ["cutaway", "camera"];
 export const CAMERA_KEYS = ["yaw", "pitch", "zoom"];
+/** A palette name: lower case, starting with a letter, then letters, digits and hyphens. */
+export const PALETTE_NAME = /^[a-z][a-z0-9-]*$/;
 /** The top keys `like` merges key by key (nearest file wins each); the rest it takes whole. */
 export const MERGED_KEYS = ["paint", "paintDistricts", "footprints", "hull", "view", ...Object.keys(SECTION_KEYS), "place"];
 

@@ -115,6 +115,22 @@ describe("loadTweaks footprints and view", () => {
   });
 });
 
+describe("loadTweaks palette names", () => {
+  const loadPalette = (palette) => {
+    const d = mkdtempSync(join(tmpdir(), "tweaks-"));
+    writeFileSync(join(d, "palette.json"), JSON.stringify(palette));
+    return () => loadTweaks(d);
+  };
+
+  it("takes lower-case names with digits and hyphens", () => {
+    expect(loadPalette({ docks: "#000", "deep-blue2": "#111" })().palette).toEqual({ docks: "#000", "deep-blue2": "#111" });
+  });
+
+  it.each(["Deep Blue!", "a.b", "2nd", "-x", "Docks", ""])("names palette.json and the bad name %j", (name) => {
+    expect(loadPalette({ docks: "#000", [name]: "#111" })).toThrow(`palette.json: ${JSON.stringify(name)}`);
+  });
+});
+
 describe("loadTweaks like", () => {
   it("fails at load on a like naming no file", () => {
     expect(() => loadTweaks(dir("bad-like"))).toThrow(/x\.json: like.*typo/);

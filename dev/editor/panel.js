@@ -10,6 +10,7 @@
 
 import { CAM } from "../../ui/lib/geometry.js";
 import { CORNER_R } from "../../ui/lib/footprint.js";
+import { PALETTE_NAME } from "../../scripts/source/schema.mjs";
 import { origin, reset, setFootprint, setPaint, setView } from "./ops.js";
 
 const CORNERS = ["square", "rounded", "cut"];
@@ -150,9 +151,12 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     i.step = String(step);
     if (min != null) i.min = String(min);
     if (placeholder != null) i.placeholder = String(placeholder);
-    i.value = value == null ? "" : String(value);
+    i.defaultValue = value == null ? "" : String(value); // what's saved; a value unlike it is still being typed
     i.disabled = disabled;
-    i.addEventListener("change", () => change(numberOf(i)));
+    i.addEventListener("change", () => {
+      i.defaultValue = i.value; // committed: a redraw shows what's saved, not this
+      change(numberOf(i));
+    });
     return i;
   }
 
@@ -204,13 +208,17 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     const colour = h("input", "colour");
     colour.type = "color";
     colour.name = "colour";
-    colour.value = "#8796a8";
+    colour.defaultValue = "#8796a8";
     const add = h("button", "btn add-colour", "add");
+    add.name = "add-colour";
     for (const x of [name, colour, add]) x.disabled = !!paletteBroken;
     add.addEventListener("click", () => {
       const n = name.value.trim();
       if (!n) return showError("a new colour needs a name");
+      if (!PALETTE_NAME.test(n)) return showError(`${JSON.stringify(n)} is not a palette name: lower-case letters, digits and hyphens, starting with a letter`);
       if (Object.hasOwn(currentState().palette ?? {}, n)) return showError(`the palette already has ${n}`);
+      name.defaultValue = name.value;
+      colour.defaultValue = colour.value;
       save("palette", (t) => ({ ...t, [n]: colour.value }));
     });
     const addRow = h("div", "row");
@@ -304,6 +312,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     }
     view.append(row("camera", inputs));
     const fromView = h("button", "btn zoom-from-view", "set zoom from current view");
+    fromView.name = "zoom-from-view";
     fromView.disabled = disabled;
     fromView.addEventListener("click", () => {
       const { home, vb } = p.views.model;
@@ -317,7 +326,51 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     view.append(m);
   }
 
+  let drawn = null; // the place and room last drawn: "<place>/<room>"
+
+  /**
+   * The panel's inputs as they are, by name: each one's value where it's still being typed (unlike
+   * its saved defaultValue), and which has the focus, with its caret.
+   */
+  function held() {
+    const typed = new Map();
+    for (const i of [...inspector.querySelectorAll("input[name]"), ...view.querySelectorAll("input[name]")]) {
+      if (i.value !== i.defaultValue) typed.set(i.name, i.value);
+    }
+    const a = document.activeElement;
+    const focused = a?.name && (inspector.contains(a) || view.contains(a)) ? a : null;
+    let caret = null;
+    try {
+      caret = focused && focused.selectionStart != null ? [focused.selectionStart, focused.selectionEnd] : null;
+    } catch {} // number inputs have no caret to read
+    return { typed, focus: focused?.name ?? null, caret };
+  }
+
+  function restore({ typed, focus, caret }) {
+    const named = (n) => inspector.querySelector(`[name="${n}"]`) ?? view.querySelector(`[name="${n}"]`);
+    for (const [n, value] of typed) {
+      const i = named(n);
+      if (i && !i.disabled) i.value = value;
+    }
+    const f = focus && named(focus);
+    if (!f || f.disabled) return;
+    f.focus();
+    try {
+      if (caret) f.setSelectionRange(...caret);
+    } catch {}
+  }
+
+  /** Draws the panel afresh; on the same place and room, keeping what's being typed and the focus. */
   function render() {
+    const p0 = currentPlace();
+    const key = p0 ? `${p0.id}/${p0.roomId ?? ""}` : null;
+    const keep = key === drawn && inspector.isConnected ? held() : null; // a panel off the page has no typing or focus
+    drawn = key;
+    draw();
+    if (keep) restore(keep);
+  }
+
+  function draw() {
     inspector.replaceChildren();
     view.replaceChildren();
     const p = currentPlace();

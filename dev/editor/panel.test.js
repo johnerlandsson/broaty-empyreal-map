@@ -27,14 +27,20 @@ const STATE = {
 };
 
 class FakeEvents {
-  constructor() {}
+  static last = null;
+  constructor() {
+    FakeEvents.last = this;
+  }
   close() {}
+  emit(event) {
+    this.onmessage?.({ data: JSON.stringify(event) });
+  }
 }
 
 let root;
 let editor;
 let puts;
-let replies; // queued responses to PUTs: {status, body}
+let replies; // queued responses to PUTs: {status, body}, or a promise of one
 
 const start = (hash, state = STATE) => {
   root = document.createElement("div");
@@ -42,13 +48,16 @@ const start = (hash, state = STATE) => {
   window.location.hash = hash;
   puts = [];
   replies = [];
+  const disk = structuredClone(state); // what the server would read back: each 200 is written
   const fetch = vi.fn(async (url, init = {}) => {
     if (init.method === "PUT") {
-      puts.push({ url, body: JSON.parse(init.body) });
-      const { status, body } = replies.shift() ?? { status: 200, body: { ok: true, version: 99, changed: [] } };
+      const sent = JSON.parse(init.body);
+      puts.push({ url, body: sent });
+      const { status, body } = (await replies.shift()) ?? { status: 200, body: { ok: true, version: 99, changed: [] } };
+      if (status === 200) disk.tweaks[url.split("/").pop()] = { json: sent.json, version: body.version };
       return { ok: status === 200, status, json: async () => body };
     }
-    return { ok: true, status: 200, json: async () => structuredClone(state) };
+    return { ok: true, status: 200, json: async () => structuredClone(disk) };
   });
   editor = startEditor({ root, fetch, EventSource: FakeEvents, importPlace: async (id) => structuredClone(FIXTURES[id]) });
   return editor.ready;
@@ -203,5 +212,49 @@ describe("the side panel", () => {
     await editor.busy;
     expect(puts).toHaveLength(0);
     expect(side().querySelector('input[name="fore"]').disabled).toBe(true);
+  });
+
+  it("keeps what's being typed in another field across a save and the build after it", async () => {
+    await start("#kilmar/kilmar.market");
+    let answer;
+    replies.push(new Promise((r) => (answer = r)));
+    const fore = side().querySelector('input[name="fore"]');
+    fore.value = "0.5";
+    fore.dispatchEvent(new Event("change"));
+    const aft = side().querySelector('input[name="aft"]');
+    aft.focus();
+    aft.value = "0.2";
+    answer({ status: 200, body: { ok: true, version: 99, changed: ["kilmar"] } });
+    await editor.busy;
+    FakeEvents.last.emit({ type: "built", changed: ["kilmar"], version: 50 });
+    await editor.busy;
+    const now = side().querySelector('input[name="aft"]');
+    expect(now).not.toBe(aft); // the panel was drawn again
+    expect(now.value).toBe("0.2");
+    expect(document.activeElement).toBe(now);
+    expect(side().querySelector('input[name="fore"]').value).toBe("0.5");
+  });
+
+  it("keeps the focus on an input stepped by its spinner", async () => {
+    await start("#kilmar/kilmar.market");
+    const yaw = side().querySelector('input[name="yaw"]');
+    yaw.focus();
+    yaw.value = "17";
+    yaw.dispatchEvent(new Event("change"));
+    await editor.busy;
+    expect(puts[0].body.json.view.camera.yaw).toBe(17);
+    expect(document.activeElement?.name).toBe("yaw");
+    expect(document.activeElement.value).toBe("17");
+  });
+
+  it("refuses a colour name that isn't lower case, digits and hyphens", async () => {
+    await start("#kilmar/kilmar.market");
+    for (const name of ["Deep Blue!", "a.b", "2nd"]) {
+      side().querySelector('input[name="colour-name"]').value = name;
+      side().querySelector(".add-colour").click();
+      await editor.busy;
+      expect(root.querySelector(".errbar").textContent).toContain("not a palette name");
+    }
+    expect(puts).toHaveLength(0);
   });
 });
