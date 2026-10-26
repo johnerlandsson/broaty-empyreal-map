@@ -28,14 +28,14 @@ rooms:
       west: wheelie.rim-12
   - id: wheelie.lift-12
     name: Lift, 12
-    address: Spoke 12:00
+    address: Lift 12
     car: true
     exits:
       out: wheelie.rim-12
       up: { to: wheelie.hub, seconds: 20 }
   - id: wheelie.ladderway-12
     name: Ladderway, 12
-    address: Spoke 12:00
+    address: Rim 12:00 ladderway
     exits:
       up: wheelie.hub
   - id: wheelie.hub
@@ -46,14 +46,13 @@ rooms:
       down: wheelie.lift-12
   - id: wheelie.hub-freight
     name: Hub, freight
-    address: Hub
+    address: Hub freight
     gravity: 0
     exits:
       west: wheelie.hub
   - id: wheelie.shop
     name: Shop
     address: Rim 12:00 fore
-    off: wheelie.rim-12
     flags: [listed]
     district: concourse
     exits:
