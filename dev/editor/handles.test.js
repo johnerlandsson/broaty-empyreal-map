@@ -285,6 +285,17 @@ describe("hull handles", () => {
     expect(puts[0].body.json.hull["3"]).toEqual(hullFromRooms(editor.place.views.index, 3));
   });
 
+  it("makes the hull round the footprints the place resolves, one inherited through like", async () => {
+    const footprints = { market: { span: { aft: 1 } } };
+    await start("#kilmar", { fixtures: { kilmar: withLook(kilmar, { footprints }) } });
+    expect(editor.place.views.index.decks[editor.place.views.deck.level]).toBe(2);
+    root.querySelector('.side [name="hull-from-rooms"]').click();
+    await editor.busy;
+    const index = editor.place.views.index;
+    expect(puts[0].body.json.hull["2"]).toEqual(hullFromRooms(index, 2, footprints));
+    expect(puts[0].body.json.hull["2"]).not.toEqual(hullFromRooms(index, 2));
+  });
+
   it("warns in the bar when the rooms make more than one piece", async () => {
     const apart = { ...orrin, rooms: orrin.rooms.filter((r) => r.id !== "orrin.deck-3-frame-2") };
     await start("#orrin", { fixtures: { orrin: apart } });

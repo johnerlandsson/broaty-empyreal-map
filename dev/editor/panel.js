@@ -9,8 +9,8 @@
 // shown; the next build fixes the view.
 // What each kind of place allows matches the build: footprints only on decks rooms that aren't
 // passages or blisters, a cutaway and a hull only on decks, a camera on anything but a town.
-// The hull section is the plan's deck's: a path made from the rooms or back to the box, and the r
-// of the point picked on the plan (handles.js draws and drags the path).
+// The hull section is the plan's deck's: a path made round the rooms' footprints or back to the
+// box, and the r of the point picked on the plan (handles.js draws and drags the path).
 
 import { CAM } from "../../ui/lib/geometry.js";
 import { CORNER_R } from "../../ui/lib/footprint.js";
@@ -368,9 +368,11 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     if (!Array.isArray(points) || !points.length) {
       m.append(
         button("hull-from-rooms", "make hull from rooms", () => {
-          const traced = hullFromRooms(index, deck);
+          // round the footprints as built, the place's own and those through like
+          const footprints = p.data.look?.footprints ?? {};
+          const traced = hullFromRooms(index, deck, footprints);
           if (!traced.length) return showError(`Deck ${deck} has no rooms to make a hull from`);
-          const pieces = roomPieces(index, deck);
+          const pieces = roomPieces(index, deck, footprints);
           const step = save(p.id, (t) => setHull(t, key, traced)).then(({ status }) => {
             if (status === 200 && pieces > 1) showError(`warning: the rooms on Deck ${deck} make ${pieces} pieces; the hull goes round the largest only`);
           });

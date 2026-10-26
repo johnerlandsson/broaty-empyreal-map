@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import kilmar from "../../tests/fixtures/generated/kilmar.js";
 import generated from "../../tests/fixtures/generated/orrin.js";
+import { hullClash } from "../../scripts/source/footprints.mjs";
 import { indexDecks } from "../../ui/lib/decks.js";
 import { boundsOf } from "../../ui/lib/footprint.js";
 import { hullFromRooms, roomPieces } from "./hull.js";
@@ -61,6 +63,25 @@ describe("hullFromRooms", () => {
     const cells = [[0, 0], [1, 1], [2, 1]];
     const byId = new Map(cells.map(([x, y], i) => [`p.${i}`, { cell: { x, y, z: 1 }, blister: false }]));
     expect(hullFromRooms({ byId }, 1)).toEqual([[0.38, 0.38], [2.62, 0.38], [2.62, 1.62], [0.38, 1.62]]);
+  });
+
+  it("goes round the rooms' footprints, inherited ones too: Kilmar's deck 2 with Orrin's Exchange reaching aft passes the build", () => {
+    const footprints = { market: { span: { aft: 1 } } }; // Kilmar's, through like orrin
+    const rooms = kilmar.rooms.filter((r) => r.at?.deck === 2);
+    const bare = hullFromRooms(indexDecks(kilmar), 2);
+    expect(hullClash(rooms, { hull: { 2: bare }, footprints, fixtures: [] })).toEqual({ deck: "2", room: "kilmar.market" });
+    const path = hullFromRooms(indexDecks(kilmar), 2, footprints);
+    expect(area2(path)).toBeGreaterThan(0);
+    expect(cornersOnly(path)).toBe(true);
+    expect(hullClash(rooms, { hull: { 2: path }, footprints, fixtures: [] })).toBe(null);
+    expect(boundsOf(path)).toEqual({ x0: -1.62, x1: 1.62, y0: 0.38, y1: 3.62 });
+    expect(inside(path, [-1, 1])).toBe(true); // the Exchange's reach aft
+  });
+
+  it("takes a custom outline's bounds, on a 0.05 grid", () => {
+    const byId = new Map([["p.a", { cell: { x: 0, y: 0, z: 1 }, blister: false }]]);
+    const footprints = { a: { outline: [[-0.5, -0.5], [0.73, -0.5], [0.5, 0.5], [-0.5, 0.5]] } };
+    expect(hullFromRooms({ byId }, 1, footprints)).toEqual([[-0.62, -0.62], [0.87, -0.62], [0.87, 0.62], [-0.62, 0.62]]);
   });
 
   it("leaves blisters out, and gives nothing for a deck with no rooms", () => {
