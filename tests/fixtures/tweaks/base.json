@@ -1,0 +1,6 @@
+{
+  "paint": { "market": "market", "gate": "docks" },
+  "paintDistricts": { "yards": "industrial" },
+  "fixtures": [{ "type": "blister", "room": "market" }],
+  "drum": { "way": "spiral", "axis": { "room": "gate", "r": 2, "len": 10 } }
+}

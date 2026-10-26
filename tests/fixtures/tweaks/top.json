@@ -1,0 +1,5 @@
+{
+  "like": "mid",
+  "paint": { "ghost": "docks" },
+  "fixtures": [{ "type": "mast", "side": 1, "frame": 2, "height": 3 }]
+}

@@ -1,0 +1,195 @@
+// Reads the human tweak files (data/tweaks/<place>.json and palette.json) and resolves one
+// place's look from them. The build only ever reads these files.
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
+
+const TOP_KEYS = ["like", "paint", "paintDistricts", "fixtures", "place", "drum", "town", "wheel"];
+/** The builder sections: allowed keys of each (stage 1). `wheel` is empty. */
+const SECTION_KEYS = {
+  drum: ["rooms", "axis", "way"],
+  town: ["root", "uphill", "ground", "gate", "wells", "river", "scarp"],
+  wheel: [],
+};
+const DRUM_ROOM_KEYS = ["x", "y", "z", "hour", "band", "terrain"];
+const AXIS_KEYS = ["room", "r", "len"];
+const FIXTURE_KEYS = {
+  blister: ["type", "room"],
+  cradle: ["type", "side", "deck", "hw", "hh", "len"],
+  mast: ["type", "side", "frame", "height"],
+  "drum-cradle": ["type", "hour", "z", "hw", "h", "hl"],
+};
+
+const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const local = (id) => id.slice(id.indexOf(".") + 1);
+
+/** A path for messages: relative to the repo (the working directory) where it lies under it. */
+function shown(file) {
+  const rel = relative(process.cwd(), file);
+  return rel.startsWith("..") ? file : rel;
+}
+
+function unknownKeys(file, path, obj, allowed) {
+  for (const key of Object.keys(obj)) {
+    if (!allowed.includes(key)) throw new Error(`${file}: ${path ? `${path}.` : ""}${key}`);
+  }
+}
+
+function expectObject(file, path, value) {
+  if (!isObject(value)) throw new Error(`${file}: ${path} must be an object`);
+}
+
+function checkFixture(file, path, fixture) {
+  expectObject(file, path, fixture);
+  const allowed = FIXTURE_KEYS[fixture.type];
+  if (!allowed) throw new Error(`${file}: ${path}.type: unknown fixture type ${JSON.stringify(fixture.type)}`);
+  unknownKeys(file, path, fixture, allowed);
+}
+
+function checkTweak(file, tweak, palette) {
+  expectObject(file, "(top level)", tweak);
+  unknownKeys(file, "", tweak, TOP_KEYS);
+  if (tweak.like !== undefined && typeof tweak.like !== "string") throw new Error(`${file}: like must be a place name`);
+
+  for (const key of ["paint", "paintDistricts"]) {
+    if (tweak[key] === undefined) continue;
+    expectObject(file, key, tweak[key]);
+    for (const [name, colour] of Object.entries(tweak[key])) {
+      if (!Object.hasOwn(palette, colour)) {
+        throw new Error(`${file}: ${key}.${name}: unknown palette name ${JSON.stringify(colour)}`);
+      }
+    }
+  }
+
+  if (tweak.fixtures !== undefined) {
+    if (!Array.isArray(tweak.fixtures)) throw new Error(`${file}: fixtures must be a list`);
+    tweak.fixtures.forEach((f, i) => checkFixture(file, `fixtures[${i}]`, f));
+  }
+
+  if (tweak.place !== undefined) {
+    expectObject(file, "place", tweak.place);
+    for (const [id, at] of Object.entries(tweak.place)) {
+      expectObject(file, `place.${id}`, at);
+      unknownKeys(file, `place.${id}`, at, ["x", "y", "z"]);
+    }
+  }
+
+  for (const [name, allowed] of Object.entries(SECTION_KEYS)) {
+    if (tweak[name] === undefined) continue;
+    expectObject(file, name, tweak[name]);
+    unknownKeys(file, name, tweak[name], allowed);
+  }
+  const drum = tweak.drum;
+  if (drum?.rooms !== undefined) {
+    expectObject(file, "drum.rooms", drum.rooms);
+    for (const [id, r] of Object.entries(drum.rooms)) {
+      expectObject(file, `drum.rooms.${id}`, r);
+      unknownKeys(file, `drum.rooms.${id}`, r, DRUM_ROOM_KEYS);
+    }
+  }
+  if (drum?.axis !== undefined) {
+    expectObject(file, "drum.axis", drum.axis);
+    unknownKeys(file, "drum.axis", drum.axis, AXIS_KEYS);
+  }
+}
+
+function readJson(file) {
+  try {
+    return JSON.parse(readFileSync(file, "utf8"));
+  } catch (err) {
+    throw new Error(`${shown(file)}: ${err.message}`);
+  }
+}
+
+/**
+ * Loads palette.json and every other *.json in `dir` as a place, keyed by file name without
+ * `.json`. Throws, naming the file and key path, on bad JSON, an unknown key or an unknown
+ * palette name.
+ * @param {string} dir
+ * @returns {{palette: Record<string, string>, places: Record<string, object>}}
+ */
+export function loadTweaks(dir) {
+  const palettePath = join(dir, "palette.json");
+  const palette = readJson(palettePath);
+  expectObject(shown(palettePath), "(top level)", palette);
+  for (const [name, colour] of Object.entries(palette)) {
+    if (typeof colour !== "string") throw new Error(`${shown(palettePath)}: ${name} must be a colour string`);
+  }
+
+  const places = {};
+  for (const entry of readdirSync(dir).sort()) {
+    if (!entry.endsWith(".json") || entry === "palette.json") continue;
+    const file = join(dir, entry);
+    const tweak = readJson(file);
+    checkTweak(shown(file), tweak, palette);
+    places[entry.slice(0, -".json".length)] = tweak;
+  }
+  return { palette, places };
+}
+
+/** A place's tweak with its `like` chain merged under it; nearest file wins. */
+function merged(placeId, tweaks, chain = []) {
+  const own = tweaks.places[placeId];
+  if (chain.includes(placeId)) {
+    throw new Error(`data/tweaks/${chain[0]}.json: like cycle ${[...chain, placeId].join(" -> ")}`);
+  }
+  if (!own) return {};
+  if (own.like === undefined) return own;
+  if (!tweaks.places[own.like]) throw new Error(`data/tweaks/${placeId}.json: like names ${own.like}, which has no tweak file`);
+  const base = merged(own.like, tweaks, [...chain, placeId]);
+  const out = { ...base, ...own };
+  for (const key of ["paint", "paintDistricts", ...Object.keys(SECTION_KEYS), "place"]) {
+    if (base[key] || own[key]) out[key] = { ...base[key], ...own[key] };
+  }
+  return out;
+}
+
+/** The ids a tweak file itself (not through `like`) names, as [path, local id]. */
+function namedRooms(tweak) {
+  const named = [];
+  for (const id of Object.keys(tweak.paint ?? {})) named.push([`paint.${id}`, id]);
+  (tweak.fixtures ?? []).forEach((f, i) => {
+    if (f.room !== undefined) named.push([`fixtures[${i}].room`, f.room]);
+  });
+  for (const id of Object.keys(tweak.drum?.rooms ?? {})) named.push([`drum.rooms.${id}`, id]);
+  if (tweak.drum?.axis?.room !== undefined) named.push(["drum.axis.room", tweak.drum.axis.room]);
+  return named;
+}
+
+/**
+ * One place's full look. Paint gives every room a palette name: its own, else its district's in
+ * `paintDistricts`, else its district if that is a palette name, else a default by kind (a decks
+ * passage, whose name is its address: midring; a berth: docks; otherwise industrial).
+ * @param {string} placeId
+ * @param {object[]} rooms  the place's placed rooms (full ids, `name`, `address`, `flags`, `district`)
+ * @param {string} layoutKind  the area's layout kind
+ * @param {{palette: Record<string, string>, places: Record<string, object>}} tweaks
+ * @returns {{look: object, orphans: string[]}}  orphans: paths of this place's own tweaks that name a room it lacks
+ */
+export function resolveLook(placeId, rooms, layoutKind, tweaks) {
+  const tweak = merged(placeId, tweaks);
+  const file = `data/tweaks/${placeId}.json`;
+  const have = new Set(rooms.map((r) => local(r.id)));
+
+  const paint = {};
+  for (const room of rooms) {
+    const id = local(room.id);
+    const { district } = room;
+    let name = tweak.paint?.[id] ?? (district !== undefined ? tweak.paintDistricts?.[district] : undefined);
+    if (name === undefined && district !== undefined && Object.hasOwn(tweaks.palette, district)) name = district;
+    if (name === undefined) {
+      const passage = layoutKind === "decks" && String(room.name).toLowerCase() === String(room.address).toLowerCase();
+      if (passage) name = "midring";
+      else if (room.flags?.includes("berth")) name = "docks";
+      else name = "industrial";
+    }
+    if (!Object.hasOwn(tweaks.palette, name)) throw new Error(`${file}: paint.${id}: unknown palette name ${JSON.stringify(name)}`);
+    paint[id] = name;
+  }
+
+  const look = { paint, fixtures: tweak.fixtures ?? [], view: {} };
+  for (const name of Object.keys(SECTION_KEYS)) if (tweak[name]) look[name] = tweak[name];
+
+  const own = tweaks.places[placeId] ?? {};
+  const orphans = namedRooms(own).filter(([, id]) => !have.has(id)).map(([path]) => path);
+  return { look, orphans };
+}
