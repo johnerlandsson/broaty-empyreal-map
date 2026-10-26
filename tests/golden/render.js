@@ -26,7 +26,7 @@ function box() {
 // the builders of ui/main.js, each into its own pair of containers
 function wheel(modelEl, deckEl, data) {
   const index = indexStation(tissRooms(data));
-  return { index, model: new ModelView(modelEl, index), deck: new DeckView(deckEl, index), locate };
+  return { index, model: new ModelView(modelEl, index, { view: data.look?.view }), deck: new DeckView(deckEl, index), locate };
 }
 
 function drum(modelEl, deckEl, data) {
@@ -37,6 +37,7 @@ function drum(modelEl, deckEl, data) {
     keyOf: drumKey,
     hourOf: (where) => drumHour(index, where),
     labels: false,
+    view: data.look?.view,
   });
   return { index, model, deck: new DeckView(deckEl, index, drumPlans(spec)), locate };
 }
@@ -49,6 +50,7 @@ function decks(modelEl, deckEl, data) {
     hourOf: () => null,
     cutOf: (where) => decksCut(index, where),
     labels: false,
+    view: data.look?.view,
   });
   return { index, model, deck: new DeckView(deckEl, index, decksPlans()), locate: locateDecks };
 }

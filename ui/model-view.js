@@ -21,6 +21,8 @@ const TONES = ["#3a4556", "#58667b", "#7e8da3"];
 const GLASS = "#cfe3ff";
 const LAMP = "#fff4d6"; // a lamp, burning: lit the same from every side
 const DIM = "#7d8a9a"; // a cut-away deck's outline
+const GHOST_FILL = 0.15; // a ghosted deck's faces: nearly clear,
+const GHOST_EDGE = "#9aa7b7"; // with their edges showing
 const LIGHT = (() => {
   const v = [-0.5, 0.75, 0.45];
   const m = Math.hypot(...v);
@@ -91,10 +93,12 @@ export class ModelView {
    * @param {ReturnType<typeof import("./lib/locate.js").indexStation>} index
    * @param {{faces?: object[], keyOf?: (where: object) => string|null,
    *   hourOf?: (where: object) => number|null, cutOf?: (where: object) => number|null,
-   *   labels?: boolean}} [opts] another station's model: its faces, the face key and hour for a
+   *   labels?: boolean, view?: {cutaway?: "off"|"hide-above"|"ghost-above"}}} [opts] another station's model: its faces, the face key and hour for a
    *   place, the deck to cut the model away above (faces with a higher `deck` are drawn as a
    *   dashed outline, and those with that `lid` as its top), and whether to draw T.I.S.S.'s ring
-   *   names
+   *   names, and how the place is viewed: `cutaway` is whether cutting away happens at all ("off"),
+   *   leaves the decks above out ("hide-above", as when absent) or draws them as a ghost
+   *   ("ghost-above")
    */
   constructor(containerEl, index, opts = {}) {
     this.faces = opts.faces ?? buildModel(index);
@@ -102,6 +106,7 @@ export class ModelView {
     this.hourOf = opts.hourOf ?? hourOf;
     this.cutOf = opts.cutOf ?? (() => null);
     this.cut = null;
+    this.cutaway = opts.view?.cutaway ?? "hide-above";
     this.normals = this.faces.map((f) => normalOf(f.pts));
 
     const div = document.createElement("div");
@@ -264,24 +269,30 @@ export class ModelView {
    * it's an `outline` face; a `lid` face is drawn only when its deck is the one cut to.
    */
   draw() {
-    const { phi, key, cut } = this;
+    const { phi, key } = this;
+    const cut = this.cutaway === "off" ? null : this.cut;
+    const ghostly = this.cutaway === "ghost-above";
     const turned = (f, v) => (f.turns ? roll(v, phi) : v);
     const away = (v) => project(v)[2] < 0;
     const quads = [];
     const wire = [];
+    const ghosts = [];
     this.faces.forEach((f, i) => {
       // cut away above the player's deck: those decks are an outline, the cut deck gets its lid
       if (f.lid != null && f.lid !== cut) return;
-      if (cut != null && f.deck != null && f.deck > cut) {
+      const above = cut != null && f.deck != null && f.deck > cut;
+      if (above && !ghostly) {
         if (f.outline) wire.push(edgePath(f.pts.map((p) => project(turned(f, p))), f.edges));
         return;
       }
       const n = turned(f, this.normals[i]);
       if (f.cull && (away(n) || (f.anchor && away(turned(f, f.anchor))))) return;
       const P = f.pts.map((p) => project(turned(f, p)));
-      quads.push({ f, P, n, layer: f.layer ?? 0, depth: P.reduce((s, p) => s + p[2], 0) / P.length });
+      (above ? ghosts : quads).push({ f, P, n, layer: f.layer ?? 0, depth: P.reduce((s, p) => s + p[2], 0) / P.length });
     });
-    quads.sort((a, b) => a.layer - b.layer || a.depth - b.depth);
+    const byDepth = (a, b) => a.layer - b.layer || a.depth - b.depth;
+    quads.sort(byDepth);
+    ghosts.sort(byDepth);
 
     const geo = document.createDocumentFragment();
     const hot = document.createDocumentFragment();
@@ -297,6 +308,14 @@ export class ModelView {
       if (key != null && f.key === key) {
         el("path", { d, fill: HL, "fill-opacity": 0.55, stroke: HL_STROKE, "stroke-width": 1.4, "stroke-linejoin": "round" }, hot);
       }
+    }
+    // a ghosted deck is faint and never lit: the fill at a low opacity, with its edges
+    for (const { f, P, n } of ghosts) {
+      if (f.ghost) continue;
+      const fill = fillOf(f, Math.abs(n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]));
+      el("path", { d: `M${P.map((p) => `${num(p[0])},${num(p[1])}`).join("L")}Z`, fill, "fill-opacity": GHOST_FILL, stroke: "none" }, geo);
+      const e = edgePath(P, f.edges);
+      if (e) el("path", { d: e, fill: "none", stroke: GHOST_EDGE, "stroke-opacity": 0.55, "stroke-width": 1, "stroke-linecap": "round" }, geo);
     }
     const w = wire.join("");
     if (w) el("path", { d: w, fill: "none", stroke: DIM, "stroke-opacity": 0.7, "stroke-width": 1, "stroke-dasharray": "4 4" }, geo);

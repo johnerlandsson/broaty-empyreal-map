@@ -44,7 +44,7 @@ const deckEl = document.getElementById("deck");
 /** A wheel (T.I.S.S.): its rings, hub and spine. */
 function wheel(data) {
   const index = indexStation(tissRooms(data));
-  return { index, model: new ModelView(modelEl, index), deck: new DeckView(deckEl, index), lastLevel: null };
+  return { index, model: new ModelView(modelEl, index, { view: data.look?.view }), deck: new DeckView(deckEl, index), lastLevel: null };
 }
 
 /** Wenna Halt: one drum, one plan. */
@@ -56,6 +56,7 @@ function drum(data) {
     keyOf: drumKey,
     hourOf: (where) => drumHour(index, where),
     labels: false,
+    view: data.look?.view,
   });
   return { index, model, deck: new DeckView(deckEl, index, drumPlans(spec)), lastLevel: null };
 }
@@ -69,6 +70,7 @@ function decks(data) {
     hourOf: () => null,
     cutOf: (where) => decksCut(index, where),
     labels: false,
+    view: data.look?.view,
   });
   return { index, model, deck: new DeckView(deckEl, index, decksPlans()), lastLevel: null, locate: locateDecks };
 }
