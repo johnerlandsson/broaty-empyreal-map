@@ -133,7 +133,7 @@ yet. Every place looks as it did before them.
 ### Footprints
 
 A footprint is how a room is drawn, never where it is. It applies to decks
-places only. The units are cells: a room's cell centre is at (side, frame),
+places only; on any other place the build stops with an error. The units are cells: a room's cell centre is at (side, frame),
 and the cell spans 0.5 either way. x is the side (starboard +) and y is the
 frame (fore +). A room with no footprint is one plain cell.
 
@@ -161,6 +161,9 @@ which has a footprint are left to the source.
 The mockup of the options is `docs/maps/reference/footprints-options.png`.
 
 ### The hull
+
+`hull` applies to decks places only; on any other place the build stops with
+an error.
 
 By default a deck's hull is the box its cells fill. `hull` replaces that with
 a closed path, one per deck, keyed by deck number, in the same cell units as
@@ -215,7 +218,8 @@ The mockup of the options is `docs/maps/reference/hull-path-options.png`.
 ### Not yet
 
 These are in the design (`docs/superpowers/specs/2026-10-26-map-data-from-source-design.md`,
-"The hull") but not built, and the build does not accept them in a tweak yet:
+"The hull") but not built. For now the build stops with an error if a tweak
+for a wheel, drum or town has a `hull` or `footprints`:
 
 - hull paths on wheels and drums. A wheel's path will be per ring, drawn on
   the unrolled ring plan that repeats as you pan, with the spokes, hub and

@@ -212,8 +212,8 @@ describe("resolveLook footprints and view", () => {
     expect(look.view).toEqual({ cutaway: "off", camera: { yaw: 1, pitch: 2, zoom: 3 } });
   });
 
-  it("leaves footprints out of a place that isn't decks", () => {
-    expect(resolveLook("base", [room("a"), room("b")], "wheel", tweaks).look).not.toHaveProperty("footprints");
+  it("refuses footprints on a place that isn't decks", () => {
+    expect(() => resolveLook("base", [room("a"), room("b")], "wheel", tweaks)).toThrow(/footprints only applies to decks places/);
   });
 
   it("reports a footprint for a room the place lacks", () => {
@@ -278,5 +278,21 @@ describe("resolveLook orphans in place, town and fixtures", () => {
     expect(orphans).toContain("place.b");
     const t = { palette: {}, places: { x: { town: { gate: "gone" } } } };
     expect(resolveLook("x", [], "decks", t).orphans).toEqual(["town.gate"]);
+  });
+});
+
+describe("resolveLook hull and footprints", () => {
+  const tweaks = loadTweaks(dir());
+  const look = (tweak, kind) => resolveLook("p", [room("a")], kind, { ...tweaks, places: { p: tweak } });
+  const tri = [[0, 0], [1, 0], [0, 1]];
+
+  it("refuses a hull or footprints on a place that is not decks", () => {
+    expect(() => look({ hull: { 1: tri } }, "wheel")).toThrow(/data\/tweaks\/p\.json: hull only applies to decks places/);
+    expect(() => look({ footprints: { a: { corners: "cut" } } }, "drum")).toThrow(/footprints only applies to decks places/);
+  });
+
+  it("accepts them on decks, and empty ones anywhere", () => {
+    expect(look({ hull: { 1: tri } }, "decks").look.hull).toEqual({ 1: tri });
+    expect(() => look({ hull: {}, footprints: {} }, "town")).not.toThrow();
   });
 });

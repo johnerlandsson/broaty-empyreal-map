@@ -203,8 +203,9 @@ preview all read, so no code changes. If it needs colours, add
 `data/tweaks/<place>.json` with `paint` (tints from the palette) and
 `fixtures`, or a `like` naming a station it looks like. See `sync.md`. The
 preview's walk is the one thing to add by hand, if you want the new station
-in it. Unless the tweak draws a `hull` path for a deck, the hull is the cells' box: Kilmar's cross and Caradon's and Garrow's
-empty cells are drawn as hull, as Orrin's corners are. A hull drawn from its
+in it. Unless the tweak draws a `hull` path for a deck, the hull is the
+cells' box: Kilmar's cross and Caradon's and Garrow's empty cells are drawn as
+hull, as Orrin's corners are. A hull drawn from its
 cells alone, and a blister set into a cell inside the box, were tried for the
 Mid's halts and not taken. Signs and lifts on decks aren't in
 the game yet, and nothing here draws them.

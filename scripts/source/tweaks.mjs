@@ -300,6 +300,12 @@ export function resolveLook(placeId, rooms, layoutKind, tweaks) {
     paint[id] = name;
   }
 
+  if (layoutKind !== "decks") {
+    for (const key of ["hull", "footprints"]) {
+      if (Object.keys(tweak[key] ?? {}).length) throw new Error(`${file}: ${key} only applies to decks places`);
+    }
+  }
+
   const look = { paint, fixtures: tweak.fixtures ?? [] };
   if (layoutKind === "decks") {
     look.footprints = tweak.footprints ?? {};
