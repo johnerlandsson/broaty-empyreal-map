@@ -1,5 +1,5 @@
 {
-  "commit": "0a5f686",
+  "commit": "266aa9b",
   "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
@@ -15,38 +15,7 @@
   "unplaced": [],
   "orphans": [],
   "droppedFlags": [],
-  "unknownFields": [
-    {
-      "name": "car.dwell",
-      "places": [
-        "zennor"
-      ]
-    },
-    {
-      "name": "car.floor",
-      "places": [
-        "zennor"
-      ]
-    },
-    {
-      "name": "car.load",
-      "places": [
-        "zennor"
-      ]
-    },
-    {
-      "name": "car.perStop",
-      "places": [
-        "zennor"
-      ]
-    },
-    {
-      "name": "car.stops.*.press",
-      "places": [
-        "zennor"
-      ]
-    }
-  ],
+  "unknownFields": [],
   "knownDroppedFlags": [
     "barber",
     "broker",
