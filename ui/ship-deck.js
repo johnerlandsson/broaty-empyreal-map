@@ -13,6 +13,7 @@ const HULL = "#9fb0c3";
 const BG = "#04060c";
 const ROOM_FONT = 12;
 const CAPTION_FONT = 10;
+const NOTE_FONT = 9;
 
 /**
  * @param {typeof import("./lib/hulls.js").HULLS.skiff} spec
@@ -24,12 +25,14 @@ export function shipPlans(spec) {
 }
 
 /**
- * Put the game's name for the room you're in on its hover (the others keep the drawing's), and the
- * ship's name and class under the hull. The room is `msg.shipRoom`'s, else the first, as lit.
+ * Put the game's name for the room you're in on its hover (the others keep the drawing's), the
+ * ship's name and class under the hull, and your note on her under those (`msg.note`: the Lua side
+ * sends it only aboard your own ship). The room is `msg.shipRoom`'s, else the first, as lit.
  */
 export function updateShip(view, msg) {
   const plan = view.plans[0];
   plan.caption.textContent = shipCaption(msg);
+  plan.note.textContent = typeof msg?.note === "string" ? msg.note : "";
   const here = plan.rooms.find((r) => r.key === msg?.shipRoom) ?? plan.rooms[0];
   const name = typeof msg?.name === "string" && msg.name !== "" ? msg.name : null;
   for (const room of plan.rooms) room.name = (room === here && name) || room.short;
@@ -70,6 +73,7 @@ function buildShipPlan(svg, spec) {
   const [x0, , x1, y1] = spec.box;
   const [cx, bottom] = toPlan([(x0 + x1) / 2, y1]);
   const caption = label(g, cx, bottom + 11, "", CAPTION_FONT, { fill: DIM });
+  const note = label(g, cx, bottom + 24, "", NOTE_FONT, { fill: DIM, "font-style": "italic" });
 
   const hl = el("g", { "pointer-events": "none" }, g);
   return {
@@ -84,6 +88,7 @@ function buildShipPlan(svg, spec) {
     extent: hullExtent(spec),
     shape: (where) => shipShape(spec, where?.room),
     caption,
+    note,
     rooms,
   };
 }

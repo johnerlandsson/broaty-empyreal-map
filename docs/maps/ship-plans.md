@@ -1,12 +1,15 @@
 # Ship plans
 
-*Status: built. Last updated 2026-10-22.*
+*Status: built. Last updated 2026-10-26.*
 
 The approved mockups are `docs/maps/reference/ship-plans-mockup.html` (the
 skiff and the courier) and `docs/maps/reference/freighter-mockup.html`
 (option A, the user's pick, 2026-10-22), with its exits from
 `docs/maps/reference/freighter-exits-mockup.html` (option A, Passage bars,
-the user's pick). Open them in a browser. They're
+the user's pick), and your note on her from
+`docs/maps/reference/ship-note-mockup.html` (option A, a quiet second line,
+the user's pick, 2026-10-26; rendered in `ship-note-options.png`). Open them
+in a browser, served over http. They're
 throwaways: take their look, not their code.
 
 ## What it is and when it shows
@@ -43,7 +46,11 @@ nothing lit. Your ship is a place too, and soon one with several rooms.
 - Hulls other than the skiff, the courier and the freighter. New hulls get
   drawings when they're added to the game.
 - Showing fittings, attachments, cargo, fuel, damage or anything that
-  changes. The plan is the hull as built.
+  changes. The plan is the hull as built. Your note on her is the one
+  exception, as words under the hull, not on the drawing.
+- What she's running ("Running: courier, hauler", from Ship.Devices'
+  cartridges): option C in the note mockup, not picked (2026-10-26).
+- Anyone else's note on their ship. The game sends only yours.
 - Other ships nearby, docked alongside, or in a hangar.
 - Guessing the class from `Ship.List` or anything else before the server
   sends it.
@@ -89,6 +96,28 @@ migration 27 (`ship.<n>`) has none, and the first room, the cockpit, is lit.
 **The user's decision:** no guessing the class from `Ship.List`'s `kind` (a
 display name, sent only for ships you own).
 
+### Your note on her
+
+`ship note mule hauls ore to Orrin` puts a note on a ship of yours, 60
+characters at most, and `ship note mule clear` takes it off (travel.md
+decision 117, empyreal 0a5f686). Only her owner sees it. `Ship.List` lists
+your own ships wherever you are, each with `note` (a string, or null with
+none) and `aboard`, true for the one you're aboard (`sendShipListGmcp()` in
+`packages/game/src/world/gmcp.ts`). It's refreshed after every command and
+sent only when it changes.
+
+- **She's the entry with `aboard: true`**, never one matched by name: two
+  ships can share a name, and someone else's ship can share yours. Aboard
+  someone else's ship no entry is aboard, so there's no note.
+- **A missing `note`** (servers before 0a5f686), an empty one or one that
+  isn't a string is no note.
+- **Tied to her area.** The note is kept with the area you were in as the
+  list came (`ship.<n>`). Anywhere else there's no note, so stepping
+  straight from your ship into someone else's never shows yours on theirs,
+  even before the next `Ship.List` says you've left her. *My call.*
+- It goes to the panel in the location message, as `note`, so the plan
+  updates as it's set or cleared and loses it as you leave her.
+
 ## Bottom band: the plan
 
 ### Look
@@ -112,6 +141,11 @@ Style A from the mockup, "blueprint line":
   `Mule · prospecting skiff`. The name from `areaName`, the class from
   `ship.kind` (*my call:* the game's own word, as on the info line, rather
   than the id); with no class, the name alone.
+- **Your note**, aboard your own ship when she has one, on a second line
+  under that: Dim, italic, at 9, as you typed it (`hauls ore to Orrin`).
+  No quotes, no label. A full 60 characters fits on one line under every
+  hull at the home zoom, so it's never wrapped or cut (option A, the
+  user's pick).
 
 ### The skiff
 
@@ -231,13 +265,14 @@ Following the drum stations' pattern:
   the band fits), `shipCaption()` and `shipInfo()`. Tests in
   `ui/lib/hulls.test.js`.
 - `ui/ship-deck.js`: draws a hull as a `DeckView` plan (`shipPlans(spec)`)
-  and puts the ship's name, class and room name on it (`updateShip()`).
+  and puts the ship's name, class, your note and the room name on it
+  (`updateShip()`).
   `DeckView`'s highlight, pulse, zoom and fit (`plan.extent`, `home()`) are
   reused.
 - `ui/main.js`: one `DeckView` per hull drawing, built on first use; aboard
   a ship (any `ship.` room) it takes the bottom band and the info line.
 - `dev/preview.js`, `dev/preview.html`: boarding steps for the generic ship,
-  a skiff and a courier, a walk through the freighter's six rooms, and a hull
+  a skiff (with a note) and a courier (with a full 60-character note), a walk through the freighter's six rooms, and a hull
   menu (`?hull=`) that re-sends the ship room with that hull.
 
 The Lua location message (`src/station_map/location.lua`) carries `area` and
@@ -245,6 +280,13 @@ The Lua location message (`src/station_map/location.lua`) carries `area` and
 `Empyreal.Room`'s `ship`, and `shipRoom` from the room's id; the caption takes
 the ship's name from `areaName`, `main.js` picks the drawing by `hull` and
 passes `shipRoom` to the highlight.
+
+`src/station_map/note.lua` folds `Ship.List` into your note on the ship
+you're aboard, kept with the area it came in (`F.ship_list()`, `F.note()`),
+with tests in `tests/note_test.lua`. `src/main.lua` subscribes to
+`Ship.List` (in `gmcp_access`; `Ship 1` already advertises it), adds `note`
+to every location message, and posts the location again only when the note
+shown changes.
 
 ## Where it differs from the style guide
 

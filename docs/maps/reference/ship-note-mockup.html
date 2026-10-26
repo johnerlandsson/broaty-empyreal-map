@@ -1,0 +1,73 @@
+<!doctype html>
+<!-- Ship notes on the ship plan, 2026-10-26: three ways to show your note on her (`ship note`, 60
+     characters at most) under her name and class beneath the hull, on the skiff, the courier and the
+     freighter, and the courier again with a full 60-character note. C adds a quiet "Running: …" line
+     from Ship.Devices' cartridges. Uses the real ship plan at the panel's default size (the bottom
+     band of a 380 x 600 panel); serve the repo root over http to open it.
+     A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Ship notes: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:16px 20px; }
+  h2 { color:#e3eaf2; font-size:15px; margin:14px 0 2px; }
+  h2 small { color:#7d8a9a; font-weight:400; font-size:12px; margin-left:8px; }
+  .row { display:flex; gap:10px; margin:6px 0 2px; }
+  figure { margin:0; text-align:center; }
+  figcaption { font:11px "DejaVu Sans Mono", monospace; margin-top:3px; }
+  .f { position:relative; width:380px; height:349px; background:#04060c; border-radius:6px; overflow:hidden; outline:1px solid #18202b; }
+  .f .m { position:absolute; inset:0; }
+  .f .m button { display:none; }
+</style></head><body>
+<div id="out"></div>
+<script type="module">
+import { DeckView, DIM, PASSAGE, TXT, label } from "../../../ui/deck-view.js";
+import { HULLS, toPlan } from "../../../ui/lib/hulls.js";
+import { shipPlans, updateShip } from "../../../ui/ship-deck.js";
+
+const CASES = [
+  { hull: "skiff", areaName: "Mule", hullName: "prospecting skiff", note: "hauls ore to Orrin", running: ["prospector"] },
+  { hull: "courier", areaName: "Fair Copy", hullName: "courier", note: "mail run, Wenna Halt", running: ["courier", "hauler"] },
+  { hull: "freighter", areaName: "Old Faithful", hullName: "medium freighter", note: "spare parts for the Lamorna job", running: [] },
+  { hull: "courier", areaName: "Fair Copy", hullName: "courier", note: "mail to Wenna Halt, back by Orrin for ore and two fuel cells", running: ["courier"] },
+];
+
+const OPTIONS = [
+  { key: "A", title: "A · A quiet second line", sub: "the note under the caption, Dim, italic, a size smaller",
+    draw(g, x, y, c) {
+      label(g, x, y + 13, c.note, 9, { fill: DIM, "font-style": "italic" });
+    } },
+  { key: "B", title: "B · Your words, in Text", sub: "the note in quotes, in Text, the caption kept Dim above it",
+    draw(g, x, y, c) {
+      label(g, x, y + 14, `“${c.note}”`, 10, { fill: TXT });
+    } },
+  { key: "C", title: "C · A, with what she's running", sub: "A, and a Passage-coloured \"Running: …\" line from her cartridges; none running, no line",
+    draw(g, x, y, c) {
+      label(g, x, y + 13, c.note, 9, { fill: DIM, "font-style": "italic" });
+      if (c.running.length) label(g, x, y + 25, `Running: ${c.running.join(", ")}`, 8.5, { fill: PASSAGE });
+    } },
+];
+
+const out = document.getElementById("out");
+for (const o of OPTIONS) {
+  out.insertAdjacentHTML("beforeend", `<h2>${o.title}<small>${o.sub}</small></h2>`);
+  const row = document.createElement("div");
+  row.className = "row";
+  out.appendChild(row);
+  for (const c of CASES) {
+    const fig = document.createElement("figure");
+    fig.innerHTML = `<div class="f"><div class="m"></div></div><figcaption>${c.hull}${c.note.length === 60 ? " · 60 characters" : ""}</figcaption>`;
+    row.appendChild(fig);
+    const spec = HULLS[c.hull];
+    const view = new DeckView(fig.querySelector(".m"), null, shipPlans(spec));
+    const plan = view.plans[0];
+    // room for the extra lines under the caption, kept centred
+    plan.extent = { ...plan.extent, h: plan.extent.h + 28 };
+    plan.home = [0, 14];
+    updateShip(view, { ...c, note: null, shipRoom: "cockpit" }); // the option draws the note
+    const [x0, , x1, y1] = spec.box;
+    const [cx, bottom] = toPlan([(x0 + x1) / 2, y1]);
+    o.draw(plan.g, cx, bottom + 11, c);
+    view.home();
+    view.set({ kind: "room", id: `ship.7.cockpit`, level: 0, room: "cockpit" });
+  }
+}
+</script></body></html>

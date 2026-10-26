@@ -215,12 +215,12 @@ const ROUTE = [
   room("tiss.berth"),
   { label: "Cockpit of the Magpie (no hull)", msg: COCKPIT },
   {
-    label: "Cockpit of the Mule (skiff)",
-    msg: { roomId: "ship.12.cockpit", name: "Cockpit of the Mule", area: "ship.12", areaName: "Mule", hull: "skiff", hullName: "prospecting skiff" },
+    label: "Cockpit of the Mule (skiff, your note)",
+    msg: { roomId: "ship.12.cockpit", name: "Cockpit of the Mule", area: "ship.12", areaName: "Mule", hull: "skiff", hullName: "prospecting skiff", note: "hauls ore to Orrin" },
   },
   {
-    label: "Cockpit of the Fair Copy (courier)",
-    msg: { roomId: "ship.72.cockpit", name: "Cockpit of the Fair Copy", area: "ship.72", areaName: "Fair Copy", hull: "courier", hullName: "courier" },
+    label: "Cockpit of the Fair Copy (courier, a 60-character note)",
+    msg: { roomId: "ship.72.cockpit", name: "Cockpit of the Fair Copy", area: "ship.72", areaName: "Fair Copy", hull: "courier", hullName: "courier", note: "mail to Wenna Halt, back by Orrin for ore and two fuel cells" },
   },
   freighter("airlock", "Airlock"),
   freighter("passage", "Passage"),

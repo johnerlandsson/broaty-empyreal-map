@@ -2,7 +2,8 @@
 -- and pushes it to the "map" panel, and your ship's frames into the overview's scene, its docking and
 -- undocking (timed by Ship.Devices), the system chart, the
 -- lanes map, the belt map (each switched on and off to fit what she's doing, unless the auto_view setting is
--- off), the course she has plotted, what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card. The lanes' states as last seen
+-- off), the course she has plotted, what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card.
+-- Your note on the ship you're aboard (Ship.List) goes with the location, for the ship plan. The lanes' states as last seen
 -- (each character's, by Char.Status's name), and each belt's log (her track and sweeps in it), are kept in Mallard's storage, so they
 -- outlive a restart. All state lives here; the panel is a
 -- pure presentation layer that asks for a replay with "ready".
@@ -18,6 +19,7 @@ local M = require('station_map.manoeuvre')
 local A = require('station_map.action')
 local K = require('station_map.course')
 local B = require('station_map.belt')
+local F = require('station_map.note')
 
 local panel = mud.panel('map')
 local state = L.new()
@@ -29,6 +31,7 @@ local manoeuvre = M.new()
 local doing = A.new()
 local course = K.new()
 local belt = B.new()
+local notes = F.new()
 
 -- storage is per plugin and world, but charts are per character, so the lanes' sightings are kept under
 -- `lanes:<name>`, loaded when Char.Status names her. `lanes` alone is the old record, before charts were per
@@ -70,8 +73,23 @@ local function has_location(s)
   return m.roomId ~= nil or m.lift ~= nil
 end
 
+-- The location, with your note on her while you're aboard your own ship and she has one.
+local function location_message()
+  local m = L.message(state)
+  m.note = F.note(notes, m.area)
+  return m
+end
+
 local function post_location()
-  panel:post('location', L.message(state))
+  panel:post('location', location_message())
+end
+
+-- Ship.List comes after every command: post the location only when the note it shows changes.
+local function ship_list(data)
+  local area = L.message(state).area
+  local before = F.note(notes, area)
+  F.ship_list(notes, data, area)
+  if F.note(notes, area) ~= before and has_location(state) then post_location() end
 end
 
 local function post_scene()
@@ -265,6 +283,10 @@ local function on_gmcp(package, data)
     if A.char_action(doing, data, os.time()) then post_action() end
     return
   end
+  if name == 'ship.list' then
+    ship_list(data)
+    return
+  end
   if name == 'ship.course' then
     if K.ship_course(course, data) then post_course() end
     return
@@ -278,11 +300,12 @@ local function on_gmcp(package, data)
 end
 
 -- Subscribe with the names Mallard advertises (original casing).
-for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Ship.Course', 'Space.Contacts', 'Char.Status', 'Char.Action' }) do
+for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Ship.Course', 'Ship.List', 'Space.Contacts', 'Char.Status', 'Char.Action' }) do
   gmcp.on(prefix, on_gmcp)
 end
 
 world.on('disconnect', function()
+  F.reset(notes)
   L.reset(state)
   post_location()
   if S.reset(scene) then post_scene() end

@@ -44,12 +44,14 @@ local function boot(opts)
   package.loaded['station_map.action'] = nil
   package.loaded['station_map.course'] = nil
   package.loaded['station_map.belt'] = nil
+  package.loaded['station_map.note'] = nil
   local real_require = require
   _G.require = function(name)
     if name == 'station_map.location' or name == 'station_map.scene'
         or name == 'station_map.charts' or name == 'station_map.lanes' or name == 'station_map.work'
         or name == 'station_map.manoeuvre'
-        or name == 'station_map.action' or name == 'station_map.course' or name == 'station_map.belt' then
+        or name == 'station_map.action' or name == 'station_map.course' or name == 'station_map.belt'
+        or name == 'station_map.note' then
       env.requires[#env.requires + 1] = name
       package.loaded[name] = nil
     end
@@ -85,7 +87,7 @@ test('wires panel and requires each module once', function()
   local env = boot()
   eq(env.panel_id, 'map')
   eq(env.requires, { 'station_map.location', 'station_map.scene', 'station_map.charts', 'station_map.lanes',
-    'station_map.work', 'station_map.manoeuvre', 'station_map.action', 'station_map.course', 'station_map.belt' })
+    'station_map.work', 'station_map.manoeuvre', 'station_map.action', 'station_map.course', 'station_map.belt', 'station_map.note' })
   eq(type(env.gmcp_handlers['mudstd.room.info']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Room']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Vehicle']), 'function')
@@ -96,6 +98,7 @@ test('wires panel and requires each module once', function()
   eq(type(env.gmcp_handlers['Space.Contacts']), 'function')
   eq(type(env.gmcp_handlers['Char.Action']), 'function')
   eq(type(env.gmcp_handlers['Ship.Course']), 'function')
+  eq(type(env.gmcp_handlers['Ship.List']), 'function')
   eq(type(env.world_handlers.disconnect), 'function')
   eq(type(env.panel_handlers.ready), 'function')
   eq(type(env.settings_handlers.change), 'function')
@@ -995,6 +998,70 @@ test('the sweep is replayed on ready and cleared on disconnect', function()
   env.posts = {}
   env.panel_handlers.ready({})
   eq(post_named(env, 'chart-contacts'), nil)
+end)
+
+-- Ship.List: your note on the ship you're aboard, posted with the location.
+local MULE_COCKPIT = { id = 'ship.12.cockpit', name = 'Cockpit of the Mule', area = 'ship.12', areaName = 'Mule' }
+
+local function ships(note, aboard)
+  return { ships = {
+    { name = 'Fair Copy', class = 'courier', kind = 'courier', aboard = false, note = 'mail run' },
+    { name = 'Mule', class = 'skiff', kind = 'prospecting skiff', aboard = aboard ~= false, note = note },
+  } }
+end
+
+test('aboard your ship, Ship.List posts the location with her note, and the same list nothing', function()
+  local env = boot()
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', MULE_COCKPIT)
+  env.posts = {}
+  env.gmcp_handlers['Ship.List']('Ship.List', ships('hauls ore to Orrin'))
+  eq(names(env), { 'location' })
+  eq(env.posts[1].data.note, 'hauls ore to Orrin')
+  eq(env.posts[1].data.roomId, 'ship.12.cockpit')
+  env.posts = {}
+  env.gmcp_handlers['Ship.List']('Ship.List', ships('hauls ore to Orrin'))
+  eq(names(env), {})
+end)
+
+test('a cleared note posts the location without it', function()
+  local env = boot()
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', MULE_COCKPIT)
+  env.gmcp_handlers['Ship.List']('Ship.List', ships('hauls ore to Orrin'))
+  env.posts = {}
+  env.gmcp_handlers['Ship.List']('Ship.List', ships(nil))
+  eq(names(env), { 'location' })
+  eq(env.posts[1].data.note, nil)
+end)
+
+test('stepping off her, the location has no note, before the list says so and after', function()
+  local env = boot()
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', MULE_COCKPIT)
+  env.gmcp_handlers['Ship.List']('Ship.List', ships('hauls ore to Orrin'))
+  env.posts = {}
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', { id = 'ship.40.cockpit', name = 'Cockpit of the Gull',
+    area = 'ship.40', areaName = 'Gull' })
+  eq(env.posts[1].data.note, nil)
+  env.posts = {}
+  env.gmcp_handlers['Ship.List']('Ship.List', ships('hauls ore to Orrin', false))
+  eq(names(env), {}) -- nothing shown changed
+end)
+
+test('Ship.List before any location posts nothing', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.List']('Ship.List', ships('hauls ore to Orrin'))
+  eq(names(env), {})
+end)
+
+test('ready replays the note with the location, and disconnect forgets it', function()
+  local env = boot()
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', MULE_COCKPIT)
+  env.gmcp_handlers['Ship.List']('Ship.List', ships('hauls ore to Orrin'))
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(post_named(env, 'location').data.note, 'hauls ore to Orrin')
+  env.world_handlers.disconnect()
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', MULE_COCKPIT)
+  eq(env.posts[#env.posts].data.note, nil)
 end)
 
 t.done()
