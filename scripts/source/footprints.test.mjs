@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import orrin from "../../ui/data/orrin.js";
+import orrin from "../../tests/fixtures/generated/orrin.js";
 import { crosses, hullClash, overlaps } from "./footprints.mjs";
 
 const room = (id, x, y, z = 1, fp) => ({ id, cell: { x, y, z }, fp });
@@ -54,7 +54,7 @@ describe("hullClash", () => {
     [M, 3 + M - 0.3], [M - 0.3, 3 + M], [-M + 0.3, 3 + M], [-M, 3 + M - 0.3],
     [-M, 2 + M], [-1 - M, 2 + M], [-1 - M, 2 - M], [-M, 2 - M],
   ];
-  const look = (hull, extra = {}) => ({ ...orrin.look, hull, ...extra });
+  const look = (hull, extra = {}) => ({ ...orrin.look, footprints: {}, hull, ...extra });
 
   it("passes Orrin's deck 3 in the mockup's hull, the chamfer trimming the Berths' cell corner", () => {
     expect(hullClash(orrin.rooms, look({ 3: deck3 }))).toBeNull();
