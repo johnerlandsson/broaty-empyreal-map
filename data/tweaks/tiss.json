@@ -10,6 +10,10 @@
     "ladderway-9-rim": "commons"
   },
   "place": {
-    "transfer": { "x": 0, "y": -1, "z": 3 }
+    "transfer": {
+      "x": 0,
+      "y": -1,
+      "z": 3
+    }
   }
 }
