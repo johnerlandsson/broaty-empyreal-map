@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import generated from "../ui/data/zennor.js";
+// The walk is checked against a frozen copy of Zennor, so a room the game adds doesn't fail the
+// sync's tests; the preview simply won't walk into it until the walk is extended.
+import generated from "../tests/fixtures/generated/zennor.js";
 import { townData } from "../ui/lib/look.js";
 import { exitTo } from "../ui/lib/town.js";
 import { TRAM, ZENNOR_WALK } from "./zennor-walk.js";

@@ -18,16 +18,14 @@ describe("buildModel", () => {
     }
   });
 
-  it("rim has 12 segments, mid and inner 8", () => {
+  it("each ring has a segment a stop, as its spacing in the source has them (rim 12, mid and inner 8 today)", () => {
     const count = (z) =>
       new Set(
         faces
           .filter((f) => f.kind === "fore" && f.key.startsWith(`r${z}:`))
           .map((f) => f.key.split(":")[1]),
       ).size;
-    expect(count(0)).toBe(12);
-    expect(count(1)).toBe(8);
-    expect(count(2)).toBe(8);
+    ["rim", "mid", "inner"].forEach((ring, z) => expect(count(z), ring).toBe(12 / tiss.layout.rings[ring].every));
   });
 
   it("the spine does not turn", () => {
