@@ -1,6 +1,27 @@
 {
   "commit": "266aa9b",
-  "newPlaces": [],
+  "newPlaces": [
+    {
+      "place": "freighter",
+      "builder": "decks",
+      "kind": "plan"
+    },
+    {
+      "place": "hull-courier",
+      "builder": "decks",
+      "kind": "plan"
+    },
+    {
+      "place": "hull-skiff",
+      "builder": "decks",
+      "kind": "plan"
+    },
+    {
+      "place": "tug",
+      "builder": "decks",
+      "kind": "plan"
+    }
+  ],
   "removedPlaces": [],
   "noBuilder": [],
   "rooms": {

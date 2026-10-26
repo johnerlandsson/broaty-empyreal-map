@@ -59,7 +59,7 @@ function snapshot(outDir) {
   if (!existsSync(outDir)) return new Map();
   return new Map(
     readdirSync(outDir)
-      .filter((f) => f.endsWith(".js") && f !== "places.js")
+      .filter((f) => f.endsWith(".js") && f !== "places.js" && f !== "ships.js")
       .map((f) => [f.slice(0, -".js".length), readFileSync(join(outDir, f), "utf8")]),
   );
 }

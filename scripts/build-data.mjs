@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Build the map's place data from the Empyreal source and the tweak files: ui/data/<area>.js for
-// each area with a builder, ui/data/places.js, and the sync report. Reads the source, never writes it.
+// each area with a builder, ui/data/places.js, ui/data/plans/<plan>.js for each ship plan (and a
+// one-room plan for each hull without one), ui/data/ships.js, and the sync report. Reads the
+// source, never writes it.
 // Usage: node scripts/build-data.mjs [--source DIR] [--tweaks DIR] [--out DIR] [--report PATH]
 
 import { execFileSync } from "node:child_process";
@@ -125,10 +127,29 @@ function indexText(commit, places) {
   return `${STAMP}${commit ?? "unknown"}. Do not edit.\n${imports.join("\n")}\n\nexport default ${JSON.stringify(places, null, 2)};\n\nexport const data = {\n${data.join("\n")}\n};\n`;
 }
 
+/**
+ * The hull index module: a static import of every plan file, `{hulls}` as default (each ship hull's
+ * id, name, class and plan) and `plans`, plan id -> plan data. Names are JS-safe; two that clash throw.
+ */
+function shipsText(commit, hulls, planIds) {
+  const names = new Map();
+  for (const id of planIds) {
+    const name = `plan_${id.replace(/\W/g, "_")}`;
+    if ([...names.values()].includes(name)) throw new Error(`plan ${id}: its name as an import clashes with another plan's`);
+    names.set(id, name);
+  }
+  const imports = planIds.map((id) => `import ${names.get(id)} from ${JSON.stringify(`./plans/${id}.js`)};`);
+  const data = planIds.map((id) => `  ${JSON.stringify(id)}: ${names.get(id)},`);
+  return `${STAMP}${commit ?? "unknown"}. Do not edit.\n${imports.join("\n")}\n\nexport default ${JSON.stringify({ hulls }, null, 2)};\n\nexport const plans = {\n${data.join("\n")}\n};\n`;
+}
+
+/** The out dir's index files, which are generated but no place's. */
+const INDEXES = ["places.js", "ships.js"];
+
 /** The ids of the generated place files (stamped; hand-made files aren't) among the names, each read by `read`. */
 function generatedIds(outDir, names, read) {
   return names
-    .filter((f) => f.endsWith(".js") && f !== "places.js")
+    .filter((f) => f.endsWith(".js") && !INDEXES.includes(f))
     .filter((f) => read(join(outDir, f))?.startsWith(STAMP))
     .map((f) => f.slice(0, -".js".length));
 }
@@ -194,6 +215,100 @@ function hullLines(id, rooms, look, tweaks) {
 }
 
 /**
+ * The plan a ship hull without one gets: `hull-<id>`, on decks, one room, its cockpit, at Deck 1,
+ * frame 1. hulls.yaml gives a hull no gravity, so the cockpit's is 1.
+ */
+function oneRoomPlan(hull) {
+  const id = `hull-${hull.id}`;
+  const cockpit = { id: `${id}.cockpit`, name: "Cockpit", address: "Deck 1, frame 1", flags: [], gravity: 1 };
+  return { file: "content/game/hulls.yaml", area: { id, name: hull.name, layout: { kind: "decks" } }, raw: [cockpit], hulls: [hull.id], synthesised: true };
+}
+
+/**
+ * Throws, naming both, on two places or plans that would share an id (and so a tweak file), or a
+ * hull naming a plan the source doesn't have; an area can't be an index file's name.
+ */
+function checkIds(areas, plans, ships) {
+  const where = new Map(); // id -> what has it
+  for (const { file, area } of areas) {
+    if (INDEXES.includes(`${area.id}.js`)) throw new Error(`content/areas/${file}: an area can't be called ${area.id} (ui/data/${area.id}.js is an index)`);
+    where.set(area.id, `content/areas/${file}`);
+  }
+  for (const plan of plans) {
+    const id = plan.area.id;
+    const what = plan.synthesised ? `hull ${plan.hulls[0]}'s plan ${id} (content/game/hulls.yaml)` : `plan ${id} (${plan.file})`;
+    if (where.has(id)) throw new Error(`${what} has the same id as ${where.get(id)}. Nothing written`);
+    where.set(id, plan.synthesised ? what : plan.file);
+  }
+  const ids = new Set(plans.filter((p) => !p.synthesised).map((p) => p.area.id));
+  for (const hull of ships) {
+    if (hull.plan !== undefined && !ids.has(hull.plan)) throw new Error(`content/game/hulls.yaml: hull ${hull.id} names plan ${hull.plan}, which content/plans doesn't have. Nothing written`);
+  }
+}
+
+/**
+ * Builds one area or plan's file into `ctx.files`, adding to the report and the clashes; a place
+ * no builder draws goes under noBuilder and gets none. A plan's report entries carry kind plan.
+ * @returns {Promise<{builder: string} | null>}
+ */
+async function placeFile({ commit, tweaks, report, files, clashes }, { kind, file, area, raw, path, hulls, synthesised }) {
+  const id = area.id;
+  const tagged = (entry) => (kind === "plan" ? { ...entry, kind } : entry);
+  const kept = keepArea(area).area;
+  const layout = kept.layout ?? { kind: "none" };
+  const tweak = resolveTweak(id, tweaks);
+  const builder = builderOf(layout.kind, tweak);
+  if (!builder) {
+    report.noBuilder.push(tagged({ place: id, file }));
+    return null;
+  }
+
+  const { rooms: all, unplaced } = placeRooms(area, raw, tweak.place ?? {});
+  // A drum places only the rooms its tweak's drum.rooms lists; any other is unplaced, as a
+  // wheel room the rules can't place is.
+  const onDrum = builder === "drum" ? new Set(Object.keys(tweak.drum.rooms ?? {}).map((local) => `${id}.${local}`)) : null;
+  const placed = onDrum ? all.filter((r) => onDrum.has(r.id)) : all;
+  if (onDrum) unplaced.push(...all.filter((r) => !onDrum.has(r.id)).map((r) => r.id));
+  report.unplaced.push(...unplaced.map((u) => ({ place: id, id: u })));
+  // In the source's order, not sorted: the builders draw rooms in the order they come, and a
+  // tie (which cell a district's label takes) goes to the first, so the order is on screen. A
+  // synthesised room has only kept fields already.
+  const rooms = placed.map(({ at, terrain, ...rest }) => ordered({ ...(synthesised ? rest : keepRoom(rest).room), at, terrain }, ROOM_KEYS));
+
+  const { look, orphans } = resolveLook(id, placed, layout.kind, tweaks);
+  report.orphans.push(...orphans.map((key) => ({ place: id, key })));
+  if (look.footprints) clashes.push(...footprintClashes(id, placed, look.footprints, tweaks));
+  if (look.hull) clashes.push(...hullLines(id, placed, look, tweaks));
+
+  // A new place is listed whole; an existing one diffs against its file.
+  const was = await before(path);
+  if (was === null) {
+    report.newPlaces.push(tagged({ place: id, builder }));
+  } else {
+    const diff = diffRooms(id, was, rooms);
+    for (const k of Object.keys(diff.rooms)) report.rooms[k].push(...diff.rooms[k]);
+    for (const k of Object.keys(diff.exits)) report.exits[k].push(...diff.exits[k]);
+  }
+
+  const data = {
+    source: ordered({ commit, file, tweaks: tweaks.places[id] ? `data/tweaks/${id}.json` : undefined }, ["commit", "file", "tweaks"]),
+    id,
+    name: kept.name,
+    kind,
+    gravity: kept.gravity,
+    hulls,
+    layout,
+    levels: levelsOf(layout, rooms),
+    districts: kept.districts,
+    rooms,
+    look: ordered({ ...look, palette: tweaks.palette }, LOOK_KEYS),
+  };
+  const keys = ["source", "id", "name", "kind", "gravity", ...(kind === "plan" ? ["hulls"] : []), "layout", "levels", "districts", "rooms", "look"];
+  files.set(path, moduleText(commit, ordered(data, keys)));
+  return { builder };
+}
+
+/**
  * Builds every place, the index and the report. Reads and checks everything before writing
  * anything, so a missing source, a bad tweak or a partial checkout writes nothing. What changed is
  * against the last commit when the out dir is in a git work tree, else against the files there.
@@ -215,8 +330,15 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   const places = [];
   const clashes = []; // every hull and footprint clash, so one build lists them all
 
-  // Stage 1 reads and places the plans, to check them, but doesn't write them.
-  for (const { area, rooms } of src.plans) placeRooms(area, rooms);
+  // Every plan, the source's and one for each ship hull without one, with the hulls built to it.
+  const ships = src.hulls.filter((h) => h.class !== "station");
+  const plans = [
+    ...src.plans.map(({ file, area, rooms }) => ({ file: `content/plans/${file}`, area, raw: rooms, hulls: [] })),
+    ...ships.filter((h) => h.plan === undefined).map(oneRoomPlan),
+  ];
+  checkIds(src.areas, plans, ships);
+  const planOf = new Map(plans.map((p) => [p.area.id, p]));
+  for (const hull of ships) if (hull.plan !== undefined) planOf.get(hull.plan).hulls.push(hull.id);
 
   // Dropped flags and fields are named by name, the first build their name appears anywhere in the
   // source; a nested field by its dotted name ("car.perStop").
@@ -226,65 +348,21 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   ]);
   Object.assign(report, droppedOf(dropped, previous));
 
+  const ctx = { commit: src.commit, tweaks, report, files, clashes };
   for (const { file, area, rooms: raw } of src.areas) {
     const id = area.id;
-    if (id === "places") throw new Error(`content/areas/${file}: an area can't be called places (ui/data/places.js is the index)`);
-    const kept = keepArea(area).area;
-    const layout = kept.layout ?? { kind: "none" };
-    const tweak = resolveTweak(id, tweaks);
-    const builder = builderOf(layout.kind, tweak);
-    if (!builder) {
-      report.noBuilder.push({ place: id, file: `content/areas/${file}` });
-      continue;
-    }
-
-    const { rooms: all, unplaced } = placeRooms(area, raw, tweak.place ?? {});
-    // A drum places only the rooms its tweak's drum.rooms lists; any other is unplaced, as a
-    // wheel room the rules can't place is.
-    const onDrum = builder === "drum" ? new Set(Object.keys(tweak.drum.rooms ?? {}).map((local) => `${id}.${local}`)) : null;
-    const placed = onDrum ? all.filter((r) => onDrum.has(r.id)) : all;
-    if (onDrum) unplaced.push(...all.filter((r) => !onDrum.has(r.id)).map((r) => r.id));
-    report.unplaced.push(...unplaced.map((u) => ({ place: id, id: u })));
-    // In the source's order, not sorted: the builders draw rooms in the order they come, and a
-    // tie (which cell a district's label takes) goes to the first, so the order is on screen.
-    const rooms = placed.map(({ at, terrain, ...rest }) => ordered({ ...keepRoom(rest).room, at, terrain }, ROOM_KEYS));
-
-    const { look, orphans } = resolveLook(id, placed, layout.kind, tweaks);
-    report.orphans.push(...orphans.map((key) => ({ place: id, key })));
-    if (look.footprints) clashes.push(...footprintClashes(id, placed, look.footprints, tweaks));
-    if (look.hull) clashes.push(...hullLines(id, placed, look, tweaks));
-
-    // A new place is listed whole; an existing one diffs against its file.
-    const path = join(outDir, `${id}.js`);
-    const was = await before(path);
-    if (was === null) {
-      report.newPlaces.push({ place: id, builder });
-    } else {
-      const diff = diffRooms(id, was, rooms);
-      for (const k of Object.keys(diff.rooms)) report.rooms[k].push(...diff.rooms[k]);
-      for (const k of Object.keys(diff.exits)) report.exits[k].push(...diff.exits[k]);
-    }
-
-    const data = {
-      source: ordered(
-        { commit: src.commit, file: `content/areas/${file}`, tweaks: tweaks.places[id] ? `data/tweaks/${id}.json` : undefined },
-        ["commit", "file", "tweaks"],
-      ),
-      id,
-      name: kept.name,
-      kind: "area",
-      gravity: kept.gravity,
-      layout,
-      levels: levelsOf(layout, rooms),
-      districts: kept.districts,
-      rooms,
-      look: ordered({ ...look, palette: tweaks.palette }, LOOK_KEYS),
-    };
-    files.set(path, moduleText(src.commit, ordered(data, ["source", "id", "name", "kind", "gravity", "layout", "levels", "districts", "rooms", "look"])));
-
+    const built = await placeFile(ctx, { kind: "area", file: `content/areas/${file}`, area, raw, path: join(outDir, `${id}.js`) });
+    if (!built) continue;
     const own = new Set(raw.map((r) => r.id));
     const docks = src.world.filter((w) => own.has(w.berth)).map((w) => w.id).sort();
-    places.push({ id, prefix: id, builder, docks });
+    places.push({ id, prefix: id, builder: built.builder, docks });
+  }
+  const planIds = [];
+  for (const plan of plans) {
+    // A plan's name is its own, else its first hull's.
+    const name = plan.area.name ?? ships.find((h) => h.id === plan.hulls[0])?.name;
+    const built = await placeFile(ctx, { kind: "plan", ...plan, area: { ...plan.area, name }, path: join(outDir, "plans", `${plan.area.id}.js`) });
+    if (built) planIds.push(plan.area.id);
   }
 
   if (clashes.length === 1) throw new Error(`${clashes[0]}. Nothing written`);
@@ -299,16 +377,25 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
     throw new Error(`this build would remove every place the map has (${had.sort().join(", ")}): is ${source} a whole checkout? Nothing written`);
   }
   report.removedPlaces.push(...gone.map((place) => ({ place })));
+  const plansDir = join(outDir, "plans");
+  const planSet = new Set(plans.map((p) => p.area.id));
+  report.removedPlaces.push(...generatedIds(plansDir, committedNames(plansDir), committed).filter((id) => !planSet.has(id)).map((place) => ({ place, kind: "plan" })));
   const disk = (file) => (existsSync(file) ? readFileSync(file, "utf8") : null);
-  const remove = existsSync(outDir) ? generatedIds(outDir, readdirSync(outDir), disk).filter((id) => !areaIds.has(id)) : [];
+  const stale = (dir, ids) => (existsSync(dir) ? generatedIds(dir, readdirSync(dir), disk).filter((id) => !ids.has(id)).map((id) => join(dir, `${id}.js`)) : []);
+  const remove = [...stale(outDir, areaIds), ...stale(plansDir, planSet)];
 
   places.sort((a, b) => (a.id < b.id ? -1 : 1));
   files.set(join(outDir, "places.js"), indexText(src.commit, places));
+  planIds.sort();
+  const hulls = Object.fromEntries(
+    [...ships].sort((a, b) => (a.id < b.id ? -1 : 1)).map((h) => [h.id, { ...h, plan: h.plan ?? `hull-${h.id}` }]),
+  );
+  files.set(join(outDir, "ships.js"), shipsText(src.commit, hulls, planIds));
   sortReport(report);
   files.set(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 
   for (const [path, text] of files) writeIfChanged(path, text);
-  for (const id of remove) rmSync(join(outDir, `${id}.js`));
+  for (const file of remove) rmSync(file);
   return { report };
 }
 

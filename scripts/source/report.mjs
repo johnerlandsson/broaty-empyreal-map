@@ -136,7 +136,8 @@ function lists(report) {
 }
 
 function entryText(e) {
-  if (e.builder) return `${e.place} (${e.builder})`;
+  if (e.builder) return `${e.place} (${e.builder}${e.kind === "plan" ? " plan" : ""})`;
+  if (e.kind === "plan") return `${e.place} (plan)`;
   if (e.from) return `${e.from} -> ${e.to}`;
   if (e.dir) return `${e.room} ${e.dir} -> ${e.to}`;
   if (e.key) return `${e.place}: ${e.key}`;

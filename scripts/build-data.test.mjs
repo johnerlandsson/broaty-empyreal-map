@@ -52,11 +52,13 @@ const loadIndex = async (file) => (await import(`${file}?${Math.random()}`)).def
 const lists = (r) => [r.newPlaces, r.removedPlaces, r.noBuilder, ...Object.values(r.rooms), ...Object.values(r.exits), r.unplaced, r.orphans, r.droppedFlags, r.unknownFields];
 
 describe("build", () => {
-  it("lists both fixture areas as new places on the first build, and writes them and the index", async () => {
+  it("lists both fixture areas and both plans as new places on the first build, and writes them and the index", async () => {
     const opts = setup();
     const { report } = await build(opts);
     expect(report.newPlaces).toEqual([
+      { place: "hull-skiff", builder: "decks", kind: "plan" },
       { place: "mini", builder: "decks" },
+      { place: "tub", builder: "decks", kind: "plan" },
       { place: "wheelie", builder: "wheel" },
     ]);
     expect(report.rooms).toEqual({ added: [], removed: [], renamed: [] });
@@ -196,7 +198,7 @@ describe("build", () => {
   it("writes byte-identical files and an empty report on a second build", async () => {
     const opts = setup();
     await build(opts);
-    const files = ["mini.js", "wheelie.js", "places.js"].map((f) => join(opts.outDir, f));
+    const files = ["mini.js", "wheelie.js", "places.js", "plans/tub.js", "plans/hull-skiff.js", "ships.js"].map((f) => join(opts.outDir, f));
     const first = files.map((f) => [readFileSync(f, "utf8"), statSync(f).mtimeMs]);
     const { report } = await build(opts);
     expect(files.map((f) => [readFileSync(f, "utf8"), statSync(f).mtimeMs])).toEqual(first);
@@ -273,25 +275,25 @@ describe("build", () => {
   it("stops when the source has no areas, and writes nothing", async () => {
     const opts = setup();
     await build(opts);
-    const before = readdirSync(opts.outDir).map((f) => readFileSync(join(opts.outDir, f), "utf8"));
+    const before = readdirSync(opts.outDir, { recursive: true }).filter((f) => f.endsWith(".js")).map((f) => readFileSync(join(opts.outDir, f), "utf8"));
     const report = readFileSync(opts.reportPath, "utf8");
     for (const f of readdirSync(join(opts.source, "content/areas"))) rmSync(join(opts.source, "content/areas", f));
     await expect(build(opts)).rejects.toThrow(/no areas.*content\/areas/);
-    expect(readdirSync(opts.outDir).map((f) => readFileSync(join(opts.outDir, f), "utf8"))).toEqual(before);
+    expect(readdirSync(opts.outDir, { recursive: true }).filter((f) => f.endsWith(".js")).map((f) => readFileSync(join(opts.outDir, f), "utf8"))).toEqual(before);
     expect(readFileSync(opts.reportPath, "utf8")).toBe(report);
   });
 
   it("refuses a build that would remove every place it had, and writes nothing", async () => {
     const opts = setup();
     await build(opts);
-    const before = readdirSync(opts.outDir).map((f) => readFileSync(join(opts.outDir, f), "utf8"));
+    const before = readdirSync(opts.outDir, { recursive: true }).filter((f) => f.endsWith(".js")).map((f) => readFileSync(join(opts.outDir, f), "utf8"));
     for (const f of ["mini.yaml", "wheelie.yaml"]) rmSync(join(opts.source, "content/areas", f));
     writeFileSync(
       join(opts.source, "content/areas/other.yaml"),
       stringify({ area: { id: "other", name: "Other", gravity: 0, layout: { kind: "decks" } }, rooms: [{ id: "other.a", name: "A", address: "Deck 1, frame 1" }] }),
     );
     await expect(build(opts)).rejects.toThrow(/every place.*mini, wheelie/);
-    expect(readdirSync(opts.outDir).map((f) => readFileSync(join(opts.outDir, f), "utf8"))).toEqual(before);
+    expect(readdirSync(opts.outDir, { recursive: true }).filter((f) => f.endsWith(".js")).map((f) => readFileSync(join(opts.outDir, f), "utf8"))).toEqual(before);
   });
 
   it("refuses an area called places, and writes nothing", async () => {
@@ -307,7 +309,8 @@ describe("build", () => {
   it("leaves no temp files behind", async () => {
     const opts = setup();
     await build(opts);
-    expect(readdirSync(opts.outDir).sort()).toEqual(["mini.js", "places.js", "wheelie.js"]);
+    expect(readdirSync(opts.outDir).sort()).toEqual(["mini.js", "places.js", "plans", "ships.js", "wheelie.js"]);
+    expect(readdirSync(join(opts.outDir, "plans")).sort()).toEqual(["hull-skiff.js", "tub.js"]);
     expect(readdirSync(dirname(opts.reportPath)).filter((f) => f !== "out")).toEqual(["report.json"]);
   });
 
@@ -319,7 +322,7 @@ describe("build", () => {
     );
     const { report } = await build(opts);
     expect(report.noBuilder).toEqual([{ place: "nowhere", file: "content/areas/nowhere.yaml" }]);
-    expect(report.newPlaces.map((p) => p.place)).toEqual(["mini", "wheelie"]);
+    expect(report.newPlaces.filter((p) => !p.kind).map((p) => p.place)).toEqual(["mini", "wheelie"]);
     expect(existsSync(join(opts.outDir, "nowhere.js"))).toBe(false);
     expect((await loadIndex(join(opts.outDir, "places.js"))).map((p) => p.id)).toEqual(["mini", "wheelie"]);
   });
@@ -484,6 +487,173 @@ describe("build", () => {
   });
 });
 
+/** Edits a plan YAML in a source copy. */
+function editPlan(src, file, fn) {
+  const path = join(src, "content/plans", file);
+  const doc = parse(readFileSync(path, "utf8"));
+  fn(doc);
+  writeFileSync(path, stringify(doc));
+}
+
+/** Edits hulls.yaml in a source copy. */
+function editHulls(src, fn) {
+  const path = join(src, "content/game/hulls.yaml");
+  const doc = parse(readFileSync(path, "utf8"));
+  fn(doc.hulls);
+  writeFileSync(path, stringify(doc));
+}
+
+describe("build, ship plans", () => {
+  it("writes a plan to plans/<plan>.js in the place shape, with kind plan and the hulls built to it", async () => {
+    const opts = setup({ ...placed, tub: { paint: { cockpit: "docks" } } });
+    await build(opts);
+    const text = readFileSync(join(opts.outDir, "plans/tub.js"), "utf8");
+    expect(text.split("\n")[0]).toBe("// GENERATED by npm run build:data from empyreal unknown. Do not edit.");
+    const t = await load(join(opts.outDir, "plans/tub.js"));
+    expect(Object.keys(t)).toEqual(["source", "id", "name", "kind", "hulls", "layout", "levels", "rooms", "look"]);
+    expect(t.source).toEqual({ commit: null, file: "content/plans/tub.yaml", tweaks: "data/tweaks/tub.json" });
+    expect([t.id, t.name, t.kind]).toEqual(["tub", "tub", "plan"]);
+    expect(t.hulls).toEqual(["tub"]);
+    expect(t.layout).toEqual({ kind: "decks" });
+    expect(t.levels).toEqual([1]);
+    expect(t.rooms).toEqual([
+      { id: "tub.cockpit", name: "Cockpit of the {name}", address: "Deck 1, frame 1", at: { deck: 1, frame: 1, side: 0 }, exits: {}, canopy: true },
+    ]);
+    expect(t.look.paint).toEqual({ cockpit: "docks" });
+    expect(t.look.view.cutaway).toBe("hide-above");
+    expect(t.look.palette).toEqual(JSON.parse(readFileSync(palette, "utf8")));
+  });
+
+  it("synthesises a one-room plan hull-<id> for a ship hull with no plan, its look from hull-<id>.json", async () => {
+    const opts = setup({ ...placed, "hull-skiff": { paint: { cockpit: "docks" } } });
+    await build(opts);
+    const s = await load(join(opts.outDir, "plans/hull-skiff.js"));
+    expect(Object.keys(s)).toEqual(["source", "id", "name", "kind", "hulls", "layout", "levels", "rooms", "look"]);
+    expect(s.source).toEqual({ commit: null, file: "content/game/hulls.yaml", tweaks: "data/tweaks/hull-skiff.json" });
+    expect([s.id, s.name, s.kind]).toEqual(["hull-skiff", "prospecting skiff", "plan"]);
+    expect(s.hulls).toEqual(["skiff"]);
+    expect(s.layout).toEqual({ kind: "decks" });
+    expect(s.levels).toEqual([1]);
+    expect(s.rooms).toEqual([
+      { id: "hull-skiff.cockpit", name: "Cockpit", address: "Deck 1, frame 1", at: { deck: 1, frame: 1, side: 0 }, gravity: 1, flags: [] },
+    ]);
+    expect(s.look.paint).toEqual({ cockpit: "docks" });
+  });
+
+  it("writes ships.js with every ship hull (not stations) and a static import of every plan", async () => {
+    const opts = setup();
+    editHulls(opts.source, (hulls) => hulls.push({ id: "wheel", name: "wheel station", class: "station", price: 1 }));
+    await build(opts);
+    const text = readFileSync(join(opts.outDir, "ships.js"), "utf8");
+    expect(text.split("\n")[0]).toBe("// GENERATED by npm run build:data from empyreal unknown. Do not edit.");
+    expect(text).toContain('import plan_hull_skiff from "./plans/hull-skiff.js";');
+    expect(text).toContain('import plan_tub from "./plans/tub.js";');
+    const mod = await import(`${join(opts.outDir, "ships.js")}?${Math.random()}`);
+    expect(mod.default).toEqual({
+      hulls: {
+        skiff: { id: "skiff", name: "prospecting skiff", plan: "hull-skiff" },
+        tub: { id: "tub", name: "tub", class: "medium", plan: "tub" },
+      },
+    });
+    expect(Object.keys(mod.plans)).toEqual(["hull-skiff", "tub"]);
+    expect(mod.plans.tub.id).toBe("tub");
+    expect(mod.plans["hull-skiff"].rooms[0].id).toBe("hull-skiff.cockpit");
+    expect(existsSync(join(opts.outDir, "plans/hull-wheel.js"))).toBe(false);
+  });
+
+  it("leaves places.js to the areas", async () => {
+    const opts = setup();
+    await build(opts);
+    const text = readFileSync(join(opts.outDir, "places.js"), "utf8");
+    expect(text).not.toMatch(/tub|skiff|plans/);
+    expect((await loadIndex(join(opts.outDir, "places.js"))).map((p) => p.id)).toEqual(["mini", "wheelie"]);
+  });
+
+  it("lists a plan new to the source under newPlaces with kind plan, and its room changes as for places", async () => {
+    const opts = setup();
+    await build(opts);
+    const path = join(opts.source, "content/plans/tub.yaml");
+    writeFileSync(join(opts.source, "content/plans/barge.yaml"), readFileSync(path, "utf8").replaceAll("tub", "barge"));
+    editPlan(opts.source, "tub.yaml", (doc) => {
+      doc.rooms.push({ id: "tub.hold", name: "Hold", address: "Deck 1, frame 0", exits: {} });
+    });
+    const { report } = await build(opts);
+    expect(report.newPlaces).toEqual([{ place: "barge", builder: "decks", kind: "plan" }]);
+    expect(report.rooms.added).toEqual([{ place: "tub", id: "tub.hold" }]);
+    expect((await load(join(opts.outDir, "plans/barge.js"))).hulls).toEqual([]);
+  });
+
+  it("lists a plan gone from the source under removedPlaces with kind plan, and deletes its generated file only", async () => {
+    const opts = setup();
+    await build(opts);
+    writeFileSync(join(opts.outDir, "plans/hand.js"), "export default { rooms: [] };\n");
+    rmSync(join(opts.source, "content/plans/tub.yaml"));
+    editHulls(opts.source, (hulls) => delete hulls.find((h) => h.id === "tub").plan);
+    const { report } = await build(opts);
+    expect(report.removedPlaces).toEqual([{ place: "tub", kind: "plan" }]);
+    expect(report.newPlaces).toEqual([{ place: "hull-tub", builder: "decks", kind: "plan" }]);
+    expect(existsSync(join(opts.outDir, "plans/tub.js"))).toBe(false);
+    expect(existsSync(join(opts.outDir, "plans/hand.js"))).toBe(true);
+    expect(existsSync(join(opts.outDir, "ships.js"))).toBe(true);
+    expect(existsSync(join(opts.outDir, "mini.js"))).toBe(true);
+    expect((await build(opts)).report.removedPlaces).toEqual([]);
+  });
+
+  it("never counts ships.js or plans/ as a place gone from the source", async () => {
+    const opts = setup();
+    await build(opts);
+    const { report } = await build(opts);
+    expect(report.removedPlaces).toEqual([]);
+    expect(existsSync(join(opts.outDir, "ships.js"))).toBe(true);
+  });
+
+  it("stops on a plan id equal to an area id, naming both, and writes nothing", async () => {
+    const opts = setup();
+    writeFileSync(join(opts.source, "content/plans/mini.yaml"), readFileSync(join(opts.source, "content/plans/tub.yaml"), "utf8").replaceAll("tub", "mini"));
+    await expect(build(opts)).rejects.toThrow(/content\/plans\/mini\.yaml.*content\/areas\/mini\.yaml.*Nothing written/);
+    expect(existsSync(opts.outDir)).toBe(false);
+    expect(existsSync(opts.reportPath)).toBe(false);
+  });
+
+  it("stops on a hull's hull-<id> equal to a plan id, naming both, and writes nothing", async () => {
+    const opts = setup();
+    writeFileSync(
+      join(opts.source, "content/plans/hull-skiff.yaml"),
+      readFileSync(join(opts.source, "content/plans/tub.yaml"), "utf8").replaceAll("tub", "hull-skiff"),
+    );
+    await expect(build(opts)).rejects.toThrow(/hull skiff.*hull-skiff.*content\/plans\/hull-skiff\.yaml.*Nothing written/);
+    expect(existsSync(opts.outDir)).toBe(false);
+  });
+
+  it("stops on a hull's hull-<id> equal to an area id, naming both, and writes nothing", async () => {
+    const opts = setup();
+    editHulls(opts.source, (hulls) => hulls.push({ id: "x", name: "x" }));
+    writeFileSync(
+      join(opts.source, "content/areas/hull-x.yaml"),
+      stringify({ area: { id: "hull-x", name: "X", gravity: 0, layout: { kind: "decks" } }, rooms: [{ id: "hull-x.a", name: "A", address: "Deck 1, frame 1" }] }),
+    );
+    await expect(build(opts)).rejects.toThrow(/hull x.*hull-x.*content\/areas\/hull-x\.yaml.*Nothing written/);
+    expect(existsSync(opts.outDir)).toBe(false);
+  });
+
+  it("stops on a hull naming a plan the source doesn't have, and writes nothing", async () => {
+    const opts = setup();
+    editHulls(opts.source, (hulls) => (hulls.find((h) => h.id === "tub").plan = "bathtub"));
+    await expect(build(opts)).rejects.toThrow(/hull tub.*bathtub.*Nothing written/);
+    expect(existsSync(opts.outDir)).toBe(false);
+  });
+
+  it("refuses an area called ships, and writes nothing", async () => {
+    const opts = setup();
+    writeFileSync(
+      join(opts.source, "content/areas/ships.yaml"),
+      stringify({ area: { id: "ships", name: "S", gravity: 1, layout: { kind: "decks" } }, rooms: [] }),
+    );
+    await expect(build(opts)).rejects.toThrow(/ships/);
+    expect(existsSync(opts.outDir)).toBe(false);
+  });
+});
+
 describe("the CLI", () => {
   const run = (args) => spawnSync(process.execPath, [script, ...args], { encoding: "utf8" });
 
@@ -491,7 +661,7 @@ describe("the CLI", () => {
     const o = setup();
     const r = run(["--source", o.source, "--tweaks", o.tweaksDir, "--out", o.outDir, "--report", o.reportPath]);
     expect(r.status).toBe(0);
-    expect(r.stdout).toMatch(/new places.*mini \(decks\), wheelie \(wheel\)/);
+    expect(r.stdout).toMatch(/new places.*hull-skiff \(decks plan\), mini \(decks\), tub \(decks plan\), wheelie \(wheel\)/);
     const again = run(["--source", o.source, "--tweaks", o.tweaksDir, "--out", o.outDir, "--report", o.reportPath]);
     expect(again.stdout.trim()).toBe("nothing needs you");
   });

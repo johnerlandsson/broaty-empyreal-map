@@ -114,4 +114,16 @@ describe("sortReport and formatReport", () => {
     expect(lines[3]).toMatch(/orphan.*mini: paint\.gone/);
     expect(lines[4]).toMatch(/flags dropped.*shop \(mini\)/);
   });
+
+  it("marks a plan's entries as a plan", () => {
+    const r = emptyReport("abc");
+    r.newPlaces.push({ place: "tug", builder: "decks", kind: "plan" });
+    r.removedPlaces.push({ place: "barge", kind: "plan" });
+    r.noBuilder.push({ place: "raft", file: "content/plans/raft.yaml", kind: "plan" });
+    expect(formatReport(r).split("\n")).toEqual([
+      "new places (1): tug (decks plan)",
+      "places removed (1): barge (plan)",
+      "places with no builder (1): raft (plan)",
+    ]);
+  });
 });
