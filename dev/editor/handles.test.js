@@ -9,6 +9,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import kilmar from "../../tests/fixtures/generated/kilmar.js";
 import orrin from "../../tests/fixtures/generated/orrin.js";
 import tiss from "../../ui/data/tiss.js";
+import freighterJson from "../../data/tweaks/freighter.json";
+import skiffJson from "../../data/tweaks/hull-skiff.json";
+import freighter from "../../ui/data/plans/freighter.js";
+import skiff from "../../ui/data/plans/hull-skiff.js";
 import { DeckView } from "../../ui/deck-view.js";
 import { hullFromRooms } from "./hull.js";
 import { startEditor } from "./main.js";
@@ -42,16 +46,22 @@ const start = async (hash, { tweaks = {}, fixtures = {} } = {}) => {
       { id: "orrin", prefix: "orrin", builder: "decks", docks: [] },
       { id: "tiss", prefix: "tiss", builder: "wheel", docks: [] },
     ],
+    plans: [
+      { id: "freighter", name: "medium freighter", hulls: ["freighter"] },
+      { id: "hull-skiff", name: "prospecting skiff", hulls: ["skiff"] },
+    ],
     report: null,
     palette: {},
     tweaks: {
       kilmar: { json: { like: "orrin", paint: { kitchen: "concourse" } }, version: 7 },
       orrin: { json: { paint: { market: "concourse" }, fixtures: orrin.look.fixtures }, version: 3 },
+      freighter: { json: freighterJson, version: 4 },
+      "hull-skiff": { json: skiffJson, version: 4 },
       palette: { json: {}, version: 2 },
       ...structuredClone(tweaks),
     },
   };
-  const data = { orrin, kilmar, tiss, ...fixtures };
+  const data = { orrin, kilmar, tiss, freighter, "hull-skiff": skiff, ...fixtures };
   const fetch = vi.fn(async (url, init = {}) => {
     if (init.method === "PUT") {
       const sent = JSON.parse(init.body);
@@ -343,5 +353,39 @@ describe("fixture handles", () => {
     await start("#orrin", { tweaks: { orrin: { json: { fixtures }, version: 3 } }, fixtures: { orrin: withLook(orrin, { fixtures }) } });
     await drag(handle(`fixture-${fixtures.length - 1}`), 35, -50);
     expect(puts[0].body.json.fixtures.at(-1)).toEqual({ ...MAST, side: -0.25, frame: 3 });
+  });
+});
+
+describe("ship handles", () => {
+  it("drags a bell along its side, PUTting its new position", async () => {
+    await start("#freighter");
+    const i = freighterJson.fixtures.findIndex((f) => f.type === "bell");
+    expect(handle(`fixture-${i}`)).toBeTruthy();
+    await drag(handle(`fixture-${i}`), -14, 30);
+    expect(puts[0].url).toBe("/api/tweaks/freighter");
+    expect(puts[0].body.json.fixtures[i]).toEqual({ ...freighterJson.fixtures[i], side: freighterJson.fixtures[i].side - 0.1 });
+    expect(puts[0].body.json.fixtures).toHaveLength(freighterJson.fixtures.length);
+  });
+
+  it("drags a boom along its side", async () => {
+    await start("#hull-skiff");
+    const i = skiffJson.fixtures.findIndex((f) => f.type === "boom");
+    await drag(handle(`fixture-${i}`), 14, 0);
+    expect(puts[0].url).toBe("/api/tweaks/hull-skiff");
+    expect(puts[0].body.json.fixtures[i]).toEqual({ ...skiffJson.fixtures[i], side: 0.1 });
+  });
+
+  it("drags a greeble in side and frame", async () => {
+    await start("#freighter");
+    await drag(handle("greeble-2"), 14, -50); // the antenna, port, at frame 2.4
+    expect(puts[0].body.json.greebles[2]).toEqual({ ...freighterJson.greebles[2], side: -0.75, frame: 2.9 });
+    expect(puts[0].body.json.greebles).toHaveLength(freighterJson.greebles.length);
+  });
+
+  it("works the hull path on a plan as on a station", async () => {
+    await start("#freighter");
+    expect(plan().querySelectorAll('.handles [data-handle^="point-"]')).toHaveLength(freighterJson.hull["1"].length);
+    await drag(handle("point-0"), 14, -10);
+    expect(puts[0].body.json.hull["1"][0]).toEqual([freighterJson.hull["1"][0][0] + 0.1, freighterJson.hull["1"][0][1] + 0.1]);
   });
 });

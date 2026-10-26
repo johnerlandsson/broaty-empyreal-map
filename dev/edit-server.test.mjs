@@ -99,6 +99,19 @@ describe("edit server", () => {
     expect(Object.keys(state.tweaks)).toContain("kilmar");
   });
 
+  it("lists the ship plans by their hull's name, and announces a plan's rebuild by its id", async () => {
+    const { put, read, url } = await setup();
+    const state = await (await fetch(`${url}/api/state`)).json();
+    expect(state.plans).toEqual([
+      { id: "hull-skiff", name: "prospecting skiff", hulls: ["skiff"] },
+      { id: "tub", name: "tub", hulls: ["tub"] },
+    ]);
+    const res = await put("tub", { surface: { seams: false } }, 0);
+    expect(res.status).toBe(200);
+    expect((await res.json()).changed).toEqual(["tub"]);
+    expect(read("ui/data/plans/tub.js")).toContain('"seams": false');
+  });
+
   it("serves static files under the root with their types, and nothing outside it", async () => {
     const { url } = await setup();
     const html = await fetch(`${url}/index.html`);
@@ -161,7 +174,7 @@ describe("edit server", () => {
     const palette = { ...state.palette, plum: "#8e4585" };
     const res = await fetch(`${url}/api/palette`, { method: "PUT", body: JSON.stringify({ json: palette, version: state.tweaks.palette.version }) });
     expect(res.status).toBe(200);
-    expect((await res.json()).changed).toEqual(["mini", "wheelie"]);
+    expect((await res.json()).changed).toEqual(["hull-skiff", "mini", "tub", "wheelie"]);
     expect(JSON.parse(read("data/tweaks/palette.json")).plum).toBe("#8e4585");
     expect(read("ui/data/mini.js")).toContain('"plum": "#8e4585"');
   });

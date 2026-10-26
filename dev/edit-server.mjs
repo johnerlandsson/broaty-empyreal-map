@@ -54,17 +54,44 @@ function placesOf(file) {
   return JSON.parse(text.slice(start, text.indexOf(";\n\nexport const data")));
 }
 
-/** The text of each generated place file in a dir, by id. */
-function snapshot(outDir) {
-  if (!existsSync(outDir)) return new Map();
-  return new Map(
-    readdirSync(outDir)
-      .filter((f) => f.endsWith(".js") && f !== "places.js" && f !== "ships.js")
-      .map((f) => [f.slice(0, -".js".length), readFileSync(join(outDir, f), "utf8")]),
+/**
+ * The generated ship plans in a ui/data dir, by name: [{id, name, hulls}], each named by its first
+ * hull in ships.js (its default export, as JSON before `export const plans`), else by its id.
+ */
+function plansOf(outDir) {
+  const plansDir = join(outDir, "plans");
+  if (!existsSync(plansDir)) return [];
+  const plans = new Map(
+    readdirSync(plansDir)
+      .filter((f) => f.endsWith(".js"))
+      .map((f) => f.slice(0, -".js".length))
+      .map((id) => [id, { id, name: id, hulls: [] }]),
   );
+  const text = read(join(outDir, "ships.js"));
+  if (text !== null) {
+    const start = text.indexOf("export default ") + "export default ".length;
+    const { hulls = {} } = JSON.parse(text.slice(start, text.indexOf(";\n\nexport const plans")));
+    for (const hull of Object.values(hulls)) {
+      const plan = plans.get(hull.plan);
+      if (!plan) continue;
+      if (!plan.hulls.length) plan.name = hull.name ?? hull.id;
+      plan.hulls.push(hull.id);
+    }
+  }
+  return [...plans.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 
-/** The ids whose place file differs between two snapshots, sorted. */
+/** The text of each generated place file in a dir, and each plan file in its plans/, by id. */
+function snapshot(outDir) {
+  const files = (dir) => (existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".js") && f !== "places.js" && f !== "ships.js") : []);
+  const plansDir = join(outDir, "plans");
+  return new Map([
+    ...files(outDir).map((f) => [f.slice(0, -".js".length), readFileSync(join(outDir, f), "utf8")]),
+    ...files(plansDir).map((f) => [f.slice(0, -".js".length), readFileSync(join(plansDir, f), "utf8")]),
+  ]);
+}
+
+/** The ids whose place or plan file differs between two snapshots, sorted. */
 function changedIds(before, after) {
   const ids = new Set([...before.keys(), ...after.keys()]);
   return [...ids].filter((id) => before.get(id) !== after.get(id)).sort();
@@ -235,7 +262,7 @@ export async function startServer({ root, source, port = 8766, build: runBuild =
       }
       tweaks[f.slice(0, -".json".length)] = entry;
     }
-    return { places: placesOf(join(outDir, "places.js")), report, palette: tweaks.palette?.json ?? {}, tweaks };
+    return { places: placesOf(join(outDir, "places.js")), plans: plansOf(outDir), report, palette: tweaks.palette?.json ?? {}, tweaks };
   }
 
   function serveStatic(pathname, res) {

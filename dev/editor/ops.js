@@ -122,6 +122,51 @@ export function moveFixture(t, i, patch) {
   });
 }
 
+/** Sets a ship plan's profile keys: `patch` over its profile, a key given as undefined removed. */
+export function setProfile(t, patch) {
+  const out = edit(t, (o) => {
+    o.profile = patched(o.profile ?? {}, patch);
+  });
+  return Object.keys(out.profile).length ? out : reset(out, ["profile"]);
+}
+
+/** Sets a ship plan's surface keys: `patch` over its surface, a key given as undefined removed. */
+export function setSurface(t, patch) {
+  const out = edit(t, (o) => {
+    o.surface = patched(o.surface ?? {}, patch);
+  });
+  return Object.keys(out.surface).length ? out : reset(out, ["surface"]);
+}
+
+/** The tweak's own greeble i in an edited copy; greebles only inherited through `like` have none to edit. */
+function ownGreeble(out, i) {
+  if (!isObject(out.greebles?.[i])) throw new Error(`greebles[${i}]: no such greeble of its own`);
+  return out.greebles[i];
+}
+
+/** Adds a greeble to the end of the tweak's own list (made where there's none). */
+export function addGreeble(t, greeble) {
+  return edit(t, (out) => {
+    if (!Array.isArray(out.greebles)) out.greebles = [];
+    out.greebles.push(structuredClone(greeble));
+  });
+}
+
+/** Removes the tweak's own greeble i. An empty list stays: it says none, over any inherited. */
+export function removeGreeble(t, i) {
+  return edit(t, (out) => {
+    ownGreeble(out, i);
+    out.greebles.splice(i, 1);
+  });
+}
+
+/** Changes the tweak's own greeble i: `patch` over it, a key given as undefined removed. */
+export function moveGreeble(t, i, patch) {
+  return edit(t, (out) => {
+    out.greebles[i] = patched(ownGreeble(out, i), patch);
+  });
+}
+
 /** Sets view keys: `patch` over the view, a key given as undefined removed. */
 export function setView(t, patch) {
   const out = edit(t, (o) => {

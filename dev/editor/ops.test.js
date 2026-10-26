@@ -1,18 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { checkTweak } from "../../scripts/source/tweaks.mjs";
 import {
+  addGreeble,
   addHullPoint,
   boxHull,
   moveFixture,
+  moveGreeble,
   moveHullPoint,
   ordered,
   origin,
+  removeGreeble,
   removeHullPoint,
   reset,
   setFootprint,
   setHull,
   setHullCorner,
   setPaint,
+  setProfile,
+  setSurface,
   setView,
 } from "./ops.js";
 
@@ -95,6 +100,25 @@ describe("the editor's edits", () => {
     const camera = { yaw: 10, pitch: 20, zoom: 1.5 };
     expect(edited((t) => setView(t, { camera })).view).toEqual({ cutaway: "ghost-above", camera });
     expect(edited((t) => setView(t, { cutaway: undefined })).view).toBeUndefined();
+  });
+
+  it("sets the profile and the surface, an undefined key removing it, and an empty one going", () => {
+    const ship = { profile: { spine: { from: 0, to: 1, width: 1, height: 0.3 } }, surface: { windows: ["cockpit"] } };
+    expect(edited((t) => setProfile(t, { bevel: 0, spine: null }), ship).profile).toEqual({ bevel: 0, spine: null });
+    expect(edited((t) => setProfile(t, { spine: undefined }), ship).profile).toBeUndefined();
+    expect(edited((t) => setSurface(t, { seams: false, stripe: null }), ship).surface).toEqual({ windows: ["cockpit"], seams: false, stripe: null });
+    expect(edited((t) => setSurface(t, { windows: undefined }), ship).surface).toBeUndefined();
+  });
+
+  it("adds, removes and moves the tweak's own greebles", () => {
+    const ship = { greebles: [{ type: "vent", side: 0, frame: 1 }] };
+    const dish = { type: "dish", side: 0.5, frame: 2, r: 0.15 };
+    expect(edited((t) => addGreeble(t, dish), ship).greebles).toEqual([ship.greebles[0], dish]);
+    expect(edited((t) => addGreeble(t, dish), {}).greebles).toEqual([dish]);
+    expect(edited((t) => removeGreeble(t, 0), ship).greebles).toEqual([]);
+    expect(edited((t) => moveGreeble(t, 0, { side: -0.3, frame: 1.5 }), ship).greebles).toEqual([{ type: "vent", side: -0.3, frame: 1.5 }]);
+    expect(() => removeGreeble(ship, 1)).toThrow(/greebles\[1\]/);
+    expect(() => moveGreeble({}, 0, { side: 1 })).toThrow(/greebles\[0\]/);
   });
 
   it("resets a key and prunes the parents it leaves empty", () => {

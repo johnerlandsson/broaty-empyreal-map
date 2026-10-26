@@ -4,18 +4,20 @@
 // each point and a ring with its r on a rounded one, as row 3 of
 // docs/maps/reference/hull-path-options.png (a point drags, snapped to 0.01; a double-click on an
 // edge adds one there; a picked point goes on Delete); and a diamond on each cradle's root, which
-// drags along its side, and on each mast, which drags in side and frame (snapped to 0.05).
+// drags along its side, and on each mast, which drags in side and frame (snapped to 0.05). On a
+// ship plan, a diamond on each bell (at the tail) and boom (at the nose), which drag along their
+// side, and a circle on each greeble on the top deck, which drags in side and frame.
 // Footprints only on rooms that aren't passages or blisters (nor drawn by hand, as an outline),
 // the hull only on a deck inside it.
 // A drag patches the open place's look as it goes, for the page to redraw, and saves on release
 // through the panel's save flow; a save refused puts back the look the last build gave. A hull path or
-// the fixtures only inherited through `like` are copied into the place's own tweak on its first
-// edit, as the ops edit only the place's own.
+// the fixtures or greebles only inherited through `like` are copied into the place's own tweak on
+// its first edit, as the ops edit only the place's own.
 
-import { noseAt, pathOf } from "../../ui/lib/footprint.js";
+import { noseAt, pathOf, tailAt } from "../../ui/lib/footprint.js";
 import { pathD } from "../../ui/lib/decks.js";
 import { el } from "../../ui/lib/svg.js";
-import { addHullPoint, moveFixture, moveHullPoint, removeHullPoint, setFootprint, setHull } from "./ops.js";
+import { addHullPoint, moveFixture, moveGreeble, moveHullPoint, removeHullPoint, setFootprint, setHull } from "./ops.js";
 
 const EDIT = "#5aa9ff";
 const DARK = "#04060c";
@@ -36,6 +38,12 @@ export function ownHull(t, deck, inherited) {
 export function ownFixtures(t, inherited) {
   if (Array.isArray(t?.fixtures)) return t;
   return { ...structuredClone(t ?? {}), fixtures: structuredClone(inherited ?? []) };
+}
+
+/** The tweak with a greebles list of its own: the inherited one copied in where it has none. */
+export function ownGreebles(t, inherited) {
+  if (Array.isArray(t?.greebles)) return t;
+  return { ...structuredClone(t ?? {}), greebles: structuredClone(inherited ?? []) };
 }
 
 /**
@@ -142,6 +150,12 @@ export function createHandles({ place, resolved, save, preview, flush, restore, 
         d.from.type === "mast" ? { side: snap(d.from.side + dx, 0.05), frame: snap(d.from.frame + dy, 0.05) } : { side: snap(d.from.side + dx, 0.05) },
       look: (look, d, patch) => lookWith(look, "fixtures", look.fixtures.map((f, k) => (k === d.i ? { ...f, ...patch } : f))),
       edit: (p, d, patch) => (t) => moveFixture(ownFixtures(t, resolved(p.id, ["fixtures"]).value), d.i, patch),
+    },
+    greeble: {
+      start: (p, d) => ({ from: p.data.look.greebles[d.i] }),
+      value: (d, [dx, dy]) => ({ side: snap(d.from.side + dx, 0.05), frame: snap(d.from.frame + dy, 0.05) }),
+      look: (look, d, patch) => lookWith(look, "greebles", look.greebles.map((g, k) => (k === d.i ? { ...g, ...patch } : g))),
+      edit: (p, d, patch) => (t) => moveGreeble(ownGreebles(t, resolved(p.id, ["greebles"]).value), d.i, patch),
     },
   };
 
@@ -268,13 +282,23 @@ export function createHandles({ place, resolved, save, preview, flush, restore, 
     });
   }
 
-  /** A diamond on each cradle's root on this deck, and on each mast on the top deck. */
+  /**
+   * A diamond on each cradle's root on this deck, and on each mast on the top deck; on a plan, on
+   * each bell's and boom's root on this deck, and a circle on each greeble on the top deck.
+   */
   function drawFixtures(g, p, layout, deck) {
     const { hull, hullPaths } = p.views.index;
     if (!hull) return;
+    // the deck's hull, its box where it has no path
+    const path = hullPaths?.[deck] ?? [[hull.x0, hull.y0], [hull.x1, hull.y0], [hull.x1, hull.y1], [hull.x0, hull.y1]];
+    const label = (x, y, text) => el("text", { x, y, "font-size": 9, fill: EDIT, "font-family": "Inter, system-ui, sans-serif", "pointer-events": "none" }, g, text);
     (p.data.look?.fixtures ?? []).forEach((f, i) => {
       let at;
-      if (f.type === "cradle" && f.deck === deck) {
+      if ((f.type === "bell" || f.type === "boom") && f.deck === deck) {
+        const end = f.type === "bell" ? tailAt(path, f.side) : noseAt(path, f.side);
+        if (end === null) return;
+        at = layout.centre({ x: f.side, y: end });
+      } else if (f.type === "cradle" && f.deck === deck) {
         const nose = hullPaths?.[deck] ? noseAt(hullPaths[deck], f.side) : hull.y1 + 0.5;
         if (nose === null) return;
         const [x0, y0] = layout.centre({ x: f.side - f.hw, y: nose + f.len });
@@ -289,7 +313,15 @@ export function createHandles({ place, resolved, save, preview, flush, restore, 
       const d = el("path", { d: `M${x},${y - s}L${x + s},${y}L${x},${y + s}L${x - s},${y}Z`, fill: DARK, stroke: EDIT, "stroke-width": 1.6, cursor: f.type === "mast" ? "move" : "ew-resize" }, g);
       d.dataset.handle = `fixture-${i}`;
       d.addEventListener("pointerdown", (e) => begin(e, { kind: "fixture", i }));
-      el("text", { x: x + s + 3, y: y - s - 2, "font-size": 9, fill: EDIT, "font-family": "Inter, system-ui, sans-serif", "pointer-events": "none" }, g, f.type);
+      label(x + s + 3, y - s - 2, f.type);
+    });
+    if (deck !== hull.z1) return;
+    (p.data.look?.greebles ?? []).forEach((gr, i) => {
+      const [x, y] = layout.centre({ x: gr.side, y: gr.frame });
+      const c = el("circle", { cx: x, cy: y, r: SQUARE * 0.55, fill: DARK, stroke: EDIT, "stroke-width": 1.6, cursor: "move" }, g);
+      c.dataset.handle = `greeble-${i}`;
+      c.addEventListener("pointerdown", (e) => begin(e, { kind: "greeble", i }));
+      label(x + SQUARE * 0.55 + 3, y - SQUARE * 0.55 - 2, gr.type);
     });
   }
 

@@ -6,16 +6,19 @@
 // its data and rebuilds the views, keeping the selection, the plan's deck and both view boxes.
 // The URL hash (#<placeId>/<roomId>) holds the place and room, so a reload or a headless
 // screenshot opens them. window.editor has small hooks for later tasks and tests.
-// On a decks place the plan carries drag handles (handles.js): a drag patches the open place's
+// Below the stations, the ship classes: each generated plan (data/ships.js), by its hull's name,
+// opened with buildShip as the panel draws a ship, her rooms' "{name}" filled with EXAMPLE.
+// On a decks place or a plan the plan carries drag handles (handles.js): a drag patches the open place's
 // look in memory and the views are rebuilt from it at most once a frame, the plan's cells kept
 // where they were on the screen, until the save on release.
 
-import { buildPlace } from "../../ui/place-views.js";
+import { locateDecks } from "../../ui/lib/decks.js";
+import { buildPlace, buildShip } from "../../ui/place-views.js";
 import { createHandles } from "./handles.js";
 import { createPanel } from "./panel.js";
 
-/** The builders a station is drawn with; any other place is a ship class (stage 4). */
-const STATIONS = new Set(["decks", "drum", "town", "wheel"]);
+/** The ship's name a plan's rooms are shown with: "Cockpit of the Example". */
+const EXAMPLE = "Example";
 
 const SHELL = `
   <nav class="rail"></nav>
@@ -65,17 +68,20 @@ function reportItems(report) {
   return [...items.values()];
 }
 
+/** A plan's room names with "{name}" filled with the example ship's. */
+const named = (plan) => ({ ...plan, rooms: (plan?.rooms ?? []).map((r) => (typeof r.name === "string" ? { ...r, name: r.name.replaceAll("{name}", EXAMPLE) } : r)) });
+
 /**
  * Starts the page in root.
  * @param {{root?: Element, fetch?: typeof fetch, EventSource?: typeof EventSource,
- *   importPlace?: (id: string, version: number) => Promise<object>}} [deps] the page's own by
- *   default; tests pass stubs.
+ *   importPlace?: (id: string, version: number, kind: "place" | "plan") => Promise<object>}} [deps]
+ *   the page's own by default; tests pass stubs.
  */
 export function startEditor({
   root = document.body,
   fetch: get = (...a) => window.fetch(...a),
   EventSource: Events = window.EventSource,
-  importPlace = (id, version) => import(/* @vite-ignore */ `/ui/data/${id}.js?v=${version}`).then((m) => m.default),
+  importPlace = (id, version, kind) => import(/* @vite-ignore */ `/ui/data/${kind === "plan" ? "plans/" : ""}${id}.js?v=${version}`).then((m) => m.default),
 } = {}) {
   root.innerHTML = SHELL;
   const rail = root.querySelector(".rail");
@@ -117,16 +123,24 @@ export function startEditor({
     showError: (text) => showError(text),
   });
 
-  let state = { places: [], report: null, palette: {}, tweaks: {} };
+  let state = { places: [], plans: [], report: null, palette: {}, tweaks: {} };
   let version = Date.now(); // the data version to import by; each build bumps it
   const data = new Map(); // place id -> its data at `version`
   const changed = new Set(); // place ids rebuilt since their data was imported
-  let place = null; // {id, builder, data, views, roomId, lastLevel}
+  let place = null; // {id, builder, kind, data, views, roomId, lastLevel}; a plan's builder is decks
 
-  const load = async (id) => {
+  /** The place or plan by id, as the state lists it: {id, builder, kind}, or undefined. */
+  const entryOf = (id) => {
+    const station = state.places.find((p) => p.id === id);
+    if (station) return { id, builder: station.builder, kind: "place" };
+    return (state.plans ?? []).some((p) => p.id === id) ? { id, builder: "decks", kind: "plan" } : undefined;
+  };
+
+  const load = async (id, kind = entryOf(id)?.kind ?? "place") => {
     if (!data.has(id) || changed.has(id)) {
       changed.delete(id);
-      data.set(id, await importPlace(id, version));
+      const fresh = await importPlace(id, version, kind);
+      data.set(id, kind === "plan" ? named(fresh) : fresh);
     }
     return data.get(id);
   };
@@ -149,7 +163,8 @@ export function startEditor({
       return it;
     };
     const nameOf = (id) => data.get(id)?.name ?? id;
-    const known = new Set(state.places.map((p) => p.id));
+    const plans = state.plans ?? [];
+    const known = new Set([...state.places, ...plans].map((p) => p.id));
 
     const report = state.report;
     rail.append(h("div", "grp", report?.commit ? `From the last sync · ${report.commit}` : "From the last sync"));
@@ -166,11 +181,10 @@ export function startEditor({
     }
 
     rail.append(h("div", "grp", "Stations"));
-    for (const p of state.places.filter((p) => STATIONS.has(p.builder))) rail.append(entry(p.id, nameOf(p.id)));
+    for (const p of state.places) rail.append(entry(p.id, nameOf(p.id)));
     rail.append(h("div", "grp", "Ship classes"));
-    const ships = state.places.filter((p) => !STATIONS.has(p.builder));
-    if (!ships.length) rail.append(h("div", "it none", "none yet"));
-    for (const p of ships) rail.append(entry(p.id, nameOf(p.id)));
+    if (!plans.length) rail.append(h("div", "it none", "none yet"));
+    for (const p of plans) rail.append(entry(p.id, p.name));
   }
 
   function renderPicker() {
@@ -223,8 +237,11 @@ export function startEditor({
     place?.views.model.stop?.();
     modelEl.replaceChildren();
     deckEl.replaceChildren();
-    const views = buildPlace(placeData, builder, modelEl, deckEl, { pick: true });
-    place = { id, builder, data: placeData, views, roomId: null, lastLevel: keep?.lastLevel ?? null, built };
+    const kind = entryOf(id)?.kind ?? "place";
+    // a plan is drawn as the panel draws a ship, but picked and lit by its own room ids
+    const views =
+      kind === "plan" ? { ...buildShip(placeData, modelEl, deckEl, { pick: true, name: EXAMPLE }), locate: locateDecks } : buildPlace(placeData, builder, modelEl, deckEl, { pick: true });
+    place = { id, builder, kind, data: placeData, views, roomId: null, lastLevel: keep?.lastLevel ?? null, built };
     views.model.onPick?.((rid) => select(rid));
     views.deck.onPick?.((rid) => select(rid));
     select(roomId);
@@ -272,7 +289,7 @@ export function startEditor({
   }
 
   async function openPlace(id, roomId = null) {
-    const entry = state.places.find((p) => p.id === id);
+    const entry = entryOf(id);
     if (!entry) throw new Error(`no such place: ${id}`);
     build(id, entry.builder, await load(id), roomId);
   }
@@ -292,7 +309,8 @@ export function startEditor({
     state = await res.json();
     const broken = Object.values(state.tweaks ?? {}).find((t) => t.error);
     if (broken) showError(broken.error);
-    await Promise.all(state.places.map((p) => load(p.id).catch(() => {})));
+    state.plans ??= [];
+    await Promise.all([...state.places.map((p) => load(p.id, "place").catch(() => {})), ...state.plans.map((p) => load(p.id, "plan").catch(() => {}))]);
     renderRail();
     panel.render();
   }

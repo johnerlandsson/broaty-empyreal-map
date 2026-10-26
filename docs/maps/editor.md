@@ -60,13 +60,46 @@ happen. The page reloads and says `changed on disk, reloaded`.
 - Left, the rail. **From the last sync** lists the places the report names,
   with badges for `new`, rooms changed and orphans. A place with no data to
   open is greyed. **Stations** lists the decks, drum, town and wheel
-  places. **Ship classes** lists the rest, or says `none yet`. Click a place
-  to open it.
+  places. **Ship classes** lists the ship plans by their hull's name (the
+  freighter as `medium freighter`), or says `none yet`. Click one to open it.
 - Middle, the map. The overview (the 3D model) is above, the plan below. On
   a decks place the plan shows one deck, and its tag says which.
 - Right, the side panel. It holds the selected room, the place's view, and
-  on a decks place the hull of the plan's deck. Under it is **pretend I'm
-  in**.
+  on a decks place or a ship the hull of the plan's deck. On a ship it also
+  holds the hull's look and the greebles. Under it is **pretend I'm in**.
+
+## Ship classes
+
+A ship class is a generated plan in `ui/data/plans/`, drawn as the map draws
+a ship. Its tweak file is `data/tweaks/<plan>.json`, for example
+`freighter.json` or `hull-skiff.json`. A room name with `{name}` in it shows
+with the ship name `Example`, so `Cockpit of the {name}` reads `Cockpit of
+the Example`. Paint, footprints, the hull, the view and the handles work as on
+a station.
+
+### Ship · hull look
+
+A switch for each part of the hull's look. Turn one off to take it away.
+
+- `bevel`, `nose drop`: off sets `profile.bevel` or `profile.noseDrop` to 0.
+- `spine`: off sets `profile.spine` to `null`. On again gives a spine down
+  the middle third of the hull.
+- `seams`, `nav lights`: off sets `surface.seams` or `surface.navLights` to
+  `false`.
+- `windows`: off sets `surface.windows` to `[]`.
+- `stripe`: off sets `surface.stripe` to `null`. While it is on, **stripe
+  colour** shows the palette. Click a swatch to colour the stripe.
+
+Turning a switch back on removes the value from the file, so the default (or
+the value through `like`) shows again. If that is off too, the editor writes
+the default's value instead.
+
+### Greebles
+
+The ship's greebles, each with its type, side and frame, and a **remove**
+button. Pick a type and click **add greeble** to add one on the centre line,
+half way along the hull. Then drag it on the plan. The build refuses a greeble
+that is half on the spine.
 
 ## Selecting
 
@@ -161,6 +194,9 @@ On a decks place the plan carries handles in blue.
   the deck it is on, a mast on the top deck. A cradle drags along its side. A
   mast drags in side and frame. Both snap to 0.05 cells. A dashed box shows
   the cradle.
+- On a ship, a diamond marks each drive bell, at the hull's tail, and the
+  boom, at its nose. Each drags along its side. A circle marks each greeble on
+  the top deck. It drags in side and frame. All snap to 0.05 cells.
 
 A drag redraws as you go and saves when you let go. A drag that ends where it
 started saves nothing.
@@ -171,7 +207,8 @@ A place that has `"like": "orrin"` gets Orrin's footprints, hull and fixtures
 until it sets its own. The panel marks such a value `from orrin`.
 
 The first edit of an inherited value copies it into the place's own file, then
-changes the copy. For a hull path or the fixtures that is the whole list. Orrin
+changes the copy. For a hull path, the fixtures or the greebles that is the
+whole list. Orrin
 is not touched. After that the value says `set here`. Use `reset` to give it
 back to Orrin's.
 

@@ -11,13 +11,18 @@
 // passages or blisters, a cutaway and a hull only on decks, a camera on anything but a town.
 // The hull section is the plan's deck's: a path made round the rooms' footprints or back to the
 // box, and the r of the point picked on the plan (handles.js draws and drags the path).
+// A ship plan has a ship section: a switch for each detail of the hull's look (the profile's
+// bevel, nose drop and spine; the surface's seams, windows, stripe and nav lights), the stripe's
+// colour, and its greebles, each with a remove, and an add. A switch turned off sets the detail's
+// "none" (0, null, false or []); turned on, it removes that again where what's left (inherited or
+// the default) is on, else sets the default's value. handles.js drags the greebles.
 
 import { CAM } from "../../ui/lib/geometry.js";
 import { CORNER_R } from "../../ui/lib/footprint.js";
-import { PALETTE_NAME } from "../../scripts/source/schema.mjs";
+import { GREEBLE_KEYS, PALETTE_NAME, PROFILE_DEFAULTS, SURFACE_DEFAULTS } from "../../scripts/source/schema.mjs";
 import { hullFromRooms, roomPieces } from "./hull.js";
-import { ownHull } from "./handles.js";
-import { boxHull, origin, reset, setFootprint, setHull, setHullCorner, setPaint, setView } from "./ops.js";
+import { ownGreebles, ownHull } from "./handles.js";
+import { addGreeble, boxHull, origin, removeGreeble, reset, setFootprint, setHull, setHullCorner, setPaint, setProfile, setSurface, setView } from "./ops.js";
 
 const CORNERS = ["square", "rounded", "cut"];
 const CUTAWAYS = [
@@ -41,6 +46,23 @@ const h = (tag, cls, text) => {
 
 const local = (id) => id.slice(id.indexOf(".") + 1);
 const round = (n, places = 2) => Number(n.toFixed(places));
+/** n to the nearest 0.05, tidied. */
+const snap = (n) => Number((Math.round(n / 0.05) * 0.05).toFixed(2)) || 0;
+
+/**
+ * Each hull-look detail a switch turns on and off: its section, key and label, its value for off,
+ * and whether a value is on.
+ */
+const DETAILS = [
+  ["profile", "bevel", "bevel", 0, (v) => v > 0],
+  ["profile", "noseDrop", "nose drop", 0, (v) => v > 0],
+  ["profile", "spine", "spine", null, (v) => v != null],
+  ["surface", "seams", "seams", false, (v) => v !== false],
+  ["surface", "windows", "windows", [], (v) => !Array.isArray(v) || v.length > 0],
+  ["surface", "stripe", "stripe", null, (v) => v != null],
+  ["surface", "navLights", "nav lights", false, (v) => v !== false],
+];
+const DEFAULTS = { profile: PROFILE_DEFAULTS, surface: SURFACE_DEFAULTS };
 /** A number input's value, or undefined when it's empty or not a number. */
 const numberOf = (input) => (input.value.trim() === "" || !Number.isFinite(Number(input.value)) ? undefined : Number(input.value));
 
@@ -305,7 +327,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
   }
 
   function renderView(p, disabled) {
-    view.append(h("div", "sec", "View · whole station"));
+    view.append(h("div", "sec", p?.kind === "plan" ? "View · whole ship" : "View · whole station"));
     if (!p) return;
     if (p.builder === "decks") {
       const cut = resolved(p.id, ["view", "cutaway"]);
@@ -405,6 +427,111 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     view.append(h("div", "note", "Drag a point to move it, double-click an edge to add one; Delete removes the picked one."));
   }
 
+  /** A ship plan's look: a switch for each detail of the hull, the stripe's colour, and the greebles. */
+  function renderShip(p, disabled) {
+    const sec = h("div", "sec", "Ship · hull look");
+    sec.dataset.sec = "ship";
+    view.append(sec);
+    const canopies = () => (p.data.rooms ?? []).filter((r) => r.canopy).map((r) => local(r.id));
+    const like = () => tweaks().places[p.id]?.like;
+    /** A detail's value as the place resolves it (its own, else through like, else the default). */
+    const valueOf = (from, section, key) => {
+      const v = from ? resolved(from, [section, key]).value : undefined;
+      if (v !== undefined) return v;
+      return section === "surface" && key === "windows" ? canopies() : DEFAULTS[section][key];
+    };
+    // a spine where the plan has none: down the middle third of the hull's box, half its width
+    const spine = () => {
+      const { x0, x1, y0, y1 } = p.views.index.hull;
+      const mid = (y0 + y1) / 2;
+      return { from: snap(mid - (y1 - y0) / 6), to: snap(mid + (y1 - y0) / 6), width: snap((x1 - x0) / 2), height: 0.3 };
+    };
+    const onValue = (section, key) => {
+      if (key === "spine") return spine();
+      if (key === "windows") return canopies().length ? canopies() : (p.data.rooms ?? []).map((r) => local(r.id));
+      return structuredClone(DEFAULTS[section][key]);
+    };
+    const setOf = { profile: setProfile, surface: setSurface };
+
+    for (const [section, key, label, off, isOn] of DETAILS) {
+      const box = h("input");
+      box.type = "checkbox";
+      box.name = `${section}-${key}`;
+      box.checked = isOn(valueOf(p.id, section, key));
+      box.disabled = disabled;
+      box.addEventListener("change", () =>
+        save(p.id, (t) => {
+          const set = setOf[section];
+          if (!box.checked) return set(t, { [key]: off });
+          // on: the place's own value goes, where what's left is on; else the default's is set
+          return isOn(valueOf(like(), section, key)) ? set(t, { [key]: undefined }) : set(t, { [key]: onValue(section, key) });
+        }),
+      );
+      const l = h("label", "switch");
+      l.append(box, ` ${label}`);
+      const r = h("div", "row");
+      r.append(l, mark(p.id, [section, key], disabled));
+      view.append(r);
+    }
+
+    // the stripe's colour
+    const stripe = valueOf(p.id, "surface", "stripe");
+    if (stripe) {
+      const sw = h("span", "sw stripe");
+      for (const [name, colour] of Object.entries(currentState().palette ?? {})) {
+        const i = h("i", name === stripe.paint ? "on" : null);
+        i.title = name;
+        i.style.background = colour;
+        i.addEventListener("click", () => {
+          if (disabled || name === stripe.paint) return;
+          for (const x of sw.children) x.classList.toggle("on", x === i);
+          save(p.id, (t) => setSurface(t, { stripe: { ...valueOf(p.id, "surface", "stripe"), paint: name } }));
+        });
+        sw.append(i);
+      }
+      view.append(row("stripe colour", sw));
+    }
+
+    // the greebles
+    const gsec = h("div", "sec", "Greebles");
+    gsec.dataset.sec = "greebles";
+    view.append(gsec);
+    const greebles = () => resolved(p.id, ["greebles"]).value ?? [];
+    const own = (t) => ownGreebles(t, greebles());
+    greebles().forEach((g, i) => {
+      const b = h("button", "btn", "remove");
+      b.name = `greeble-remove-${i}`;
+      b.disabled = disabled;
+      b.addEventListener("click", () => save(p.id, (t) => removeGreeble(own(t), i)));
+      view.append(row(`${g.type} · ${g.side}, ${g.frame}`, b));
+    });
+    const type = h("select", "btn");
+    type.name = "greeble-type";
+    for (const name of Object.keys(GREEBLE_KEYS)) {
+      const o = h("option", null, name);
+      o.value = name;
+      type.append(o);
+    }
+    type.disabled = disabled;
+    const add = h("button", "btn", "add greeble");
+    add.name = "greeble-add";
+    add.disabled = disabled;
+    add.addEventListener("click", () => {
+      // on the centre line, half way along the hull's box; dragged from there on the plan
+      const { y0, y1 } = p.views.index.hull;
+      const g = { type: type.value, side: 0, frame: snap((y0 + y1) / 2) };
+      if (g.type === "antenna") g.height = 0.6;
+      if (g.type === "dish") g.r = 0.15;
+      save(p.id, (t) => addGreeble(own(t), g));
+    });
+    const tools = h("span", "tools");
+    tools.append(type, add);
+    const m = h("div", "row");
+    m.append(tools, mark(p.id, ["greebles"], disabled));
+    view.append(m);
+    view.append(h("div", "note", "Drag a greeble, a bell or the boom on the plan to move it."));
+  }
+
   let drawn = null; // the place and room last drawn: "<place>/<room>"
 
   /**
@@ -459,6 +586,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     if (room) renderRoom(p, room, disabled);
     renderView(p, disabled);
     if (p?.builder === "decks") renderHull(p, disabled);
+    if (p?.kind === "plan" && p.views.index.hull) renderShip(p, disabled);
   }
 
   return { render, save, resolved, broken: brokenError };
