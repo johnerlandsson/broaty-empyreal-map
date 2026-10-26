@@ -1,0 +1,165 @@
+<!doctype html>
+<!-- The map tweak editor, 2026-10-26: three ways to lay out its screen. Each shows Orrin Station
+     with the Exchange selected: the overview and the plan are the plugin's own (ModelView,
+     DeckView), the rest is chrome. Serve the repo root over http to open it.
+     A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Tweak editor: options</title>
+<style>
+  body { margin:0; background:#0b0f16; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:16px 20px; }
+  h2 { color:#e3eaf2; font-size:16px; margin:18px 0 2px; }
+  h2 small { color:#7d8a9a; font-weight:400; font-size:12.5px; margin-left:8px; }
+  .screen { width:1240px; height:700px; background:#04060c; border-radius:8px; outline:1px solid #222c3a; margin:8px 0 6px; display:grid; overflow:hidden; position:relative; }
+  .pane { position:relative; min-width:0; min-height:0; overflow:hidden; background:#04060c; }
+  .pane .tag { position:absolute; left:8px; top:6px; z-index:4; font:10.5px "DejaVu Sans Mono", monospace; color:#7d8a9a; letter-spacing:.5px; text-transform:uppercase; pointer-events:none; }
+  .rail, .side, .bar, .strip { background:#0d121a; color:#b9c5d3; font-size:12.5px; }
+  .rail { border-right:1px solid #1d2632; padding:10px 0; overflow:hidden; }
+  .side { border-left:1px solid #1d2632; padding:12px 14px; overflow:hidden; }
+  .bar { border-bottom:1px solid #1d2632; display:flex; align-items:center; gap:14px; padding:0 14px; }
+  .strip { border-top:1px solid #1d2632; display:flex; gap:26px; padding:10px 16px; }
+  .rule { background:#2b3646; }
+  .grp { font:10.5px "DejaVu Sans Mono", monospace; color:#6f7c8c; text-transform:uppercase; letter-spacing:.6px; padding:8px 14px 3px; }
+  .it { padding:3px 14px 3px 22px; display:flex; justify-content:space-between; }
+  .it.on { background:#1a2533; color:#e3eaf2; box-shadow:inset 3px 0 #5aa9ff; }
+  .badge { font:10px "DejaVu Sans Mono", monospace; border-radius:3px; padding:0 5px; }
+  .new { background:#173a28; color:#59d18a; } .chg { background:#3a3017; color:#e8b04a; } .orph { background:#3a1b1b; color:#ff7b7b; }
+  .h { color:#e3eaf2; font-weight:600; font-size:14px; margin-bottom:1px; }
+  .id { font:11px "DejaVu Sans Mono", monospace; color:#6f7c8c; margin-bottom:10px; }
+  .sec { font:10.5px "DejaVu Sans Mono", monospace; color:#6f7c8c; text-transform:uppercase; letter-spacing:.6px; margin:12px 0 5px; }
+  .row { display:flex; justify-content:space-between; align-items:center; margin:4px 0; gap:8px; }
+  .sw { display:flex; gap:4px; } .sw i { width:18px; height:18px; border-radius:3px; display:inline-block; outline:1px solid #00000066; }
+  .sw i.on { outline:2px solid #e3eaf2; }
+  .inh { color:#6f7c8c; font-size:11px; } .own { color:#5aa9ff; font-size:11px; }
+  .btn { border:1px solid #2b3646; border-radius:4px; padding:2px 8px; color:#b9c5d3; font-size:11.5px; }
+  .seg { display:inline-flex; border:1px solid #2b3646; border-radius:4px; overflow:hidden; font-size:11.5px; }
+  .seg span { padding:2px 8px; } .seg span.on { background:#1f3550; color:#e3eaf2; }
+  .ro { color:#8592a2; font-size:12px; }
+  .note { font-size:11.5px; color:#6f7c8c; margin-top:12px; line-height:1.45; }
+  .inset { position:absolute; right:12px; top:12px; width:380px; height:250px; border-radius:6px; outline:1px solid #2b3646; z-index:5; overflow:hidden; background:#04060c; }
+  .model button, .deck button { display:none !important; }
+  .legend { margin:2px 0 0; font-size:12.5px; color:#8f9bab; max-width:1240px; line-height:1.5; }
+</style></head><body>
+<script type="module">
+import orrin from "../../../ui/data/orrin.js";
+import { ModelView } from "../../../ui/model-view.js";
+import { DeckView } from "../../../ui/deck-view.js";
+import { decksPlans } from "../../../ui/decks-deck.js";
+import { DISTRICT_COLOURS as DC } from "../../../ui/lib/geometry.js";
+import { DECKS, buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "../../../ui/lib/decks.js";
+
+const spec = DECKS.orrin;
+const SEL = { roomId: "orrin.market" };
+const NS = "http://www.w3.org/2000/svg";
+
+function mount(el, { handles = false } = {}) {
+  const index = indexDecks(orrin, spec);
+  const m = el.querySelector(".model"), d = el.querySelector(".deck");
+  if (m) {
+    const view = new ModelView(m, index, { faces: buildDecksModel(index, spec), keyOf: decksKey, hourOf: () => null, cutOf: (w) => decksCut(index, w), labels: false });
+    view.set(locateDecks(index, SEL));
+  }
+  if (d) {
+    const deck = new DeckView(d, index, decksPlans(spec));
+    deck.set(locateDecks(index, SEL));
+    if (handles) {
+      const plan = deck.plans[deck.level];
+      const s = plan.shape(locateDecks(index, SEL));
+      if (s?.kind === "rect") {
+        const g = document.createElementNS(NS, "g");
+        const pts = [[s.x, s.y], [s.x + s.width, s.y], [s.x, s.y + s.height], [s.x + s.width, s.y + s.height], [s.x + s.width / 2, s.y], [s.x + s.width / 2, s.y + s.height], [s.x, s.y + s.height / 2], [s.x + s.width, s.y + s.height / 2]];
+        for (const [x, y] of pts) {
+          const r = document.createElementNS(NS, "rect");
+          Object.entries({ x: x - 4, y: y - 4, width: 8, height: 8, fill: "#04060c", stroke: "#5aa9ff", "stroke-width": 1.6 }).forEach(([k, v]) => r.setAttribute(k, v));
+          g.appendChild(r);
+        }
+        plan.g.appendChild(g);
+      }
+    }
+  }
+}
+
+const swatches = (on) => `<span class="sw">${["docks", "industrial", "concourse", "offices", "midring", "hydroponics", "commons"].map((k) => `<i title="${k}" class="${k === on ? "on" : ""}" style="background:${DC[k]}"></i>`).join("")}</span>`;
+
+const INSPECTOR = `
+  <div class="h">Exchange</div>
+  <div class="id">orrin.market · Deck 2, frame 2, port 1</div>
+  <div class="sec">From the game · read only</div>
+  <div class="row ro"><span>exits</span><span>east → Deck 2, frame 2</span></div>
+  <div class="row ro"><span>flags</span><span>market, listed</span></div>
+  <div class="sec">Paint</div>
+  <div class="row">${swatches("concourse")}<span class="inh">like Orrin</span></div>
+  <div class="sec">Footprint</div>
+  <div class="row"><span>span</span><span class="seg"><span class="on">1 cell</span><span>+ fore</span><span>+ aft</span></span></div>
+  <div class="row"><span>corners</span><span class="seg"><span>square</span><span class="on">rounded</span><span>cut</span></span></div>
+  <div class="row"><span></span><span class="own">● set here · <u>reset</u></span></div>
+`;
+const VIEW = `
+  <div class="sec">View · whole station</div>
+  <div class="row"><span>cutaway</span><span class="seg"><span>off</span><span class="on">hide above</span><span>ghost above</span></span></div>
+  <div class="row"><span>camera home</span><span class="btn">set from current view</span></div>
+  <div class="row"><span>pretend I'm in</span><span class="btn">Exchange ▾</span></div>
+`;
+const PLACES = `
+  <div class="grp">From the last sync · 0a5f686</div>
+  <div class="it"><span>Trewint Halt</span><span class="badge new">new</span></div>
+  <div class="it on"><span>Orrin Station</span><span class="badge chg">2 rooms</span></div>
+  <div class="it"><span>Medium freighter</span><span class="badge orph">1 orphan</span></div>
+  <div class="grp">Stations</div>
+  ${["T.I.S.S.", "Wenna Halt", "Morvah", "Gwithian", "Carrow", "Lanyon", "Kynance", "Marazion", "Penwith", "…"].map((n) => `<div class="it"><span>${n}</span></div>`).join("")}
+  <div class="grp">Ship classes</div>
+  <div class="it"><span>Skiff</span></div><div class="it"><span>Medium freighter</span></div>
+`;
+
+const OPTIONS = [
+  {
+    title: "A · Like the panel, with a workbench round it",
+    note: "the overview above the plan exactly as the plugin's panel stacks them, the places and the sync report down the left, the selected room on the right",
+    html: `<div class="screen" style="grid-template-columns:220px 1fr 300px">
+      <div class="rail">${PLACES}</div>
+      <div style="display:grid;grid-template-rows:42fr 1px 58fr;min-height:0">
+        <div class="pane"><span class="tag">overview</span><div class="model" style="position:absolute;inset:0"></div></div>
+        <div class="rule"></div>
+        <div class="pane"><span class="tag">plan · Deck 2</span><div class="deck" style="position:absolute;inset:0"></div></div>
+      </div>
+      <div class="side">${INSPECTOR}${VIEW}</div>
+    </div>`,
+  },
+  {
+    title: "B · Side by side",
+    note: "the overview and the plan big and level with each other, a place picker and the sync report in a bar on top, the selected room along the bottom",
+    html: `<div class="screen" style="grid-template-rows:44px 1fr 150px;grid-template-columns:1fr 1px 1fr">
+      <div class="bar" style="grid-column:1/4"><b style="color:#e3eaf2">Orrin Station ▾</b>
+        <span class="badge chg">2 rooms changed</span><span style="flex:1"></span>
+        <span>sync 0a5f686:</span><span class="badge new">1 new</span><span class="badge chg">1 changed</span><span class="badge orph">1 orphan</span></div>
+      <div class="pane"><span class="tag">overview</span><div class="model" style="position:absolute;inset:0"></div></div>
+      <div class="rule"></div>
+      <div class="pane"><span class="tag">plan · Deck 2</span><div class="deck" style="position:absolute;inset:0"></div></div>
+      <div class="strip" style="grid-column:1/4">
+        <div style="width:300px">${INSPECTOR.split('<div class="sec">Paint')[0]}</div>
+        <div style="width:300px"><div class="sec">Paint</div><div class="row">${swatches("concourse")}<span class="inh">like Orrin</span></div>
+          <div class="sec">Footprint</div><div class="row"><span>corners</span><span class="seg"><span>square</span><span class="on">rounded</span><span>cut</span></span></div></div>
+        <div style="width:330px">${VIEW}</div>
+      </div>
+    </div>`,
+  },
+  {
+    title: "C · Plan first",
+    note: "the plan fills the screen as the canvas you drag on (handles on the selected room's outline), the overview a live inset in its corner, the selected room on the right",
+    handles: true,
+    html: `<div class="screen" style="grid-template-columns:1fr 300px">
+      <div class="pane"><span class="tag">plan · Deck 2</span><div class="deck" style="position:absolute;inset:0"></div>
+        <div class="inset"><span class="tag" style="position:absolute;left:8px;top:6px;z-index:4">overview</span><div class="model" style="position:absolute;inset:0"></div></div>
+      </div>
+      <div class="side">${INSPECTOR}${VIEW}<div class="note">Places and the sync report open from a menu over the plan's top-left corner.</div></div>
+    </div>`,
+  },
+];
+
+for (const opt of OPTIONS) {
+  const h = document.body.appendChild(document.createElement("h2"));
+  h.innerHTML = `${opt.title}<small>${opt.note}</small>`;
+  const wrap = document.body.appendChild(document.createElement("div"));
+  wrap.innerHTML = opt.html;
+  mount(wrap.firstElementChild, { handles: opt.handles });
+}
+</script>
+</body></html>

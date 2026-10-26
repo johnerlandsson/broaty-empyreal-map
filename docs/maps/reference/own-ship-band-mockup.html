@@ -1,0 +1,101 @@
+<!doctype html>
+<!-- The top band aboard your own ship, undocked, 2026-10-26: only her, or her inside today's space
+     scenes. The freighter is built from cells by the decks builder (content/plans/freighter.yaml,
+     one deck, frames 1-4), the Cargo Hold lit and the plain colours a ship with no tweaks would
+     get; the scenes are the plugin's own SpaceView. Serve the repo root over http to open it.
+     A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Your ship in the top band: options</title>
+<style>
+  body { margin:0; background:#0b0f16; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:16px 20px; }
+  h2 { color:#e3eaf2; font-size:16px; margin:18px 0 2px; }
+  h2 small { color:#7d8a9a; font-weight:400; font-size:12.5px; margin-left:8px; }
+  .row { display:flex; gap:14px; margin:8px 0 2px; }
+  figure { margin:0; } figcaption { font:11px "DejaVu Sans Mono", monospace; margin-top:4px; text-align:center; }
+  .band { position:relative; width:440px; height:270px; border-radius:6px; overflow:hidden; outline:1px solid #222c3a; background:#04060c; }
+  .band .sc { position:absolute; inset:0; }
+  .band .sh { position:absolute; z-index:5; }
+  .band button { display:none !important; }
+</style></head><body>
+<script type="module">
+import { ModelView } from "../../../ui/model-view.js";
+import { SpaceView } from "../../../ui/space-view.js";
+import { DISTRICT_COLOURS as DC } from "../../../ui/lib/geometry.js";
+import { buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "../../../ui/lib/decks.js";
+
+// content/plans/freighter.yaml, as the build would keep it
+const freighter = { rooms: [
+  { id: "freighter.cockpit", name: "Cockpit", address: "Deck 1, frame 4", gravity: 1, flags: [], exits: { south: "freighter.passage" } },
+  { id: "freighter.passage", name: "Passage", address: "Deck 1, frame 3", gravity: 1, flags: [], exits: { north: "freighter.cockpit", south: "freighter.hold", west: "freighter.airlock", east: "freighter.collar" } },
+  { id: "freighter.airlock", name: "Airlock", address: "Deck 1, frame 3, port 1", gravity: 1, flags: ["airlock"], exits: { east: "freighter.passage" } },
+  { id: "freighter.collar", name: "Docking Collar", address: "Deck 1, frame 3, starboard 1", gravity: 1, flags: ["berth"], exits: { west: "freighter.passage" } },
+  { id: "freighter.hold", name: "Cargo Hold", address: "Deck 1, frame 2", gravity: 1, flags: [], exits: { north: "freighter.passage", south: "freighter.engine" } },
+  { id: "freighter.engine", name: "Engine Room", address: "Deck 1, frame 1", gravity: 1, flags: [], exits: { north: "freighter.hold" } },
+] };
+const spec = {
+  prefix: "freighter",
+  tints: { "freighter.cockpit": DC.docks, "freighter.passage": DC.midring, "freighter.airlock": DC.midring, "freighter.collar": DC.concourse, "freighter.hold": DC.midring, "freighter.engine": DC.industrial },
+  blisters: [], cradles: [],
+};
+const HERE = { roomId: "freighter.hold" };
+
+function ship(el, { bare }) {
+  const index = indexDecks(freighter, spec);
+  const view = new ModelView(el, index, { faces: buildDecksModel(index, spec), keyOf: decksKey, hourOf: () => null, cutOf: (w) => decksCut(index, w), labels: false });
+  view.set(locateDecks(index, HERE));
+  if (bare) {
+    view.div.style.background = "transparent";
+    view.backdrop.remove();
+  }
+}
+
+function scene(el, name, port) {
+  const sv = new SpaceView(el);
+  sv.set(name, port);
+  if (name === "belt") sv.setWork({ laser: { busy: "mine", since: Date.now() - 9000 }, belt: { moved: Date.now() - 60000 } });
+}
+
+const SITUATIONS = [
+  ["in the belt, cutting a rock", "belt", null],
+  ["over Orrin's port", "port", "orrin"],
+];
+
+const OPTIONS = [
+  {
+    title: "1 · Only your ship",
+    note: "her model fills the band over the stars, your room lit; what she's doing is the card on the plan below, as now",
+    draw(band, [, name, port]) {
+      const m = band.appendChild(document.createElement("div"));
+      m.className = "sc";
+      ship(m, { bare: false });
+    },
+  },
+  {
+    title: "2 · Your ship inside the scene",
+    note: "today's scenes stay (the belt and the beam, the town below), with her model in front of them, your room lit",
+    draw(band, [, name, port]) {
+      const s = band.appendChild(document.createElement("div"));
+      s.className = "sc";
+      scene(s, name, port);
+      const m = band.appendChild(document.createElement("div"));
+      m.className = "sh";
+      Object.assign(m.style, { left: "90px", top: "70px", width: "260px", height: "190px" });
+      ship(m, { bare: true });
+    },
+  },
+];
+
+for (const opt of OPTIONS) {
+  const h = document.body.appendChild(document.createElement("h2"));
+  h.innerHTML = `${opt.title}<small>${opt.note}</small>`;
+  const row = document.body.appendChild(document.createElement("div"));
+  row.className = "row";
+  for (const sit of SITUATIONS) {
+    const fig = row.appendChild(document.createElement("figure"));
+    const band = fig.appendChild(document.createElement("div"));
+    band.className = "band";
+    opt.draw(band, sit);
+    fig.appendChild(document.createElement("figcaption")).textContent = sit[0];
+  }
+}
+</script>
+</body></html>
