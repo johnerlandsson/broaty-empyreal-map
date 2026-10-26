@@ -709,3 +709,25 @@ describe("the CLI", () => {
     expect(existsSync(o.reportPath)).toBe(false);
   });
 });
+
+describe("build, ship looks", () => {
+  it("writes a plan's look with row C's profile, surface and greebles, a station's without", async () => {
+    const opts = setup();
+    await build(opts);
+    const t = await load(join(opts.outDir, "plans/tub.js"));
+    expect(Object.keys(t.look)).toEqual(["paint", "fixtures", "footprints", "hull", "profile", "surface", "greebles", "view", "palette"]);
+    expect(t.look.profile).toEqual({ bevel: 0.12, noseDrop: 0.35, noseLength: 0.8, spine: null });
+    expect(t.look.surface.windows).toEqual(["cockpit"]);
+    expect(t.look.greebles).toEqual([]);
+    const m = await load(join(opts.outDir, "mini.js"));
+    expect(m.look).not.toHaveProperty("profile");
+  });
+
+  it("stops on a profile on a station, and on a greeble off a plan's hull, naming the file", async () => {
+    const station = await build(setup({ ...placed, mini: { profile: { bevel: 0.1 } } })).catch((e) => e);
+    expect(station.message).toMatch(/data\/tweaks\/mini\.json: profile only applies to ship plans/);
+    const hull = { 1: [[-0.6, 0.4], [0.6, 0.4], [0.6, 1.6], [-0.6, 1.6]] };
+    const off = await build(setup({ ...placed, tub: { hull, greebles: [{ type: "vent", side: 2, frame: 1 }] } })).catch((e) => e);
+    expect(off.message).toMatch(/^data\/tweaks\/tub\.json: greebles\[0\] \(vent\) is outside hull\.1\b/m);
+  });
+});

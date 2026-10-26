@@ -47,7 +47,7 @@ function decks(data, modelEl, deckEl, opts) {
     view: data.look?.view,
     ...opts,
   });
-  return { index, model, deck: new DeckView(deckEl, index, decksPlans(), opts), locate: locateDecks };
+  return { index, model, deck: new DeckView(deckEl, index, decksPlans(data), opts), locate: locateDecks };
 }
 
 /** Zennor: a city on the ground, rooms placed by their compass exits, ⌂ framing your district; its sky over it. */

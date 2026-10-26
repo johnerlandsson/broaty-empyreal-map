@@ -1,7 +1,7 @@
 // Build-time checks on decks footprints: an outline that crosses itself, rooms whose drawn
 // outlines overlap on a deck, and hull paths that cut a room or leave a fixture outside. The
 // outlines and paths are ui/lib/footprint.js's, as the map draws them.
-import { boundsOf, noseAt, outlineOf, pathOf } from "../../ui/lib/footprint.js";
+import { boundsOf, noseAt, outlineOf, pathOf, propBoxes, tailAt, wallAt } from "../../ui/lib/footprint.js";
 
 /** An overlap smaller than this, in square cells, is a shared edge, not an overlap. */
 const EPS = 1e-6;
@@ -166,17 +166,20 @@ function contains(path, [x, y]) {
 
 /**
  * Everything a deck's hull path leaves out, deck by deck in the look's order: each room on that
- * deck whose outline, brought in 0.1 to the drawn room box, isn't inside it; each cradle on it
- * whose side misses the path; each mast whose point isn't inside the top deck's path. Decks with
- * no path keep their box.
+ * deck whose outline, brought in 0.1 to the drawn room box, isn't inside it; each cradle, bell or
+ * boom on it whose side misses the path; each prop in a room on it reaching out of it; each ring
+ * on a room's wall the path doesn't meet; each mast or greeble whose point isn't inside the top
+ * deck's path. Decks with no path keep their box. A prop or ring whose room is gone is an orphan,
+ * not a clash.
  * @param {{id: string, at?: {deck: number, frame: number, side: number}}[]} rooms
- * @param {{hull: Record<string, number[][]>, footprints: Record<string, object>, fixtures: object[]}} look
- * @returns {({deck: string, room: string} | {deck: string, fixture: number, type: string})[]}
+ * @param {{hull: Record<string, number[][]>, footprints: Record<string, object>, fixtures: object[], greebles?: object[]}} look
+ * @returns {({deck: string, room: string} | {deck: string, fixture: number, type: string} | {deck: string, greeble: number, type: string})[]}
  */
 export function hullClashes(rooms, look) {
   const local = (id) => id.slice(id.indexOf(".") + 1);
   const decks = rooms.filter((r) => r.at).map((r) => r.at.deck);
   const top = decks.length ? String(Math.max(...decks)) : null;
+  const byLocal = new Map(rooms.map((r) => [local(r.id), r]));
   const clashes = [];
   for (const [deck, points] of Object.entries(look.hull)) {
     const path = pathOf(points);
@@ -184,11 +187,23 @@ export function hullClashes(rooms, look) {
       const outline = inset(outlineOf(look.footprints[local(r.id)]), INSET).map(([x, y]) => [x + r.at.side, y + r.at.frame]);
       if (!inside(outline, path)) clashes.push({ deck, room: r.id });
     }
+    const on = (f) => String(f.deck) === deck;
     for (const [i, f] of look.fixtures.entries()) {
+      const room = f.room === undefined ? null : byLocal.get(f.room);
+      const here = room && String(room.at?.deck) === deck;
       const out =
-        (f.type === "cradle" && String(f.deck) === deck && noseAt(path, f.side) === null) ||
-        (f.type === "mast" && deck === top && !contains(path, [f.side, f.frame]));
+        (f.type === "cradle" && on(f) && noseAt(path, f.side) === null) ||
+        (f.type === "boom" && on(f) && noseAt(path, f.side) === null) ||
+        (f.type === "bell" && on(f) && tailAt(path, f.side) === null) ||
+        (f.type === "mast" && deck === top && !contains(path, [f.side, f.frame])) ||
+        (f.type === "chevrons" && here && wallAt(path, { x: room.at.side, y: room.at.frame }, f.wall) === null) ||
+        (f.type === "prop" && here && propBoxes(f, room.at).some(([x0, y0, x1, y1]) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].some((p) => !contains(path, p))));
       if (out) clashes.push({ deck, fixture: i, type: f.type });
+    }
+    if (deck === top) {
+      for (const [i, g] of (look.greebles ?? []).entries()) {
+        if (!contains(path, [g.side, g.frame])) clashes.push({ deck, greeble: i, type: g.type });
+      }
     }
   }
   return clashes;

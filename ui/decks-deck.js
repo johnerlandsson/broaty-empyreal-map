@@ -1,13 +1,15 @@
 // A decks station's plans (Orrin Station): one per deck, top deck first, fore up and starboard
 // right, each room in the cell its address names, in its footprint's shape. The hull's footprint is
 // the same on every deck so the frames line up; a deck with a hull path is plated with it instead;
-// a deck outside the hull (a blister's) shows the footprint dashed. Layout maths lives in
-// lib/decks.js.
+// a deck outside the hull (a blister's) shows the footprint dashed. A ship's plan also has her
+// fixtures (ships-from-cells-mockup.html): drive bells, the boom and the collar's ring under the
+// plate, and the props in her rooms over them. Layout maths lives in lib/decks.js.
 
 import { DISTRICT_COLOURS as DC } from "./lib/geometry.js";
 import { PLAN, decksLayout, decksShape, pathD } from "./lib/decks.js";
+import { noseAt, propBoxes, tailAt, wallAt } from "./lib/footprint.js";
 import { el } from "./lib/svg.js";
-import { DIM, PASSAGE, PLATE, hover, label, roomBox } from "./deck-view.js";
+import { DIM, PASSAGE, PLATE, TXT, hover, label, roomBox } from "./deck-view.js";
 
 const GLASS = DC.docks;
 const EDGE = "#3b4a5c";
@@ -17,21 +19,29 @@ const HATCH = "#9fb0c3";
 const STOP = "#aab8c8";
 const LIGHTS = ["#59d18a", "#e8b04a", "#59d18a", "#3a4556", "#59d18a", "#59d18a", "#3a4556"]; // clamped, cycling, empty
 const DECK_OF = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
+const HULL_LINE = "#9fb0c3";
+const CHEVRON = "#e8b04a";
+const WALL = { starboard: [1, 0], port: [-1, 0], fore: [0, 1], aft: [0, -1] };
 const none = { "pointer-events": "none" };
 
 /**
+ * @param {{id: string, kind?: string, look?: {fixtures?: object[]}}} [data] the generated file, for
+ *   a ship plan's fixtures
  * @returns {(svg: SVGElement, index: object, opts?: {pick?: boolean}) => object[]} the plans
  *   builder DeckView takes: one plan a deck, in the index's level order, all framed by the same
  *   extent; with pick, every room marked for picking
  */
-export function decksPlans() {
-  return (svg, index, opts) => index.decks.map((deck, level) => buildDeckPlan(svg, index, deck, level, opts?.pick));
+export function decksPlans(data) {
+  const fixtures = data?.kind === "plan" ? (data.look?.fixtures ?? []) : [];
+  return (svg, index, opts) => index.decks.map((deck, level) => buildDeckPlan(svg, index, deck, level, opts?.pick, { id: data?.id, fixtures }));
 }
 
-function buildDeckPlan(svg, index, deck, level, pick) {
+function buildDeckPlan(svg, index, deck, level, pick, ship) {
   const layout = decksLayout(index, deck);
   const { cells, links, hatches, footprint: fp, plate, frames, onHull } = layout;
   const g = el("g", { display: "none" }, svg);
+  const fixtures = shipFixtures(index, layout, ship);
+  fixtures.outside(g);
 
   // the hull: a plate with its walls on a deck inside it (its path, where it has one), else its
   // outline, dashed, and a plate round each blister
@@ -60,6 +70,8 @@ function buildDeckPlan(svg, index, deck, level, pick) {
       blister(g, c, pick);
     }
   }
+
+  fixtures.inside(g);
 
   for (const h of hatches) {
     el("circle", { cx: h.cx, cy: h.cy, r: 9, fill: FIXTURE, stroke: HATCH, "stroke-width": 1.4, ...none }, g);
@@ -113,4 +125,140 @@ function blister(g, c, pick) {
   }
   label(gl, c.cx, c.cy + 10, c.room.name, 12);
   hover(gl, c.room, pick);
+}
+
+// --- a ship's fixtures ---------------------------------------------------------------------------
+
+const ln = (pts) => `M${pts.map((p) => p.map((v) => +v.toFixed(1)).join(",")).join("L")}`;
+
+/**
+ * A ship's fixtures on one deck's plan: `outside(g)` draws the bells, boom and rings (under the
+ * plate), `inside(g)` the props (over the rooms). Each fixture is a group marked with its index in
+ * the look. A room-bound one whose room is gone, or one off the hull, draws nothing.
+ */
+function shipFixtures(index, layout, { id, fixtures }) {
+  const P = ([x, y]) => layout.centre({ x, y });
+  const deck = layout.deck;
+  const path = index.hullPaths?.[deck] ?? boxPath(index.hull);
+  const roomOf = (f) => index.byId.get(`${id}.${f.room}`);
+  const group = (g, i) => el("g", { "data-fixture": i, ...none }, g);
+  return {
+    outside(g) {
+      fixtures.forEach((f, i) => {
+        if ((f.type === "bell" || f.type === "boom") && f.deck === deck) {
+          const end = f.type === "bell" ? tailAt(path, f.side) : noseAt(path, f.side);
+          if (end !== null) (f.type === "bell" ? planBell : planBoom)(group(g, i), P, f, end);
+        } else if (f.type === "chevrons") {
+          const room = roomOf(f);
+          const cell = room && room.cell.z === deck ? layout.cells.find((c) => c.room === room) : null;
+          const hit = cell ? wallAt(path, room.cell, f.wall) : null;
+          if (hit) planRing(group(g, i), P, f, cell, hit);
+        }
+      });
+    },
+    inside(g) {
+      fixtures.forEach((f, i) => {
+        const room = f.type === "prop" ? roomOf(f) : null;
+        if (room && room.cell.z === deck) planProp(group(g, i), P, f, room.cell);
+      });
+    },
+  };
+}
+
+/** A box hull's path, in cells: the box round the cells. */
+function boxPath(hull) {
+  if (!hull) return [];
+  const [x0, x1, y0, y1] = [hull.x0 - 0.5, hull.x1 + 0.5, hull.y0 - 0.5, hull.y1 + 0.5];
+  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+}
+
+/** A drive bell out of the hull's aft end at its side: a throat flaring to its mouth, and the mouth's rim. */
+function planBell(g, P, f, tail) {
+  const t = f.r * 0.3;
+  const [y0, y1] = [tail + 0.03, tail - f.len];
+  const [a, b, c, d] = [P([f.side - t, y0]), P([f.side - t, tail - f.len * 0.45]), P([f.side - f.r, y1]), P([f.side + f.r, y1])];
+  const [e, h] = [P([f.side + t, tail - f.len * 0.45]), P([f.side + t, y0])];
+  el("path", { d: `M${a}Q${b} ${c}L${d}Q${e} ${h}Z`, fill: PLATE, stroke: HULL_LINE, "stroke-width": 1.6, "stroke-linejoin": "round" }, g);
+  el("path", { d: ln([P([f.side - f.r * 0.82, y1 + f.len * 0.12]), P([f.side + f.r * 0.82, y1 + f.len * 0.12])]), stroke: EDGE, "stroke-width": 1.2 }, g);
+}
+
+/** The mining laser boom out of the nose at its side: rod, crossbar, the emitter's diamond, and the tip with its prongs. */
+function planBoom(g, P, f, nose) {
+  const at = (dx, dy) => P([f.side + dx * f.len, nose + dy * f.len]);
+  const s = { stroke: HULL_LINE, "stroke-width": 1.8, fill: "none", "stroke-linecap": "round" };
+  el("path", { d: ln([at(0, -0.06), at(0, 0.64)]), ...s }, g);
+  el("path", { d: ln([at(-0.11, 0.28), at(0.11, 0.28)]), ...s }, g);
+  el("path", { d: `${ln([at(0, 0.6), at(0.11, 0.74), at(0, 0.88), at(-0.11, 0.74)])}Z`, ...s, fill: PLATE }, g);
+  el("path", { d: `${ln([at(0, 0.93), at(0, 1)])}${ln([at(-0.11, 0.95), at(-0.07, 0.9)])}${ln([at(0.11, 0.95), at(0.07, 0.9)])}`, ...s }, g);
+}
+
+/** The collar's ring where its room's wall meets the hull: a way out to it, the ring, and its two yellow chevrons pointing out. */
+function planRing(g, P, f, room, [hx, hy]) {
+  const [dx, dy] = WALL[f.wall];
+  const [along, out] = [0.4, 0.12]; // the ring's length along the hull and how far it stands out, in cells
+  const ends = dx ? [P([hx - 0.02 * dx, hy + along / 2]), P([hx + out * dx, hy - along / 2])] : [P([hx + along / 2, hy - 0.02 * dy]), P([hx - along / 2, hy + out * dy])];
+  const [x0, x1] = [Math.min(ends[0][0], ends[1][0]), Math.max(ends[0][0], ends[1][0])];
+  const [y0, y1] = [Math.min(ends[0][1], ends[1][1]), Math.max(ends[0][1], ends[1][1])];
+  // the way out, from the room's box to the hull, as a passage bar
+  const [px, py] = P([hx, hy]);
+  if (dx) {
+    const from = room.cx + (dx * room.w) / 2;
+    el("rect", { x: Math.min(from, px), y: py - 8, width: Math.abs(px - from), height: 16, fill: PASSAGE }, g);
+  } else {
+    const from = room.cy - (dy * room.h) / 2;
+    el("rect", { x: px - 8, y: Math.min(from, py), width: 16, height: Math.abs(py - from), fill: PASSAGE }, g);
+  }
+  el("rect", { x: x0, y: y0, width: x1 - x0, height: y1 - y0, rx: 3, fill: FIXTURE, stroke: HULL_LINE, "stroke-width": 1.6 }, g);
+  const c = { stroke: CHEVRON, "stroke-width": 1.8, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" };
+  const [mx, my] = [(x0 + x1) / 2, (y0 + y1) / 2];
+  const s = 3.4;
+  for (const k of [-1, 1]) {
+    if (dx) {
+      const y = my + k * (y1 - y0) * 0.24;
+      el("path", { d: ln([[mx - dx * s, y - s], [mx + dx * s, y], [mx - dx * s, y + s]]), ...c }, g);
+    } else {
+      const x = mx + k * (x1 - x0) * 0.24;
+      el("path", { d: ln([[x - s, my + dy * s], [x, my - dy * s], [x + s, my + dy * s]]), ...c }, g);
+    }
+  }
+}
+
+/** A prop in a room, plan only: one, or its grid of them, centred on the room's cell plus `at`. */
+function planProp(g, P, f, cell) {
+  for (const [x0, y0, x1, y1] of propBoxes(f, { side: cell.x, frame: cell.y })) {
+    const [a, b] = [P([x0, y1]), P([x1, y0])]; // the plan's top left and bottom right: fore is up
+    propOne(g, f, a, b);
+  }
+}
+
+function propOne(g, f, [x0, y0], [x1, y1]) {
+  const [W, H] = [x1 - x0, y1 - y0];
+  const line = { fill: "none", stroke: DIM, "stroke-width": 1.4, "stroke-linejoin": "round" };
+  if (f.kind === "crate") {
+    el("rect", { x: x0, y: y0, width: W, height: H, rx: 2, ...line }, g);
+    el("path", { d: ln([[x0, y0], [x1, y1]]), ...line }, g);
+  } else if (f.kind === "seat") {
+    // a cushion and the curve of its back, facing fore
+    const d = `M${x0},${y0}h${W}v${H * 0.66}h${-W}Z M${x0},${y0 + H * 0.66}l${W * 0.2},${H * 0.34}h${W * 0.6}l${W * 0.2},${-H * 0.34}`;
+    el("path", { d, ...line, stroke: TXT, "stroke-width": 1.3 }, g);
+  } else if (f.kind === "core") {
+    const bw = W * 0.36;
+    el("rect", { x: x0 + (W - bw) / 2, y: y0, width: bw, height: H, rx: 3, ...line }, g);
+    const n = f.ribs ?? 7;
+    for (let i = 0; i < n; i++) {
+      const y = y0 + H * (0.1 + (0.8 * i) / (n - 1));
+      el("path", { d: ln([[x0, y], [x1, y]]), ...line }, g);
+    }
+  } else if (f.kind === "bulkhead") {
+    el("path", { d: ln([[x0, y0], [x1, y0]]), stroke: HULL_LINE, "stroke-width": 2 }, g);
+  } else if (f.kind === "slot") {
+    el("rect", { x: x0, y: y0, width: W, height: H, rx: 3, ...line, stroke: PASSAGE }, g);
+    for (const [bx, by] of [[0.15, 0.2], [0.85, 0.2], [0.15, 0.8], [0.85, 0.8]]) el("circle", { cx: x0 + W * bx, cy: y0 + H * by, r: 2.2, fill: PASSAGE }, g);
+  } else if (f.kind === "rails") {
+    // tie-down rails down both long sides
+    for (const [x, s] of [[x0, 1], [x1, -1]]) {
+      el("path", { d: ln([[x, y0], [x, y1]]), ...line, opacity: 0.6 }, g);
+      for (let i = 1; i < 6; i++) el("path", { d: ln([[x, y0 + (H * i) / 6], [x + s * 7, y0 + (H * i) / 6]]), ...line, opacity: 0.6 }, g);
+    }
+  }
 }

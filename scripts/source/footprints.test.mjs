@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import orrin from "../../tests/fixtures/generated/orrin.js";
-import { crosses, hullClash, overlaps } from "./footprints.mjs";
+import { crosses, hullClash, hullClashes, overlaps } from "./footprints.mjs";
 
 const room = (id, x, y, z = 1, fp) => ({ id, cell: { x, y, z }, fp });
 
@@ -81,5 +81,41 @@ describe("hullClash", () => {
         expect(hullClash(rooms, { hull, footprints: { a: { corners, r } }, fixtures: [] }), `${corners} ${r}`).toBeNull();
       }
     }
+  });
+});
+
+describe("hullClashes, ship fixtures and greebles", () => {
+  // a skiff-like hull round one cockpit at frame 1, its nose a point at frame 2
+  const hull = { 1: [[-1, -0.5], [1, -0.5], [1, 1.5], [0, 2], [-1, 1.5]] };
+  const rooms = [{ id: "s.cockpit", at: { deck: 1, frame: 1, side: 0 } }, { id: "s.hold", at: { deck: 1, frame: 0, side: 0 } }];
+  const look = (fixtures, greebles = []) => ({ hull, footprints: {}, fixtures, greebles });
+
+  it("passes bells and a boom on the hull's line, props inside it, chevrons on a wall it has, greebles on its roof", () => {
+    const fixtures = [
+      { type: "bell", side: -0.5, deck: 1, r: 0.2, len: 0.4 },
+      { type: "boom", side: 0, deck: 1, len: 0.8 },
+      { type: "prop", kind: "crate", room: "hold", at: [0, -0.1], size: [0.3, 0.3], grid: [3, 1], gap: 0.1 },
+      { type: "chevrons", room: "hold", wall: "port" },
+    ];
+    expect(hullClashes(rooms, look(fixtures, [{ type: "vent", side: 0.5, frame: 1 }]))).toEqual([]);
+  });
+
+  it("finds a bell or boom whose side misses the hull", () => {
+    const fixtures = [{ type: "bell", side: 1.5, deck: 1, r: 0.2, len: 0.4 }, { type: "boom", side: -2, deck: 1, len: 0.8 }];
+    expect(hullClashes(rooms, look(fixtures))).toEqual([{ deck: "1", fixture: 0, type: "bell" }, { deck: "1", fixture: 1, type: "boom" }]);
+  });
+
+  it("finds a prop reaching out of the hull, any of its grid", () => {
+    const fixtures = [{ type: "prop", kind: "crate", room: "hold", at: [0, 0], size: [0.4, 0.3], grid: [5, 1], gap: 0.1 }];
+    expect(hullClashes(rooms, look(fixtures))).toEqual([{ deck: "1", fixture: 0, type: "prop" }]);
+  });
+
+  it("finds a greeble off the top deck's hull", () => {
+    expect(hullClashes(rooms, look([], [{ type: "vent", side: 0, frame: 0 }, { type: "dish", side: 0.9, frame: 1.9, r: 0.1 }]))).toEqual([{ deck: "1", greeble: 1, type: "dish" }]);
+  });
+
+  it("leaves a prop or chevrons for a missing room to the orphans", () => {
+    const fixtures = [{ type: "prop", kind: "crate", room: "gone", at: [5, 5], size: [0.3, 0.3] }, { type: "chevrons", room: "gone", wall: "aft" }];
+    expect(hullClashes(rooms, look(fixtures))).toEqual([]);
   });
 });

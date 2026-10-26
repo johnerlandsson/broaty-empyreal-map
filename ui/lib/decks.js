@@ -7,6 +7,11 @@
 // one camera and renderer draw it. Pure; no DOM.
 
 import { boundsOf, CORNER_R, cornered, noseAt, outlineOf, pathOf } from "./footprint.js";
+import { buildShipModel } from "./ship-hull.js";
+import { area2, CELL, centre2, clip, convexFirst, CUBE, onPath, outward, SHARP, turnAt, within } from "./solid.js";
+
+export { CELL };
+export { CHEVRON, NAV } from "./ship-hull.js";
 
 // --- addresses and the index -----------------------------------------------------------------
 
@@ -89,18 +94,6 @@ export function decksCut(index, where) {
 
 // --- the model -------------------------------------------------------------------------------
 
-/** Model units per cell: across (side), along (frame) and up (deck). */
-export const CELL = { side: 64, frame: 96, deck: 52 };
-
-// A unit cube's six faces, each its outward normal and its corners as signs, wound outward.
-const CUBE = [
-  { n: [0, 0, 1], c: [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]] },
-  { n: [0, 0, -1], c: [[-1, 1, -1], [1, 1, -1], [1, -1, -1], [-1, -1, -1]] },
-  { n: [0, -1, 0], c: [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]] },
-  { n: [0, 1, 0], c: [[-1, 1, 1], [1, 1, 1], [1, 1, -1], [-1, 1, -1]] },
-  { n: [1, 0, 0], c: [[1, -1, -1], [1, 1, -1], [1, 1, 1], [1, -1, 1]] },
-  { n: [-1, 0, 0], c: [[-1, -1, 1], [-1, 1, 1], [-1, 1, -1], [-1, -1, -1]] },
-];
 // the blister's profile from the hull down: [radius, depth] as fractions of its radius
 const DOME = [[0.66, 0], [0.66, 0.2], [1, 0.34], [0.96, 0.66], [0.76, 0.94], [0.42, 1.1]];
 const DOME_SIDES = 12;
@@ -110,14 +103,17 @@ const DOME_SIDES = 12;
  * each deck a box of cells whose faces are tinted by the room behind them, or, where the look gives
  * the deck a hull path, that path raised through the deck, tinted the same way. Each room's outline
  * through its deck as a ghost (`ghost`: drawn only when lit), a box for a plain one; the blisters in
- * glass outside the hull, and the cradles fore of the nose. Nothing turns.
+ * glass outside the hull, and the cradles fore of the nose. Nothing turns. A ship plan's hull is
+ * lofted with her looks and fixtures instead (ship-hull.js), and her cradles and masts are sorted
+ * with it (layer 0), so the hull hides them; a station's are drawn over it.
  * @param {ReturnType<typeof indexDecks>} index
- * @param {{look?: {fixtures?: object[]}}} data the generated decks file the index was made from
+ * @param {{kind?: string, look?: {fixtures?: object[]}}} data the generated decks file the index was made from
  */
 export function buildDecksModel(index, data) {
   const faces = [];
   const { hull, grid } = index;
   if (!hull) return faces;
+  const ship = data.kind === "plan";
   const paths = index.hullPaths ?? {};
   const fixtures = (type) => (data.look?.fixtures ?? []).filter((f) => f.type === type);
   const add = (pts, kind, key, extra) =>
@@ -181,13 +177,15 @@ export function buildDecksModel(index, data) {
   ];
   const unit = [CELL.side, CELL.deck, CELL.frame];
 
+  if (ship) faces.push(...buildShipModel(index, data));
+
   // a deck without a path: a facet for every cell face on the box's outside, tinted by the room
   // behind it and edged only where the box is, so a deck above the cut is an outline; and each
   // deck's top, the lid it shows when the decks above it are cut away
   for (let x = grid.x0; x <= grid.x1; x++) {
     for (let y = grid.y0; y <= grid.y1; y++) {
       for (let z = grid.z0; z <= grid.z1; z++) {
-        if (paths[z]) continue;
+        if (paths[z] || ship) continue;
         const c = at(x, y, z);
         const room = roomAt.get(`${x}:${y}:${z}`);
         for (const { n, c: signs } of CUBE) {
@@ -228,7 +226,7 @@ export function buildDecksModel(index, data) {
     faces.push({ ...convexFirst(pts, edges), kind: "outer", key: null, tint, turns: false, cull: true, layer: 0, ...extra });
   for (let z = grid.z0; z <= grid.z1; z++) {
     const path = paths[z];
-    if (!path) continue;
+    if (!path || ship) continue;
     const n = path.length;
     // a wall's upright edge is drawn only at a corner, not along a rounded one's arc
     const sharp = path.map((p, i) => turnAt(path[(i + n - 1) % n], p, path[(i + 1) % n]) > SHARP);
@@ -333,7 +331,7 @@ export function buildDecksModel(index, data) {
     const c = [cx, cy, fore + (len * CELL.frame) / 2];
     const h = [hx * CELL.side, hy * CELL.deck, (len * CELL.frame) / 2];
     for (const { c: signs } of CUBE) {
-      add(signs.map((s) => c.map((v, k) => v + s[k] * h[k])), "dock", null, { layer: 1, deck: z });
+      add(signs.map((s) => c.map((v, k) => v + s[k] * h[k])), "dock", null, { layer: ship ? 0 : 1, deck: z });
     }
   }
 
@@ -346,8 +344,8 @@ export function buildDecksModel(index, data) {
   for (const { side: x, frame: y, height } of fixtures("mast")) {
     const [cx, , cz] = at(x, y, 0);
     const tall = height * CELL.deck;
-    cuboid([cx, roof + tall / 2, cz], [MAST, tall / 2, MAST], "mast", 1);
-    cuboid([cx, roof + tall, cz], [LAMP, LAMP, LAMP], "lamp", 2);
+    cuboid([cx, roof + tall / 2, cz], [MAST, tall / 2, MAST], "mast", ship ? 0 : 1);
+    cuboid([cx, roof + tall, cz], [LAMP, LAMP, LAMP], "lamp", ship ? 0 : 2);
   }
 
   return faces;
@@ -356,104 +354,9 @@ export function buildDecksModel(index, data) {
 const MAST = 3.5; // a mast's half-width, in model units
 const LAMP = 11; // its lamp's
 
-/** A wall's upright edge is drawn where the path turns by more than this (radians), so not along an arc. */
-const SHARP = (35 * Math.PI) / 180;
-
-/** How far a path turns at b, coming from a and going on to c, in radians. */
-function turnAt(a, b, c) {
-  const t = Math.abs(Math.atan2(c[1] - b[1], c[0] - b[0]) - Math.atan2(b[1] - a[1], b[0] - a[0]));
-  return t > Math.PI ? 2 * Math.PI - t : t;
-}
-
-/** Twice a polygon's signed area, in its own plane's x and y: positive for counter-clockwise. */
-function area2(points) {
-  return points.reduce((s, [x, y], i) => {
-    const [u, v] = points[(i + 1) % points.length];
-    return s + x * v - u * y;
-  }, 0);
-}
-
-const centre2 = (points) => points.reduce((s, p) => [s[0] + p[0] / points.length, s[1] + p[1] / points.length], [0, 0]);
-
-/** Whether a point is inside a polygon (its edge counts as either). */
-function within(points, [x, y]) {
-  let inside = false;
-  points.forEach(([ax, ay], i) => {
-    const [bx, by] = points[(i + 1) % points.length];
-    if (ay > y !== by > y && x < ax + ((y - ay) / (by - ay)) * (bx - ax)) inside = !inside;
-  });
-  return inside;
-}
-
-/** Whether a point lies on one of a closed path's edges. */
-function onPath(path, [x, y]) {
-  return path.some(([ax, ay], i) => {
-    const [bx, by] = path[(i + 1) % path.length];
-    const len = Math.hypot(bx - ax, by - ay);
-    const t = ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / (len * len);
-    return Math.abs((x - ax) * (by - ay) - (y - ay) * (bx - ax)) / len < 1e-6 && t > -1e-6 && t < 1 + 1e-6;
-  });
-}
-
-/** A polygon cut by the line where its axis k is v, keeping the side `keep` (1 above, -1 below). */
-function clip(points, k, v, keep) {
-  const kept = (p) => (p[k] - v) * keep >= -1e-9;
-  const out = [];
-  points.forEach((p, i) => {
-    const q = points[(i + 1) % points.length];
-    if (kept(p)) out.push(p);
-    if (kept(p) !== kept(q)) {
-      const t = (v - p[k]) / (q[k] - p[k]);
-      out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
-    }
-  });
-  return out;
-}
-
 /** Whether an outline is the plain unit square, drawn as a box. */
 function isUnit(outline) {
   return outline.length === 4 && outline.every(([x, y]) => Math.abs(x) === 0.5 && Math.abs(y) === 0.5);
-}
-
-/**
- * A flat face's points and edges started at its most convex corner, so the renderer's normal (from
- * the first three points) is the face's own on a concave piece too.
- */
-function convexFirst(pts, edges) {
-  const n = pts.length;
-  const normalAt = (i) => {
-    const [a, b, c] = [pts[i], pts[(i + 1) % n], pts[(i + 2) % n]];
-    const u = b.map((v, k) => v - a[k]);
-    const w = c.map((v, k) => v - a[k]);
-    return [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
-  };
-  // the face's normal (Newell's), then the corner turning most its way
-  const N = [0, 0, 0];
-  pts.forEach((p, i) => {
-    const q = pts[(i + 1) % n];
-    N[0] += (p[1] - q[1]) * (p[2] + q[2]);
-    N[1] += (p[2] - q[2]) * (p[0] + q[0]);
-    N[2] += (p[0] - q[0]) * (p[1] + q[1]);
-  });
-  let best = 0;
-  let most = -Infinity;
-  for (let i = 0; i < n; i++) {
-    const d = normalAt(i).reduce((s, v, k) => s + v * N[k], 0);
-    if (d > most) [best, most] = [i, d];
-  }
-  const turn = (xs) => xs.slice(best).concat(xs.slice(0, best));
-  return { pts: turn(pts), edges: turn(edges) };
-}
-
-/** pts wound so their normal points away from `from`. */
-function outward(pts, from) {
-  const [a, b, c] = pts;
-  const u = b.map((v, i) => v - a[i]);
-  const w = c.map((v, i) => v - a[i]);
-  const n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
-  const mid = pts.reduce((s, p) => s.map((v, i) => v + p[i] / pts.length), [0, 0, 0]);
-  const d = n.reduce((s, v, i) => s + v * (mid[i] - from[i]), 0);
-  return d >= 0 ? pts : pts.slice().reverse();
 }
 
 // --- the deck plans --------------------------------------------------------------------------

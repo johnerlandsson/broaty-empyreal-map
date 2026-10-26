@@ -23,7 +23,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** A generated room's keys, in order: the kept fields, with `at` and `terrain` after the address. */
 const ROOM_KEYS = ["id", "name", "address", "at", "terrain", ...ROOM_FIELDS.slice(3)];
 /** The look's keys, in order (resolveLook's, then the palette). */
-const LOOK_KEYS = ["paint", "fixtures", "footprints", "hull", "view", "drum", "town", "wheel", "palette"];
+const LOOK_KEYS = ["paint", "fixtures", "footprints", "hull", "profile", "surface", "greebles", "view", "drum", "town", "wheel", "palette"];
 /** What a checkout must have; loadSource reads each. */
 const SOURCE_PATHS = ["content/areas", "content/plans", "content/game/hulls.yaml", "content/game/world.yaml"];
 
@@ -189,7 +189,7 @@ function footprintClashes(id, rooms, footprints, tweaks) {
 }
 
 /**
- * Each room a deck's hull path cuts through and each cradle or mast it leaves outside
+ * Each room a deck's hull path cuts through and each fixture or greeble it leaves outside
  * (footprints.mjs's hullClashes), as a line naming the tweak file, the deck's hull and the file it
  * or the footprint or fixtures come from through `like`; a hull from `like` suggests the opt-out.
  */
@@ -208,6 +208,10 @@ function hullLines(id, rooms, look, tweaks) {
       const room = clash.room.slice(clash.room.indexOf(".") + 1);
       const fpBase = look.footprints[room] ? base("footprints", room) : null;
       return `${file}: ${hull} cuts through ${clash.room}${fpBase ? ` (footprints.${room} from ${fpBase}.json via like)` : ""}${optOut}`;
+    }
+    if (clash.greeble !== undefined) {
+      const greeblesBase = base("greebles");
+      return `${file}: greebles[${clash.greeble}] (${clash.type}${greeblesBase ? `, from ${greeblesBase}.json via like` : ""}) is outside ${hull}${optOut}`;
     }
     const fixturesBase = base("fixtures");
     return `${file}: fixtures[${clash.fixture}] (${clash.type}${fixturesBase ? `, from ${fixturesBase}.json via like` : ""}) is outside ${hull}${optOut}`;
@@ -276,7 +280,7 @@ async function placeFile({ commit, tweaks, report, files, clashes }, { kind, fil
   // synthesised room has only kept fields already.
   const rooms = placed.map(({ at, terrain, ...rest }) => ordered({ ...(synthesised ? rest : keepRoom(rest).room), at, terrain }, ROOM_KEYS));
 
-  const { look, orphans } = resolveLook(id, placed, layout.kind, tweaks);
+  const { look, orphans } = resolveLook(id, placed, layout.kind, tweaks, kind);
   report.orphans.push(...orphans.map((key) => ({ place: id, key })));
   if (look.footprints) clashes.push(...footprintClashes(id, placed, look.footprints, tweaks));
   if (look.hull) clashes.push(...hullLines(id, placed, look, tweaks));

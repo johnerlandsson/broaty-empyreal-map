@@ -62,6 +62,25 @@ export default {
     "fixtures": [],
     "footprints": {},
     "hull": {},
+    "profile": {
+      "bevel": 0.12,
+      "noseDrop": 0.35,
+      "noseLength": 0.8,
+      "spine": null
+    },
+    "surface": {
+      "seams": true,
+      "windows": [
+        "cockpit"
+      ],
+      "stripe": {
+        "paint": "residential",
+        "at": 0.3,
+        "width": 0.14
+      },
+      "navLights": true
+    },
+    "greebles": [],
     "view": {
       "cutaway": "hide-above"
     },

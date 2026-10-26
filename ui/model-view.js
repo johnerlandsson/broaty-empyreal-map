@@ -55,9 +55,9 @@ function normalOf([a, b, c]) {
   return n.map((c) => c / m);
 }
 
-/** Flat colour for a face given the cosine of its angle to the light. */
+/** Flat colour for a face given the cosine of its angle to the light; a lamp burns its own colour (a nav light's tint) or white, lit the same from every side. */
 function fillOf(f, lit) {
-  if (f.kind === "lamp") return LAMP;
+  if (f.kind === "lamp") return f.tint ?? LAMP;
   const tone = lit > 0.66 ? 2 : lit > 0.33 ? 1 : 0;
   let fill = TONES[tone];
   if (f.kind === "fore" && f.tint) fill = mix(fill, f.tint, 0.7);

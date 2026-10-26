@@ -7,8 +7,12 @@ import garrow from "../../tests/fixtures/generated/garrow.js";
 import kilmar from "../../tests/fixtures/generated/kilmar.js";
 import orrin from "../../tests/fixtures/generated/orrin.js";
 import places, { data as generated } from "../data/places.js";
+import freighterPlan from "../data/plans/freighter.js";
+import skiffPlan from "../data/plans/hull-skiff.js";
 import {
   CELL,
+  CHEVRON,
+  NAV,
   PLAN,
   buildDecksModel,
   decksCut,
@@ -21,7 +25,7 @@ import {
 } from "./decks.js";
 import { crosses } from "../../scripts/source/footprints.mjs";
 import { boundsOf, noseAt, pathOf } from "./footprint.js";
-import { DISTRICT_COLOURS } from "./geometry.js";
+import { DISTRICT_COLOURS, camera } from "./geometry.js";
 import { infoLine } from "./locate.js";
 
 const sub = (a, b) => a.map((c, i) => c - b[i]);
@@ -707,5 +711,274 @@ describe("footprints and hull paths", () => {
       const faces = model({ 3: CHAMFER });
       expect(sum(faces, 2, 1) + sum(faces, 3, 1)).toBeGreaterThanOrEqual(area(R) - 1e-6);
     });
+  });
+});
+
+// --- ships ------------------------------------------------------------------------------------
+
+/** Row C's look, as the build resolves an untweaked plan's. */
+const ROW_C = {
+  profile: { bevel: 0.12, noseDrop: 0.35, noseLength: 0.8, spine: null },
+  surface: { seams: true, windows: ["cockpit"], stripe: { paint: "residential", at: 0.3, width: 0.14 }, navLights: true },
+  greebles: [],
+};
+// the skiff and the freighter as the hull looks mockup rebuilds them from today's drawings
+const SKIFF_HULL = [[-0.67, 1.65], [0, 1.78], [0.67, 1.65], [1, 0.82], [1, -0.93], [0.67, -1.18], [-0.67, -1.18], [-1, -0.93], [-1, 0.82]];
+const FREIGHTER_HULL = [
+  [-0.6, 3.37], [-0.6, 4.2, 0.58], [0.6, 4.2, 0.58], [0.6, 3.37], [1.13, 3.37, 0.13],
+  [1.13, 0.07], [0.97, -0.13], [-0.97, -0.13], [-1.13, 0.07], [-1.13, 3.37, 0.13],
+];
+const bell = (side, r = 0.2, len = 0.4) => ({ type: "bell", side, deck: 1, r, len });
+
+/** A plan with a look patched over its own (row C's unless given). */
+function ship(plan, look = {}) {
+  return { ...plan, look: { ...plan.look, ...ROW_C, fixtures: [], footprints: {}, hull: {}, ...look } };
+}
+
+describe("ships: the hull, row C", () => {
+  const skiff = ship(skiffPlan, { hull: { 1: SKIFF_HULL } });
+  const index = indexDecks(skiff);
+  const faces = buildDecksModel(index, skiff);
+  const hull = faces.filter((f) => f.kind === "outer" && f.outline);
+  const ys = (fs) => fs.flatMap((f) => f.pts.map((p) => p[1]));
+  const up = (f) => normal(f.pts)[1] / Math.hypot(...normal(f.pts)) > 0.99;
+  const roof = hull.filter(up);
+
+  it("puts every face in layer 0 on deck 1, turning nothing", () => {
+    for (const f of faces) {
+      expect(f.layer).toBe(0);
+      expect(f.turns).toBe(false);
+      if (!f.ghost) expect(f.deck).toBe(1);
+    }
+  });
+
+  it("cuts the hull into pieces of a quarter cell at most, so the painter's sort holds", () => {
+    // the walls and the roof and floor tiles; a bevel's piece also reaches in by the bevel
+    const flatOrUpright = hull.filter((f) => {
+      const n = normal(f.pts);
+      const m = Math.hypot(...n);
+      return Math.abs(n[1]) / m < 1e-6 || Math.abs(n[1]) / m > 1 - 1e-6;
+    });
+    expect(flatOrUpright.length).toBeGreaterThan(100);
+    for (const f of flatOrUpright) {
+      const xs = f.pts.map((p) => p[0] / CELL.side);
+      const zs = f.pts.map((p) => p[2] / CELL.frame);
+      expect(Math.max(...xs) - Math.min(...xs)).toBeLessThanOrEqual(0.25 + 1e-6);
+      expect(Math.max(...zs) - Math.min(...zs)).toBeLessThanOrEqual(0.25 + 1e-6);
+    }
+  });
+
+  it("bevels the roof in from the walls", () => {
+    const walls = hull.filter((f) => Math.abs(normal(f.pts)[1]) < 1e-6);
+    const xMax = (fs) => Math.max(...fs.flatMap((f) => f.pts.map((p) => p[0])));
+    expect(xMax(roof)).toBeCloseTo(xMax(walls) - 0.12 * CELL.side, 0);
+  });
+
+  it("drops the nose a third of a deck, the roof level amidships", () => {
+    const at = (z) => Math.max(...roof.filter((f) => f.pts.some((p) => Math.abs(p[2] - z) < 0.3 * CELL.frame)).flatMap((f) => f.pts.map((p) => p[1])));
+    const zs = hull.flatMap((f) => f.pts.map((p) => p[2]));
+    const top = Math.max(...ys(hull));
+    expect(at(Math.max(...zs))).toBeLessThan(top - 0.3 * CELL.deck);
+    expect(at((Math.max(...zs) + Math.min(...zs)) / 2 - 0.5 * CELL.frame)).toBeCloseTo(top);
+  });
+
+  it("winds every hull face outward", () => {
+    const mid = centroid(hull.flatMap((f) => f.pts));
+    for (const f of hull) expect(dot(normal(f.pts), sub(centroid(f.pts), mid))).toBeGreaterThan(0);
+  });
+
+  it("paints the stripe in its palette colour, and none with no stripe", () => {
+    const stripe = faces.filter((f) => f.kind === "fore" && f.tint === skiff.look.palette.residential);
+    expect(stripe.length).toBeGreaterThan(20);
+    const plain = ship(skiffPlan, { hull: { 1: SKIFF_HULL }, surface: { ...ROW_C.surface, stripe: null } });
+    expect(buildDecksModel(indexDecks(plain), plain).some((f) => f.kind === "fore")).toBe(false);
+  });
+
+  it("glazes the canopy of a room with canopy: true, on the roof", () => {
+    const glass = faces.filter((f) => f.kind === "blister");
+    expect(glass.length).toBeGreaterThan(5);
+    expect(Math.min(...ys(glass))).toBeGreaterThanOrEqual(Math.max(...ys(roof.filter((f) => !glass.includes(f)))) - 0.4 * CELL.deck);
+    const none = { ...skiff, rooms: skiff.rooms.map((r) => ({ ...r, canopy: undefined })) };
+    expect(buildDecksModel(indexDecks(none), none).some((f) => f.kind === "blister")).toBe(false);
+  });
+
+  it("lights windows beside a windowed room, and nav lights: red to port, green to starboard, white astern", () => {
+    const lamps = faces.filter((f) => f.kind === "lamp");
+    const red = lamps.filter((f) => f.tint === NAV.port);
+    const green = lamps.filter((f) => f.tint === NAV.starboard);
+    expect(red.length).toBe(6);
+    expect(green.length).toBe(6);
+    expect(Math.max(...red.flatMap((f) => f.pts.map((p) => p[0])))).toBeLessThan(0);
+    expect(Math.min(...green.flatMap((f) => f.pts.map((p) => p[0])))).toBeGreaterThan(0);
+    const windows = lamps.filter((f) => f.tint == null);
+    expect(windows.length).toBeGreaterThan(6); // the stern light's six and the window panes
+    const dark = ship(skiffPlan, { hull: { 1: SKIFF_HULL }, surface: { ...ROW_C.surface, windows: [], navLights: false } });
+    expect(buildDecksModel(indexDecks(dark), dark).some((f) => f.kind === "lamp")).toBe(false);
+  });
+
+  it("raises a spine, and cuts the roof round it", () => {
+    const spine = { from: -1.1, to: 0.25, width: 1.25, height: 0.3 };
+    const data = ship(skiffPlan, { hull: { 1: SKIFF_HULL }, profile: { ...ROW_C.profile, spine } });
+    const fs = buildDecksModel(indexDecks(data), data);
+    expect(Math.max(...ys(fs.filter((f) => f.kind === "outer")))).toBeCloseTo(Math.max(...ys(hull)) + 0.3 * CELL.deck);
+    // no roof tile left under the spine
+    const top = Math.max(...ys(hull));
+    const roofAtTop = fs.filter((f) => f.kind === "outer" && up(f) && Math.abs(Math.max(...ys([f])) - top) < 1e-6);
+    expect(roofAtTop.length).toBeGreaterThan(10);
+    for (const f of roofAtTop) {
+      const c = centroid(f.pts);
+      const [x, frame] = [c[0] / CELL.side, c[2] / CELL.frame + (index.hull.y0 + index.hull.y1) / 2];
+      expect(Math.abs(x) < spine.width / 2 && frame > spine.from && frame < spine.to).toBe(false);
+    }
+  });
+
+  it("draws a plain extrusion with every detail off, the canopy still on it", () => {
+    const data = ship(skiffPlan, {
+      hull: { 1: SKIFF_HULL },
+      profile: { bevel: 0, noseDrop: 0, noseLength: 0.8, spine: null },
+      surface: { seams: false, windows: [], stripe: null, navLights: false },
+    });
+    const fs = buildDecksModel(indexDecks(data), data).filter((f) => !f.ghost);
+    // the canopy's glass has no key: it comes from the room's canopy: true
+    expect(new Set(fs.map((f) => f.kind))).toEqual(new Set(["outer", "blister"]));
+    expect(new Set(ys(fs.filter((f) => f.kind === "outer"))).size).toBe(2);
+  });
+
+  it("gives a ship with no hull path a box hull, lofted the same", () => {
+    const data = ship(skiffPlan);
+    const fs = buildDecksModel(indexDecks(data), data);
+    expect(fs.filter((f) => f.kind === "outer").length).toBeGreaterThan(40);
+    expect(fs.some((f) => f.kind === "blister")).toBe(true);
+  });
+});
+
+describe("ships: greebles", () => {
+  const greebles = [
+    { type: "vent", side: -0.25, frame: -0.45 },
+    { type: "antenna", side: -0.7, frame: 0.05, height: 0.7 },
+    { type: "dish", side: 0.65, frame: -0.65, r: 0.14 },
+  ];
+  const plain = ship(skiffPlan, { hull: { 1: SKIFF_HULL } });
+  const base = buildDecksModel(indexDecks(plain), plain).length;
+  const count = (g) => {
+    const data = ship(skiffPlan, { hull: { 1: SKIFF_HULL }, greebles: [g] });
+    return buildDecksModel(indexDecks(data), data);
+  };
+
+  it("stands a vent (two boxes), an antenna (a mast and its lamp) and a dish (a stalk and a bowl) on the roof", () => {
+    expect(count(greebles[0]).length - base).toBe(12);
+    const antenna = count(greebles[1]);
+    expect(antenna.length - base).toBe(12);
+    expect(antenna.filter((f) => f.kind === "dock").length).toBe(6); // its mast; its lamp burns
+    expect(count(greebles[2]).length - base).toBe(6 + 14 + 2);
+  });
+
+  it("puts each on the roof at its side and frame, depth-sorted with the hull", () => {
+    const mast = count(greebles[1]).filter((f) => f.kind === "dock");
+    expect(mast.length).toBe(6);
+    const mid = indexDecks(plain).hull;
+    const c = centroid(mast.flatMap((f) => f.pts));
+    expect(c[0] / CELL.side).toBeCloseTo(-0.7, 1);
+    expect(c[2] / CELL.frame + (mid.y0 + mid.y1) / 2).toBeCloseTo(0.05, 1);
+    for (const f of mast) expect(f.layer).toBe(0);
+  });
+});
+
+describe("ships: fixtures in 3D", () => {
+  const fixtures = [bell(-0.4), { type: "boom", side: 0, deck: 1, len: 0.83 }];
+  const skiff = ship(skiffPlan, { hull: { 1: SKIFF_HULL }, fixtures });
+  const index = indexDecks(skiff);
+  const faces = buildDecksModel(index, skiff);
+  const docks = faces.filter((f) => f.kind === "dock");
+  const mid = (index.hull.y0 + index.hull.y1) / 2;
+  const frameOf = (z) => z / CELL.frame + mid;
+
+  it("draws a bell as a cone of 14 sides and two caps, out of the hull's aft end, its mouth aft", () => {
+    const one = ship(skiffPlan, { hull: { 1: SKIFF_HULL }, fixtures: [bell(-0.4)] });
+    const fs = buildDecksModel(indexDecks(one), one).filter((f) => f.kind === "dock");
+    expect(fs.length).toBe(16);
+    const zs = fs.flatMap((f) => f.pts.map((p) => frameOf(p[2])));
+    expect(Math.max(...zs)).toBeLessThan(-1.18 + 0.1);
+    expect(Math.min(...zs)).toBeCloseTo(-1.18 - 0.4, 1);
+    // the mouth (aft) wider than the throat
+    const r = (z) => Math.max(...fs.flatMap((f) => f.pts.filter((p) => Math.abs(frameOf(p[2]) - z) < 0.02).map((p) => Math.abs(p[0] / CELL.side + 0.4))));
+    expect(r(Math.min(...zs))).toBeGreaterThan(2 * r(Math.max(...zs)));
+  });
+
+  it("draws the boom out of the nose: rod, crossbar, the emitter's head and the tip", () => {
+    const one = ship(skiffPlan, { hull: { 1: SKIFF_HULL }, fixtures: [fixtures[1]] });
+    const fs = buildDecksModel(indexDecks(one), one).filter((f) => f.kind === "dock");
+    expect(fs.length).toBe(6 + 6 + 8 + 6);
+    const zs = fs.flatMap((f) => f.pts.map((p) => frameOf(p[2])));
+    expect(Math.max(...zs)).toBeCloseTo(1.78 + 0.83, 1);
+    expect(Math.min(...zs)).toBeGreaterThan(1.78 - 0.1);
+  });
+
+  it("winds the bell's and boom's faces outward, and keeps them in layer 0 with the hull", () => {
+    const solid = (fs) => centroid(fs.flatMap((f) => f.pts));
+    const cone = docks.slice(0, 14);
+    const axis = solid(cone);
+    for (const f of cone) {
+      const c = centroid(f.pts);
+      expect(dot(normal(f.pts), sub(c, [axis[0], axis[1], c[2]]))).toBeGreaterThan(0);
+    }
+    for (const cap of docks.slice(14, 16)) expect(dot(normal(cap.pts), sub(centroid(cap.pts), axis))).toBeGreaterThan(0);
+    for (const f of docks) expect(f.layer).toBe(0);
+  });
+
+  it("hides a bell behind the hull from the band camera: the hull face over it is drawn after it", () => {
+    const cam = camera({ yaw: 16, pitch: 38 });
+    const shown = faces
+      .filter((f) => !f.ghost && cam.project(normal(f.pts))[2] >= 0)
+      .map((f) => ({ f, P: f.pts.map(cam.project) }))
+      .map((q) => ({ ...q, depth: q.P.reduce((s, p) => s + p[2], 0) / q.P.length }))
+      .sort((a, b) => a.f.layer - b.f.layer || a.depth - b.depth);
+    const inside = (P, [x, y]) => {
+      let odd = false;
+      P.forEach((a, i) => {
+        const b = P[(i + 1) % P.length];
+        if (a[1] > y !== b[1] > y && x < a[0] + ((y - a[1]) / (b[1] - a[1])) * (b[0] - a[0])) odd = !odd;
+      });
+      return odd;
+    };
+    const bells = shown.filter((q) => q.f.kind === "dock" && frameOf(centroid(q.f.pts)[2]) < -1);
+    let covered = 0;
+    for (const b of bells) {
+      const c = centroid(b.P);
+      for (const h of shown.filter((q) => q.f.kind === "outer" && inside(q.P, c))) {
+        covered++;
+        expect(shown.indexOf(h)).toBeGreaterThan(shown.indexOf(b));
+      }
+    }
+    expect(covered).toBeGreaterThan(0);
+  });
+});
+
+describe("ships: the collar's ring", () => {
+  const freighter = ship(freighterPlan, { hull: { 1: FREIGHTER_HULL }, fixtures: [{ type: "chevrons", room: "collar", wall: "starboard" }] });
+  const index = indexDecks(freighter);
+  const ring = buildDecksModel(index, freighter).filter((f) => f.kind === "dock" || (f.kind === "fore" && f.tint === CHEVRON));
+
+  it("stands a ring of 12 sides and two caps out of the hull's starboard side at the collar, banded yellow", () => {
+    expect(ring.length).toBe(14);
+    expect(ring.filter((f) => f.tint === CHEVRON).length).toBe(6);
+    const xs = ring.flatMap((f) => f.pts.map((p) => p[0] / CELL.side + (index.hull.x0 + index.hull.x1) / 2));
+    expect(Math.min(...xs)).toBeLessThan(1.13);
+    expect(Math.max(...xs)).toBeCloseTo(1.13 + 0.3, 1);
+    for (const f of ring) expect(f.layer).toBe(0);
+  });
+
+  it("is drawn for nothing when its room is gone", () => {
+    const gone = ship(freighterPlan, { hull: { 1: FREIGHTER_HULL }, fixtures: [{ type: "chevrons", room: "nowhere", wall: "port" }, { type: "prop", kind: "crate", room: "nowhere", at: [0, 0], size: [0.2, 0.2] }] });
+    expect(() => buildDecksModel(indexDecks(gone), gone)).not.toThrow();
+    expect(buildDecksModel(indexDecks(gone), gone).some((f) => f.kind === "dock")).toBe(false);
+  });
+});
+
+describe("stations keep their drawing (F4)", () => {
+  it("keeps cradles and masts over the hull, and no ship looks", () => {
+    const faces = buildDecksModel(indexDecks(orrin), orrin);
+    expect(faces.filter((f) => f.kind === "dock").every((f) => f.layer === 1)).toBe(true);
+    expect(faces.some((f) => f.kind === "fore")).toBe(false);
   });
 });

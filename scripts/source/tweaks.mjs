@@ -10,13 +10,23 @@ import {
   DRUM_ROOM_KEYS,
   FIXTURE_KEYS,
   FOOTPRINT_KEYS,
+  GREEBLE_KEYS,
   MERGED_KEYS,
   originOf,
   PALETTE_NAME,
+  PROFILE_DEFAULTS,
+  PROFILE_KEYS,
+  PROP_KINDS,
   SECTION_KEYS,
+  SHIP_FIXTURES,
   SPAN_KEYS,
+  SPINE_KEYS,
+  STRIPE_KEYS,
+  SURFACE_DEFAULTS,
+  SURFACE_KEYS,
   TOP_KEYS,
   VIEW_KEYS,
+  WALLS,
 } from "./schema.mjs";
 
 export { originOf };
@@ -54,12 +64,105 @@ function checkFixture(file, path, fixture) {
   const allowed = FIXTURE_KEYS[fixture.type];
   if (!allowed) throw new Error(`${file}: ${path}.type: unknown fixture type ${JSON.stringify(fixture.type)}`);
   unknownKeys(file, path, fixture, allowed);
+  const f = fixture;
+  if (f.type === "bell" || f.type === "boom") {
+    expectNumber(file, `${path}.side`, f.side);
+    if (!Number.isInteger(f.deck)) throw new Error(`${file}: ${path}.deck must be a deck number`);
+    for (const key of f.type === "bell" ? ["r", "len"] : ["len"]) expectSize(file, `${path}.${key}`, f[key]);
+  } else if (f.type === "chevrons") {
+    expectRoom(file, `${path}.room`, f.room);
+    expectOneOf(file, `${path}.wall`, f.wall, WALLS);
+  } else if (f.type === "prop") {
+    expectOneOf(file, `${path}.kind`, f.kind, PROP_KINDS);
+    expectRoom(file, `${path}.room`, f.room);
+    expectPair(file, `${path}.at`, f.at, isNumber, "an [x, y] offset from the room's cell, in cells");
+    expectPair(file, `${path}.size`, f.size, (v) => isNumber(v) && v >= 0, "a [width, length] in cells, 0 or more");
+    if (f.grid !== undefined) expectPair(file, `${path}.grid`, f.grid, (v) => Number.isInteger(v) && v > 0, "an [across, along] count, whole and more than 0");
+    if (f.gap !== undefined && (!isNumber(f.gap) || f.gap < 0)) throw new Error(`${file}: ${path}.gap must be a number of cells, 0 or more`);
+    if (f.ribs !== undefined) {
+      if (f.kind !== "core") throw new Error(`${file}: ${path}.ribs only applies to a core`);
+      if (!Number.isInteger(f.ribs) || f.ribs < 2) throw new Error(`${file}: ${path}.ribs must be a whole number, 2 or more`);
+    }
+  }
 }
 
 const isNumber = (v) => typeof v === "number" && Number.isFinite(v);
 
+function expectNumber(file, path, value) {
+  if (!isNumber(value)) throw new Error(`${file}: ${path} must be a number`);
+}
+
+function expectSize(file, path, value) {
+  if (!isNumber(value) || value <= 0) throw new Error(`${file}: ${path} must be more than 0`);
+}
+
+function expectRoom(file, path, value) {
+  if (typeof value !== "string" || !value) throw new Error(`${file}: ${path} must be a room id`);
+}
+
+function expectPair(file, path, value, ok, what) {
+  if (!Array.isArray(value) || value.length !== 2 || !value.every(ok)) throw new Error(`${file}: ${path} must be ${what}`);
+}
+
 function expectOneOf(file, path, value, allowed) {
   if (!allowed.includes(value)) throw new Error(`${file}: ${path}: ${JSON.stringify(value)} is not one of ${allowed.join(", ")}`);
+}
+
+/** A number from lo up to (not including, with `open`) hi. */
+function expectRange(file, path, value, lo, hi, open = true) {
+  if (!isNumber(value) || value < lo || (open ? value >= hi : value > hi)) {
+    throw new Error(`${file}: ${path} must be a number from ${lo} to ${open ? "under " : ""}${hi}`);
+  }
+}
+
+function checkProfile(file, profile) {
+  expectObject(file, "profile", profile);
+  unknownKeys(file, "profile", profile, PROFILE_KEYS);
+  if (profile.bevel !== undefined) expectRange(file, "profile.bevel", profile.bevel, 0, 0.5);
+  if (profile.noseDrop !== undefined) expectRange(file, "profile.noseDrop", profile.noseDrop, 0, 1);
+  if (profile.noseLength !== undefined) expectSize(file, "profile.noseLength", profile.noseLength);
+  const spine = profile.spine;
+  if (spine === undefined || spine === null) return;
+  expectObject(file, "profile.spine", spine);
+  unknownKeys(file, "profile.spine", spine, SPINE_KEYS);
+  for (const key of SPINE_KEYS) expectNumber(file, `profile.spine.${key}`, spine[key]);
+  if (spine.to <= spine.from) throw new Error(`${file}: profile.spine.to must be more than from`);
+  expectSize(file, "profile.spine.width", spine.width);
+  expectRange(file, "profile.spine.height", spine.height, 0, 1, false);
+}
+
+function checkSurface(file, surface, palette) {
+  expectObject(file, "surface", surface);
+  unknownKeys(file, "surface", surface, SURFACE_KEYS);
+  for (const key of ["seams", "navLights"]) {
+    if (surface[key] !== undefined && typeof surface[key] !== "boolean") throw new Error(`${file}: surface.${key} must be true or false`);
+  }
+  if (surface.windows !== undefined && (!Array.isArray(surface.windows) || !surface.windows.every((id) => typeof id === "string" && id))) {
+    throw new Error(`${file}: surface.windows must be a list of room ids`);
+  }
+  const stripe = surface.stripe;
+  if (stripe === undefined || stripe === null) return;
+  expectObject(file, "surface.stripe", stripe);
+  unknownKeys(file, "surface.stripe", stripe, STRIPE_KEYS);
+  if (!Object.hasOwn(palette, stripe.paint)) throw new Error(`${file}: surface.stripe.paint: unknown palette name ${JSON.stringify(stripe.paint)}`);
+  expectRange(file, "surface.stripe.at", stripe.at, 0, 1);
+  expectSize(file, "surface.stripe.width", stripe.width);
+  if (stripe.at + stripe.width > 1) throw new Error(`${file}: surface.stripe runs off the wall: at + width must be 1 or less`);
+}
+
+function checkGreebles(file, greebles) {
+  if (!Array.isArray(greebles)) throw new Error(`${file}: greebles must be a list`);
+  greebles.forEach((g, i) => {
+    const path = `greebles[${i}]`;
+    expectObject(file, path, g);
+    const allowed = GREEBLE_KEYS[g.type];
+    if (!allowed) throw new Error(`${file}: ${path}.type: unknown greeble ${JSON.stringify(g.type)}, not one of ${Object.keys(GREEBLE_KEYS).join(", ")}`);
+    unknownKeys(file, path, g, allowed);
+    expectNumber(file, `${path}.side`, g.side);
+    expectNumber(file, `${path}.frame`, g.frame);
+    if (g.type === "antenna") expectSize(file, `${path}.height`, g.height);
+    if (g.type === "dish") expectSize(file, `${path}.r`, g.r);
+  });
 }
 
 function checkFootprint(file, path, fp) {
@@ -163,6 +266,9 @@ export function checkTweak(file, tweak, palette) {
     for (const [id, fp] of Object.entries(tweak.footprints)) checkFootprint(file, `footprints.${id}`, fp);
   }
   if (tweak.hull !== undefined) checkHull(file, tweak.hull);
+  if (tweak.profile !== undefined) checkProfile(file, tweak.profile);
+  if (tweak.surface !== undefined) checkSurface(file, tweak.surface, palette);
+  if (tweak.greebles !== undefined) checkGreebles(file, tweak.greebles);
   if (tweak.view !== undefined) checkView(file, tweak.view);
 
   if (tweak.place !== undefined) {
@@ -260,6 +366,29 @@ function merged(placeId, tweaks, chain = []) {
   return out;
 }
 
+/**
+ * A ship plan's profile, surface and greebles: the tweak's over row C's defaults. Throws on a stripe
+ * paint the palette lacks and on a bevel bigger than a rounded corner of a hull path, which would
+ * turn the bevel's arc inside out.
+ */
+function shipLooks(file, rooms, hull, tweak, palette) {
+  const canopies = rooms.filter((r) => r.canopy).map((r) => local(r.id));
+  const profile = { ...PROFILE_DEFAULTS, ...tweak.profile };
+  const surface = { ...SURFACE_DEFAULTS, windows: canopies, ...tweak.surface };
+  const byDefault = (key, sub) => (tweak[key]?.[sub] === undefined ? " (the default)" : "");
+  if (surface.stripe && !Object.hasOwn(palette, surface.stripe.paint)) {
+    throw new Error(`${file}: surface.stripe.paint${byDefault("surface", "stripe")}: unknown palette name ${JSON.stringify(surface.stripe.paint)}`);
+  }
+  for (const [deck, points] of Object.entries(hull)) {
+    points.forEach(([, , r], i) => {
+      if (r !== undefined && profile.bevel > r + 1e-9) {
+        throw new Error(`${file}: profile.bevel ${profile.bevel}${byDefault("profile", "bevel")} is more than hull.${deck}[${i}]'s corner radius ${r}; make the bevel smaller or the corner rounder`);
+      }
+    });
+  }
+  return { profile, surface, greebles: tweak.greebles ?? [] };
+}
+
 /** " (from <base>.json via like)" for a value a place inherits, else "". */
 export function via(placeId, origin) {
   return origin && origin !== placeId ? ` (from ${origin}.json via like)` : "";
@@ -274,6 +403,7 @@ function namedRooms(tweak) {
   (tweak.fixtures ?? []).forEach((f, i) => {
     if (f.room !== undefined) named.push([`fixtures[${i}].room`, f.room]);
   });
+  (tweak.surface?.windows ?? []).forEach((id, i) => named.push([`surface.windows[${i}]`, id]));
   for (const id of Object.keys(tweak.drum?.rooms ?? {})) named.push([`drum.rooms.${id}`, id]);
   if (tweak.drum?.axis?.room !== undefined) named.push(["drum.axis.room", tweak.drum.axis.room]);
   const town = tweak.town ?? {};
@@ -289,16 +419,19 @@ function namedRooms(tweak) {
  * `paintDistricts`, else its district if that is a palette name, else a default by kind (a decks
  * passage, whose name is its address: midring; a berth: docks; otherwise industrial). A decks
  * place has its footprints, by local id, and its hull paths, by deck (a deck whose tweak is null
- * keeps its box); every place has its view, the tweak's over its kind's. Throws on a key that would
- * do nothing: a hull or footprints off decks, a footprint on a passage or blister, a cutaway other
- * than off off decks, a camera on a town.
+ * keeps its box); a ship plan its `profile`, `surface` and `greebles`, the tweak's over row C's
+ * defaults (windows in every room with a canopy); every place has its view, the tweak's over its
+ * kind's. Throws on a key that would do nothing: a hull or footprints off decks, a footprint on a
+ * passage or blister, a cutaway other than off off decks, a camera on a town, a ship look or ship
+ * fixture off a plan; and on a bevel bigger than a rounded hull corner.
  * @param {string} placeId
  * @param {object[]} rooms  the place's placed rooms (full ids, `name`, `address`, `flags`, `district`)
  * @param {string} layoutKind  the area's layout kind
  * @param {{palette: Record<string, string>, places: Record<string, object>}} tweaks
+ * @param {"area" | "plan"} [kind]  a place in the world, or a ship plan
  * @returns {{look: object, orphans: string[]}}  orphans: paths of this place's own tweaks that name a room or deck it lacks
  */
-export function resolveLook(placeId, rooms, layoutKind, tweaks) {
+export function resolveLook(placeId, rooms, layoutKind, tweaks, kind = "area") {
   const tweak = resolveTweak(placeId, tweaks);
   const file = `data/tweaks/${placeId}.json`;
   const have = new Set(rooms.map((r) => local(r.id)));
@@ -343,11 +476,21 @@ export function resolveLook(placeId, rooms, layoutKind, tweaks) {
     throw new Error(`${file}: view.camera doesn't apply to towns`);
   }
 
+  if (kind !== "plan") {
+    for (const key of ["profile", "surface", "greebles"]) {
+      if (tweak[key] !== undefined) throw new Error(`${file}: ${key} only applies to ship plans`);
+    }
+    (tweak.fixtures ?? []).forEach((f, i) => {
+      if (SHIP_FIXTURES.includes(f.type)) throw new Error(`${file}: fixtures[${i}] (${f.type}) only applies to ship plans`);
+    });
+  }
+
   const look = { paint, fixtures: tweak.fixtures ?? [] };
   if (layoutKind === "decks") {
     look.footprints = tweak.footprints ?? {};
     look.hull = Object.fromEntries(Object.entries(tweak.hull ?? {}).filter(([, points]) => points !== null));
   }
+  if (kind === "plan") Object.assign(look, shipLooks(file, rooms, look.hull ?? {}, tweak, tweaks.palette));
   look.view = { cutaway: layoutKind === "decks" ? "hide-above" : "off", ...tweak.view };
   for (const name of Object.keys(SECTION_KEYS)) if (tweak[name]) look[name] = tweak[name];
 

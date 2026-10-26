@@ -162,3 +162,79 @@ export function noseAt(path, x) {
   });
   return nose;
 }
+
+/**
+ * The tail of a hull path on the line at side x, where a drive bell on that side sits: the path's
+ * smallest frame on that line, or null where the path doesn't reach x.
+ * @param {number[][]} path
+ * @param {number} x
+ * @returns {number | null}
+ */
+export function tailAt(path, x) {
+  let tail = null;
+  path.forEach((a, i) => {
+    const b = path[(i + 1) % path.length];
+    if ((a[0] - x) * (b[0] - x) > 0 || a[0] === b[0]) return;
+    const y = a[1] + ((x - a[0]) / (b[0] - a[0])) * (b[1] - a[1]);
+    if (tail === null || y < tail) tail = y;
+  });
+  return tail;
+}
+
+/**
+ * A hull path's side on the line at frame y, toward `dir` (1 starboard, -1 port): its outermost
+ * side that way, where a ring on a room's wall that way meets it; null where the path doesn't
+ * reach y.
+ * @param {number[][]} path
+ * @param {number} y
+ * @param {number} dir
+ * @returns {number | null}
+ */
+export function sideAt(path, y, dir) {
+  let best = null;
+  path.forEach((a, i) => {
+    const b = path[(i + 1) % path.length];
+    if ((a[1] - y) * (b[1] - y) > 0 || a[1] === b[1]) return;
+    const x = a[0] + ((y - a[1]) / (b[1] - a[1])) * (b[0] - a[0]);
+    if (best === null || (x - best) * dir > 0) best = x;
+  });
+  return best;
+}
+
+/**
+ * Where a ring on a room's wall meets a hull path: [side, frame] on the path, out from the room's
+ * cell (x, y) toward `wall` (port, starboard, fore or aft); null where the path doesn't reach.
+ * @param {number[][]} path
+ * @param {{x: number, y: number}} cell
+ * @param {string} wall
+ * @returns {number[] | null}
+ */
+export function wallAt(path, { x, y }, wall) {
+  if (wall === "port" || wall === "starboard") {
+    const side = sideAt(path, y, wall === "port" ? -1 : 1);
+    return side === null ? null : [side, y];
+  }
+  const frame = wall === "fore" ? noseAt(path, x) : tailAt(path, x);
+  return frame === null ? null : [x, frame];
+}
+
+/**
+ * A prop's pieces, each a box [x0, y0, x1, y1] in cells: one, or its grid of them, centred on its
+ * room's cell plus `at`.
+ * @param {{at: number[], size: number[], grid?: number[], gap?: number}} prop
+ * @param {{side: number, frame: number}} at  its room's cell
+ */
+export function propBoxes(prop, { side, frame }) {
+  const [w, h] = prop.size;
+  const [nx, ny] = prop.grid ?? [1, 1];
+  const gap = prop.gap ?? 0;
+  const boxes = [];
+  for (let i = 0; i < nx; i++) {
+    for (let j = 0; j < ny; j++) {
+      const x = side + prop.at[0] + (i - (nx - 1) / 2) * (w + gap);
+      const y = frame + prop.at[1] - (j - (ny - 1) / 2) * (h + gap);
+      boxes.push([x - w / 2, y - h / 2, x + w / 2, y + h / 2]);
+    }
+  }
+  return boxes;
+}

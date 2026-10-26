@@ -355,3 +355,168 @@ describe("resolveLook keys that would do nothing (S16)", () => {
     expect(look({ p: { view: { cutaway: "ghost-above" } } }, "p", [room("a")], "decks")).not.toThrow();
   });
 });
+
+describe("loadTweaks ship fixtures", () => {
+  const loadOne = (tweak) => {
+    const d = mkdtempSync(join(tmpdir(), "tweaks-"));
+    cpSync(dir("palette.json"), join(d, "palette.json"));
+    writeFileSync(join(d, "x.json"), JSON.stringify(tweak));
+    return () => loadTweaks(d);
+  };
+  const fixture = (f) => loadOne({ fixtures: [f] });
+  const bell = { type: "bell", side: -0.5, deck: 1, r: 0.23, len: 0.42 };
+  const boom = { type: "boom", side: 0, deck: 1, len: 0.83 };
+  const chevrons = { type: "chevrons", room: "collar", wall: "starboard" };
+  const crates = { type: "prop", kind: "crate", room: "cockpit", at: [0, -1.23], size: [0.35, 0.42], grid: [3, 2], gap: 0.08 };
+
+  it("takes a bell, a boom, chevrons and every kind of prop", () => {
+    const props = ["crate", "seat", "bulkhead", "slot", "rails"].map((kind) => ({ type: "prop", kind, room: "a", at: [0, 0], size: [0.2, 0.2] }));
+    const core = { type: "prop", kind: "core", room: "a", at: [0, 0], size: [0.4, 1.2], ribs: 7 };
+    const fixtures = [bell, boom, chevrons, crates, ...props, core];
+    expect(loadOne({ fixtures })().places.x).toEqual({ fixtures });
+  });
+
+  it("names an unknown field of each", () => {
+    expect(fixture({ ...bell, colour: 1 })).toThrow(/x\.json: fixtures\[0\]\.colour/);
+    expect(fixture({ ...boom, r: 1 })).toThrow(/x\.json: fixtures\[0\]\.r/);
+    expect(fixture({ ...chevrons, side: 1 })).toThrow(/x\.json: fixtures\[0\]\.side/);
+    expect(fixture({ ...crates, deck: 1 })).toThrow(/x\.json: fixtures\[0\]\.deck/);
+  });
+
+  it("needs a bell's and a boom's sizes, more than 0, and a whole deck", () => {
+    expect(fixture({ ...bell, r: 0 })).toThrow(/x\.json: fixtures\[0\]\.r must be more than 0/);
+    expect(fixture({ ...bell, len: undefined })).toThrow(/x\.json: fixtures\[0\]\.len/);
+    expect(fixture({ ...bell, deck: 1.5 })).toThrow(/x\.json: fixtures\[0\]\.deck/);
+    expect(fixture({ ...boom, side: "port" })).toThrow(/x\.json: fixtures\[0\]\.side/);
+    expect(fixture({ ...boom, len: -1 })).toThrow(/x\.json: fixtures\[0\]\.len/);
+  });
+
+  it("needs chevrons on a room's wall: port, starboard, fore or aft", () => {
+    expect(fixture({ ...chevrons, wall: "up" })).toThrow(/x\.json: fixtures\[0\]\.wall.*up/);
+    expect(fixture({ ...chevrons, room: 3 })).toThrow(/x\.json: fixtures\[0\]\.room/);
+  });
+
+  it("needs a prop's kind, room, at and size, a whole grid, and ribs only on a core", () => {
+    expect(fixture({ ...crates, kind: "barrel" })).toThrow(/x\.json: fixtures\[0\]\.kind.*barrel/);
+    expect(fixture({ ...crates, at: [0] })).toThrow(/x\.json: fixtures\[0\]\.at/);
+    expect(fixture({ ...crates, size: [0.3, -1] })).toThrow(/x\.json: fixtures\[0\]\.size/);
+    expect(fixture({ ...crates, grid: [1.5, 2] })).toThrow(/x\.json: fixtures\[0\]\.grid/);
+    expect(fixture({ ...crates, gap: -0.1 })).toThrow(/x\.json: fixtures\[0\]\.gap/);
+    expect(fixture({ ...crates, ribs: 3 })).toThrow(/x\.json: fixtures\[0\]\.ribs only applies to a core/);
+    expect(fixture({ ...crates, room: undefined })).toThrow(/x\.json: fixtures\[0\]\.room/);
+  });
+});
+
+describe("loadTweaks ship looks", () => {
+  const loadOne = (tweak) => {
+    const d = mkdtempSync(join(tmpdir(), "tweaks-"));
+    cpSync(dir("palette.json"), join(d, "palette.json"));
+    writeFileSync(join(d, "x.json"), JSON.stringify(tweak));
+    return () => loadTweaks(d);
+  };
+  const profile = { bevel: 0.12, noseDrop: 0.35, noseLength: 0.8, spine: { from: -1.1, to: 0.25, width: 1.25, height: 0.3 } };
+  const surface = { seams: true, windows: ["cockpit"], stripe: { paint: "residential", at: 0.3, width: 0.14 }, navLights: true };
+  const greebles = [
+    { type: "vent", side: -0.25, frame: -0.45 },
+    { type: "antenna", side: -0.7, frame: 0.05, height: 0.7 },
+    { type: "dish", side: 0.65, frame: -0.65, r: 0.14 },
+  ];
+
+  it("takes row C's profile, surface and greebles, and nulls for no spine or stripe", () => {
+    expect(loadOne({ profile, surface, greebles })().places.x).toEqual({ profile, surface, greebles });
+    expect(loadOne({ profile: { spine: null }, surface: { stripe: null } })).not.toThrow();
+  });
+
+  it("names an unknown key in each", () => {
+    expect(loadOne({ profile: { taper: 1 } })).toThrow(/x\.json: profile\.taper/);
+    expect(loadOne({ profile: { spine: { ...profile.spine, depth: 1 } } })).toThrow(/x\.json: profile\.spine\.depth/);
+    expect(loadOne({ surface: { decals: true } })).toThrow(/x\.json: surface\.decals/);
+    expect(loadOne({ surface: { stripe: { paint: "residential", at: 0.3, width: 0.1, glow: 1 } } })).toThrow(/x\.json: surface\.stripe\.glow/);
+    expect(loadOne({ greebles: [{ ...greebles[0], height: 1 }] })).toThrow(/x\.json: greebles\[0\]\.height/);
+  });
+
+  it("refuses values out of range", () => {
+    expect(loadOne({ profile: { bevel: -0.1 } })).toThrow(/x\.json: profile\.bevel/);
+    expect(loadOne({ profile: { noseDrop: 1 } })).toThrow(/x\.json: profile\.noseDrop/);
+    expect(loadOne({ profile: { noseLength: 0 } })).toThrow(/x\.json: profile\.noseLength/);
+    expect(loadOne({ profile: { spine: { ...profile.spine, to: -2 } } })).toThrow(/x\.json: profile\.spine\.to must be more than from/);
+    expect(loadOne({ profile: { spine: { ...profile.spine, width: 0 } } })).toThrow(/x\.json: profile\.spine\.width/);
+    expect(loadOne({ surface: { seams: "yes" } })).toThrow(/x\.json: surface\.seams must be true or false/);
+    expect(loadOne({ surface: { windows: "cockpit" } })).toThrow(/x\.json: surface\.windows must be a list of room ids/);
+    expect(loadOne({ surface: { stripe: { paint: "nope", at: 0.3, width: 0.1 } } })).toThrow(/x\.json: surface\.stripe\.paint.*nope/);
+    expect(loadOne({ surface: { stripe: { paint: "docks", at: 0.9, width: 0.2 } } })).toThrow(/x\.json: surface\.stripe/);
+  });
+
+  it("refuses an unknown greeble, and an antenna or dish without its size", () => {
+    expect(loadOne({ greebles: [{ type: "gun", side: 0, frame: 0 }] })).toThrow(/x\.json: greebles\[0\]\.type.*gun/);
+    expect(loadOne({ greebles: [{ type: "antenna", side: 0, frame: 0 }] })).toThrow(/x\.json: greebles\[0\]\.height/);
+    expect(loadOne({ greebles: [{ type: "dish", side: 0, frame: 0, r: 0 }] })).toThrow(/x\.json: greebles\[0\]\.r/);
+    expect(loadOne({ greebles: { type: "vent" } })).toThrow(/x\.json: greebles must be a list/);
+  });
+});
+
+describe("resolveLook ship plans", () => {
+  const palette = { industrial: "#3", docks: "#1", residential: "#5" };
+  const cockpit = room("cockpit", { at: { deck: 1, frame: 1, side: 0 }, canopy: true });
+  const hold = room("hold", { at: { deck: 1, frame: 0, side: 0 } });
+  const plan = (tweak, rooms = [cockpit, hold]) => resolveLook("p", rooms, "decks", { palette, places: { p: tweak } }, "plan");
+  const area = (tweak, kind = "decks") => () => resolveLook("p", [hold], kind, { palette, places: { p: tweak } });
+
+  it("gives an untweaked ship row C's defaults, windows in every room with a canopy", () => {
+    const { look } = plan({});
+    expect(look.profile).toEqual({ bevel: 0.12, noseDrop: 0.35, noseLength: 0.8, spine: null });
+    expect(look.surface).toEqual({ seams: true, windows: ["cockpit"], stripe: { paint: "residential", at: 0.3, width: 0.14 }, navLights: true });
+    expect(look.greebles).toEqual([]);
+  });
+
+  it("puts the tweak's keys over the defaults, and turns a detail off", () => {
+    const { look } = plan({ profile: { bevel: 0, spine: { from: 0, to: 1, width: 1, height: 0.3 } }, surface: { stripe: null, windows: [] }, greebles: [{ type: "vent", side: 0, frame: 0 }] });
+    expect(look.profile).toEqual({ bevel: 0, noseDrop: 0.35, noseLength: 0.8, spine: { from: 0, to: 1, width: 1, height: 0.3 } });
+    expect(look.surface).toEqual({ seams: true, windows: [], stripe: null, navLights: true });
+    expect(look.greebles).toEqual([{ type: "vent", side: 0, frame: 0 }]);
+  });
+
+  it("inherits profile and surface key by key through like", () => {
+    const places = { base: { profile: { noseDrop: 0.2 }, surface: { navLights: false } }, p: { like: "base", profile: { bevel: 0.05 } } };
+    const { look } = resolveLook("p", [cockpit], "decks", { palette, places }, "plan");
+    expect(look.profile).toMatchObject({ bevel: 0.05, noseDrop: 0.2 });
+    expect(look.surface.navLights).toBe(false);
+  });
+
+  it("leaves the ship looks off a station", () => {
+    const { look } = resolveLook("p", [hold], "decks", { palette, places: {} });
+    expect(look).not.toHaveProperty("profile");
+    expect(look).not.toHaveProperty("surface");
+    expect(look).not.toHaveProperty("greebles");
+  });
+
+  it("refuses profile, surface, greebles or a ship fixture on a station or other place", () => {
+    expect(area({ profile: { bevel: 0.1 } })).toThrow(/data\/tweaks\/p\.json: profile only applies to ship plans/);
+    expect(area({ surface: { seams: false } }, "wheel")).toThrow(/data\/tweaks\/p\.json: surface only applies to ship plans/);
+    expect(area({ greebles: [] })).toThrow(/greebles only applies to ship plans/);
+    expect(area({ fixtures: [{ type: "bell", side: 0, deck: 1, r: 0.1, len: 0.2 }] })).toThrow(/data\/tweaks\/p\.json: fixtures\[0\] \(bell\) only applies to ship plans/);
+    expect(area({ fixtures: [{ type: "mast", side: 0, frame: 0, height: 1 }] })).not.toThrow();
+  });
+
+  it("refuses a bevel bigger than a rounded hull corner, naming the corner", () => {
+    const hull = { 1: [[-0.6, -0.6], [0.6, -0.6], [0.6, 1.6, 0.1], [-0.6, 1.6, 0.3]] };
+    expect(() => plan({ hull })).toThrow(/data\/tweaks\/p\.json: profile\.bevel 0\.12 \(the default\) is more than hull\.1\[2\]'s corner radius 0\.1/);
+    expect(() => plan({ hull, profile: { bevel: 0.1 } })).not.toThrow();
+  });
+
+  it("refuses a stripe paint the palette lacks, the default's too", () => {
+    expect(() => resolveLook("p", [hold], "decks", { palette: { industrial: "#3" }, places: {} }, "plan")).toThrow(/surface\.stripe\.paint.*residential/);
+  });
+
+  it("reports a window, prop or chevrons for a room the plan lacks", () => {
+    const tweak = {
+      surface: { windows: ["cockpit", "galley"] },
+      fixtures: [
+        { type: "prop", kind: "crate", room: "bay", at: [0, 0], size: [0.2, 0.2] },
+        { type: "chevrons", room: "hold", wall: "aft" },
+        { type: "chevrons", room: "collar", wall: "port" },
+      ],
+    };
+    expect(plan(tweak).orphans).toEqual(["fixtures[0].room", "fixtures[2].room", "surface.windows[1]"]);
+  });
+});
