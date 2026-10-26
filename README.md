@@ -338,8 +338,8 @@ The station maps in `ui/data/` are built from the Empyreal source by
 `--source DIR`, and never writes to it. Rooms, names, exits and places come
 from the source's area files. The generated files are not edited by hand.
 
-What the source doesn't say, the colours, cradles, masts and a few
-positions, is in `data/tweaks/`, one JSON file per place.
+What the source doesn't say, the colours, cradles, masts, room shapes, hull
+paths, the camera and a few positions, is in `data/tweaks/`, one JSON file per place.
 
 The routine to follow after an Empyreal push, and what the build's report
 means, is in [docs/maps/sync.md](docs/maps/sync.md).

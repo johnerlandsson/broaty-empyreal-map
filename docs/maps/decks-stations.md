@@ -100,7 +100,8 @@ blister, the cradles at the nose and any masts on the roof (`fixtures`).
 
 From the addresses and the exits:
 
-- **The hull** is the box the cells fill, leaving out the blisters.
+- **The hull** is the box the cells fill, leaving out the blisters, unless the
+  tweak gives a deck a path (`hull`, below).
 - **A passage** is a room named by its own address (`Deck 3, frame 2`). Any
   other room is a room.
 - **A blister** sits in a cell outside the hull, below or above it.
@@ -152,6 +153,24 @@ left, and the frames are labelled down the port side.
 - **The Berths** have airlock hatches with status lights on every wall that
   no exit goes through.
 
+## Hull paths, footprints and the view
+
+Three tweak keys change the drawing (reference in `docs/maps/sync.md`). No
+station's tweak file uses them yet.
+
+- **`hull`** gives a deck a closed path in place of its box, with optional
+  rounded corners. The plan's plate follows it, and so do the model's hull and
+  its dashed cut-away outline. Cradles sit at the path's nose. Rooms are drawn
+  inside it and never shape it.
+- **`footprints`** draw a room larger than a cell or with cut or rounded
+  corners, or as any outline. It changes how the room is drawn, not where it is.
+- **`view`** sets the cutaway (`off`, `hide-above`, `ghost-above`) and the
+  model's home camera. A decks station's cutaway is `hide-above`, as described
+  above, unless it says otherwise.
+
+Hull paths and footprints on wheels, drums and towns, and a wheel cutaway, are
+not built.
+
 ## Rooms, compartments and the highlight
 
 All nine of Orrin's rooms are rooms, the passages and the Gallery included.
@@ -184,7 +203,7 @@ preview all read, so no code changes. If it needs colours, add
 `data/tweaks/<place>.json` with `paint` (tints from the palette) and
 `fixtures`, or a `like` naming a station it looks like. See `sync.md`. The
 preview's walk is the one thing to add by hand, if you want the new station
-in it. The hull is always the cells' box: Kilmar's cross and Caradon's and Garrow's
+in it. Unless the tweak draws a `hull` path for a deck, the hull is the cells' box: Kilmar's cross and Caradon's and Garrow's
 empty cells are drawn as hull, as Orrin's corners are. A hull drawn from its
 cells alone, and a blister set into a cell inside the box, were tried for the
 Mid's halts and not taken. Signs and lifts on decks aren't in

@@ -111,6 +111,10 @@ The top-level keys:
     (Lamorna's)
   - `drum-cradle`: `{ "type": "drum-cradle", "hour": -0.3, "z": -12, "hw": 8, "h": 20, "hl": 11 }`
     (Wenna's)
+- `footprints`: room to the shape it is drawn in, on a decks plan. See
+  "Footprints" below.
+- `hull`: deck to the path of its hull, on a decks plan. See "The hull" below.
+- `view`: how a place is seen: `cutaway` and `camera`. See "View" below.
 - `place`: a wheel room's position, where the build cannot place it from
   its address. It applies only to wheels. T.I.S.S. has
   `"place": { "transfer": { "x": 0, "y": -1, "z": 3 } }`.
@@ -122,6 +126,102 @@ The top-level keys:
 - `wheel`: reserved for wheel stations. Empty in stage 1.
 
 `scripts/source/tweaks.mjs` lists every allowed key.
+
+No tweak file shipped with the plugin uses `footprints`, `hull` or `view`
+yet. Every place looks as it did before them.
+
+### Footprints
+
+A footprint is how a room is drawn, never where it is. It applies to decks
+places only. The units are cells: a room's cell centre is at (side, frame),
+and the cell spans 0.5 either way. x is the side (starboard +) and y is the
+frame (fore +). A room with no footprint is one plain cell.
+
+```json
+"footprints": {
+  "exchange": { "span": { "port": 1 }, "corners": "rounded", "r": 0.3 },
+  "gallery": { "outline": [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.3], [0, 0.6], [-0.5, 0.3]] }
+}
+```
+
+- `span`: how far the room reaches past its own cell, in cells, 0 or more,
+  by `fore`, `aft`, `port` and `starboard`. Any of the four may be left out.
+- `corners`: `square` (the default), `rounded` or `cut` (chamfered).
+- `r`: the radius or chamfer of a rounded or cut corner, in cells. It is 0 or
+  more and under half the footprint's narrower side. The default is 0.2.
+- `outline`: a list of three or more `[x, y]` points, each within -1.5 to 1.5
+  of the cell's centre. It replaces `span` and `corners`. It must not cross
+  itself.
+
+The build stops, naming the tweak file and the two room ids
+(`footprints: A and B overlap. Nothing written`), when two rooms on the same
+deck have footprints that overlap. Touching edges are fine. Rooms neither of
+which has a footprint are left to the source.
+
+The mockup of the options is `docs/maps/reference/footprints-options.png`.
+
+### The hull
+
+By default a deck's hull is the box its cells fill. `hull` replaces that with
+a closed path, one per deck, keyed by deck number, in the same cell units as
+footprints. A point is `[x, y]`, or `[x, y, r]` to round that corner with
+radius `r` cells (more than 0). This is Orrin Station's, from
+`docs/maps/reference/hull-path-mockup.html`, a cross round its rooms on
+Deck 3 with the nose chamfered 0.3, and an L on Deck 2 with one rounded
+corner, all 0.12 cells outside the cells:
+
+```json
+"hull": {
+  "3": [
+    [-0.62, 0.38], [0.62, 0.38], [0.62, 1.38], [1.62, 1.38], [1.62, 2.62], [0.62, 2.62],
+    [0.62, 3.32], [0.32, 3.62], [-0.32, 3.62], [-0.62, 3.32],
+    [-0.62, 2.62], [-1.62, 2.62], [-1.62, 1.38], [-0.62, 1.38]
+  ],
+  "2": [[-0.62, 0.38], [0.62, 0.38], [0.62, 2.62], [-1.62, 2.62, 0.35], [-1.62, 1.38], [-0.62, 1.38]]
+}
+```
+
+A deck with no entry keeps its box. Through `like`, a deck's path is
+inherited; `"3": null` puts it back to the box. A path with fewer than three
+points, one that crosses itself (also once its corners are rounded), or a
+rounded corner too big for its edges makes the build fail with the file and
+deck. So does a key that is not a deck number. A deck the place has no rooms
+on is listed in the report as an orphan (`hull.<deck>`).
+
+The build also stops, naming the deck and the room or fixture, when a path
+cuts through a room (each room is checked brought in 0.1 cells, the drawn
+room box), when a cradle's side is not on the path of its deck, or when a
+mast is not inside the top deck's path. A cradle sits at the path's nose on
+its side.
+
+The mockup of the options is `docs/maps/reference/hull-path-options.png`.
+
+### View
+
+`view` is how a place is seen. Any place may have one.
+
+```json
+"view": { "cutaway": "ghost-above", "camera": { "yaw": 16, "pitch": 38, "zoom": 1 } }
+```
+
+- `cutaway`: what the model does with the decks above yours. `off` draws it
+  whole. `hide-above` lifts them off and leaves a dashed outline. `ghost-above`
+  draws them as a faint ghost. The default is `hide-above` on a decks place
+  and `off` on every other kind.
+- `camera`: the overview's home angle, `yaw` and `pitch` in degrees, and
+  `zoom`, more than 0, where 1 frames the whole model and 2 is twice as
+  close. All three are needed. The default is yaw 16, pitch 38, zoom 1.
+
+### Not yet
+
+These are in the design (`docs/superpowers/specs/2026-10-26-map-data-from-source-design.md`,
+"The hull") but not built, and the build does not accept them in a tweak yet:
+
+- hull paths on wheels and drums. A wheel's path will be per ring, drawn on
+  the unrolled ring plan that repeats as you pan, with the spokes, hub and
+  spine as numbers in the `wheel` section.
+- footprints on wheels, drums and towns.
+- a cutaway on a wheel.
 
 ## Adding a place
 
