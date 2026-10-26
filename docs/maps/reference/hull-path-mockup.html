@@ -1,0 +1,330 @@
+<!doctype html>
+<!-- A hand-drawn hull, 2026-10-26: a variant of footprints option B where each deck's hull is its
+     own editable path (a `hull` tweak), not the automatic union of the rooms. Orrin, today's box
+     against the hull paths, then the paths as an editor would show them. The overview and the plan
+     are the plugin's own ModelView and DeckView; the faces and plans they're handed are built here,
+     adapted from buildDecksModel and decksPlans. Serve the repo root over http to open it.
+     A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Hull path: options</title>
+<style>
+  body { margin:0; background:#0b0f16; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:12px 20px; width:1620px; }
+  h2 { color:#e3eaf2; font-size:16px; margin:16px 0 2px; }
+  h2 small { color:#8f9bab; font-weight:400; font-size:12.5px; }
+  .row { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-top:6px; }
+  .row.two { grid-template-columns:repeat(2, 1fr); }
+  .pane { position:relative; height:330px; background:#04060c; border-radius:6px; outline:1px solid #222c3a; overflow:hidden; }
+  .row.two .pane { height:400px; }
+  .pane .tag { position:absolute; left:8px; top:6px; z-index:4; font:10.5px "DejaVu Sans Mono", monospace; color:#9aa7b7; letter-spacing:.5px; text-transform:uppercase; pointer-events:none; }
+  .pane .slot { position:absolute; inset:0; }
+  .pane button, .pane .zoom { display:none !important; }
+  .top { color:#8f9bab; font-size:12.5px; line-height:1.5; }
+  code { color:#b9c5d3; font:12px "DejaVu Sans Mono", monospace; }
+</style></head><body>
+<div class="top">Orrin Station with a <code>hull</code> tweak: a closed path per deck in the cell grid (a cell centre at its side and frame, so a cell spans ±0.5), a third value rounding that corner. Deck 3 is a cross round its rooms with the nose chamfered 0.3; Deck 2 an L round the Exchange and the Concourse, rounded r 0.35 at the Exchange's fore-port corner; both 0.12 cells outside the cells. The Gallery blister is as it is.</div>
+<script type="module">
+import orrin from "../../../ui/data/orrin.js";
+import { ModelView } from "../../../ui/model-view.js";
+import { DeckView, DIM, PASSAGE, PLATE, hover, label, roomBox } from "../../../ui/deck-view.js";
+import { DISTRICT_COLOURS as DC } from "../../../ui/lib/geometry.js";
+import { CELL, PLAN, buildDecksModel, decksCut, decksKey, decksLayout, indexDecks, locateDecks } from "../../../ui/lib/decks.js";
+import { el } from "../../../ui/lib/svg.js";
+
+const M = 0.5 + 0.12; // a cell's edge plus the margin
+const HULL = {
+  3: [
+    [-M, 1 - M], [M, 1 - M], [M, 2 - M], [1 + M, 2 - M], [1 + M, 2 + M], [M, 2 + M],
+    [M, 3 + M - 0.3], [M - 0.3, 3 + M], [-M + 0.3, 3 + M], [-M, 3 + M - 0.3], // the nose, chamfered
+    [-M, 2 + M], [-1 - M, 2 + M], [-1 - M, 2 - M], [-M, 2 - M],
+  ],
+  2: [[-M, 1 - M], [M, 1 - M], [M, 2 + M], [-1 - M, 2 + M, 0.35], [-1 - M, 2 - M], [-M, 2 - M]],
+};
+
+const index = indexDecks(orrin);
+const { hull } = index;
+const solid = [...index.byId.values()].filter((r) => !r.blister);
+const roomAt = (x, y, z) => solid.find((r) => r.cell.x === x && r.cell.y === y && r.cell.z === z);
+
+/** A hull path with its rounded corners expanded: points in cells, counter-clockwise. */
+function expand(path) {
+  const out = [];
+  path.forEach((p, i) => {
+    const [x, y, r] = p;
+    if (!r) return out.push([x, y]);
+    const a = path[(i + path.length - 1) % path.length], b = path[(i + 1) % path.length];
+    const unit = (q) => { const d = [q[0] - x, q[1] - y]; const m = Math.hypot(...d); return d.map((v) => v / m); };
+    const ua = unit(a), ub = unit(b);
+    const theta = Math.acos(ua[0] * ub[0] + ua[1] * ub[1]);
+    const t = r / Math.tan(theta / 2);
+    const bis = [ua[0] + ub[0], ua[1] + ub[1]];
+    const bm = Math.hypot(...bis);
+    const h = r / Math.sin(theta / 2);
+    const c = [x + (bis[0] / bm) * h, y + (bis[1] / bm) * h];
+    const t1 = [x + ua[0] * t, y + ua[1] * t], t2 = [x + ub[0] * t, y + ub[1] * t];
+    let a1 = Math.atan2(t1[1] - c[1], t1[0] - c[0]), a2 = Math.atan2(t2[1] - c[1], t2[0] - c[0]);
+    let d = a2 - a1;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    const N = 6;
+    for (let k = 0; k <= N; k++) out.push([c[0] + r * Math.cos(a1 + (d * k) / N), c[1] + r * Math.sin(a1 + (d * k) / N)]);
+  });
+  return out;
+}
+
+// --- model space -----------------------------------------------------------------------------
+const mid = [(hull.x0 + hull.x1) / 2, (hull.y0 + hull.y1) / 2, (hull.z0 + hull.z1) / 2];
+const at = (x, y, z) => [(x - mid[0]) * CELL.side, (z - mid[2]) * CELL.deck, (y - mid[1]) * CELL.frame];
+const half = [CELL.side / 2, CELL.deck / 2, CELL.frame / 2];
+const P3 = ([x, y], z, up) => { const c = at(x, y, z); return [c[0], c[1] + up * half[1], c[2]]; };
+const CUBE = [
+  { n: [0, 0, 1], c: [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]] },
+  { n: [0, 0, -1], c: [[-1, 1, -1], [1, 1, -1], [1, -1, -1], [-1, -1, -1]] },
+  { n: [0, -1, 0], c: [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]] },
+  { n: [0, 1, 0], c: [[-1, 1, 1], [1, 1, 1], [1, 1, -1], [-1, 1, -1]] },
+  { n: [1, 0, 0], c: [[1, -1, -1], [1, 1, -1], [1, 1, 1], [1, -1, 1]] },
+  { n: [-1, 0, 0], c: [[-1, -1, 1], [-1, 1, 1], [-1, 1, -1], [-1, -1, -1]] },
+];
+function orient(pts, edges, from) {
+  const [a, b, c] = pts;
+  const u = b.map((v, i) => v - a[i]), w = c.map((v, i) => v - a[i]);
+  const n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+  const m = pts.reduce((s, p) => s.map((v, i) => v + p[i] / pts.length), [0, 0, 0]);
+  if (n.reduce((s, v, i) => s + v * (m[i] - from[i]), 0) >= 0) return { pts, edges };
+  const N = pts.length;
+  return { pts: pts.slice().reverse(), edges: pts.map((_, i) => edges[(N - 2 - i + 2 * N) % N]) };
+}
+const face = (pts, edges, from, extra) => ({ ...orient(pts, edges, from), turns: false, cull: true, layer: 0, key: null, tint: null, kind: "outer", ...extra });
+
+// the grid lines inside the box: a hull piece belongs to the cell it's in, the outer cells reaching out
+const XL = Array.from({ length: hull.x1 - hull.x0 }, (_, i) => hull.x0 + i + 0.5);
+const YL = Array.from({ length: hull.y1 - hull.y0 }, (_, i) => hull.y0 + i + 0.5);
+const cellAt = ([x, y]) => [Math.min(hull.x1, Math.max(hull.x0, Math.round(x))), Math.min(hull.y1, Math.max(hull.y0, Math.round(y)))];
+function clip(poly, k, v, keepBelow) {
+  const inn = (p) => (keepBelow ? p[k] <= v + 1e-9 : p[k] >= v - 1e-9);
+  const out = [];
+  poly.forEach((p, i) => {
+    const q = poly[(i + 1) % poly.length];
+    if (inn(p)) out.push(p);
+    if (inn(p) !== inn(q)) { const t = (v - p[k]) / (q[k] - p[k]); out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
+  });
+  return out;
+}
+function onPath(m, pts) {
+  return pts.some((a, i) => {
+    const b = pts[(i + 1) % pts.length];
+    const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+    const L = Math.hypot(dx, dy);
+    const t = ((m[0] - a[0]) * dx + (m[1] - a[1]) * dy) / (L * L);
+    return Math.abs((m[0] - a[0]) * dy - (m[1] - a[1]) * dx) / L < 1e-6 && t > -1e-6 && t < 1 + 1e-6;
+  });
+}
+const centroid = (pts) => pts.reduce((s, p) => [s[0] + p[0] / pts.length, s[1] + p[1] / pts.length], [0, 0]);
+
+/** One deck's hull from its path: walls, split at the grid so each takes the tint of the room
+ *  behind it, and its top in a piece a cell (the roof, or the lid when the decks above go). */
+function pathDeck(z, path) {
+  const pts = expand(path);
+  const faces = [];
+  const dir = (a, b) => Math.atan2(b[1] - a[1], b[0] - a[0]);
+  const sharp = pts.map((p, i) => {
+    let t = Math.abs(dir(p, pts[(i + 1) % pts.length]) - dir(pts[(i + pts.length - 1) % pts.length], p));
+    if (t > Math.PI) t = 2 * Math.PI - t;
+    return t > (35 * Math.PI) / 180;
+  });
+  const inner = P3(centroid(pts), z, 0);
+  pts.forEach((a, i) => {
+    const b = pts[(i + 1) % pts.length];
+    const cuts = [0, 1];
+    for (const [k, lines] of [[0, XL], [1, YL]]) for (const v of lines) {
+      const t = (v - a[k]) / (b[k] - a[k]);
+      if (t > 1e-6 && t < 1 - 1e-6) cuts.push(t);
+    }
+    cuts.sort((p, q) => p - q);
+    for (let j = 0; j + 1 < cuts.length; j++) {
+      const p = [a[0] + (b[0] - a[0]) * cuts[j], a[1] + (b[1] - a[1]) * cuts[j]];
+      const q = [a[0] + (b[0] - a[0]) * cuts[j + 1], a[1] + (b[1] - a[1]) * cuts[j + 1]];
+      const [cx, cy] = cellAt([(p[0] + q[0]) / 2, (p[1] + q[1]) / 2]);
+      const room = roomAt(cx, cy, z);
+      const sA = j === 0 ? sharp[i] : false, sB = j + 2 === cuts.length ? sharp[(i + 1) % pts.length] : false;
+      faces.push(face([P3(p, z, -1), P3(q, z, -1), P3(q, z, 1), P3(p, z, 1)], [true, sB, true, sA], inner, { tint: room?.tint ?? null, deck: z, outline: true }));
+    }
+  });
+  const xs = [-Infinity, ...XL, Infinity], ys = [-Infinity, ...YL, Infinity];
+  for (let i = 0; i + 1 < xs.length; i++) for (let j = 0; j + 1 < ys.length; j++) {
+    let piece = pts;
+    if (xs[i] > -Infinity) piece = clip(piece, 0, xs[i], false);
+    if (xs[i + 1] < Infinity) piece = clip(piece, 0, xs[i + 1], true);
+    if (ys[j] > -Infinity) piece = clip(piece, 1, ys[j], false);
+    if (ys[j + 1] < Infinity) piece = clip(piece, 1, ys[j + 1], true);
+    if (piece.length < 3) continue;
+    const room = roomAt(hull.x0 + i, hull.y0 + j, z);
+    const edges = piece.map((p, k) => { const q = piece[(k + 1) % piece.length]; return onPath([(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], pts); });
+    const top = z === hull.z1 ? { deck: z, outline: true } : { lid: z };
+    faces.push(face(piece.map((p) => P3(p, z, 1)), edges, P3(centroid(piece), z, 0), { tint: room?.tint ?? null, ...top }));
+  }
+  return faces;
+}
+
+/** The fore end of a deck's hull on the line at side x, or null where the hull isn't. */
+function foreAt(pts, x) {
+  let best = null;
+  pts.forEach((a, i) => {
+    const b = pts[(i + 1) % pts.length];
+    if ((a[0] - x) * (b[0] - x) > 0 || a[0] === b[0]) return;
+    const y = a[1] + ((x - a[0]) / (b[0] - a[0])) * (b[1] - a[1]);
+    if (best == null || y > best) best = y;
+  });
+  return best;
+}
+
+const today = buildDecksModel(index, orrin);
+const dropped = [];
+function facesWithPaths() {
+  const faces = today.filter((f) => {
+    if (f.kind === "outer") return HULL[f.deck ?? f.lid] == null;
+    if (f.kind === "dock") return HULL[f.deck] == null;
+    return true;
+  });
+  for (const [z, path] of Object.entries(HULL)) faces.push(...pathDeck(Number(z), path));
+  for (const { side: x, deck: z, hw, hh, len } of orrin.look.fixtures.filter((f) => f.type === "cradle")) {
+    if (!HULL[z]) continue;
+    const y = foreAt(expand(HULL[z]), x);
+    if (y == null) { dropped.push(`deck ${z} side ${x}`); continue; }
+    const [cx, cy] = at(x, 0, z);
+    const fore = (y - mid[1]) * CELL.frame;
+    const c = [cx, cy, fore + (len * CELL.frame) / 2];
+    const h = [hw * CELL.side, hh * CELL.deck, (len * CELL.frame) / 2];
+    for (const { c: signs } of CUBE) faces.push(face(signs.map((s) => c.map((v, k) => v + s[k] * h[k])), [true, true, true, true], c, { kind: "dock", layer: 1, deck: z }));
+  }
+  return faces;
+}
+
+// --- the plans: decksPlans, with the plate the deck's hull path ------------------------------------
+const PEDGE = "#3b4a5c", CORR = "#262f3b", FIXTURE = "#0e131a", HATCH = "#9fb0c3", STOP = "#aab8c8", GLASS = DC.docks, EDIT = "#5aa9ff";
+const LIGHTS = ["#59d18a", "#e8b04a", "#59d18a", "#3a4556", "#59d18a", "#59d18a", "#3a4556"];
+const DECK_OF = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
+const none = { "pointer-events": "none" };
+const toPlan = ([x, y]) => [(x - mid[0]) * PLAN.w, -(y - mid[1]) * PLAN.h];
+const num = (n) => +n.toFixed(1);
+const dOf = (pts) => `M${pts.map((p) => toPlan(p).map(num).join(",")).join("L")}Z`;
+
+function plans(paths, { editor = false } = {}) {
+  return (svg, idx) => idx.decks.map((deck, level) => {
+    const layout = decksLayout(idx, deck);
+    const { cells, links, hatches, footprint: fp, frames, onHull } = layout;
+    const g = el("g", { display: "none" }, svg);
+    const path = paths[deck];
+    if (path && onHull) {
+      el("path", { d: dOf(expand(path)), fill: PLATE, stroke: PEDGE, "stroke-width": 3, "stroke-linejoin": "round" }, g);
+    } else if (fp && onHull) {
+      el("rect", { x: fp.x, y: fp.y, width: fp.w, height: fp.h, rx: 12, fill: PLATE, stroke: PEDGE, "stroke-width": 3 }, g);
+    } else if (fp) {
+      el("rect", { x: fp.x, y: fp.y, width: fp.w, height: fp.h, rx: 12, fill: "none", stroke: PEDGE, "stroke-width": 1.5, "stroke-dasharray": "6 5" }, g);
+    }
+    for (const c of cells) if (c.kind === "blister") el("circle", { cx: c.cx, cy: c.cy, r: c.r + 14, fill: PLATE, stroke: PEDGE, "stroke-width": 2 }, g);
+    for (const l of links) el("rect", { x: l.x, y: l.y, width: l.w, height: l.h, fill: PASSAGE }, g);
+    for (const c of cells) {
+      if (c.kind === "passage") {
+        el("rect", { x: c.cx - c.w / 2, y: c.cy - c.h / 2, width: c.w, height: c.h, fill: CORR }, g);
+        const [x, y] = layout.centre(c.room.cell);
+        if (!c.room.exits?.up && !c.room.exits?.down) el("circle", { cx: x, cy: y, r: 4, fill: STOP, ...none }, g);
+      } else if (c.kind === "room") {
+        roomBox(g, c.room, c.cx, c.cy, c.room.tint ?? DC.industrial, c.w, c.h);
+        if (c.room.flags?.includes("berth")) airlocks(g, c);
+      } else {
+        const gl = el("g", {}, g);
+        el("circle", { cx: c.cx, cy: c.cy, r: c.r, fill: GLASS, "fill-opacity": 0.14, stroke: GLASS, "stroke-opacity": 0.6, "stroke-width": 1.6 }, gl);
+        for (const k of [0.72, 0.42]) el("circle", { cx: c.cx, cy: c.cy, r: c.r * k, fill: "none", stroke: GLASS, "stroke-opacity": 0.22, "stroke-width": 1 }, gl);
+        label(gl, c.cx, c.cy + 10, c.room.name, 12);
+      }
+    }
+    for (const h of hatches) {
+      el("circle", { cx: h.cx, cy: h.cy, r: 9, fill: FIXTURE, stroke: HATCH, "stroke-width": 1.4, ...none }, g);
+      el("circle", { cx: h.cx, cy: h.cy, r: 3.5, fill: "none", stroke: HATCH, "stroke-width": 1.1, ...none }, g);
+      if (h.side === "right") label(g, h.cx + 13, h.cy, h.dir, 9, { fill: DIM, "text-anchor": "start" });
+      else label(g, h.cx, h.cy + 17, h.dir, 9, { fill: DIM });
+    }
+    if (fp) {
+      label(g, fp.x, fp.y - 26, "FORE ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
+      label(g, fp.x, fp.y - 11, `DECK ${deck}`, 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
+      for (const f of frames) label(g, fp.x - 8, f.cy, `frame ${f.n}`, 9, { fill: DIM, "text-anchor": "end" });
+    }
+    if (editor && path && onHull) {
+      // the path as the editor shows it: its line, a handle on each point, a ring on a rounded one
+      el("path", { d: dOf(expand(path)), fill: "none", stroke: EDIT, "stroke-width": 1.6, "stroke-linejoin": "round", ...none }, g);
+      for (const [x, y, r] of path) {
+        const [px, py] = toPlan([x, y]);
+        if (r) {
+          el("circle", { cx: px, cy: py, r: 13, fill: "none", stroke: EDIT, "stroke-width": 1.4, ...none }, g);
+          label(g, px - 18, py - 16, `r ${r}`, 10, { fill: EDIT, "text-anchor": "end" });
+        }
+        el("rect", { x: px - 4.5, y: py - 4.5, width: 9, height: 9, fill: "#04060c", stroke: EDIT, "stroke-width": 1.6, ...none }, g);
+      }
+    }
+    const hl = el("g", { "pointer-events": "none" }, g);
+    const extent = fp ? { w: fp.w + 2 * 70, h: fp.h + 2 * 44 } : { w: 400, h: 300 };
+    const home = fp ? [fp.x + fp.w / 2, fp.y + fp.h / 2] : [0, 0];
+    const shape = (where) => {
+      const c = where?.kind === "room" && cells.find((x) => x.room.id === where.id);
+      return c ? { kind: "rect", x: c.cx - c.w / 2, y: c.cy - c.h / 2, width: c.w, height: c.h, rx: c.kind === "room" ? 5 : 3 } : null;
+    };
+    return { z: level, g, hl, layout, ring: false, length: 0, home, extent, offsets: [0], margin: 0.42, shape };
+  });
+}
+function airlocks(g, c) {
+  let n = 0;
+  for (const [dir, [dx, dy]] of Object.entries(DECK_OF)) {
+    if (c.room.exits?.[dir]) continue;
+    const long = dx ? c.h : c.w;
+    const count = Math.max(1, Math.round(long / 40));
+    for (let i = 0; i < count; i++) {
+      const t = -long / 2 + ((i + 0.5) * long) / count;
+      const x = c.cx + (dx ? (dx * c.w) / 2 : t), y = c.cy + (dy ? (dy * c.h) / 2 : t);
+      const [w, h] = dx ? [8, 16] : [16, 8];
+      el("rect", { x: x - w / 2 + dx * 1.5, y: y - h / 2 + dy * 1.5, width: w, height: h, rx: 2, fill: FIXTURE, stroke: GLASS, "stroke-width": 1.2, ...none }, g);
+      el("circle", { cx: x + (dx ? dx * 11 : 11), cy: y + (dx ? 11 : dy * 11), r: 2.2, fill: LIGHTS[n++ % LIGHTS.length], ...none }, g);
+    }
+  }
+}
+
+// --- the page ------------------------------------------------------------------------------------
+const BERTHS = locateDecks(index, { roomId: "orrin.berth" });
+const MARKET = locateDecks(index, { roomId: "orrin.market" });
+function pane(row, tag) {
+  const p = row.appendChild(document.createElement("div"));
+  p.className = "pane";
+  p.innerHTML = `<span class="tag">${tag}</span><div class="slot"></div>`;
+  return p.querySelector(".slot");
+}
+function heading(title, note, cls = "row") {
+  const h = document.body.appendChild(document.createElement("h2"));
+  h.innerHTML = `${title}<br><small>${note}</small>`;
+  const row = document.body.appendChild(document.createElement("div"));
+  row.className = cls;
+  return row;
+}
+const model = (slot, faces, where) => new ModelView(slot, index, { faces, keyOf: decksKey, hourOf: () => null, cutOf: (w) => decksCut(index, w), labels: false }).set(where);
+const plan = (slot, paths, where, opts) => {
+  const v = new DeckView(slot, index, plans(paths, opts));
+  v.set(where);
+  if (opts?.editor) for (const p of v.plans) p.hl.replaceChildren();
+};
+
+const withPaths = facesWithPaths();
+for (const [title, note, faces, paths] of [
+  ["1 · Today's box", "No hull tweak: every deck's hull is the box round all of Orrin's cells.", today, {}],
+  ["2 · The hull paths", "Each deck's hull follows its own path, in the overview, on the plan, in the dashed cut-away outline and at the cradles; the rooms inside are drawn as today.", withPaths, HULL],
+]) {
+  const row = heading(title, note);
+  model(pane(row, "overview · Berths · Deck 3"), faces, BERTHS);
+  plan(pane(row, "plan · Deck 3"), paths, BERTHS);
+  model(pane(row, "overview · Exchange · Deck 3 cut away"), faces, MARKET);
+  plan(pane(row, "plan · Deck 2"), paths, MARKET);
+}
+{
+  const row = heading("3 · The paths as the editor shows them", "Each deck's path in blue, a square handle on every point you can drag, and a ring on a rounded point with its radius.", "row two");
+  plan(pane(row, "editor · hull path · Deck 3"), HULL, BERTHS, { editor: true });
+  plan(pane(row, "editor · hull path · Deck 2"), HULL, MARKET, { editor: true });
+}
+if (dropped.length) console.log("cradles with no hull at their side:", dropped.join(", "));
+</script>
+</body></html>
