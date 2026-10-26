@@ -248,6 +248,29 @@ function merged(placeId, tweaks, chain = []) {
   return out;
 }
 
+/**
+ * The place whose own file gives a place's resolved `key` (and, with `sub`, its `key.sub`): the
+ * place itself, else the nearest down its `like` chain; null where none does.
+ * @param {string} placeId
+ * @param {{places: Record<string, object>}} tweaks
+ * @param {string} key
+ * @param {string} [sub]
+ * @returns {string | null}
+ */
+export function originOf(placeId, tweaks, key, sub) {
+  for (let id = placeId, seen = new Set(); id && !seen.has(id); id = tweaks.places[id]?.like) {
+    seen.add(id);
+    const own = tweaks.places[id]?.[key];
+    if (own !== undefined && (sub === undefined || Object.hasOwn(own ?? {}, sub))) return id;
+  }
+  return null;
+}
+
+/** " (from <base>.json via like)" for a value a place inherits, else "". */
+export function via(placeId, origin) {
+  return origin && origin !== placeId ? ` (from ${origin}.json via like)` : "";
+}
+
 /** The ids a tweak file itself (not through `like`) names, as [path, local id]. */
 function namedRooms(tweak) {
   const named = [];
@@ -272,7 +295,9 @@ function namedRooms(tweak) {
  * `paintDistricts`, else its district if that is a palette name, else a default by kind (a decks
  * passage, whose name is its address: midring; a berth: docks; otherwise industrial). A decks
  * place has its footprints, by local id, and its hull paths, by deck (a deck whose tweak is null
- * keeps its box); every place has its view, the tweak's over its kind's.
+ * keeps its box); every place has its view, the tweak's over its kind's. Throws on a key that would
+ * do nothing: a hull or footprints off decks, a footprint on a passage or blister, a cutaway other
+ * than off off decks, a camera on a town.
  * @param {string} placeId
  * @param {object[]} rooms  the place's placed rooms (full ids, `name`, `address`, `flags`, `district`)
  * @param {string} layoutKind  the area's layout kind
@@ -306,6 +331,24 @@ export function resolveLook(placeId, rooms, layoutKind, tweaks) {
     }
   }
 
+  // keys that would do nothing are errors (S16)
+  if (layoutKind === "decks") {
+    const blisters = new Set((tweak.fixtures ?? []).filter((f) => f.type === "blister").map((f) => f.room));
+    for (const room of rooms) {
+      const id = local(room.id);
+      if (!tweak.footprints?.[id]) continue;
+      const passage = String(room.name).toLowerCase() === String(room.address).toLowerCase();
+      if (passage || blisters.has(id)) {
+        throw new Error(`${file}: footprints.${id}${via(placeId, originOf(placeId, tweaks, "footprints", id))}: footprints apply to rooms, not passages or blisters`);
+      }
+    }
+  } else if (tweak.view?.cutaway !== undefined && tweak.view.cutaway !== "off") {
+    throw new Error(`${file}: view.cutaway ${JSON.stringify(tweak.view.cutaway)} only applies to decks places`);
+  }
+  if (layoutKind !== "decks" && layoutKind !== "wheel" && tweak.town && tweak.view?.camera) {
+    throw new Error(`${file}: view.camera doesn't apply to towns`);
+  }
+
   const look = { paint, fixtures: tweak.fixtures ?? [] };
   if (layoutKind === "decks") {
     look.footprints = tweak.footprints ?? {};
@@ -317,6 +360,7 @@ export function resolveLook(placeId, rooms, layoutKind, tweaks) {
   const own = tweaks.places[placeId] ?? {};
   const orphans = namedRooms(own).filter(([, id]) => !have.has(id)).map(([path]) => path);
   const decks = new Set(rooms.filter((r) => r.at).map((r) => String(r.at.deck)));
-  for (const deck of Object.keys(own.hull ?? {})) if (!decks.has(deck)) orphans.push(`hull.${deck}`);
+  // a null deck is an opt-out, often a blanket one, so never an orphan (S17)
+  for (const [deck, points] of Object.entries(own.hull ?? {})) if (points !== null && !decks.has(deck)) orphans.push(`hull.${deck}`);
   return { look, orphans };
 }

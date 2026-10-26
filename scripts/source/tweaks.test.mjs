@@ -237,6 +237,11 @@ describe("resolveLook hull", () => {
     expect(resolveLook("child", decks, "decks", tweaks).look.hull).toEqual({ 1: tri(1), 2: tri(3), 5: tri(5) });
   });
 
+  it("never reports a null hull deck as an orphan (S17)", () => {
+    const t = { palette, places: { ...tweaks.places, box: { like: "base", hull: { 2: null, 9: null } } } };
+    expect(resolveLook("box", decks, "decks", t).orphans).toEqual([]);
+  });
+
   it("reports a hull for a deck the place lacks, but not an inherited one", () => {
     expect(resolveLook("child", decks, "decks", tweaks).orphans).toEqual(["hull.5"]);
     expect(resolveLook("base", decks.slice(0, 1), "decks", tweaks).orphans).toEqual(["hull.2"]);
@@ -294,5 +299,38 @@ describe("resolveLook hull and footprints", () => {
   it("accepts them on decks, and empty ones anywhere", () => {
     expect(look({ hull: { 1: tri } }, "decks").look.hull).toEqual({ 1: tri });
     expect(() => look({ hull: {}, footprints: {} }, "town")).not.toThrow();
+  });
+});
+
+describe("resolveLook keys that would do nothing (S16)", () => {
+  const palette = { industrial: "#3", midring: "#4" };
+  const passage = room("p1", { name: "Deck 1, frame 1", address: "Deck 1, frame 1" });
+  const look = (places, id, rooms, kind) => () => resolveLook(id, rooms, kind, { palette, places });
+
+  it("refuses a footprint on a passage or a blister, naming the file and room", () => {
+    const why = /footprints apply to rooms, not passages or blisters/;
+    expect(look({ p: { footprints: { p1: { corners: "cut" } } } }, "p", [passage], "decks")).toThrow(/data\/tweaks\/p\.json: footprints\.p1: /);
+    expect(look({ p: { footprints: { p1: { corners: "cut" } } } }, "p", [passage], "decks")).toThrow(why);
+    const blister = { footprints: { a: { span: { fore: 1 } } }, fixtures: [{ type: "blister", room: "a" }] };
+    expect(look({ p: blister }, "p", [room("a")], "decks")).toThrow(why);
+    expect(look({ p: { footprints: { a: { corners: "cut" } } } }, "p", [room("a")], "decks")).not.toThrow();
+  });
+
+  it("names the file an inherited footprint on a passage comes from", () => {
+    const places = { base: { footprints: { p1: { corners: "cut" } } }, child: { like: "base" } };
+    expect(look(places, "child", [passage], "decks")).toThrow(/data\/tweaks\/child\.json: footprints\.p1 \(from base\.json via like\)/);
+  });
+
+  it("refuses a camera on a town", () => {
+    const camera = { camera: { yaw: 1, pitch: 2, zoom: 3 } };
+    expect(look({ p: { town: {}, view: camera } }, "p", [room("a")], "none")).toThrow(/data\/tweaks\/p\.json: view\.camera doesn't apply to towns/);
+    expect(look({ p: { drum: {}, view: camera } }, "p", [room("a")], "none")).not.toThrow();
+    expect(look({ p: { view: camera } }, "p", [room("a")], "wheel")).not.toThrow();
+  });
+
+  it("refuses a cutaway other than off on a place that isn't decks", () => {
+    expect(look({ p: { view: { cutaway: "ghost-above" } } }, "p", [room("a")], "wheel")).toThrow(/data\/tweaks\/p\.json: view\.cutaway "ghost-above" only applies to decks places/);
+    expect(look({ p: { view: { cutaway: "off" } } }, "p", [room("a")], "wheel")).not.toThrow();
+    expect(look({ p: { view: { cutaway: "ghost-above" } } }, "p", [room("a")], "decks")).not.toThrow();
   });
 });

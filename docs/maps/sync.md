@@ -132,9 +132,11 @@ yet. Every place looks as it did before them.
 
 ### Footprints
 
-A footprint is how a room is drawn, never where it is. It applies to decks
-places only; on any other place the build stops with an error. The units are cells: a room's cell centre is at (side, frame),
-and the cell spans 0.5 either way. x is the side (starboard +) and y is the
+A footprint is how a room is drawn, never where it is. It applies to the
+rooms of decks places only; on any other place, or on a passage (a cell
+named by its address) or a blister, the build stops with an error. The units
+are cells: a room's cell centre is at (side, frame), and the cell spans 0.5
+either way. x is the side (starboard +) and y is the
 frame (fore +). A room with no footprint is one plain cell.
 
 ```json
@@ -189,7 +191,8 @@ inherited; `"3": null` puts it back to the box. A path with fewer than three
 points, one that crosses itself (also once its corners are rounded), or a
 rounded corner too big for its edges makes the build fail with the file and
 deck. So does a key that is not a deck number. A deck the place has no rooms
-on is listed in the report as an orphan (`hull.<deck>`).
+on is listed in the report as an orphan (`hull.<deck>`), unless its entry is
+`null`: an opt-out is never an orphan.
 
 The build also stops, naming the deck and the room or fixture, when a path
 cuts through a room (each room is checked brought in 0.1 cells, the drawn
@@ -201,7 +204,9 @@ The mockup of the options is `docs/maps/reference/hull-path-options.png`.
 
 ### View
 
-`view` is how a place is seen. Any place may have one.
+`view` is how a place is seen. A decks place may have both keys; a wheel or
+drum a `camera` and a `cutaway` of `off`; a town neither. Anything else makes
+the build stop with an error naming the file.
 
 ```json
 "view": { "cutaway": "ghost-above", "camera": { "yaw": 16, "pitch": 38, "zoom": 1 } }
@@ -210,10 +215,11 @@ The mockup of the options is `docs/maps/reference/hull-path-options.png`.
 - `cutaway`: what the model does with the decks above yours. `off` draws it
   whole. `hide-above` lifts them off and leaves a dashed outline. `ghost-above`
   draws them as a faint ghost. The default is `hide-above` on a decks place
-  and `off` on every other kind.
+  and `off` on every other kind, the only one they allow.
 - `camera`: the overview's home angle, `yaw` and `pitch` in degrees, and
   `zoom`, more than 0, where 1 frames the whole model and 2 is twice as
-  close. All three are needed. The default is yaw 16, pitch 38, zoom 1.
+  close. All three are needed. The default is yaw 16, pitch 38, zoom 1. A
+  town has no 3D overview, so no camera.
 
 ### Not yet
 
