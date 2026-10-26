@@ -41,9 +41,9 @@ import { UnknownView } from "./unknown-view.js";
 const modelEl = document.getElementById("model");
 const deckEl = document.getElementById("deck");
 
-/** T.I.S.S.: a wheel, its rings, hub and spine. */
-function tiss() {
-  const index = indexStation(tissRooms(data.tiss));
+/** A wheel (T.I.S.S.): its rings, hub and spine. */
+function wheel(data) {
+  const index = indexStation(tissRooms(data));
   return { index, model: new ModelView(modelEl, index), deck: new DeckView(deckEl, index), lastLevel: null };
 }
 
@@ -83,12 +83,9 @@ function town(data) {
 
 // Each station is built the first time it shows: a model and a plan apiece, each over its own
 // starfield, cost tens of milliseconds and thousands of nodes, and most never show in a session.
-// Every place in the generated index (data/places.js) by its builder; T.I.S.S. by its own.
-const BUILDERS = { decks, drum, town };
-const BUILD = {
-  ...Object.fromEntries(places.filter((p) => BUILDERS[p.builder] && data[p.id]).map((p) => [p.id, () => BUILDERS[p.builder](data[p.id])])),
-  tiss: () => tiss(),
-};
+// Every place in the generated index (data/places.js) by its builder.
+const BUILDERS = { decks, drum, town, wheel };
+const BUILD = Object.fromEntries(places.filter((p) => BUILDERS[p.builder] && data[p.id]).map((p) => [p.id, () => BUILDERS[p.builder](data[p.id])]));
 const stations = {}; // station key -> its views, once built
 let turning = true; // the turn_model setting, for stations built after it came
 

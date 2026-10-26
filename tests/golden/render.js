@@ -24,8 +24,8 @@ function box() {
 }
 
 // the builders of ui/main.js, each into its own pair of containers
-function tiss(modelEl, deckEl) {
-  const index = indexStation(tissRooms(data.tiss));
+function wheel(modelEl, deckEl, data) {
+  const index = indexStation(tissRooms(data));
   return { index, model: new ModelView(modelEl, index), deck: new DeckView(deckEl, index), locate };
 }
 
@@ -62,12 +62,9 @@ function town(modelEl, deckEl, data) {
   return { index, model, deck: new DeckView(deckEl, index, townPlans(spec)), locate: locateTown };
 }
 
-// every place from its generated file, T.I.S.S. by its own builder
-const BUILDERS = { drum, decks, town };
-const BUILD = {
-  ...Object.fromEntries(places.filter((p) => BUILDERS[p.builder] && data[p.id]).map((p) => [p.id, (m, d) => BUILDERS[p.builder](m, d, data[p.id])])),
-  tiss: (m, d) => tiss(m, d),
-};
+// every place from its generated file, by its builder
+const BUILDERS = { drum, decks, town, wheel };
+const BUILD = Object.fromEntries(places.filter((p) => BUILDERS[p.builder] && data[p.id]).map((p) => [p.id, (m, d) => BUILDERS[p.builder](m, d, data[p.id])]));
 
 // The SVG's markup without its seeded starfield (a constant, whatever the map data), and with the
 // glow filter's instance number (which depends on what was built before) as 0.
