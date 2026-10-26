@@ -1,0 +1,13 @@
+world:
+  stations:
+    - id: mini
+      name: Mini Outpost
+      short: Mini
+      berth: mini.dock
+      hull: outpost
+      names: [mini]
+    - id: wheelie
+      name: Wheelie Station
+      berth: wheelie.rim-12
+      hull: wheel
+  speed: 10

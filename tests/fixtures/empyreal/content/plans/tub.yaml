@@ -1,0 +1,10 @@
+plan:
+  id: tub
+  layout: { kind: decks }
+
+rooms:
+  - id: tub.cockpit
+    name: Cockpit of the {name}
+    address: Deck 1, frame 1
+    canopy: true
+    exits: {}

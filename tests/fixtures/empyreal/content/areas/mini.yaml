@@ -1,0 +1,36 @@
+# A small decks area.
+area:
+  id: mini
+  name: Mini Outpost
+  gravity: 0
+  layout: { kind: decks }
+
+rooms:
+  - id: mini.dock
+    name: Dock
+    address: Deck 1, frame 1
+    flags: [berth, airlock]
+    desc: >
+      A dock.
+    exits:
+      north: mini.hall
+  - id: mini.hall
+    name: Hall
+    address: Deck 1, frame 2
+    exits:
+      south: mini.dock
+      east: mini.store
+      up: mini.bridge
+  - id: mini.store
+    name: Store
+    address: Deck 1, frame 3
+    flags: [listed, shop]
+    closed: Shuttered.
+    exits:
+      west: mini.hall
+  - id: mini.bridge
+    name: Bridge
+    address: Deck 2, frame 2
+    canopy: true
+    exits:
+      down: { to: mini.hall, via: hatch, seconds: 4 }

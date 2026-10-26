@@ -1,0 +1,10 @@
+hulls:
+  - id: skiff
+    name: prospecting skiff
+    price: 15000
+    slots: 2
+  - id: tub
+    name: tub
+    class: medium
+    plan: tub
+    price: 1

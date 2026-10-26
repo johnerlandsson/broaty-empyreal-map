@@ -1,0 +1,66 @@
+# A small wheel area.
+area:
+  id: wheelie
+  name: Wheelie Station
+  gravity: 0.9
+  layout:
+    kind: wheel
+    rings:
+      rim: { every: 1, gravity: 0.9 }
+    spokes: [12, 6]
+    hub: { gravity: 0 }
+  districts:
+    - { id: concourse, name: the Concourse, entrance: wheelie.rim-12 }
+
+rooms:
+  - id: wheelie.rim-12
+    name: Rim, 12 o'clock
+    address: Rim 12:00
+    district: concourse
+    flags: [outdoors, charger]
+    exits:
+      east: wheelie.rim-6
+      in: wheelie.lift-12
+  - id: wheelie.rim-6
+    name: Rim, 6 o'clock
+    address: Rim 6:00
+    exits:
+      west: wheelie.rim-12
+  - id: wheelie.lift-12
+    name: Lift, 12
+    address: Spoke 12:00
+    car: true
+    exits:
+      out: wheelie.rim-12
+      up: { to: wheelie.hub, seconds: 20 }
+  - id: wheelie.ladderway-12
+    name: Ladderway, 12
+    address: Spoke 12:00
+    exits:
+      up: wheelie.hub
+  - id: wheelie.hub
+    name: Hub
+    address: Hub
+    gravity: 0
+    exits:
+      down: wheelie.lift-12
+  - id: wheelie.hub-freight
+    name: Hub, freight
+    address: Hub
+    gravity: 0
+    exits:
+      west: wheelie.hub
+  - id: wheelie.shop
+    name: Shop
+    address: Rim 12:00 fore
+    off: wheelie.rim-12
+    flags: [listed]
+    district: concourse
+    exits:
+      south: wheelie.rim-12
+  - id: wheelie.back
+    name: Back Room
+    address: Rim 12:00 fore
+    off: wheelie.shop
+    exits:
+      south: wheelie.shop
