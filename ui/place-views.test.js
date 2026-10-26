@@ -10,7 +10,8 @@ import orrin from "../tests/fixtures/generated/orrin.js";
 import wenna from "../tests/fixtures/generated/wenna.js";
 import zennor from "../tests/fixtures/generated/zennor.js";
 import tiss from "./data/tiss.js";
-import { buildPlace } from "./place-views.js";
+import { plans } from "./data/ships.js";
+import { buildPlace, buildShip } from "./place-views.js";
 
 const CASES = [
   ["decks", orrin],
@@ -49,4 +50,20 @@ describe("buildPlace", () => {
   it("throws on an unknown builder", () => {
     expect(() => buildPlace(orrin, "nope", document.createElement("div"), document.createElement("div"))).toThrow();
   });
+});
+
+describe("buildShip", () => {
+  for (const plan of Object.values(plans)) {
+    it(`builds ${plan.id}'s plan and finds her rooms by their runtime ids`, () => {
+      const deckEl = document.createElement("div");
+      const ship = buildShip(plan, document.createElement("div"), deckEl, { name: "Mallard" });
+      expect(ship.deck).toBeTruthy();
+      expect(deckEl.querySelector("svg")).toBeTruthy();
+      for (const id of ship.index.byId.keys()) {
+        const key = id.slice(plan.id.length + 1);
+        expect(ship.locate(ship.index, { roomId: `ship.7.${key}` })).toMatchObject({ kind: "room", id });
+      }
+      expect(ship.locate(ship.index, { roomId: `${plan.id}.cockpit` }).kind).toBe("off");
+    });
+  }
 });

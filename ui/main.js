@@ -2,7 +2,8 @@
 // replace it while you're out in your ship, and the deck plan (bottom). Each station has its own
 // model and plan (a town on the ground has a skyline for its model); only the one you're on (or
 // docked or landed at) shows. Aboard a ship (any "ship." room) the bottom band shows that ship's
-// plan instead, one view per hull drawing, built on first use; riding a car (a lift or the tram),
+// generated plan instead (data/ships.js), one view per plan, built on first use and again for a
+// ship of another name; riding a car (a lift or the tram),
 // the car and its line of stops, one view per kind.
 // The Lua side holds all state and replays it when we post "ready", so this file keeps only the
 // last location, the docked station, and the level each plan last showed (a lift between floors
@@ -23,13 +24,12 @@ import places, { data } from "./data/places.js";
 import { DeckView } from "./deck-view.js";
 import { LanesView } from "./lanes-view.js";
 import { carInfo, carKind, carName, stopNames } from "./lib/cars.js";
-import { hullOf, isShipRoom, shipInfo } from "./lib/hulls.js";
+import { isShipRoom, planFor, shipInfo } from "./lib/ships.js";
 import { infoLine, locate } from "./lib/locate.js";
 import { moveCard } from "./lib/space.js";
 import { noPlanLine, pickStation, stationOfDock } from "./lib/stations.js";
 import { SpaceView } from "./space-view.js";
-import { buildPlace } from "./place-views.js";
-import { shipPlans, updateShip } from "./ship-deck.js";
+import { buildPlace, buildShip } from "./place-views.js";
 import { StationClock } from "./station-clock.js";
 import { UnknownView } from "./unknown-view.js";
 
@@ -56,7 +56,8 @@ function built(key) {
   }
   return stations[key];
 }
-const ships = {}; // hull id -> the DeckView drawing that hull, built on first use
+const ships = {}; // plan id -> that plan's views (buildShip), for the ship of its `name`, built on first use
+const shipModels = document.createElement("div"); // a ship's model isn't shown yet: built off the page
 const cars = {}; // car kind (lift, tram) -> the DeckView drawing it, built on first use
 const space = new SpaceView(modelEl);
 space.onAway = (away) => stations[current]?.model.setAway?.(away);
@@ -165,7 +166,7 @@ function show(key) {
 
 /** Show only this deck in the bottom band (a station's or a ship's), or none; true if it was hidden. */
 function showDeck(view) {
-  for (const d of [...Object.values(stations).map((s) => s.deck), ...Object.values(ships), ...Object.values(cars)]) {
+  for (const d of [...Object.values(stations).map((s) => s.deck), ...Object.values(ships).map((v) => v.deck), ...Object.values(cars)]) {
     if (d !== view) d.div.style.display = "none";
   }
   if (!view) return false;
@@ -174,12 +175,18 @@ function showDeck(view) {
   return hidden;
 }
 
-function shipView(id) {
-  if (!ships[id]) {
-    ships[id] = new DeckView(deckEl, null, shipPlans(hullOf(id)));
-    ships[id].div.style.display = "none"; // so showDeck() frames it once it's the only deck
+/** The views of the plan the location message's hull has (an unknown hull's: the generic one),
+ *  with her name in its rooms: built again, in place of the last, for a ship of another name. */
+function shipView(msg) {
+  const plan = planFor(msg?.hull);
+  const name = typeof msg?.areaName === "string" && msg.areaName !== "" ? msg.areaName : "ship";
+  if (ships[plan.id]?.name !== name) {
+    ships[plan.id]?.deck.div.remove();
+    ships[plan.id]?.model.div.remove();
+    ships[plan.id] = buildShip(plan, shipModels, deckEl, { name });
+    ships[plan.id].deck.div.style.display = "none"; // so showDeck() frames it once it's the only deck
   }
-  return ships[id];
+  return ships[plan.id];
 }
 
 function carView(kind) {
@@ -221,10 +228,9 @@ function render() {
     return;
   }
   if (isShipRoom(last?.roomId)) {
-    const view = shipView(hullOf(last.hull).id);
-    if (showDeck(view)) view.home();
-    updateShip(view, last);
-    view.set({ kind: "room", id: last.roomId, level: 0, room: last.shipRoom ?? null });
+    const ship = shipView(last);
+    if (showDeck(ship.deck)) ship.deck.home();
+    ship.update(last);
     info.textContent = shipInfo(last);
     return;
   }

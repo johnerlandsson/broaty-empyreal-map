@@ -14,7 +14,8 @@
 //             Zennor, which also emits charts placing it so, or orbit-day / orbit-night / orbit-unknown in high
 //             orbit over Tamsin, which also emits charts and chart-ship putting her on that side, or on no
 //             side known); the bar's menu switches it
-//   ?hull=H   aboard a ship, send hull H (skiff, courier or freighter) as the server will; the bar's menu switches it
+//   ?hull=H   aboard a ship, send hull H (skiff, courier, freighter or tug: ui/data/ships.js) as the server will;
+//             the bar's menu switches it
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
 //             docked-tiss, landed-zennor, none, maelor, maelor-lanes, edge, to-mouth, adrift, from-stop, to-tamsin,
 //             high-orbit or high-orbit-unknown; sweep: Space.Contacts at Gannet Belt, chase: after contact-1 from it),
@@ -51,6 +52,7 @@
 //             as before the game's first, so the tab stays hidden
 
 import { data } from "../ui/data/places.js";
+import ships from "../ui/data/ships.js";
 import { TRAM, ZENNOR_WALK } from "./zennor-walk.js";
 import skyCases from "./sky-cases.json" with { type: "json" };
 import { DeckView } from "../ui/deck-view.js";
@@ -314,7 +316,7 @@ const status = document.getElementById("status");
 const fp = window.fakePanel;
 
 const hullMenu = document.getElementById("hull");
-const HULL_NAMES = { skiff: "prospecting skiff", courier: "courier", freighter: "medium freighter" };
+const HULL_NAMES = Object.fromEntries(Object.values(ships.hulls).map((h) => [h.id, h.name])); // as the server names them
 let lastMsg = null;
 
 /** A ship room's message with the hull menu's choice on it ("(none)" leaves the step's own hull). */

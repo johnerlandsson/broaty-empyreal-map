@@ -1,6 +1,7 @@
 // A place's views, built the one way for the panel (main.js) and the tweak editor: its 3D overview
 // (a ModelView, or a SkyView for a town) in one element and its plan (a DeckView) in another.
-// buildPlace picks the builder by name, as the generated index (data/places.js) gives it.
+// buildPlace picks the builder by name, as the generated index (data/places.js) gives it. A ship's
+// plan (data/ships.js) is built the decks way by buildShip, with her name and the lines under her.
 
 import { DeckView } from "./deck-view.js";
 import { decksPlans } from "./decks-deck.js";
@@ -9,8 +10,10 @@ import { buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "./
 import { buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
 import { indexStation, locate } from "./lib/locate.js";
 import { drumRooms, drumSpec, tissRooms, townData, townSpec } from "./lib/look.js";
+import { shipKey } from "./lib/ships.js";
 import { indexTown, locateTown, townInfo } from "./lib/town.js";
 import { ModelView } from "./model-view.js";
+import { captionShip, updateShip } from "./ship-deck.js";
 import { townPlans } from "./town-deck.js";
 import { SkyView } from "./town-view.js";
 
@@ -64,4 +67,41 @@ const BUILDERS = { decks, drum, town, wheel };
 export function buildPlace(data, builder, modelEl, deckEl, opts = {}) {
   if (!BUILDERS[builder]) throw new Error(`no such place builder: ${builder}`);
   return BUILDERS[builder](data, modelEl, deckEl, opts);
+}
+
+/** A plan's room names with "{name}" filled with the ship's: "Cockpit of the {name}". */
+function named(plan, name) {
+  return { ...plan, rooms: (plan?.rooms ?? []).map((r) => (typeof r.name === "string" ? { ...r, name: r.name.replaceAll("{name}", name) } : r)) };
+}
+
+/**
+ * A ship's views from her generated plan: buildPlace's decks views, her rooms' "{name}" filled
+ * with `opts.name` (the ship's name; "ship" if none), and her caption and note under the hull.
+ * `locate(index, msg)` takes the game's room id aboard, "ship.<n>.<key>", to the plan's
+ * "<plan>.<key>"; a key the plan hasn't, or none, is "off": the plan drawn with nothing lit.
+ * `update(msg)` lights the room the location message puts you in, sets the lines under the hull,
+ * and returns where it put you. Never throws on a message.
+ * @param {object} plan a generated plan (data/plans), as lib/ships.js planFor gives it
+ */
+export function buildShip(plan, modelEl, deckEl, opts = {}) {
+  const { name, ...rest } = opts;
+  const shipName = typeof name === "string" && name !== "" ? name : "ship";
+  const place = buildPlace(named(plan, shipName), "decks", modelEl, deckEl, rest);
+  captionShip(place.deck);
+  place.deck.setView(place.deck.homeView());
+  const locate = (index, msg) => {
+    const key = shipKey(msg?.roomId);
+    return locateDecks(index, { ...msg, roomId: key ? `${plan.id}.${key}` : undefined });
+  };
+  return {
+    ...place,
+    name: shipName,
+    locate,
+    update(msg) {
+      const where = locate(place.index, msg);
+      place.deck.set(where);
+      updateShip(place.deck, msg);
+      return where;
+    },
+  };
 }

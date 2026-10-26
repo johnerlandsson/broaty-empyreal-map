@@ -95,7 +95,10 @@ function buildDeckPlan(svg, index, deck, level, pick, ship) {
   const hl = el("g", { "pointer-events": "none" }, g);
   const extent = fp ? { w: fp.w + 2 * 70, h: fp.h + 2 * 44 } : { w: 400, h: 300 };
   const home = fp ? [fp.x + fp.w / 2, fp.y + fp.h / 2] : [0, 0];
-  return { z: level, g, hl, layout, ring: false, length: 0, home, extent, offsets: [0], margin: 0.42, shape: (where) => decksShape(layout, where) };
+  const plan = { z: level, g, hl, layout, ring: false, length: 0, home, extent, offsets: [0], margin: 0.42, shape: (where) => decksShape(layout, where) };
+  // a ship plan's aft-most drawn point, hull or bell, for what goes under her (ship-deck.js)
+  if (ship.plan && fp) plan.aft = Math.max(fp.y + fp.h, fixtures.aft);
+  return plan;
 }
 
 /** Airlock hatches on every wall of the berth that no exit goes through, each with a status light. */
@@ -146,11 +149,13 @@ function shipFixtures(index, layout, { id, fixtures }) {
   const roomOf = (f) => index.byId.get(`${id}.${f.room}`);
   const group = (g, i) => el("g", { "data-fixture": i, ...none }, g);
   return {
+    aft: -Infinity, // the plan y of the aft-most bell mouth outside() drew, if any
     outside(g) {
       fixtures.forEach((f, i) => {
         if ((f.type === "bell" || f.type === "boom") && f.deck === deck) {
           const end = f.type === "bell" ? tailAt(path, f.side) : noseAt(path, f.side);
           if (end !== null) (f.type === "bell" ? planBell : planBoom)(group(g, i), P, f, end);
+          if (end !== null && f.type === "bell") this.aft = Math.max(this.aft, P([f.side, end - f.len])[1]);
         } else if (f.type === "chevrons") {
           const room = roomOf(f);
           const cell = room && room.cell.z === deck ? layout.cells.find((c) => c.room === room) : null;
