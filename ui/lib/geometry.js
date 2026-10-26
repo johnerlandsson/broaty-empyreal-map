@@ -33,18 +33,6 @@ export const BLZ = SPZ(4) + 40;
 export const SLICE = [-1, -0.6, -0.2, 0.2, 0.6, 1];
 export const CAM = { yaw: 16, pitch: 38 };
 
-/** Same rule as the build script's region inference (scripts/station-data.mjs). */
-export function districtOf(z, x) {
-  if (z === 3) return "docks";
-  if (z === 2) return "industrial";
-  if (z === 1) return x >= 21 || x <= 3 ? "offices" : "midring";
-  const hour = Math.floor(x / 2) % 12;
-  if (hour === 11 || hour === 0 || hour === 1) return "concourse";
-  if (hour >= 2 && hour <= 4) return "residential";
-  if (hour >= 5 && hour <= 7) return "hydroponics";
-  return "commons";
-}
-
 /** Hours (0-12 around the clock face) to radians. */
 export const ang = (h) => (h / 12) * 2 * Math.PI;
 

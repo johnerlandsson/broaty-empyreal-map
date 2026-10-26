@@ -3,7 +3,7 @@
 // toggles visibility, moves the highlight and adjusts the viewBox. Layout maths lives in
 // lib/deck-layout.js; the room boxes and labels here are shared with drum-deck.js.
 
-import { DISTRICT_COLOURS as DC, SPOKE_HOURS, ang, districtOf } from "./lib/geometry.js";
+import { SPOKE_HOURS, ang } from "./lib/geometry.js";
 import {
   BEARING,
   CH,
@@ -133,12 +133,12 @@ function buildRingPlan(svg, index, z) {
     // corridor band with a district-colour underline
     el("rect", { x: -NODE / 2, y: -CH, width: L, height: 2 * CH, fill: CORR }, s);
     for (const st of stops) {
-      el("rect", { x: st.cx - NODE / 2 + 2, y: CH - 3, width: NODE - 4, height: 3, fill: DC[districtOf(z, st.x)], opacity: 0.8 }, s);
+      el("rect", { x: st.cx - NODE / 2 + 2, y: CH - 3, width: NODE - 4, height: 3, fill: index.byId.get(st.id)?.paint, opacity: 0.8 }, s);
     }
     // rooms and the passages that join them to the corridor
     for (const b of layout.rooms) {
       el("rect", { x: b.door.x, y: b.door.y, width: b.door.w, height: b.door.h, fill: PASSAGE }, s);
-      roomBox(s, b.room, b.cx, b.cy, DC[districtOf(z, b.room.x)], b.w, b.h);
+      roomBox(s, b.room, b.cx, b.cy, b.room.paint, b.w, b.h);
     }
     // stops: plain nodes, or a lift lobby with a ladder hatch beside it
     for (const st of stops) {
@@ -150,7 +150,7 @@ function buildRingPlan(svg, index, z) {
         el("rect", { x: st.cx + 20, y: -7, width: 14, height: 14, rx: 2, fill: "none", stroke: LADDER, "stroke-width": 1.4, "pointer-events": "none" }, s);
         el("path", { d: `M${st.cx + 23},-3h8M${st.cx + 23},0h8M${st.cx + 23},3h8`, stroke: LADDER, "stroke-width": 1, "pointer-events": "none" }, s);
       } else {
-        el("circle", { cx: st.cx, cy: 0, r: 4, fill: room?.walked ? "#aab8c8" : "none", stroke: "#aab8c8", "stroke-width": 1.5, "pointer-events": "none" }, s);
+        el("circle", { cx: st.cx, cy: 0, r: 4, fill: "#aab8c8", stroke: "#aab8c8", "stroke-width": 1.5, "pointer-events": "none" }, s);
       }
       label(s, st.cx - 44, 1, hourLabel(st.hour), 10, { fill: DIM });
     }
@@ -194,14 +194,14 @@ function buildDocksPlan(svg, index) {
   hover(el("rect", { x: -BEARING.w / 2, y: bearing.cy - BEARING.h / 2, width: BEARING.w, height: BEARING.h, fill: "transparent" }, g), bearing.room);
 
   // Freight Transfer below the Hub
-  if (transfer.room) roomBox(g, transfer.room, transfer.cx, transfer.cy, DC.docks, transfer.w, transfer.h);
+  if (transfer.room) roomBox(g, transfer.room, transfer.cx, transfer.cy, transfer.room.paint, transfer.w, transfer.h);
 
   // side rooms, port left and starboard right
   for (const b of layout.rooms) {
     const sg = Math.sign(b.cx);
     const inner = b.cx - sg * (b.w / 2);
     el("rect", { x: Math.min(b.from, inner), y: b.cy - 8, width: Math.abs(inner - b.from), height: 16, fill: PASSAGE }, g);
-    roomBox(g, b.room, b.cx, b.cy, DC.docks, b.w, b.h);
+    roomBox(g, b.room, b.cx, b.cy, b.room.paint, b.w, b.h);
   }
   // spine stops
   for (const s of layout.spine) {

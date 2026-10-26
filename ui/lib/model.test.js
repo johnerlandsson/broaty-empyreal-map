@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import station from "../data/station.js";
+import tiss from "../data/tiss.js";
+import { tissRooms } from "./look.js";
 import { indexStation, keyOf, locate } from "./locate.js";
 import { buildModel } from "./model.js";
 
+const station = tissRooms(tiss);
 const index = indexStation(station);
 const faces = buildModel(index);
 

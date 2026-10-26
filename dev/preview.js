@@ -61,7 +61,7 @@ import morvah from "../ui/data/morvah.js";
 import orrin from "../ui/data/orrin.js";
 import penwith from "../ui/data/penwith.js";
 import polperro from "../ui/data/polperro.js";
-import station from "../ui/data/station.js";
+import tissData from "../ui/data/tiss.js";
 import wenna from "../ui/data/wenna.js";
 import zennorFile from "../ui/data/zennor.js";
 import { TRAM, ZENNOR_WALK } from "./zennor-walk.js";
@@ -71,13 +71,14 @@ import { BeltView } from "../ui/belt-view.js";
 import { LanesView } from "../ui/lanes-view.js";
 import { ModelView } from "../ui/model-view.js";
 import { lanesOf } from "../ui/lib/lanes.js";
-import { townData } from "../ui/lib/look.js";
+import { tissRooms, townData } from "../ui/lib/look.js";
 import { ChartView } from "../ui/chart-view.js";
 import { indexCharts, positionOf } from "../ui/lib/orbits.js";
 import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts, senaraContacts } from "./charts-fixture.js";
 
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
+const station = tissRooms(tissData); // the wheel's rooms, placed
 const zennor = townData(zennorFile); // its rooms on foot, and the tram as a car
 // the area's gravity and name, as the game sends them
 const town = zennor.rooms.map((r) => ({ ...r, gravity: zennor.area.gravity, areaName: zennor.area.name }));

@@ -1,10 +1,12 @@
+import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import lamorna from "../data/lamorna.js";
 import orrin from "../data/orrin.js";
+import tiss from "../data/tiss.js";
 import wenna from "../data/wenna.js";
 import zennor from "../data/zennor.js";
 import { DISTRICT_COLOURS } from "./geometry.js";
-import { decksSpec, drumRooms, drumSpec, townData, townSpec } from "./look.js";
+import { decksSpec, drumRooms, drumSpec, tissRooms, townData, townSpec } from "./look.js";
 
 // Today's specs, as decks.js, drum.js and town.js held them before the look moved to tweak files:
 // the generated files must give them back exactly.
@@ -121,5 +123,73 @@ describe("townSpec and townData", () => {
     ]);
     expect(data.area).toMatchObject({ id: "zennor", name: "Zennor", gravity: 1 });
     expect(data.area.districts.map((d) => d.id)).toEqual(["downs", "old-town", "market-quarter", "courts", "rows", "riverside", "terraces"]);
+  });
+});
+
+// The last commit with the log-built ui/data/station.js (built from session logs plus
+// data/overrides.json, both retired since): the generated tiss must give back every room of it.
+const LOG_BUILT = "38c2616";
+function logBuilt() {
+  try {
+    const text = execFileSync("git", ["show", `${LOG_BUILT}:ui/data/station.js`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    return JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  } catch {
+    return null;
+  }
+}
+const old = logBuilt();
+
+describe("tissRooms", () => {
+  const mini = {
+    id: "w",
+    rooms: [
+      { id: "w.rim-1200", name: "Rim 12:00", address: "Rim 12:00", at: { x: 0, y: 0, z: 0 }, terrain: "lobby", gravity: 0.9, district: "plaza",
+        exits: { north: "w.shop", east: "w.rim-0100", in: { to: "w.ladder", via: "hatch" } } },
+      { id: "w.shop", name: "Shop", address: "Rim 12:00 fore", at: { x: 0, y: 1, z: 0 }, terrain: "room", gravity: 0.9, district: "plaza",
+        exits: { south: "w.rim-1200" }, closed: "Shut for stocktaking." },
+      { id: "w.bearing", name: "The Bearing", address: "Hub bearing", at: { x: 0, y: 1, z: 3 }, terrain: "room", gravity: 0, district: "hub",
+        exits: { out: "w.hub", up: "w.a", down: "w.b", west: "w.c" } },
+      { id: "w.lift-12", name: "Lift 12", address: "Lift 12", terrain: "corridor", gravity: 0.9 },
+    ],
+    look: { paint: { "rim-1200": "plaza", shop: "plaza", bearing: "hub", "lift-12": "plaza" }, palette: { plaza: "#d9a441", hub: "#cfe3ff" } },
+  };
+
+  it("gives today's station shape: place, region, exits as N S E W U D IN OUT, closed, paint", () => {
+    const { wrap, rooms } = tissRooms(mini);
+    expect(wrap).toBe(24);
+    const byId = Object.fromEntries(rooms.map((r) => [r.id, r]));
+    expect(byId["w.rim-1200"]).toStrictEqual({
+      id: "w.rim-1200", name: "Rim 12:00", x: 0, y: 0, z: 0, region: "plaza", terrain: "lobby", address: "Rim 12:00", gravity: 0.9,
+      exits: { N: "w.shop", E: "w.rim-0100", IN: "w.ladder" }, closed: false, closedReason: null, walked: true, paint: "#d9a441",
+    });
+    expect(byId["w.shop"]).toMatchObject({ address: "Rim 12:00, fore", closed: true, closedReason: "Shut for stocktaking." });
+    expect(byId["w.bearing"]).toMatchObject({ address: "Hub, bearing", exits: { OUT: "w.hub", U: "w.a", D: "w.b", W: "w.c" }, paint: "#cfe3ff" });
+  });
+
+  it("leaves out the rooms with no place (the lift cars)", () => {
+    expect(tissRooms(mini).rooms.map((r) => r.id).sort()).toEqual(["w.bearing", "w.rim-1200", "w.shop"]);
+  });
+
+  it("sorts the rooms by id, as the plans and model drew them", () => {
+    expect(tissRooms(mini).rooms.map((r) => r.id)).toEqual(["w.bearing", "w.rim-1200", "w.shop"]);
+  });
+
+  it("has T.I.S.S.'s 98 rooms, no lift car among them", () => {
+    const rooms = tissRooms(tiss).rooms;
+    expect(rooms).toHaveLength(98);
+    expect(rooms.some((r) => r.id.startsWith("tiss.lift-"))).toBe(false);
+  });
+
+  it.skipIf(!old)("has every room of the log-built station.js, placed and closed the same, its exits kept", () => {
+    const byId = new Map(tissRooms(tiss).rooms.map((r) => [r.id, r]));
+    const pick = (r) => ({ x: r.x, y: r.y, z: r.z, terrain: r.terrain, region: r.region, name: r.name, address: r.address, gravity: r.gravity, closedReason: r.closedReason });
+    for (const was of old.rooms) {
+      const now = byId.get(was.id);
+      expect(now, was.id).toBeDefined();
+      expect(pick(now), was.id).toStrictEqual(pick(was));
+      // the logs had only the exits walked; every one of them is still there
+      for (const [dir, to] of Object.entries(was.exits)) expect(now.exits[dir], `${was.id} ${dir}`).toBe(to);
+    }
+    expect([...byId.keys()]).toEqual(old.rooms.map((r) => r.id));
   });
 });

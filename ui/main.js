@@ -32,7 +32,7 @@ import orrin from "./data/orrin.js";
 import penwith from "./data/penwith.js";
 import places from "./data/places.js";
 import polperro from "./data/polperro.js";
-import station from "./data/station.js";
+import tissData from "./data/tiss.js";
 import wenna from "./data/wenna.js";
 import zennor from "./data/zennor.js";
 import { DeckView } from "./deck-view.js";
@@ -44,7 +44,7 @@ import { buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
 import { carInfo, carKind, carName, stopNames } from "./lib/cars.js";
 import { hullOf, isShipRoom, shipInfo } from "./lib/hulls.js";
 import { indexStation, infoLine, locate } from "./lib/locate.js";
-import { decksSpec, drumRooms, drumSpec, townData, townSpec } from "./lib/look.js";
+import { decksSpec, drumRooms, drumSpec, tissRooms, townData, townSpec } from "./lib/look.js";
 import { moveCard } from "./lib/space.js";
 import { noPlanLine, pickStation, stationOfDock } from "./lib/stations.js";
 import { indexTown, locateTown, townInfo } from "./lib/town.js";
@@ -58,8 +58,9 @@ import { UnknownView } from "./unknown-view.js";
 const modelEl = document.getElementById("model");
 const deckEl = document.getElementById("deck");
 
+/** T.I.S.S.: a wheel, its rings, hub and spine. */
 function tiss() {
-  const index = indexStation(station);
+  const index = indexStation(tissRooms(tissData));
   return { index, model: new ModelView(modelEl, index), deck: new DeckView(deckEl, index), lastLevel: null };
 }
 
@@ -99,7 +100,7 @@ function town(data) {
 
 // Each station is built the first time it shows: a model and a plan apiece, each over its own
 // starfield, cost tens of milliseconds and thousands of nodes, and most never show in a session.
-// Every place in the generated index (data/places.js) by its builder; T.I.S.S. still from station.js.
+// Every place in the generated index (data/places.js) by its builder; T.I.S.S. by its own.
 const DATA = { botallack, caradon, carrow, garrow, gwithian, kilmar, kynance, lamorna, lanyon, marazion, morvah, orrin, penwith, polperro, wenna, zennor };
 const BUILDERS = { decks, drum, town };
 const BUILD = {

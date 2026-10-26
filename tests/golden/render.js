@@ -16,7 +16,7 @@ import morvah from "../../ui/data/morvah.js";
 import orrin from "../../ui/data/orrin.js";
 import penwith from "../../ui/data/penwith.js";
 import polperro from "../../ui/data/polperro.js";
-import station from "../../ui/data/station.js";
+import tissData from "../../ui/data/tiss.js";
 import wenna from "../../ui/data/wenna.js";
 import zennor from "../../ui/data/zennor.js";
 import { DeckView } from "../../ui/deck-view.js";
@@ -26,7 +26,7 @@ import places from "../../ui/data/places.js";
 import { buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "../../ui/lib/decks.js";
 import { buildDrumModel, drumHour, drumKey } from "../../ui/lib/drum.js";
 import { indexStation, locate } from "../../ui/lib/locate.js";
-import { decksSpec, drumRooms, drumSpec, townData, townSpec } from "../../ui/lib/look.js";
+import { decksSpec, drumRooms, drumSpec, tissRooms, townData, townSpec } from "../../ui/lib/look.js";
 import { indexTown, locateTown } from "../../ui/lib/town.js";
 import { ModelView } from "../../ui/model-view.js";
 import { townPlans } from "../../ui/town-deck.js";
@@ -42,7 +42,7 @@ function box() {
 
 // the builders of ui/main.js, each into its own pair of containers
 function tiss(modelEl, deckEl) {
-  const index = indexStation(station);
+  const index = indexStation(tissRooms(tissData));
   return { index, model: new ModelView(modelEl, index), deck: new DeckView(deckEl, index), locate };
 }
 
@@ -79,7 +79,7 @@ function town(modelEl, deckEl, data) {
   return { index, model, deck: new DeckView(deckEl, index, townPlans(spec)), locate: locateTown };
 }
 
-// T.I.S.S. is still drawn from station.js (Task 8 moves it); every other place from its generated file
+// every place from its generated file, T.I.S.S. by its own builder
 const DATA = { botallack, caradon, carrow, garrow, gwithian, kilmar, kynance, lamorna, lanyon, marazion, morvah, orrin, penwith, polperro, wenna, zennor };
 const BUILDERS = { drum, decks, town };
 const BUILD = {

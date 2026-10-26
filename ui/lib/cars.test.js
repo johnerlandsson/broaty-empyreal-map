@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import station from "../data/station.js";
+import tissData from "../data/tiss.js";
 import generated from "../data/zennor.js";
 import { CARS, carDoing, carInfo, carKind, carName, stopLine, stopNames } from "./cars.js";
 import { indexStation } from "./locate.js";
-import { townData, townSpec } from "./look.js";
+import { tissRooms, townData, townSpec } from "./look.js";
 import { indexTown } from "./town.js";
 
-const tiss = indexStation(station);
+const tiss = indexStation(tissRooms(tissData));
 const zennor = townData(generated);
 const city = indexTown(zennor, townSpec(generated));
 const tram = (lift) => ({ gravity: 1, lift: { id: "zennor.tram", kind: "tram", floors: zennor.cars[0].stops.map((id) => ({ id })), ...lift } });

@@ -107,3 +107,40 @@ export function townData(data) {
     cars: data.rooms.filter((r) => r.car).map((r) => ({ id: r.id, name: r.name, kind: r.car.kind, stops: r.car.stops.map((s) => s.room) })),
   };
 }
+
+/** The source's exit words as the station's rooms have them. */
+const WAY = { north: "N", south: "S", east: "E", west: "W", up: "U", down: "D", in: "IN", out: "OUT" };
+
+/** A wheel address as the game shows it, its side set off by a comma (layout.ts addressShown):
+ *  "Rim 12:00 fore" -> "Rim 12:00, fore", "Hub bearing" -> "Hub, bearing". */
+const shown = (address) => (typeof address === "string" ? address.replace(/^((?:rim|mid|inner) \d{1,2}:\d{2}|spine \d+|hub) ([a-z]+)$/i, "$1, $2") : address);
+
+/**
+ * T.I.S.S. as indexStation takes it: each room placed on the wheel (x in half hours, wrapping at
+ * 24; y fore or aft; z the level), its district as `region`, its exits by N S E W U D IN OUT (the
+ * way through dropped), whether it's closed and why, and `paint`, its colour. A room with no place
+ * (a lift car) isn't drawn on the wheel and is left out. Sorted by id, as the log-built station.js
+ * was: the plans and model draw in the rooms' order, and painter's ties fall by it.
+ * @returns {{wrap: number, rooms: object[]}}
+ */
+export function tissRooms(data) {
+  const paint = tints(data);
+  const rooms = data.rooms.filter((r) => r.at).map((r) => ({
+    id: r.id,
+    name: r.name,
+    x: r.at.x,
+    y: r.at.y,
+    z: r.at.z,
+    region: r.district,
+    terrain: r.terrain,
+    address: shown(r.address),
+    gravity: r.gravity,
+    exits: Object.fromEntries(Object.entries(r.exits ?? {}).map(([way, to]) => [WAY[way] ?? way, typeof to === "string" ? to : to.to])),
+    closed: !!r.closed,
+    closedReason: r.closed ?? null,
+    walked: true,
+    paint: paint[r.id] ?? null,
+  }));
+  rooms.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return { wrap: 24, rooms };
+}

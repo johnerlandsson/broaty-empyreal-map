@@ -5,7 +5,43 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const isObj = (v) => v !== null && typeof v === "object";
 const str = (v) => (typeof v === "string" && v !== "" ? v : null);
 
-/** @returns {{byId: Map<string, object>, corridors: {0: object[], 1: object[], 2: object[]}}} */
+// A hub or spine address, as written ("Spine 4 fore", "Hub bearing") or as shown ("Hub, bearing").
+const HUB = /^hub(?:,? ([a-z]+))?$/i;
+const SPINE = /^spine (\d+)(?:,? ([a-z]+))?$/i;
+
+/**
+ * The rooms a wheel's hub and spine are drawn round, found by address: the hub (`Hub`), the
+ * bearing (`Hub, bearing`), Freight Transfer (`Hub, freight`), the blister (`fore` off the top
+ * spine) and the spine's corridors, `Spine 1` outward. Null (or none) where the station has none.
+ * @returns {{hub: string|null, bearing: string|null, transfer: string|null, blister: string|null, spine: string[]}}
+ */
+function rolesOf(rooms) {
+  const roles = { hub: null, bearing: null, transfer: null, blister: null, spine: [] };
+  const spine = [];
+  const fore = new Map(); // spine number -> the room fore of it
+  for (const room of rooms) {
+    const address = typeof room.address === "string" ? room.address.trim() : "";
+    const hub = HUB.exec(address);
+    if (hub) {
+      const side = hub[1]?.toLowerCase();
+      if (!side) roles.hub = room.id;
+      else if (side === "bearing") roles.bearing = room.id;
+      else if (side === "freight") roles.transfer = room.id;
+      continue;
+    }
+    const sp = SPINE.exec(address);
+    if (!sp) continue;
+    const n = Number(sp[1]);
+    if (!sp[2]) spine.push([n, room.id]);
+    else if (sp[2].toLowerCase() === "fore") fore.set(n, room.id);
+  }
+  spine.sort((a, b) => a[0] - b[0]);
+  roles.spine = spine.map(([, id]) => id);
+  if (spine.length) roles.blister = fore.get(spine[spine.length - 1][0]) ?? null;
+  return roles;
+}
+
+/** @returns {{byId: Map<string, object>, corridors: {0: object[], 1: object[], 2: object[]}, roles: ReturnType<typeof rolesOf>}} */
 export function indexStation(station) {
   const byId = new Map();
   const corridors = { 0: [], 1: [], 2: [] };
@@ -16,7 +52,7 @@ export function indexStation(station) {
     }
   }
   for (const z of [0, 1, 2]) corridors[z].sort((a, b) => a.x - b.x);
-  return { byId, corridors };
+  return { byId, corridors, roles: rolesOf(byId.values()) };
 }
 
 function levelOf(index, id) {

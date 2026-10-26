@@ -5,8 +5,6 @@
 import {
   ang,
   BLZ,
-  DISTRICT_COLOURS,
-  districtOf,
   HUBR,
   HUBZ,
   P3,
@@ -41,7 +39,7 @@ export function buildModel(index) {
       const h = c.x / 2;
       const h0 = h - span / 2;
       const h1 = h + span / 2;
-      const tint = DISTRICT_COLOURS[districtOf(z, c.x)];
+      const tint = c.paint;
       for (let s = 0; s < 5; s++) {
         const z0 = SLICE[s] * w;
         const z1 = SLICE[s + 1] * w;
@@ -96,14 +94,15 @@ export function buildModel(index) {
     add(Array.from({ length: n }, (_, i) => P3(r, a(n - i), z0)), `${kind}-cap`, key, null, null, turns);
   };
 
-  prism(HUBR, -HUBZ, HUBZ, 8, "hub", "tiss.hub", true);
-  prism(23, HUBZ, HUBZ + 16, 8, "bearing", "tiss.bearing", false);
-  for (const n of [1, 2, 3, 4]) prism(SPR, SPZ(n) - 36, SPZ(n) + 36, 4, "spine", `tiss.spine-${n}`, false);
+  const { roles } = index;
+  prism(HUBR, -HUBZ, HUBZ, 8, "hub", roles.hub, true);
+  prism(23, HUBZ, HUBZ + 16, 8, "bearing", roles.bearing, false);
+  roles.spine.forEach((id, i) => prism(SPR, SPZ(i + 1) - 36, SPZ(i + 1) + 36, 4, "spine", id, false));
   prism(SPR, HUBZ + 16, SPZ(1) - 36, 4, "spine", null, false);
-  prism(26, BLZ - 12, BLZ + 4, 8, "blister", "tiss.blister", false);
-  prism(16, BLZ + 4, BLZ + 18, 8, "blister", "tiss.blister", false);
+  prism(26, BLZ - 12, BLZ + 4, 8, "blister", roles.blister, false);
+  prism(16, BLZ + 4, BLZ + 18, 8, "blister", roles.blister, false);
 
-  box([0, 0, -HUBZ - 14], 18, 14, 14, "dock", "tiss.transfer", true);
+  box([0, 0, -HUBZ - 14], 18, 14, 14, "dock", roles.transfer, true);
 
   // Spine side rooms: docks to port (x<0) and starboard (x>0) of each spine section.
   for (const room of index.byId.values()) {

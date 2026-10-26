@@ -1,13 +1,14 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import station from "../data/station.js";
+import tiss from "../data/tiss.js";
 import { NODE, docksLayout, fitWidth, highlightShape, ringLayout, shapeKey } from "./deck-layout.js";
+import { tissRooms } from "./look.js";
 import { indexStation } from "./locate.js";
 
 let index;
 let rim;
 let docks;
 beforeAll(() => {
-  index = indexStation(station);
+  index = indexStation(tissRooms(tiss));
   rim = ringLayout(index, 0);
   docks = docksLayout(index);
 });

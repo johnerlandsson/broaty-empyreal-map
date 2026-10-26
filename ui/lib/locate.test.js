@@ -1,6 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import station from "../data/station.js";
+import tiss from "../data/tiss.js";
 import { indexStation, infoLine, keyOf, locate } from "./locate.js";
+import { tissRooms } from "./look.js";
+
+const station = tissRooms(tiss);
 
 let index;
 beforeAll(() => {
@@ -16,6 +19,32 @@ describe("indexStation", () => {
       expect(xs).toEqual([...xs].sort((a, b) => a - b));
       expect(index.corridors[z].every((r) => r.terrain === "corridor" || r.terrain === "lobby")).toBe(true);
     }
+  });
+
+  it("finds the hub's and the spine's rooms by address", () => {
+    expect(index.roles).toEqual({
+      hub: "tiss.hub",
+      bearing: "tiss.bearing",
+      transfer: "tiss.transfer",
+      blister: "tiss.blister",
+      spine: ["tiss.spine-1", "tiss.spine-2", "tiss.spine-3", "tiss.spine-4"],
+    });
+  });
+
+  it("reads the roles from the address as written or as shown, whatever the ids", () => {
+    const rooms = [
+      { id: "a", address: "Spine 2" },
+      { id: "b", address: "Hub" },
+      { id: "c", address: "Hub, bearing" },
+      { id: "d", address: "Hub freight" },
+      { id: "e", address: "Spine 1" },
+      { id: "f", address: "Spine 1, fore" },
+      { id: "g", address: "Spine 2 fore" },
+      { id: "h", address: "Spine 2, port" },
+      { id: "i", address: "Rim 12:00" },
+    ];
+    expect(indexStation({ rooms }).roles).toEqual({ hub: "b", bearing: "c", transfer: "d", blister: "g", spine: ["e", "a"] });
+    expect(indexStation({ rooms: [{ id: "x", address: "Deck 1, frame 2" }] }).roles).toEqual({ hub: null, bearing: null, transfer: null, blister: null, spine: [] });
   });
 });
 

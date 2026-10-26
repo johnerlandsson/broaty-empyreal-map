@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import station from "../../ui/data/station.js";
+import tiss from "../../ui/data/tiss.js";
 import { placeRooms } from "./place.mjs";
 import { loadSource } from "./read.mjs";
 
@@ -67,7 +67,7 @@ describe("placeRooms on the fixtures", () => {
 describe.skipIf(!hasReal)("placeRooms on the real source", () => {
   const src = hasReal ? loadSource(real) : null;
 
-  it("places T.I.S.S.'s rooms where today's station.js has them", () => {
+  it("places T.I.S.S.'s rooms where the log-built station.js had them", () => {
     const { byId } = placed(src, "tiss");
     const want = {
       "tiss.concourse": [{ x: 0, y: 0, z: 0 }, "lobby"],
@@ -106,20 +106,20 @@ describe.skipIf(!hasReal)("placeRooms on the real source", () => {
     }
   });
 
-  it("agrees with every room of today's station.js the source has", () => {
+  it("agrees with every placed room of the generated tiss.js", () => {
     const { byId } = placed(src, "tiss", { transfer: { x: 0, y: -1, z: 3 } });
     const mismatches = [];
     let compared = 0;
-    for (const old of station.rooms) {
+    for (const old of tiss.rooms.filter((r) => r.at)) {
       const r = byId.get(old.id);
       if (!r) continue;
       compared++;
       const got = r.at ? [r.at.x, r.at.y, r.at.z, r.terrain, r.gravity] : null;
-      const want = [old.x, old.y, old.z, old.terrain, old.gravity];
+      const want = [old.at.x, old.at.y, old.at.z, old.terrain, old.gravity];
       if (JSON.stringify(got) !== JSON.stringify(want))
-        mismatches.push(`${old.id}: station.js ${JSON.stringify(want)}, placed ${JSON.stringify(got)}`);
+        mismatches.push(`${old.id}: tiss.js ${JSON.stringify(want)}, placed ${JSON.stringify(got)}`);
     }
-    expect(compared).toBeGreaterThan(90);
+    expect(compared).toBe(98);
     expect(mismatches, mismatches.join("\n")).toEqual([]);
   });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CAM, FRONT, P3, districtOf, project, roll } from "./geometry.js";
+import { CAM, FRONT, P3, project, roll } from "./geometry.js";
 
 describe("geometry", () => {
   it("roll moves hour 0 to hour 3", () => {
@@ -20,16 +20,5 @@ describe("geometry", () => {
 
   it("project gives larger depth to nearer points", () => {
     expect(project([0, -100, 0])[2]).toBeLessThan(project([0, 100, 0])[2]);
-  });
-
-  it("districtOf follows the region inference", () => {
-    expect(districtOf(0, 22)).toBe("concourse");
-    expect(districtOf(0, 4)).toBe("residential");
-    expect(districtOf(0, 12)).toBe("hydroponics");
-    expect(districtOf(0, 18)).toBe("commons");
-    expect(districtOf(1, 21)).toBe("offices");
-    expect(districtOf(1, 9)).toBe("midring");
-    expect(districtOf(2, 0)).toBe("industrial");
-    expect(districtOf(3, 0)).toBe("docks");
   });
 });

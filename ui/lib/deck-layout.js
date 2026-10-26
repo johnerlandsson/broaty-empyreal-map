@@ -69,13 +69,16 @@ export function ringLayout(index, z) {
 
 /** Docks plan: spine up the page, Hub at the bottom, Freight Transfer below it. */
 export function docksLayout(index) {
+  const { roles } = index;
   const side = [];
-  const spine = [];
+  const spine = roles.spine.map((id, i) => {
+    const room = index.byId.get(id);
+    return { n: i + 1, room, cx: 0, cy: Y(room.y), h: SN };
+  });
+  const onSpine = new Set(roles.spine);
   for (const room of index.byId.values()) {
-    if (room.z !== 3) continue;
-    const m = /^tiss\.spine-(\d+)$/.exec(room.id);
-    if (m) spine.push({ n: Number(m[1]), room, cx: 0, cy: Y(room.y), h: SN });
-    else if (room.x !== 0 && room.terrain === "room") {
+    if (room.z !== 3 || onSpine.has(room.id)) continue;
+    if (room.x !== 0 && room.terrain === "room") {
       const sg = Math.sign(room.x);
       const cx = sg * (SX + (Math.abs(room.x) - 1) * SXSTEP);
       // its passage runs in from the spine, or from the room before it
@@ -83,15 +86,14 @@ export function docksLayout(index) {
       side.push({ room, cx, cy: Y(room.y), w: RW, h: DOCK_RH, from });
     }
   }
-  spine.sort((a, b) => a.n - b.n);
   const top = spine.length ? spine[spine.length - 1].cy : Y(5);
-  const bearing = index.byId.get("tiss.bearing");
-  const transfer = index.byId.get("tiss.transfer");
-  const blister = index.byId.get("tiss.blister");
+  const bearing = index.byId.get(roles.bearing);
+  const transfer = index.byId.get(roles.transfer);
+  const blister = index.byId.get(roles.blister);
   return {
     z: 3,
     rooms: side,
-    hub: { room: index.byId.get("tiss.hub"), cx: 0, cy: Y(0), r: HUB_R },
+    hub: { room: index.byId.get(roles.hub), cx: 0, cy: Y(0), r: HUB_R },
     bearing: { room: bearing, cx: 0, cy: Y(1), ...BEARING },
     spine,
     blister: { room: blister, cx: 0, cy: top - BLISTER_BASE, r: BLISTER_R },
@@ -135,10 +137,11 @@ function docksShape(layout, where) {
   }
   if (where.kind !== "room") return null;
   const id = where.id;
-  if (id === "tiss.hub") return { kind: "circle", cx: layout.hub.cx, cy: layout.hub.cy, r: layout.hub.r };
-  if (id === "tiss.transfer") return rectAround(layout.transfer);
-  if (id === "tiss.bearing") return rect(-BEARING.w / 2, layout.bearing.cy - BEARING.h / 2, BEARING.w, BEARING.h, 6);
-  if (id === "tiss.blister") {
+  const is = (part) => part.room && part.room.id === id;
+  if (is(layout.hub)) return { kind: "circle", cx: layout.hub.cx, cy: layout.hub.cy, r: layout.hub.r };
+  if (is(layout.transfer)) return rectAround(layout.transfer);
+  if (is(layout.bearing)) return rect(-BEARING.w / 2, layout.bearing.cy - BEARING.h / 2, BEARING.w, BEARING.h, 6);
+  if (is(layout.blister)) {
     const { cx, cy, r } = layout.blister;
     return { kind: "path", d: `M${cx - r},${cy} A${r},${r} 0 0 1 ${cx + r},${cy} Z`, cx, cy: cy - r / 2 };
   }
