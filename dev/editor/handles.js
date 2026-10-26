@@ -86,9 +86,9 @@ export function createHandles({ place, resolved, save, preview, flush, restore, 
   function commit(edit, { refused } = {}) {
     const id = place().id;
     run(
-      save(id, edit).then((status) => {
+      save(id, edit).then(({ status, written }) => {
         // a 409 has reloaded the place already
-        if (status === 200 || status === 409 || place()?.id !== id) return;
+        if (written || status === 409 || place()?.id !== id) return;
         refused?.();
         restore();
       }),

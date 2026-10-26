@@ -125,6 +125,19 @@ describe("the side panel", () => {
     expect(swatch("concourse").classList.contains("on")).toBe(true);
   });
 
+  it("holds a 500's version when the save was written but ui/data wasn't rebuilt, keeping the new paint", async () => {
+    await start("#kilmar/kilmar.market");
+    replies.push({ status: 500, body: { error: "saved data/tweaks/kilmar.json, but rebuilding ui/data failed: boom", version: 42 } });
+    swatch("offices").click();
+    await editor.busy;
+    expect(root.querySelector(".errbar").textContent).toContain("rebuilding ui/data failed: boom");
+    expect(swatch("offices").classList.contains("on")).toBe(true);
+    swatch("commons").click();
+    await editor.busy;
+    expect(puts[1].body.version).toBe(42);
+    expect(puts[1].body.json.paint.market).toBe("commons");
+  });
+
   it("reloads on a 409 and says so", async () => {
     await start("#kilmar/kilmar.market");
     replies.push({ status: 409, body: { error: "changed on disk", version: 8 } });

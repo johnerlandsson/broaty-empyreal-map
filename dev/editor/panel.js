@@ -4,7 +4,9 @@
 // or "from <place>" through `like`) and, where it's the place's own, has a reset.
 // Every change runs one of ops.js's edits on the place's own tweak and PUTs it with the version
 // the page holds, one save at a time. A save the build refuses (422) shows its message in the bar
-// over the plan and puts the inputs back; one beaten by a hand edit (409) reloads the state.
+// over the plan and puts the inputs back; one beaten by a hand edit (409) reloads the state. One
+// written whose rebuild of ui/data then failed (a 500 with a version) is held as saved, its message
+// shown; the next build fixes the view.
 // What each kind of place allows matches the build: footprints only on decks rooms that aren't
 // passages or blisters, a cutaway and a hull only on decks, a camera on anything but a town.
 // The hull section is the plan's deck's: a path made from the rooms or back to the box, and the r
@@ -49,10 +51,10 @@ const numberOf = (input) => (input.value.trim() === "" || !Number.isFinite(Numbe
  *   run: (p: Promise<void>) => void, hullPoint?: () => number | null}} deps `place` and `state` are
  *   the page's; `reload` re-reads the state and rebuilds the open place; `run` is handed each save,
  *   for the page's `busy`; `hullPoint` is the point of the plan's deck's path picked on the plan.
- * @returns {{render: () => void, save: (name: string, edit: (t: object) => object) => Promise<number | undefined>,
+ * @returns {{render: () => void, save: (name: string, edit: (t: object) => object) => Promise<{status?: number, written: boolean}>,
  *   resolved: (placeId: string, keyPath: string[]) => {value: unknown, from: string | null, own: boolean},
  *   broken: (name: string) => string | null}} `save` resolves to the PUT's status (undefined where it
- *   never got one)
+ *   never got one) and whether the file was written
  */
 export function createPanel({ inspector, view, put, place: currentPlace, state: currentState, reload, showError, run, hullPoint = () => null }) {
   let queue = Promise.resolve();
@@ -85,16 +87,21 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     const url = name === "palette" ? "/api/palette" : `/api/tweaks/${encodeURIComponent(name)}`;
     const step = queue
       .then(async () => {
-        if (brokenError(name)) return render();
+        if (brokenError(name)) {
+          render();
+          return { written: false };
+        }
         const entry = entryOf(name);
         const json = edit(entry.json ?? {});
         const { status, body } = await put(url, { json, version: entry.version });
-        if (status === 200) {
+        // any reply with a version but a 409 wrote the file: a 200, or a 500 whose rebuild failed
+        const written = status === 200 || (status !== 409 && typeof body?.version === "number");
+        if (written) {
           const s = currentState();
           s.tweaks ??= {};
           s.tweaks[name] = { json, version: body.version };
           if (name === "palette") s.palette = json;
-          showError(null);
+          showError(status === 200 ? null : (body.error ?? `PUT ${url}: ${status}`));
           render();
         } else if (status === 409) {
           await reload();
@@ -103,11 +110,12 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
           showError(body?.error ?? `PUT ${url}: ${status}`);
           render();
         }
-        return status;
+        return { status, written };
       })
       .catch((err) => {
         showError(err.message);
         render();
+        return { written: false };
       });
     queue = step.then(() => {});
     run(queue);
@@ -363,7 +371,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
           const traced = hullFromRooms(index, deck);
           if (!traced.length) return showError(`Deck ${deck} has no rooms to make a hull from`);
           const pieces = roomPieces(index, deck);
-          const step = save(p.id, (t) => setHull(t, key, traced)).then((status) => {
+          const step = save(p.id, (t) => setHull(t, key, traced)).then(({ status }) => {
             if (status === 200 && pieces > 1) showError(`warning: the rooms on Deck ${deck} make ${pieces} pieces; the hull goes round the largest only`);
           });
           run(step);

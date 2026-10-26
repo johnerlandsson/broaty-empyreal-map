@@ -241,6 +241,14 @@ describe("hull handles", () => {
     expect(bar.textContent).toContain("crosses itself");
   });
 
+  it("keeps the dragged look when the save is written but ui/data's rebuild fails (500 with a version)", async () => {
+    await start("#orrin", ownPath);
+    replies.push({ status: 500, body: { error: "saved data/tweaks/orrin.json, but rebuilding ui/data failed: boom", version: 42 } });
+    await drag(handle("point-0"), 14, -10);
+    expect(editor.place.data.look.hull["3"]).not.toEqual(PATH);
+    expect(root.querySelector(".errbar").textContent).toContain("rebuilding ui/data failed");
+  });
+
   it("puts back the last built look when two queued saves are both refused", async () => {
     await start("#orrin", ownPath);
     let answer;
