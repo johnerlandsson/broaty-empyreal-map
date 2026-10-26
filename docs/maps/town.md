@@ -51,7 +51,8 @@ is east of the Field Gate and the Overlook east of the Ridge Path. Height is
 still never drawn as north (style guide principle 5): on a valley side, up
 is a direction on the ground.
 
-What the exits and flags don't say is in `TOWNS` in `ui/lib/town.js`: the
+What the exits and flags don't say is in the `town` section and
+`paintDistricts` of `data/tweaks/zennor.json`: the
 root, uphill, a tint per district (from `DISTRICT_COLOURS`, style guide §4.4:
 the Downs docks, the Old Town commons, the Market Quarter concourse, the
 Courts offices, the Rows residential, Riverside industrial for its mills and
@@ -306,10 +307,9 @@ address, so the district and the town stand where an address would. In the
 
 ## Adding a town
 
-Copy its rooms from the area's YAML into a data file: id, name, district,
-flags and exits, and the area's id, name, gravity and districts, and any
-cars. Add a spec to `TOWNS` (root, uphill, district tints, open ground, gate,
-wells, river, scarp). Add its prefix and port id to `ui/lib/stations.js`,
+Run `npm run build:data`: it makes the data file from the area's YAML. Add
+`data/tweaks/<place>.json` with `paintDistricts` and a `town` section (root,
+uphill, open ground, gate, wells, river, scarp). Add its prefix and port id to `ui/lib/stations.js`,
 wire it with `town()` in `ui/main.js`, and add it to the tests and the
 preview's walk. The skyline is Zennor's valley; a second town would want its
 own section and places for its districts. The sky works for any port the

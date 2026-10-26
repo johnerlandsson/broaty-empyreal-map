@@ -93,9 +93,9 @@ address as the game's coords do: x the side (starboard positive), y the frame
 checks each station's data against its YAML whenever `~/dev/empyreal` is
 there.
 
-What the addresses don't say is in `DECKS` in `ui/lib/decks.js`: the room id
-prefix, a district tint per room, which rooms are blisters, the cradles at
-the nose, and any masts on the roof.
+What the addresses don't say is in the place's tweak file in `data/tweaks/`
+(see `docs/maps/sync.md`): a tint per room (`paint`), which room is the
+blister, the cradles at the nose and any masts on the roof (`fixtures`).
 
 From the addresses and the exits:
 
@@ -177,9 +177,9 @@ address, `DECK 3, FRAME 2 · 0 g`.
 
 ## Adding a decks station
 
-Copy its rooms from the area's YAML into a data file: id, name, address,
-gravity, flags and exits. Add a spec to `DECKS`, choosing tints from the
-district colours. Add its prefix and dock id to `ui/lib/stations.js`, wire
+Run `npm run build:data`: it makes the data file from the area's YAML. Add
+`data/tweaks/<place>.json` with `paint` (tints from the palette) and
+`fixtures`, or a `like` an existing station. Add its prefix and dock id to `ui/lib/stations.js`, wire
 it with `decks()` in `ui/main.js`, and add it to the tests and the preview's
 walk. The hull is always the cells' box: Kilmar's cross and Caradon's and Garrow's
 empty cells are drawn as hull, as Orrin's corners are. A hull drawn from its

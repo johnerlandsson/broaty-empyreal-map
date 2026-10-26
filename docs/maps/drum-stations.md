@@ -19,12 +19,14 @@ you're in one of its rooms or your ship is docked there.
 
 ## Where its data comes from
 
-Hand-written: `ui/data/wenna.js`, from `content/areas/wenna.yaml` in the
-Empyreal source. The game gives the area no layout, so rooms are placed from
-their exits and descriptions: `x` west to east, `y` south to north, `hour` round
+Generated: `ui/data/wenna.js`, by `npm run build:data` from
+`content/areas/wenna.yaml` in the Empyreal source. The game gives the area no
+layout, so rooms are placed by hand in the `drum.rooms` of
+`data/tweaks/wenna.json`, from their exits and descriptions: `x` west to east, `y` south to north, `hour` round
 the drum for the model, `band` along the axis (-1 aft, 0, 1 fore).
-Everything that differs between drums is in `DRUMS` in `ui/lib/drum.js`:
-room id prefix, tints, the axis room's collar, the way up, the cradles.
+Everything that differs between drums is in the place's tweak file: tints
+(`paint`), the cradles (`fixtures`), and the axis room's collar and the way
+up (`drum.axis`, `drum.way`).
 
 ## Top band: the model
 
@@ -61,8 +63,8 @@ each station).
 
 ## Adding a drum
 
-Add its room data file from the area's YAML, add a spec to `DRUMS` choosing
-tints from the district colours, add its prefix and dock id to
+Run `npm run build:data` for its room data file, add `data/tweaks/<place>.json`
+choosing tints from the palette, add its prefix and dock id to
 `ui/lib/stations.js`, and add it to the drum tests and the preview's walk.
 A station that isn't laid out like these six rooms needs its own map type
 and its own doc, as Orrin Station's decks have.

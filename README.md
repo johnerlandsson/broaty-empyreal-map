@@ -333,43 +333,16 @@ turned and redrew.
 
 ### Rebuilding the station data
 
-The T.I.S.S. map (`ui/data/station.js`) is built from the GMCP room frames in
-your Mallard session logs, plus the hand-written corrections in
-`data/overrides.json`:
+The station maps in `ui/data/` are built from the Empyreal source by
+`npm run build:data`. It reads `~/dev/empyreal`, or another checkout with
+`--source DIR`, and never writes to it. Rooms, names, exits and places come
+from the source's area files. The generated files are not edited by hand.
 
-```bash
-npm run build:data
-npm run build:data -- --logs /path/to/logs   # another log folder
-```
+What the source doesn't say, the colours, cradles, masts and a few
+positions, is in `data/tweaks/`, one JSON file per place.
 
-By default it reads `~/.local/share/net.mallard.app/logs/empyreal-7`. Commit
-the regenerated `ui/data/station.js`.
-
-Orrin Station's nine rooms (`ui/data/orrin.js`) are copied from
-`content/areas/orrin.yaml` in the Empyreal source: ids, names, addresses and
-exits. Nothing is placed by hand: each room's cell comes from its address
-(`Deck 3, frame 2, port 1`), and a test checks the file against the YAML
-when `~/dev/empyreal` is there. What the addresses don't say (colours, the
-blister, cradles) is in `DECKS` in `ui/lib/decks.js`. The ten halts
-(`ui/data/morvah.js`, `gwithian.js`, `carrow.js`, `lanyon.js`, `kynance.js`,
-`marazion.js`, `penwith.js`, `botallack.js`, `polperro.js`, `lamorna.js`)
-are copied from their area files the same way, and checked the same way, and
-so are the Mid's three (`kilmar.js`, `caradon.js`, `garrow.js`).
-
-Wenna Halt's six rooms (`ui/data/wenna.js`) are written by hand from
-`content/areas/wenna.yaml`. The game gives that area no layout, so the rooms
-are placed from their exits and descriptions. What's particular to the drum
-(colours, cradles, the ramp) is in `DRUMS` in `ui/lib/drum.js`.
-
-Zennor's 45 rooms (`ui/data/zennor.js`) are copied from
-`content/areas/zennor.yaml`: ids, names, districts, flags and exits (the
-Steps' with their seconds), the area's gravity and districts, and the tram's
-stops. Nothing is placed by hand. The rooms have no addresses or coords, so
-each one's place comes from its compass exits: an exit says which side of the
-room the next one is, and the rooms settle where the ways are shortest. A
-test checks the file against the YAML when `~/dev/empyreal` is there. What
-the exits don't say (district colours, which open ground is a square, a path
-or terraces, the river and the scarp) is in `TOWNS` in `ui/lib/town.js`.
+The routine to follow after an Empyreal push, and what the build's report
+means, is in [docs/maps/sync.md](docs/maps/sync.md).
 
 ---
 
