@@ -21,19 +21,22 @@ export function parseAddress(address) {
 
 /**
  * The station's rooms by id, each with its `cell` from its address, whether it's a `passage` (an
- * unnamed cell, named by its address) or a `blister`, and its `level`: the plan it's on, the top
+ * unnamed cell, named by its address) or a `blister`, its `tint` (the colour the look paints it,
+ * or null), and its `level`: the plan it's on, the top
  * deck first. `hull` is the box the cells that aren't blisters fill, in cells. Rooms without an
  * address the grid knows are left out.
- * @param {{rooms: object[]}} data
- * @param {ReturnType<typeof import("./look.js").decksSpec>} spec
+ * @param {{rooms: object[], look?: object}} data a generated decks file
  */
-export function indexDecks(data, spec) {
+export function indexDecks(data) {
   const byId = new Map();
+  const { paint, palette, fixtures } = data?.look ?? {};
+  const blisters = (fixtures ?? []).filter((f) => f.type === "blister").map((f) => `${data.id}.${f.room}`);
   for (const room of data?.rooms ?? []) {
     const cell = parseAddress(room.address);
     if (!cell) continue;
     const passage = String(room.name).toLowerCase() === String(room.address).toLowerCase();
-    byId.set(room.id, { ...room, cell, passage, blister: spec.blisters?.includes(room.id) ?? false });
+    const local = room.id.slice(data.id.length + 1);
+    byId.set(room.id, { ...room, cell, passage, blister: blisters.includes(room.id), tint: palette?.[paint?.[local]] ?? null });
   }
   const decks = [...new Set([...byId.values()].map((r) => r.cell.z))].sort((a, b) => b - a);
   for (const room of byId.values()) room.level = decks.indexOf(room.cell.z);
@@ -93,18 +96,19 @@ const DOME_SIDES = 12;
  * box (`ghost`: drawn only when lit); the blisters in glass outside the hull, and the cradles fore
  * of the nose. Nothing turns.
  * @param {ReturnType<typeof indexDecks>} index
- * @param {ReturnType<typeof import("./look.js").decksSpec>} spec
+ * @param {{look?: {fixtures?: object[]}}} data the generated decks file the index was made from
  */
-export function buildDecksModel(index, spec) {
+export function buildDecksModel(index, data) {
   const faces = [];
   const { hull } = index;
   if (!hull) return faces;
+  const fixtures = (type) => (data.look?.fixtures ?? []).filter((f) => f.type === type);
   const add = (pts, kind, key, extra) =>
     faces.push({
       pts,
       kind,
       key,
-      tint: key ? (spec.tints[key] ?? null) : null,
+      tint: key ? (index.byId.get(key)?.tint ?? null) : null,
       edges: pts.map(() => true),
       turns: false,
       cull: true,
@@ -149,7 +153,7 @@ export function buildDecksModel(index, spec) {
             pts: signs.map((s) => corner(c, s)),
             kind: "outer",
             key: null,
-            tint: room ? (spec.tints[room.id] ?? null) : null,
+            tint: room?.tint ?? null,
             edges,
             turns: false,
             cull: true,
@@ -198,7 +202,7 @@ export function buildDecksModel(index, spec) {
 
   // cradles fore of the nose: compartments, never lit
   const fore = at(0, hull.y1, 0)[2] + half[2];
-  for (const [x, z, hx, hy, len] of spec.cradles ?? []) {
+  for (const { side: x, deck: z, hw: hx, hh: hy, len } of fixtures("cradle")) {
     const [cx, cy] = at(x, 0, z);
     const c = [cx, cy, fore + (len * CELL.frame) / 2];
     const h = [hx * CELL.side, hy * CELL.deck, (len * CELL.frame) / 2];
@@ -213,7 +217,7 @@ export function buildDecksModel(index, spec) {
   const box = (c, h, kind, layer) => {
     for (const { c: signs } of CUBE) add(signs.map((s) => c.map((v, k) => v + s[k] * h[k])), kind, null, { layer, deck: hull.z1 });
   };
-  for (const [x, y, height] of spec.masts ?? []) {
+  for (const { side: x, frame: y, height } of fixtures("mast")) {
     const [cx, , cz] = at(x, y, 0);
     const tall = height * CELL.deck;
     box([cx, roof + tall / 2, cz], [MAST, tall / 2, MAST], "mast", 1);

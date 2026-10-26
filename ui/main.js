@@ -27,7 +27,7 @@ import { buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
 import { carInfo, carKind, carName, stopNames } from "./lib/cars.js";
 import { hullOf, isShipRoom, shipInfo } from "./lib/hulls.js";
 import { indexStation, infoLine, locate } from "./lib/locate.js";
-import { decksSpec, drumRooms, drumSpec, tissRooms, townData, townSpec } from "./lib/look.js";
+import { drumRooms, drumSpec, tissRooms, townData, townSpec } from "./lib/look.js";
 import { moveCard } from "./lib/space.js";
 import { noPlanLine, pickStation, stationOfDock } from "./lib/stations.js";
 import { indexTown, locateTown, townInfo } from "./lib/town.js";
@@ -62,16 +62,15 @@ function drum(data) {
 
 /** Orrin Station and the halts: a box on decks, cut away above your deck; a plan a deck, rooms placed by address. */
 function decks(data) {
-  const spec = decksSpec(data);
-  const index = indexDecks(data, spec);
+  const index = indexDecks(data);
   const model = new ModelView(modelEl, index, {
-    faces: buildDecksModel(index, spec),
+    faces: buildDecksModel(index, data),
     keyOf: decksKey,
     hourOf: () => null,
     cutOf: (where) => decksCut(index, where),
     labels: false,
   });
-  return { index, model, deck: new DeckView(deckEl, index, decksPlans(spec)), lastLevel: null, locate: locateDecks };
+  return { index, model, deck: new DeckView(deckEl, index, decksPlans()), lastLevel: null, locate: locateDecks };
 }
 
 /** Zennor: a city on the ground, rooms placed by their compass exits, ⌂ framing your district; its sky over it. */

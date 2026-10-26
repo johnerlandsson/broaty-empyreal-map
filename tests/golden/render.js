@@ -9,7 +9,7 @@ import places, { data } from "../../ui/data/places.js";
 import { buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "../../ui/lib/decks.js";
 import { buildDrumModel, drumHour, drumKey } from "../../ui/lib/drum.js";
 import { indexStation, locate } from "../../ui/lib/locate.js";
-import { decksSpec, drumRooms, drumSpec, tissRooms, townData, townSpec } from "../../ui/lib/look.js";
+import { drumRooms, drumSpec, tissRooms, townData, townSpec } from "../../ui/lib/look.js";
 import { indexTown, locateTown } from "../../ui/lib/town.js";
 import { ModelView } from "../../ui/model-view.js";
 import { townPlans } from "../../ui/town-deck.js";
@@ -42,16 +42,15 @@ function drum(modelEl, deckEl, data) {
 }
 
 function decks(modelEl, deckEl, data) {
-  const spec = decksSpec(data);
-  const index = indexDecks(data, spec);
+  const index = indexDecks(data);
   const model = new ModelView(modelEl, index, {
-    faces: buildDecksModel(index, spec),
+    faces: buildDecksModel(index, data),
     keyOf: decksKey,
     hourOf: () => null,
     cutOf: (where) => decksCut(index, where),
     labels: false,
   });
-  return { index, model, deck: new DeckView(deckEl, index, decksPlans(spec)), locate: locateDecks };
+  return { index, model, deck: new DeckView(deckEl, index, decksPlans()), locate: locateDecks };
 }
 
 function town(modelEl, deckEl, data) {

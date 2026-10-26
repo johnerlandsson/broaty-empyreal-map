@@ -19,15 +19,14 @@ const DECK_OF = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
 const none = { "pointer-events": "none" };
 
 /**
- * @param {ReturnType<typeof import("./lib/look.js").decksSpec>} spec
  * @returns {(svg: SVGElement, index: object) => object[]} the plans builder DeckView takes: one plan
  *   a deck, in the index's level order, all framed by the same extent
  */
-export function decksPlans(spec) {
-  return (svg, index) => index.decks.map((deck, level) => buildDeckPlan(svg, index, spec, deck, level));
+export function decksPlans() {
+  return (svg, index) => index.decks.map((deck, level) => buildDeckPlan(svg, index, deck, level));
 }
 
-function buildDeckPlan(svg, index, spec, deck, level) {
+function buildDeckPlan(svg, index, deck, level) {
   const layout = decksLayout(index, deck);
   const { cells, links, hatches, footprint: fp, frames, onHull } = layout;
   const g = el("g", { display: "none" }, svg);
@@ -51,7 +50,7 @@ function buildDeckPlan(svg, index, spec, deck, level) {
       const [x, y] = layout.centre(c.room.cell);
       if (!c.room.exits?.up && !c.room.exits?.down) el("circle", { cx: x, cy: y, r: 4, fill: STOP, ...none }, g);
     } else if (c.kind === "room") {
-      roomBox(g, c.room, c.cx, c.cy, spec.tints[c.room.id] ?? DC.industrial, c.w, c.h);
+      roomBox(g, c.room, c.cx, c.cy, c.room.tint ?? DC.industrial, c.w, c.h);
       if (c.room.flags?.includes("berth")) airlocks(g, c);
     } else {
       blister(g, c);

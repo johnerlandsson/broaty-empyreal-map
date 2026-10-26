@@ -5,35 +5,11 @@ import zennor from "../../tests/fixtures/generated/zennor.js";
 import lamorna from "../data/lamorna.js";
 import tiss from "../data/tiss.js";
 import { DISTRICT_COLOURS } from "./geometry.js";
-import { decksSpec, drumRooms, drumSpec, tissRooms, townData, townSpec } from "./look.js";
+import { drumRooms, drumSpec, tissRooms, townData, townSpec } from "./look.js";
 
-// Today's specs, as decks.js, drum.js and town.js held them before the look moved to tweak files:
+// Today's specs, as drum.js and town.js held them before the look moved to tweak files:
 // the generated files of that day (frozen under tests/fixtures/generated, so a sync can't move
 // them) must give them back exactly.
-const ORRIN = {
-  prefix: "orrin",
-  tints: {
-    "orrin.berth": DISTRICT_COLOURS.docks,
-    "orrin.deck-3-frame-2": DISTRICT_COLOURS.industrial,
-    "orrin.deck-3-frame-1": DISTRICT_COLOURS.industrial,
-    "orrin.freight": DISTRICT_COLOURS.industrial,
-    "orrin.charts": DISTRICT_COLOURS.docks,
-    "orrin.concourse": DISTRICT_COLOURS.industrial,
-    "orrin.deck-2-frame-2": DISTRICT_COLOURS.industrial,
-    "orrin.market": DISTRICT_COLOURS.concourse,
-    "orrin.gallery": DISTRICT_COLOURS.docks,
-  },
-  blisters: ["orrin.gallery"],
-  cradles: [
-    [0, 3, 0.3, 0.3, 0.22],
-    [-1, 3, 0.34, 0.3, 0.7],
-    [1, 3, 0.34, 0.3, 0.7],
-    [0, 2, 0.34, 0.3, 0.7],
-    [-1, 2, 0.18, 0.16, 0.36],
-    [1, 2, 0.18, 0.16, 0.36],
-  ],
-};
-
 const WENNA = {
   prefix: "wenna",
   axis: { id: "wenna.lounge", r: 58, len: 18 },
@@ -81,16 +57,6 @@ const ZENNOR = {
   river: { name: "the Carn", bridge: "zennor.carn-bridge" },
   scarp: "downs",
 };
-
-describe("decksSpec", () => {
-  it("gives Orrin's spec as decks.js had it", () => {
-    expect(decksSpec(orrin)).toStrictEqual(ORRIN);
-  });
-
-  it("gives a mast as [side, frame, height]", () => {
-    expect(decksSpec(lamorna).masts).toStrictEqual([[-1.25, 3.35, 1.65]]);
-  });
-});
 
 describe("drumSpec and drumRooms", () => {
   it("gives Wenna's spec as drum.js had it", () => {

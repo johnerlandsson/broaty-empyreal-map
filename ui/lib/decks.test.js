@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 // Orrin and the Mid's halts as generated on the day they moved to generated data, frozen so a
 // sync can't move them; every station on decks today is checked live below.
+import models from "../../tests/fixtures/decks-models.json";
 import caradon from "../../tests/fixtures/generated/caradon.js";
 import garrow from "../../tests/fixtures/generated/garrow.js";
 import kilmar from "../../tests/fixtures/generated/kilmar.js";
@@ -19,7 +20,6 @@ import {
 } from "./decks.js";
 import { DISTRICT_COLOURS } from "./geometry.js";
 import { infoLine } from "./locate.js";
-import { decksSpec } from "./look.js";
 
 const sub = (a, b) => a.map((c, i) => c - b[i]);
 const cross = (u, v) => [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
@@ -28,8 +28,7 @@ const centroid = (pts) => pts.reduce((s, p) => s.map((c, i) => c + p[i] / pts.le
 // the renderer's normal: from the first three points
 const normal = ([a, b, c]) => cross(sub(b, a), sub(c, a));
 
-const spec = decksSpec(orrin);
-const index = indexDecks(orrin, spec);
+const index = indexDecks(orrin);
 const ids = orrin.rooms.map((r) => r.id);
 const room = (id) => index.byId.get(id);
 // a step each way, as the yaml's compass words go: north fore, west port
@@ -59,14 +58,16 @@ describe("parseAddress", () => {
 const STATIONS = Object.fromEntries(places.filter((p) => p.builder === "decks").map((p) => [p.id, generated[p.id]]));
 
 describe.each(Object.entries(STATIONS))("%s's data", (key, data) => {
-  const spec = decksSpec(data);
-  const index = indexDecks(data, spec);
+  const index = indexDecks(data);
+  const look = data.look;
+  const cradles = look.fixtures.filter((f) => f.type === "cradle");
+  const blisters = look.fixtures.filter((f) => f.type === "blister").map((f) => `${data.id}.${f.room}`);
   const room = (id) => index.byId.get(id);
 
   it(`has the rooms of content/areas/${key}.yaml, each with an address on the grid`, () => {
     expect(data.rooms.length).toBeGreaterThan(0);
     for (const r of data.rooms) {
-      expect(r.id.startsWith(`${spec.prefix}.`), r.id).toBe(true);
+      expect(r.id.startsWith(`${data.id}.`), r.id).toBe(true);
       expect(parseAddress(r.address), r.id).not.toBe(null);
     }
     expect(index.byId.size).toBe(data.rooms.length);
@@ -93,15 +94,14 @@ describe.each(Object.entries(STATIONS))("%s's data", (key, data) => {
 
   it("tints every room, and only in district colours", () => {
     const colours = Object.values(DISTRICT_COLOURS);
-    expect(Object.keys(spec.tints).sort()).toEqual(data.rooms.map((r) => r.id).sort());
-    for (const [id, tint] of Object.entries(spec.tints)) expect(colours, id).toContain(tint);
+    for (const r of index.byId.values()) expect(colours, r.id).toContain(r.tint);
   });
 
   it("has its blisters among its rooms, and cradles that don't overlap", () => {
-    for (const id of spec.blisters) expect(room(id), id).toBeDefined();
-    for (const [i, a] of spec.cradles.entries()) {
-      for (const b of spec.cradles.slice(i + 1)) {
-        const apart = a[1] !== b[1] || Math.abs(a[0] - b[0]) * CELL.side >= (a[2] + b[2]) * CELL.side;
+    for (const id of blisters) expect(room(id), id).toBeDefined();
+    for (const [i, a] of cradles.entries()) {
+      for (const b of cradles.slice(i + 1)) {
+        const apart = a.deck !== b.deck || Math.abs(a.side - b.side) * CELL.side >= (a.hw + b.hw) * CELL.side;
         expect(apart, `${a} ${b}`).toBe(true);
       }
     }
@@ -128,13 +128,13 @@ describe.each(Object.entries(STATIONS))("%s's data", (key, data) => {
 
   it("hangs its blisters outside the hull's box, and stands its cradles on its decks, fore of the nose", () => {
     const { hull } = index;
-    for (const id of spec.blisters) {
+    for (const id of blisters) {
       const { x, y, z } = room(id).cell;
       expect(x < hull.x0 || x > hull.x1 || y < hull.y0 || y > hull.y1 || z < hull.z0 || z > hull.z1, id).toBe(true);
     }
     const nose = [...index.byId.values()].find((r) => r.flags.includes("berth")).cell;
     expect(nose.y).toBe(hull.y1);
-    for (const c of spec.cradles) expect(c[1] >= hull.z0 && c[1] <= hull.z1, String(c)).toBe(true);
+    for (const c of cradles) expect(c.deck >= hull.z0 && c.deck <= hull.z1, JSON.stringify(c)).toBe(true);
   });
 });
 
@@ -157,10 +157,10 @@ describe("indexDecks", () => {
   });
 
   it("leaves out a room it can't place, and copes with nothing", () => {
-    const i = indexDecks({ rooms: [...orrin.rooms, { id: "orrin.loose", name: "Loose", address: "somewhere" }] }, spec);
+    const i = indexDecks({ ...orrin, rooms: [...orrin.rooms, { id: "orrin.loose", name: "Loose", address: "somewhere" }] });
     expect(i.byId.has("orrin.loose")).toBe(false);
-    expect(indexDecks(null, spec)).toMatchObject({ decks: [], hull: null });
-    expect(buildDecksModel(indexDecks(null, spec), spec)).toEqual([]);
+    expect(indexDecks(null)).toMatchObject({ decks: [], hull: null });
+    expect(buildDecksModel(indexDecks(null), null)).toEqual([]);
   });
 });
 
@@ -195,7 +195,7 @@ describe("locateDecks, decksKey and decksCut", () => {
 });
 
 describe("buildDecksModel", () => {
-  const faces = buildDecksModel(index, spec);
+  const faces = buildDecksModel(index, orrin);
   const of = (kind) => faces.filter((f) => f.kind === kind);
   const span = (fs, k) => {
     const v = fs.flatMap((f) => f.pts.map((p) => p[k]));
@@ -249,7 +249,7 @@ describe("buildDecksModel", () => {
 
   it("stands the cradles fore of the nose, over the hull", () => {
     const docks = of("dock");
-    expect(docks.length).toBe(spec.cradles.length * 6);
+    expect(docks.length).toBe(orrin.look.fixtures.filter((f) => f.type === "cradle").length * 6);
     expect(span(docks, 2)[0]).toBeGreaterThanOrEqual(hz1 - 1e-9);
     for (const f of docks) expect(f.layer).toBeGreaterThan(0);
   });
@@ -260,7 +260,7 @@ describe("buildDecksModel", () => {
     expect(faces.filter((f) => f.lid === 2).length).toBe(9);
     expect(faces.filter((f) => f.lid === 3).length).toBe(0);
     for (const f of of("cell")) expect(f.ghost).toBe(true);
-    for (const f of of("dock")) expect(spec.cradles.map((c) => c[1])).toContain(f.deck);
+    for (const f of of("dock")) expect(orrin.look.fixtures.filter((f) => f.type === "cradle").map((c) => c.deck)).toContain(f.deck);
   });
 
   it("edges the hull only where the box has an edge", () => {
@@ -271,11 +271,10 @@ describe("buildDecksModel", () => {
     expect(pieces).toBe(2 * 4 * (nx + ny + nz));
   });
 
-  it("has no mast unless its spec gives it one", () => {
+  it("has no mast unless its look gives it one", () => {
     for (const [key, data] of Object.entries(STATIONS)) {
-      const spec = decksSpec(data);
-      if (spec.masts) continue;
-      const fs = buildDecksModel(indexDecks(data, spec), spec);
+      if (data.look.fixtures.some((f) => f.type === "mast")) continue;
+      const fs = buildDecksModel(indexDecks(data), data);
       expect(fs.some((f) => f.kind === "mast" || f.kind === "lamp"), key).toBe(false);
     }
   });
@@ -283,9 +282,8 @@ describe("buildDecksModel", () => {
 
 describe("Lamorna Light's lamp", () => {
   const lamorna = generated.lamorna;
-  const spec = decksSpec(lamorna);
-  const index = indexDecks(lamorna, spec);
-  const faces = buildDecksModel(index, spec);
+  const index = indexDecks(lamorna);
+  const faces = buildDecksModel(index, lamorna);
   const of = (kind) => faces.filter((f) => f.kind === kind);
   const span = (fs, k) => {
     const v = fs.flatMap((f) => f.pts.map((p) => p[k]));
@@ -398,7 +396,7 @@ describe("decksLayout", () => {
 
 describe("the Mid's halts", () => {
   const shapes = { kilmar, caradon, garrow };
-  const at = (key) => indexDecks(shapes[key], decksSpec(shapes[key]));
+  const at = (key) => indexDecks(shapes[key]);
 
   it("are smaller boxes than Orrin's, each its own shape", () => {
     expect(at("kilmar").hull).toEqual({ x0: -1, x1: 1, y0: 1, y1: 3, z0: 2, z1: 2 }); // one deck, three frames
@@ -430,7 +428,7 @@ describe("the Mid's halts", () => {
     expect(deck1.onHull).toBe(true);
     expect(deck1.cells.find((c) => c.room.id === "garrow.lookout").kind).toBe("room");
     expect(deck1.links.length).toBe(1); // the Lookout to the Commons
-    const faces = buildDecksModel(index, decksSpec(garrow));
+    const faces = buildDecksModel(index, garrow);
     expect(faces.some((f) => f.kind.startsWith("blister"))).toBe(false);
     expect(faces.some((f) => f.kind === "cell" && f.key === "garrow.lookout")).toBe(true);
   });
@@ -456,5 +454,23 @@ describe("the Mid's halts", () => {
     expect(line("kilmar", "kilmar.kitchen")).toBe("KITCHEN · Deck 2, frame 2, starboard 1 · 0 g");
     expect(line("caradon", "caradon.hall")).toBe("SHIFT HALL · Deck 2, frame 1 · 0 g");
     expect(line("garrow", "garrow.deck-2-frame-1")).toBe("DECK 2, FRAME 1 · 0 g");
+  });
+});
+
+describe("the generated look", () => {
+  // buildDecksModel as it was when it read the spec decksSpec made, captured before that went
+  it.each(Object.entries({ orrin, kilmar, caradon, garrow }))("gives %s's model as it was", (id, data) => {
+    expect(JSON.parse(JSON.stringify(buildDecksModel(indexDecks(data), data)))).toEqual(models[id]);
+  });
+
+  it("tints a room from the palette by its paint, and leaves an unpainted one without", () => {
+    expect(indexDecks(orrin).byId.get("orrin.berth").tint).toBe(DISTRICT_COLOURS.docks);
+    const bare = { ...orrin, look: { ...orrin.look, paint: {} } };
+    expect(indexDecks(bare).byId.get("orrin.berth").tint).toBe(null);
+  });
+
+  it("reads a look without view or footprints, as the frozen files have it", () => {
+    expect(orrin.look.footprints).toBeUndefined();
+    expect(buildDecksModel(indexDecks(orrin), orrin).length).toBeGreaterThan(0);
   });
 });

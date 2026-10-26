@@ -19,26 +19,6 @@ function tints(data) {
 const fixtures = (data, type) => (data.look?.fixtures ?? []).filter((f) => f.type === type);
 
 /**
- * A station on decks: `tints` a colour per room; `blisters` the rooms that are glass blisters
- * outside the hull, not cells of it; `cradles` the blocks fore of the nose, each [side, deck,
- * half-width, half-height, length] in cells; and, if it has any, `masts` stood up off the roof with
- * a lamp at the top, each [side, frame, height] in cells (the height in decks).
- * @returns {{prefix: string, tints: Record<string, string>, blisters: string[], cradles: number[][], masts?: number[][]}}
- */
-export function decksSpec(data) {
-  const full = fullId(data);
-  const spec = {
-    prefix: data.id,
-    tints: tints(data),
-    blisters: fixtures(data, "blister").map((f) => full(f.room)),
-    cradles: fixtures(data, "cradle").map((f) => [f.side, f.deck, f.hw, f.hh, f.len]),
-  };
-  const masts = fixtures(data, "mast").map((f) => [f.side, f.frame, f.height]);
-  if (masts.length) spec.masts = masts;
-  return spec;
-}
-
-/**
  * A drum station: the axis room and its window collar, the way up to it, and the cradles outside
  * the Berths, each [hour offset, z, half-width, height, half-length].
  * @returns {{prefix: string, axis: {id: string, r: number, len: number}, way: string, tints: Record<string, string>, cradles: number[][]}}
