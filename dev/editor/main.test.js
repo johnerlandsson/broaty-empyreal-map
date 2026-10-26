@@ -35,15 +35,17 @@ class FakeEvents {
 let root;
 let imports;
 let editor;
+let fetchStub;
 
 const start = (hash = "") => {
   imports = [];
   root = document.createElement("div");
   document.body.replaceChildren(root);
   window.location.hash = hash;
+  fetchStub = vi.fn(async () => ({ ok: true, json: async () => structuredClone(STATE) }));
   editor = startEditor({
     root,
-    fetch: vi.fn(async () => ({ ok: true, json: async () => structuredClone(STATE) })),
+    fetch: fetchStub,
     EventSource: FakeEvents,
     importPlace: async (id, version) => {
       imports.push([id, version]);
@@ -131,6 +133,44 @@ describe("the editor page", () => {
     FakeEvents.last.emit({ type: "built", changed: [], version: 44 });
     await editor.busy;
     expect(bar.hidden).toBe(true);
+  });
+
+  it("says so when the event stream drops, and reloads once it reopens", async () => {
+    await start("#orrin/orrin.market");
+    const fetches = fetchStub.mock.calls.length;
+    FakeEvents.last.onopen?.();
+    await editor.busy;
+    expect(fetchStub.mock.calls.length).toBe(fetches); // the first open reloads nothing
+    FakeEvents.last.onerror?.();
+    const bar = root.querySelector(".errbar");
+    expect(bar.hidden).toBe(false);
+    expect(bar.textContent).toContain("lost the edit server");
+    FakeEvents.last.onopen?.();
+    await editor.busy;
+    expect(fetchStub.mock.calls.length).toBe(fetches + 1);
+    expect(bar.hidden).toBe(true);
+    expect(editor.place.roomId).toBe("orrin.market");
+  });
+
+  it("says so for an unknown place in the hash at load", async () => {
+    await start("#nowhere/x");
+    expect(editor.place).toBe(null);
+    expect(root.querySelector(".errbar").textContent).toContain("no such place: nowhere");
+  });
+
+  it("says so for an unknown place through hashchange, leaving busy resolved", async () => {
+    await start("#orrin");
+    window.location.hash = "#nowhere";
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await expect(editor.busy).resolves.toBeUndefined();
+    expect(root.querySelector(".errbar").textContent).toContain("no such place: nowhere");
+    expect(editor.place.id).toBe("orrin");
+  });
+
+  it("shows a malformed hash rather than throwing", async () => {
+    await start("#orrin%E0");
+    expect(editor.place).toBe(null);
+    expect(root.querySelector(".errbar").textContent).toContain("bad place in the URL");
   });
 
   it("sets both views from the pretend-I'm-in picker", async () => {

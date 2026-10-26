@@ -37,7 +37,13 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** The hash's place and room: `#orrin/orrin.market`. */
 function parseHash(hash) {
-  const [placeId = "", roomId = ""] = decodeURIComponent(hash.replace(/^#/, "")).split("/");
+  let text;
+  try {
+    text = decodeURIComponent(hash.replace(/^#/, ""));
+  } catch {
+    return { placeId: null, roomId: null, error: `bad place in the URL: ${hash}` };
+  }
+  const [placeId = "", roomId = ""] = text.split("/");
   return { placeId: placeId || null, roomId: roomId || null };
 }
 
@@ -221,6 +227,7 @@ export function startEditor({
 
   /** Re-read the state, and rebuild the open place from data freshly imported. */
   async function reload() {
+    showError(null);
     version = Date.now();
     for (const id of data.keys()) changed.add(id);
     await fetchState();
@@ -243,21 +250,30 @@ export function startEditor({
       return state;
     },
     select,
-    reload: () => (editor.busy = reload()),
-    open: (id, roomId) => (editor.busy = openPlace(id, roomId)),
+    reload: () => (editor.busy = reload().catch((err) => showError(err.message))),
+    open: (id, roomId) => (editor.busy = openPlace(id, roomId).catch((err) => showError(err.message))),
     busy: Promise.resolve(),
     ready: null,
   };
 
   pretend.addEventListener("change", () => select(pretend.value || null));
   window.addEventListener("hashchange", () => {
-    const { placeId, roomId } = parseHash(window.location.hash);
+    const { placeId, roomId, error } = parseHash(window.location.hash);
+    if (error) return showError(error);
     if (!placeId) return;
     if (placeId !== place?.id) editor.open(placeId, roomId);
     else if (roomId !== place.roomId) select(roomId);
   });
 
+  // The stream drops while the server is down; EventSource reconnects by itself. A build announced
+  // meanwhile is lost, so on each reopen after the first the page reloads (which clears the bar).
   const events = new Events("/api/events");
+  let opened = false;
+  events.onerror = () => showError("lost the edit server; reconnecting…");
+  events.onopen = () => {
+    if (opened) editor.reload();
+    opened = true;
+  };
   events.onmessage = (e) => {
     let event;
     try {
@@ -271,8 +287,9 @@ export function startEditor({
 
   editor.ready = editor.busy = (async () => {
     await fetchState();
-    const { placeId, roomId } = parseHash(window.location.hash);
-    if (placeId && state.places.some((p) => p.id === placeId)) await openPlace(placeId, roomId);
+    const { placeId, roomId, error } = parseHash(window.location.hash);
+    if (error) showError(error);
+    else if (placeId) await openPlace(placeId, roomId);
   })().catch((err) => showError(err.message));
 
   window.editor = editor;
