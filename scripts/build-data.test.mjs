@@ -345,11 +345,13 @@ describe("build", () => {
     const opts = setup({ ...placed, mini: { footprints: { hall: { corners: "cut" } } } });
     await build(opts);
     const m = await load(join(opts.outDir, "mini.js"));
-    expect(Object.keys(m.look)).toEqual(["paint", "fixtures", "footprints", "view", "palette"]);
+    expect(Object.keys(m.look)).toEqual(["paint", "fixtures", "footprints", "hull", "view", "palette"]);
     expect(m.look.footprints).toEqual({ hall: { corners: "cut" } });
+    expect(m.look.hull).toEqual({});
     expect(m.look.view).toEqual({ cutaway: "hide-above" });
     const w = await load(join(opts.outDir, "wheelie.js"));
     expect(w.look).not.toHaveProperty("footprints");
+    expect(w.look).not.toHaveProperty("hull");
     expect(w.look.view).toEqual({ cutaway: "off" });
   });
 
@@ -369,6 +371,42 @@ describe("build", () => {
     editArea(opts.source, "mini.yaml", locker("starboard 2"));
     await build(opts);
     expect((await load(join(opts.outDir, "mini.js"))).look.footprints).toEqual({ hall: { span: { starboard: 1 } } });
+  });
+
+  // mini's deck 1 is the dock, hall and store at side 0, frames 1 to 3
+  const deck1 = (fore) => [[-0.5, 0.5], [0.5, 0.5], [0.5, fore], [-0.5, fore]];
+  const cradle = (side) => ({ type: "cradle", side, deck: 1, hw: 0.3, hh: 0.3, len: 1 });
+
+  it("builds a hull round its deck's rooms, with a cradle at its nose", async () => {
+    const hull = { 1: [[-0.6, 0.4], [0.6, 0.4], [0.6, 3.8, 0.3], [-0.6, 3.8]], 2: deck1(2.5) };
+    const opts = setup({ ...placed, mini: { hull, fixtures: [cradle(0)] } });
+    const { report } = await build(opts);
+    expect(report.orphans).toEqual([]);
+    expect((await load(join(opts.outDir, "mini.js"))).look.hull).toEqual(hull);
+  });
+
+  it("stops on a hull cutting through a room, naming it, the deck and the file, and writes nothing", async () => {
+    const opts = setup({ ...placed, mini: { hull: { 1: deck1(3) } } });
+    await expect(build(opts)).rejects.toThrow(/data\/tweaks\/mini\.json.*hull\.1.*mini\.store/);
+    expect(existsSync(opts.outDir)).toBe(false);
+    expect(existsSync(opts.reportPath)).toBe(false);
+  });
+
+  it("checks a room's footprint against the hull, not just its cell", async () => {
+    const opts = setup({ ...placed, mini: { hull: { 1: deck1(3.5) }, footprints: { hall: { span: { port: 0.2 } } } } });
+    await expect(build(opts)).rejects.toThrow(/data\/tweaks\/mini\.json.*hull\.1.*mini\.hall/);
+  });
+
+  it("stops on a cradle outside its deck's hull, naming it, the deck and the file, and writes nothing", async () => {
+    const opts = setup({ ...placed, mini: { hull: { 1: deck1(3.5) }, fixtures: [{ type: "blister", room: "hall" }, cradle(1)] } });
+    await expect(build(opts)).rejects.toThrow(/data\/tweaks\/mini\.json.*fixtures\[1\] \(cradle\).*hull\.1/);
+    expect(existsSync(opts.outDir)).toBe(false);
+    expect(existsSync(opts.reportPath)).toBe(false);
+  });
+
+  it("reports a hull for a deck the place lacks as an orphan", async () => {
+    const { report } = await build(setup({ ...placed, mini: { hull: { 7: deck1(3.5) } } }));
+    expect(report.orphans).toEqual([{ place: "mini", key: "hull.7" }]);
   });
 
   it("diffs against a hand-made file already in the out dir", async () => {

@@ -68,6 +68,33 @@ describe("loadTweaks footprints and view", () => {
     expect(loadOne({ footprints: { hold: { outline: [[0, 0], [1, 1], [1, 0], [0, 1]] } } })).toThrow(/x\.json: footprints\.hold\.outline.*cross/);
   });
 
+  it("takes a hull path per deck, a third value rounding a corner", () => {
+    const hull = { 1: [[-0.5, 0.5], [0.5, 0.5], [0.5, 3.5, 0.3], [-0.5, 3.5]], "-2": [[0, 0], [1, 0], [0, 1]] };
+    expect(loadOne({ hull })().places.x).toEqual({ hull });
+  });
+
+  it("refuses a hull of fewer than 3 points, naming the deck", () => {
+    expect(loadOne({ hull: { 1: [[0, 0], [1, 0]] } })).toThrow(/x\.json: hull\.1/);
+  });
+
+  it("refuses a hull key that isn't a deck number", () => {
+    expect(loadOne({ hull: { top: [[0, 0], [1, 0], [0, 1]] } })).toThrow(/x\.json: hull\.top/);
+  });
+
+  it("refuses a hull point that isn't [x, y] or [x, y, r], or an r of 0 or less", () => {
+    expect(loadOne({ hull: { 1: [[0, 0], [1, 0, 0.1, 2], [0, 1]] } })).toThrow(/x\.json: hull\.1\[1\]/);
+    expect(loadOne({ hull: { 1: [[0, 0], [1, 0, -0.2], [0, 1]] } })).toThrow(/x\.json: hull\.1\[1\]/);
+    expect(loadOne({ hull: { 1: [[0, 0], [1, 0, 0], [0, 1]] } })).toThrow(/x\.json: hull\.1\[1\]/);
+  });
+
+  it("refuses a rounded corner too big for its edges", () => {
+    expect(loadOne({ hull: { 1: [[0, 0], [1, 0, 0.6], [1, 1, 0.6], [0, 1]] } })).toThrow(/x\.json: hull\.1/);
+  });
+
+  it("refuses a self-crossing hull, naming the deck", () => {
+    expect(loadOne({ hull: { 1: [[0, 0], [1, 1], [1, 0], [0, 1]] } })).toThrow(/x\.json: hull\.1.*cross/);
+  });
+
   it("refuses an unknown cutaway", () => {
     expect(loadOne({ view: { cutaway: "sideways" } })).toThrow(/x\.json: view\.cutaway.*sideways/);
   });
@@ -118,7 +145,7 @@ describe("resolveLook paint", () => {
 
   it("resolves a place with no file as plain", () => {
     const out = resolveLook("nowhere", [room("a")], "decks", tweaks);
-    expect(out.look).toEqual({ paint: { a: "industrial" }, fixtures: [], footprints: {}, view: { cutaway: "hide-above" } });
+    expect(out.look).toEqual({ paint: { a: "industrial" }, fixtures: [], footprints: {}, hull: {}, view: { cutaway: "hide-above" } });
     expect(out.orphans).toEqual([]);
   });
 });
@@ -182,6 +209,32 @@ describe("resolveLook footprints and view", () => {
 
   it("reports a footprint for a room the place lacks", () => {
     expect(resolveLook("base", [room("a")], "decks", tweaks).orphans).toEqual(["footprints.b"]);
+  });
+});
+
+describe("resolveLook hull", () => {
+  const palette = { industrial: "#3" };
+  const tri = (n) => [[0, 0], [n, 0], [0, n]];
+  const tweaks = {
+    palette,
+    places: {
+      base: { hull: { 1: tri(1), 2: tri(2) } },
+      child: { like: "base", hull: { 2: tri(3), 5: tri(5) } },
+    },
+  };
+  const decks = [room("a", { at: { deck: 1, frame: 0, side: 0 } }), room("b", { at: { deck: 2, frame: 0, side: 0 } })];
+
+  it("inherits the hull deck by deck through like", () => {
+    expect(resolveLook("child", decks, "decks", tweaks).look.hull).toEqual({ 1: tri(1), 2: tri(3), 5: tri(5) });
+  });
+
+  it("reports a hull for a deck the place lacks, but not an inherited one", () => {
+    expect(resolveLook("child", decks, "decks", tweaks).orphans).toEqual(["hull.5"]);
+    expect(resolveLook("base", decks.slice(0, 1), "decks", tweaks).orphans).toEqual(["hull.2"]);
+  });
+
+  it("leaves the hull out of a place that isn't decks", () => {
+    expect(resolveLook("p", [room("a")], "wheel", { palette, places: {} }).look).not.toHaveProperty("hull");
   });
 });
 

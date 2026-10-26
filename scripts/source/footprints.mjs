@@ -110,3 +110,13 @@ export function overlaps(rooms) {
   });
   return pairs;
 }
+
+/**
+ * Whether an outline lies wholly inside a path: no more than a sliver of its area outside. Both
+ * simple and counter-clockwise.
+ * @param {number[][]} points
+ * @param {number[][]} path
+ */
+export function inside(points, path) {
+  return Math.abs(area(points)) - shared(points, path) <= EPS;
+}

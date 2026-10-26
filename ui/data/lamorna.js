@@ -228,6 +228,7 @@ export default {
       }
     ],
     "footprints": {},
+    "hull": {},
     "view": {
       "cutaway": "hide-above"
     },

@@ -2,10 +2,10 @@
 // place's look from them. The build only ever reads these files.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { boundsOf, outlineOf } from "../../ui/lib/footprint.js";
+import { boundsOf, outlineOf, pathOf, reachesOf } from "../../ui/lib/footprint.js";
 import { crosses } from "./footprints.mjs";
 
-const TOP_KEYS = ["like", "paint", "paintDistricts", "fixtures", "footprints", "view", "place", "drum", "town", "wheel"];
+const TOP_KEYS = ["like", "paint", "paintDistricts", "fixtures", "footprints", "hull", "view", "place", "drum", "town", "wheel"];
 /** The builder sections: allowed keys of each (stage 1). `wheel` is empty. */
 const SECTION_KEYS = {
   drum: ["rooms", "axis", "way"],
@@ -91,6 +91,31 @@ function checkFootprint(file, path, fp) {
   }
 }
 
+/** A hull key: a deck number. */
+const DECK = /^(0|-?[1-9]\d*)$/;
+
+function checkHull(file, hull) {
+  expectObject(file, "hull", hull);
+  for (const [deck, points] of Object.entries(hull)) {
+    const path = `hull.${deck}`;
+    if (!DECK.test(deck)) throw new Error(`${file}: ${path}: a hull is keyed by deck number`);
+    if (!Array.isArray(points) || points.length < 3) throw new Error(`${file}: ${path} must be a list of 3 or more [x, y] or [x, y, r] points`);
+    points.forEach((p, i) => {
+      if (!Array.isArray(p) || p.length < 2 || p.length > 3 || !p.every(isNumber)) throw new Error(`${file}: ${path}[${i}] must be an [x, y] or [x, y, r] point`);
+      if (p.length === 3 && p[2] <= 0) throw new Error(`${file}: ${path}[${i}]: r must be more than 0`);
+    });
+    if (crosses(points)) throw new Error(`${file}: ${path} crosses itself`);
+    const reach = reachesOf(points);
+    points.forEach((p, i) => {
+      const q = points[(i + 1) % points.length];
+      if (reach[i] + reach[(i + 1) % points.length] > Math.hypot(q[0] - p[0], q[1] - p[1]) + 1e-9) {
+        throw new Error(`${file}: ${path}[${i}]: its rounded corners don't fit on the edge to the next point`);
+      }
+    });
+    if (crosses(pathOf(points))) throw new Error(`${file}: ${path} crosses itself once its corners are rounded`);
+  }
+}
+
 function checkView(file, view) {
   expectObject(file, "view", view);
   unknownKeys(file, "view", view, VIEW_KEYS);
@@ -129,6 +154,7 @@ function checkTweak(file, tweak, palette) {
     expectObject(file, "footprints", tweak.footprints);
     for (const [id, fp] of Object.entries(tweak.footprints)) checkFootprint(file, `footprints.${id}`, fp);
   }
+  if (tweak.hull !== undefined) checkHull(file, tweak.hull);
   if (tweak.view !== undefined) checkView(file, tweak.view);
 
   if (tweak.place !== undefined) {
@@ -215,7 +241,7 @@ function merged(placeId, tweaks, chain = []) {
   if (!tweaks.places[own.like]) throw new Error(`data/tweaks/${placeId}.json: like names ${own.like}, which has no tweak file`);
   const base = merged(own.like, tweaks, [...chain, placeId]);
   const out = { ...base, ...own };
-  for (const key of ["paint", "paintDistricts", "footprints", "view", ...Object.keys(SECTION_KEYS), "place"]) {
+  for (const key of ["paint", "paintDistricts", "footprints", "hull", "view", ...Object.keys(SECTION_KEYS), "place"]) {
     if (base[key] || own[key]) out[key] = { ...base[key], ...own[key] };
   }
   return out;
@@ -244,12 +270,13 @@ function namedRooms(tweak) {
  * One place's full look. Paint gives every room a palette name: its own, else its district's in
  * `paintDistricts`, else its district if that is a palette name, else a default by kind (a decks
  * passage, whose name is its address: midring; a berth: docks; otherwise industrial). A decks
- * place has its footprints, by local id; every place has its view, the tweak's over its kind's.
+ * place has its footprints, by local id, and its hull paths, by deck; every place has its view, the
+ * tweak's over its kind's.
  * @param {string} placeId
  * @param {object[]} rooms  the place's placed rooms (full ids, `name`, `address`, `flags`, `district`)
  * @param {string} layoutKind  the area's layout kind
  * @param {{palette: Record<string, string>, places: Record<string, object>}} tweaks
- * @returns {{look: object, orphans: string[]}}  orphans: paths of this place's own tweaks that name a room it lacks
+ * @returns {{look: object, orphans: string[]}}  orphans: paths of this place's own tweaks that name a room or deck it lacks
  */
 export function resolveLook(placeId, rooms, layoutKind, tweaks) {
   const tweak = resolveTweak(placeId, tweaks);
@@ -273,11 +300,16 @@ export function resolveLook(placeId, rooms, layoutKind, tweaks) {
   }
 
   const look = { paint, fixtures: tweak.fixtures ?? [] };
-  if (layoutKind === "decks") look.footprints = tweak.footprints ?? {};
+  if (layoutKind === "decks") {
+    look.footprints = tweak.footprints ?? {};
+    look.hull = tweak.hull ?? {};
+  }
   look.view = { cutaway: layoutKind === "decks" ? "hide-above" : "off", ...tweak.view };
   for (const name of Object.keys(SECTION_KEYS)) if (tweak[name]) look[name] = tweak[name];
 
   const own = tweaks.places[placeId] ?? {};
   const orphans = namedRooms(own).filter(([, id]) => !have.has(id)).map(([path]) => path);
+  const decks = new Set(rooms.filter((r) => r.at).map((r) => String(r.at.deck)));
+  for (const deck of Object.keys(own.hull ?? {})) if (!decks.has(deck)) orphans.push(`hull.${deck}`);
   return { look, orphans };
 }

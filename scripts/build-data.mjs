@@ -8,8 +8,9 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { noseAt, outlineOf, pathOf } from "../ui/lib/footprint.js";
 import { keepArea, keepRoom, ROOM_FIELDS } from "./source/filter.mjs";
-import { overlaps } from "./source/footprints.mjs";
+import { inside, overlaps } from "./source/footprints.mjs";
 import { placeRooms } from "./source/place.mjs";
 import { loadSource } from "./source/read.mjs";
 import { diffRooms, droppedOf, emptyReport, formatReport, sortReport } from "./source/report.mjs";
@@ -21,7 +22,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** A generated room's keys, in order: the kept fields, with `at` and `terrain` after the address. */
 const ROOM_KEYS = ["id", "name", "address", "at", "terrain", ...ROOM_FIELDS.slice(3)];
 /** The look's keys, in order (resolveLook's, then the palette). */
-const LOOK_KEYS = ["paint", "fixtures", "footprints", "view", "drum", "town", "wheel", "palette"];
+const LOOK_KEYS = ["paint", "fixtures", "footprints", "hull", "view", "drum", "town", "wheel", "palette"];
 /** What a checkout must have; loadSource reads each. */
 const SOURCE_PATHS = ["content/areas", "content/plans", "content/game/hulls.yaml", "content/game/world.yaml"];
 
@@ -165,6 +166,28 @@ function checkFootprints(id, rooms, footprints) {
 }
 
 /**
+ * Throws, naming the tweak file and the deck's hull, when a deck's hull path cuts through a room's
+ * outline on it, or a cradle on it has no nose to sit at (its side misses the path). Decks with no
+ * hull path keep their box and aren't checked.
+ */
+function checkHull(id, rooms, look) {
+  const file = `data/tweaks/${id}.json`;
+  const local = (roomId) => roomId.slice(roomId.indexOf(".") + 1);
+  for (const [deck, points] of Object.entries(look.hull)) {
+    const path = pathOf(points);
+    for (const r of rooms.filter((room) => String(room.at?.deck) === deck)) {
+      const outline = outlineOf(look.footprints[local(r.id)]).map(([x, y]) => [x + r.at.side, y + r.at.frame]);
+      if (!inside(outline, path)) throw new Error(`${file}: hull.${deck} cuts through ${r.id}. Nothing written`);
+    }
+    look.fixtures.forEach((f, i) => {
+      if (f.type === "cradle" && String(f.deck) === deck && noseAt(path, f.side) === null) {
+        throw new Error(`${file}: fixtures[${i}] (cradle) at side ${f.side} is outside hull.${deck}. Nothing written`);
+      }
+    });
+  }
+}
+
+/**
  * Builds every place, the index and the report. Reads and checks everything before writing
  * anything, so a missing source, a bad tweak or a partial checkout writes nothing. What changed is
  * against the last commit when the out dir is in a git work tree, else against the files there.
@@ -221,6 +244,7 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
     const { look, orphans } = resolveLook(id, placed, layout.kind, tweaks);
     report.orphans.push(...orphans.map((key) => ({ place: id, key })));
     if (look.footprints) checkFootprints(id, placed, look.footprints);
+    if (look.hull) checkHull(id, placed, look);
 
     // A new place is listed whole; an existing one diffs against its file.
     const path = join(outDir, `${id}.js`);
