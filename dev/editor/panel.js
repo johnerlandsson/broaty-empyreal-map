@@ -536,13 +536,15 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
 
   /**
    * The panel's inputs as they are, by name: each one's value where it's still being typed (unlike
-   * its saved defaultValue), and which has the focus, with its caret.
+   * its saved defaultValue), each picker's choice (the greeble type), and which has the focus, with
+   * its caret.
    */
   function held() {
     const typed = new Map();
     for (const i of [...inspector.querySelectorAll("input[name]"), ...view.querySelectorAll("input[name]")]) {
       if (i.value !== i.defaultValue) typed.set(i.name, i.value);
     }
+    for (const s of [...inspector.querySelectorAll("select[name]"), ...view.querySelectorAll("select[name]")]) typed.set(s.name, s.value);
     const a = document.activeElement;
     const focused = a?.name && (inspector.contains(a) || view.contains(a)) ? a : null;
     let caret = null;

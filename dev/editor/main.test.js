@@ -7,8 +7,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import kilmar from "../../tests/fixtures/generated/kilmar.js";
 import orrin from "../../tests/fixtures/generated/orrin.js";
-import freighterJson from "../../data/tweaks/freighter.json";
-import freighter from "../../ui/data/plans/freighter.js";
+import freighter from "../../tests/fixtures/generated/plans/freighter.js";
+import freighterJson from "../../tests/fixtures/generated/plans/freighter.tweak.json";
 import { startEditor } from "./main.js";
 
 const FIXTURES = { orrin, kilmar };
@@ -194,6 +194,7 @@ describe("the editor page", () => {
 });
 
 describe("ship classes", () => {
+  // the frozen freighter: what's expected is worked out from it where it can be
   const PALETTE = { industrial: "#d0703c", docks: "#cfe3ff", residential: "#e8c27a", concourse: "#d9a441" };
   const PLANS = [
     { id: "hull-courier", name: "courier", hulls: ["courier"] },
@@ -286,7 +287,7 @@ describe("ship classes", () => {
     await open("#freighter");
     expect(side().querySelector('input[name="surface-seams"]').checked).toBe(true);
     await toggle("surface-seams");
-    expect(puts[0].body.json.surface).toEqual({ windows: ["cockpit", "passage"], seams: false });
+    expect(puts[0].body.json.surface).toEqual({ ...freighterJson.surface, seams: false });
   });
 
   it("turns off each of the hull look's details", async () => {
@@ -310,7 +311,7 @@ describe("ship classes", () => {
     await toggle("surface-seams");
     expect(side().querySelector('input[name="surface-seams"]').checked).toBe(false);
     await toggle("surface-seams");
-    expect(puts.at(-1).body.json.surface).toEqual({ windows: ["cockpit", "passage"] });
+    expect(puts.at(-1).body.json.surface).toEqual(freighterJson.surface);
     await toggle("profile-spine");
     await toggle("profile-spine");
     expect(puts.at(-1).body.json.profile.spine).toMatchObject({ height: 0.3 });
@@ -320,7 +321,7 @@ describe("ship classes", () => {
     await open("#freighter");
     side().querySelector('.sw.stripe i[title="docks"]').click();
     await editor.busy;
-    expect(puts[0].body.json.surface.stripe).toEqual({ paint: "docks", at: 0.3, width: 0.14 });
+    expect(puts[0].body.json.surface.stripe).toEqual({ ...freighter.look.surface.stripe, paint: "docks" });
   });
 
   it("PUTs the shorter list when a greeble is removed, and a longer one when one is added", async () => {
@@ -332,7 +333,24 @@ describe("ship classes", () => {
     type.value = "dish";
     side().querySelector('[name="greeble-add"]').click();
     await editor.busy;
-    expect(puts[1].body.json.greebles).toHaveLength(4);
+    expect(puts[1].body.json.greebles).toHaveLength(freighterJson.greebles.length);
     expect(puts[1].body.json.greebles.at(-1)).toMatchObject({ type: "dish" });
+  });
+
+  it("keeps the greeble type picked across the redraw after a save", async () => {
+    await open("#freighter");
+    side().querySelector('select[name="greeble-type"]').value = "antenna";
+    side().querySelector('[name="greeble-add"]').click();
+    await editor.busy;
+    expect(puts[0].body.json.greebles.at(-1)).toMatchObject({ type: "antenna" });
+    expect(side().querySelector('select[name="greeble-type"]').value).toBe("antenna");
+  });
+
+  it("heads the view section as a ship's", async () => {
+    await open("#freighter");
+    expect([...side().querySelectorAll(".sec")].map((n) => n.textContent)).toContain("View · whole ship");
+    await editor.open("orrin");
+    await editor.busy;
+    expect([...side().querySelectorAll(".sec")].map((n) => n.textContent)).toContain("View · whole station");
   });
 });
