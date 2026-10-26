@@ -9,11 +9,11 @@ import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { keepArea, keepRoom, ROOM_FIELDS } from "./source/filter.mjs";
-import { hullClash, overlaps } from "./source/footprints.mjs";
+import { hullClashes, overlaps } from "./source/footprints.mjs";
 import { placeRooms } from "./source/place.mjs";
 import { loadSource } from "./source/read.mjs";
 import { diffRooms, droppedOf, emptyReport, formatReport, sortReport } from "./source/report.mjs";
-import { loadTweaks, resolveLook, resolveTweak } from "./source/tweaks.mjs";
+import { loadTweaks, originOf, resolveLook, resolveTweak, via } from "./source/tweaks.mjs";
 import { RINGS } from "./source/wheel.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -152,28 +152,45 @@ function writeIfChanged(file, text) {
 }
 
 /**
- * Throws, naming the tweak file and both rooms, when a reshaped decks room's outline overlaps
- * another room's on its deck. Rooms neither of which has a footprint are left to the source.
+ * Each pair of rooms on a deck whose outlines overlap where one is reshaped, as a line naming the
+ * tweak file, both rooms and the file a footprint comes from through `like`. Rooms neither of
+ * which has a footprint are left to the source.
  */
-function checkFootprints(id, rooms, footprints) {
+function footprintClashes(id, rooms, footprints, tweaks) {
   const local = (roomId) => roomId.slice(roomId.indexOf(".") + 1);
   const cells = rooms.filter((r) => r.at).map((r) => ({ id: r.id, cell: { x: r.at.side, y: r.at.frame, z: r.at.deck }, fp: footprints[local(r.id)] }));
   const reshaped = new Set(cells.filter((c) => c.fp).map((c) => c.id));
-  if (!reshaped.size) return;
-  const clash = overlaps(cells).find(([a, b]) => reshaped.has(a) || reshaped.has(b));
-  if (clash) throw new Error(`data/tweaks/${id}.json: footprints: ${clash[0]} and ${clash[1]} overlap. Nothing written`);
+  if (!reshaped.size) return [];
+  const named = (roomId) => `${roomId}${reshaped.has(roomId) ? via(id, originOf(id, tweaks, "footprints", local(roomId))) : ""}`;
+  return overlaps(cells)
+    .filter(([a, b]) => reshaped.has(a) || reshaped.has(b))
+    .map(([a, b]) => `data/tweaks/${id}.json: footprints: ${named(a)} and ${named(b)} overlap`);
 }
 
 /**
- * Throws, naming the tweak file and the deck's hull, when a deck's hull path cuts through a room
- * on it or leaves a cradle or mast outside (footprints.mjs's hullClash).
+ * Each room a deck's hull path cuts through and each cradle or mast it leaves outside
+ * (footprints.mjs's hullClashes), as a line naming the tweak file, the deck's hull and the file it
+ * or the footprint or fixtures come from through `like`; a hull from `like` suggests the opt-out.
  */
-function checkHull(id, rooms, look) {
-  const clash = hullClash(rooms, look);
-  if (!clash) return;
+function hullLines(id, rooms, look, tweaks) {
   const file = `data/tweaks/${id}.json`;
-  if (clash.room) throw new Error(`${file}: hull.${clash.deck} cuts through ${clash.room}. Nothing written`);
-  throw new Error(`${file}: fixtures[${clash.fixture}] (${clash.type}) is outside hull.${clash.deck}. Nothing written`);
+  // the base a value comes from through `like`, or null where it's the place's own
+  const base = (key, sub) => {
+    const origin = originOf(id, tweaks, key, sub);
+    return origin === id ? null : origin;
+  };
+  return hullClashes(rooms, look).map((clash) => {
+    const hullBase = base("hull", clash.deck);
+    const hull = `hull.${clash.deck}${hullBase ? ` (from ${hullBase}.json via like)` : ""}`;
+    const optOut = hullBase ? `; add "hull": {"${clash.deck}": null} to ${id}.json to keep the box` : "";
+    if (clash.room) {
+      const room = clash.room.slice(clash.room.indexOf(".") + 1);
+      const fpBase = look.footprints[room] ? base("footprints", room) : null;
+      return `${file}: ${hull} cuts through ${clash.room}${fpBase ? ` (footprints.${room} from ${fpBase}.json via like)` : ""}${optOut}`;
+    }
+    const fixturesBase = base("fixtures");
+    return `${file}: fixtures[${clash.fixture}] (${clash.type}${fixturesBase ? `, from ${fixturesBase}.json via like` : ""}) is outside ${hull}${optOut}`;
+  });
 }
 
 /**
@@ -195,6 +212,7 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
   const report = emptyReport(src.commit);
   const files = new Map(); // path -> text
   const places = [];
+  const clashes = []; // every hull and footprint clash, so one build lists them all
 
   // Stage 1 reads and places the plans, to check them, but doesn't write them.
   for (const { area, rooms } of src.plans) placeRooms(area, rooms);
@@ -232,8 +250,8 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
 
     const { look, orphans } = resolveLook(id, placed, layout.kind, tweaks);
     report.orphans.push(...orphans.map((key) => ({ place: id, key })));
-    if (look.footprints) checkFootprints(id, placed, look.footprints);
-    if (look.hull) checkHull(id, placed, look);
+    if (look.footprints) clashes.push(...footprintClashes(id, placed, look.footprints, tweaks));
+    if (look.hull) clashes.push(...hullLines(id, placed, look, tweaks));
 
     // A new place is listed whole; an existing one diffs against its file.
     const path = join(outDir, `${id}.js`);
@@ -267,6 +285,9 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
     const docks = src.world.filter((w) => own.has(w.berth)).map((w) => w.id).sort();
     places.push({ id, prefix: id, builder, docks });
   }
+
+  if (clashes.length === 1) throw new Error(`${clashes[0]}. Nothing written`);
+  if (clashes.length) throw new Error(`${clashes.length} hull and footprint clashes. Nothing written\n${clashes.join("\n")}`);
 
   // A generated file whose area has left the source goes; a hand-made one stays. The report lists
   // those the last commit had; any on disk goes. A source without any of them is a partial checkout.

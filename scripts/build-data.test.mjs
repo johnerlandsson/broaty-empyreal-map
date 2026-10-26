@@ -416,6 +416,41 @@ describe("build", () => {
     expect((await load(join(opts.outDir, "mini.js"))).look.hull).toEqual({});
   });
 
+  // a second decks area like mini: mink, its rooms where mini's are
+  const mink = (src) => {
+    const text = readFileSync(join(src, "content/areas/mini.yaml"), "utf8");
+    writeFileSync(join(src, "content/areas/mink.yaml"), text.replaceAll("mini", "mink"));
+  };
+
+  it("lists every clash a hull on a like base makes, naming the base, each child and the opt-out (S15)", async () => {
+    const opts = setup({ ...placed, shape: { hull: { 1: deck1(3) } }, mini: { like: "shape" }, mink: { like: "shape", fixtures: [cradle(1)] } });
+    mink(opts.source);
+    const err = await build(opts).catch((e) => e);
+    expect(err.message.split("\n")).toEqual([
+      "3 hull and footprint clashes. Nothing written",
+      'data/tweaks/mini.json: hull.1 (from shape.json via like) cuts through mini.store; add "hull": {"1": null} to mini.json to keep the box',
+      'data/tweaks/mink.json: hull.1 (from shape.json via like) cuts through mink.store; add "hull": {"1": null} to mink.json to keep the box',
+      'data/tweaks/mink.json: fixtures[0] (cradle) is outside hull.1 (from shape.json via like); add "hull": {"1": null} to mink.json to keep the box',
+    ]);
+    expect(existsSync(opts.outDir)).toBe(false);
+    expect(existsSync(opts.reportPath)).toBe(false);
+  });
+
+  it("names the file an inherited footprint or fixture comes from in a clash (S15)", async () => {
+    const opts = setup({
+      ...placed,
+      shape: { footprints: { hall: { span: { port: 0.2 } } }, fixtures: [cradle(1)] },
+      mini: { like: "shape", hull: { 1: deck1(3.5) } },
+      mink: { like: "shape", footprints: { hall: { span: { starboard: 0.6 } } } },
+    });
+    mink(opts.source);
+    editArea(opts.source, "mink.yaml", (doc) => doc.rooms.push({ id: "mink.locker", name: "Locker", address: "Deck 1, frame 2, starboard", exits: {} }));
+    const lines = (await build(opts).catch((e) => e)).message.split("\n");
+    expect(lines).toContain("data/tweaks/mini.json: hull.1 cuts through mini.hall (footprints.hall from shape.json via like)");
+    expect(lines).toContain("data/tweaks/mini.json: fixtures[0] (cradle, from shape.json via like) is outside hull.1");
+    expect(lines).toContain("data/tweaks/mink.json: footprints: mink.hall and mink.locker overlap");
+  });
+
   it("stops on a mast outside the top deck's hull, naming it, the deck and the file, and writes nothing", async () => {
     const mast = (side) => ({ type: "mast", side, frame: 2, height: 1 });
     await build(setup({ ...placed, mini: { hull: { 2: deck1(2.5) }, fixtures: [mast(0)] } }));

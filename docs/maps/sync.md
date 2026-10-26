@@ -198,15 +198,23 @@ The build also stops, naming the deck and the room or fixture, when a path
 cuts through a room (each room is checked brought in 0.1 cells, the drawn
 room box), when a cradle's side is not on the path of its deck, or when a
 mast is not inside the top deck's path. A cradle sits at the path's nose on
-its side.
+its side. It lists every such clash, in every place, in one run, and writes
+nothing.
+
+A hull on a place others are `like` makes every one of them fit it or opt
+out. A clash in a place that inherits its hull (or the footprint or fixture
+that clashes) names the file it came from, and suggests the opt-out:
+`data/tweaks/botallack.json: fixtures[6] (cradle) is outside hull.2 (from
+orrin.json via like); add "hull": {"2": null} to botallack.json to keep the
+box`.
 
 The mockup of the options is `docs/maps/reference/hull-path-options.png`.
 
 ### View
 
 `view` is how a place is seen. A decks place may have both keys; a wheel or
-drum a `camera` and a `cutaway` of `off`; a town neither. Anything else makes
-the build stop with an error naming the file.
+drum a `camera` and a `cutaway` of `off`; a town only a `cutaway` of `off`.
+Anything else makes the build stop with an error naming the file.
 
 ```json
 "view": { "cutaway": "ghost-above", "camera": { "yaw": 16, "pitch": 38, "zoom": 1 } }

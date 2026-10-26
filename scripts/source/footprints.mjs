@@ -165,29 +165,40 @@ function contains(path, [x, y]) {
 }
 
 /**
- * The first thing a deck's hull path leaves out, or null: a room on that deck whose outline,
- * brought in 0.1 to the drawn room box, isn't inside it; a cradle on it whose side misses the path;
- * a mast whose point isn't inside the top deck's path. Decks with no path keep their box.
+ * Everything a deck's hull path leaves out, deck by deck in the look's order: each room on that
+ * deck whose outline, brought in 0.1 to the drawn room box, isn't inside it; each cradle on it
+ * whose side misses the path; each mast whose point isn't inside the top deck's path. Decks with
+ * no path keep their box.
  * @param {{id: string, at?: {deck: number, frame: number, side: number}}[]} rooms
  * @param {{hull: Record<string, number[][]>, footprints: Record<string, object>, fixtures: object[]}} look
- * @returns {{deck: string, room: string} | {deck: string, fixture: number, type: string} | null}
+ * @returns {({deck: string, room: string} | {deck: string, fixture: number, type: string})[]}
  */
-export function hullClash(rooms, look) {
+export function hullClashes(rooms, look) {
   const local = (id) => id.slice(id.indexOf(".") + 1);
   const decks = rooms.filter((r) => r.at).map((r) => r.at.deck);
   const top = decks.length ? String(Math.max(...decks)) : null;
+  const clashes = [];
   for (const [deck, points] of Object.entries(look.hull)) {
     const path = pathOf(points);
     for (const r of rooms.filter((room) => String(room.at?.deck) === deck)) {
       const outline = inset(outlineOf(look.footprints[local(r.id)]), INSET).map(([x, y]) => [x + r.at.side, y + r.at.frame]);
-      if (!inside(outline, path)) return { deck, room: r.id };
+      if (!inside(outline, path)) clashes.push({ deck, room: r.id });
     }
     for (const [i, f] of look.fixtures.entries()) {
       const out =
         (f.type === "cradle" && String(f.deck) === deck && noseAt(path, f.side) === null) ||
         (f.type === "mast" && deck === top && !contains(path, [f.side, f.frame]));
-      if (out) return { deck, fixture: i, type: f.type };
+      if (out) clashes.push({ deck, fixture: i, type: f.type });
     }
   }
-  return null;
+  return clashes;
+}
+
+/**
+ * The first thing a deck's hull path leaves out (hullClashes), or null.
+ * @param {Parameters<typeof hullClashes>[0]} rooms
+ * @param {Parameters<typeof hullClashes>[1]} look
+ */
+export function hullClash(rooms, look) {
+  return hullClashes(rooms, look)[0] ?? null;
 }
