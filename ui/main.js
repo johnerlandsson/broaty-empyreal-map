@@ -20,73 +20,24 @@ import { ChartView } from "./chart-view.js";
 import places, { data } from "./data/places.js";
 import { DeckView } from "./deck-view.js";
 import { LanesView } from "./lanes-view.js";
-import { decksPlans } from "./decks-deck.js";
-import { drumPlans } from "./drum-deck.js";
-import { buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "./lib/decks.js";
-import { buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
 import { carInfo, carKind, carName, stopNames } from "./lib/cars.js";
 import { hullOf, isShipRoom, shipInfo } from "./lib/hulls.js";
-import { indexStation, infoLine, locate } from "./lib/locate.js";
-import { drumRooms, drumSpec, tissRooms, townData, townSpec } from "./lib/look.js";
+import { infoLine, locate } from "./lib/locate.js";
 import { moveCard } from "./lib/space.js";
 import { noPlanLine, pickStation, stationOfDock } from "./lib/stations.js";
-import { indexTown, locateTown, townInfo } from "./lib/town.js";
-import { ModelView } from "./model-view.js";
 import { SpaceView } from "./space-view.js";
+import { buildPlace } from "./place-views.js";
 import { shipPlans, updateShip } from "./ship-deck.js";
-import { townPlans } from "./town-deck.js";
-import { SkyView } from "./town-view.js";
 import { UnknownView } from "./unknown-view.js";
 
 const modelEl = document.getElementById("model");
 const deckEl = document.getElementById("deck");
 
-/** A wheel (T.I.S.S.): its rings, hub and spine. */
-function wheel(data) {
-  const index = indexStation(tissRooms(data));
-  return { index, model: new ModelView(modelEl, index, { view: data.look?.view }), deck: new DeckView(deckEl, index), lastLevel: null };
-}
-
-/** Wenna Halt: one drum, one plan. */
-function drum(data) {
-  const spec = drumSpec(data);
-  const index = indexStation({ rooms: drumRooms(data) });
-  const model = new ModelView(modelEl, index, {
-    faces: buildDrumModel(index, spec),
-    keyOf: drumKey,
-    hourOf: (where) => drumHour(index, where),
-    labels: false,
-    view: data.look?.view,
-  });
-  return { index, model, deck: new DeckView(deckEl, index, drumPlans(spec)), lastLevel: null };
-}
-
-/** Orrin Station and the halts: a box on decks, cut away above your deck; a plan a deck, rooms placed by address. */
-function decks(data) {
-  const index = indexDecks(data);
-  const model = new ModelView(modelEl, index, {
-    faces: buildDecksModel(index, data),
-    keyOf: decksKey,
-    hourOf: () => null,
-    cutOf: (where) => decksCut(index, where),
-    labels: false,
-    view: data.look?.view,
-  });
-  return { index, model, deck: new DeckView(deckEl, index, decksPlans()), lastLevel: null, locate: locateDecks };
-}
-
-/** Zennor: a city on the ground, rooms placed by their compass exits, ⌂ framing your district; its sky over it. */
-function town(data) {
-  const spec = townSpec(data);
-  const index = indexTown(townData(data), spec);
-  return { index, model: new SkyView(modelEl, index, "zennor"), deck: new DeckView(deckEl, index, townPlans(spec)), lastLevel: null, locate: locateTown, info: townInfo };
-}
-
 // Each station is built the first time it shows: a model and a plan apiece, each over its own
 // starfield, cost tens of milliseconds and thousands of nodes, and most never show in a session.
 // Every place in the generated index (data/places.js) by its builder.
-const BUILDERS = { decks, drum, town, wheel };
-const BUILD = Object.fromEntries(places.filter((p) => BUILDERS[p.builder] && data[p.id]).map((p) => [p.id, () => BUILDERS[p.builder](data[p.id])]));
+const BUILDERS = new Set(["decks", "drum", "town", "wheel"]);
+const BUILD = Object.fromEntries(places.filter((p) => BUILDERS.has(p.builder) && data[p.id]).map((p) => [p.id, () => ({ ...buildPlace(data[p.id], p.builder, modelEl, deckEl), lastLevel: null })]));
 const stations = {}; // station key -> its views, once built
 let turning = true; // the turn_model setting, for stations built after it came
 
