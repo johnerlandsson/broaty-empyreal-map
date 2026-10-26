@@ -6,7 +6,7 @@
 // uses the other stations' frame (X = 3 o'clock, starboard; Y = 12 o'clock, up; Z = fore), so the
 // one camera and renderer draw it. Pure; no DOM.
 
-import { boundsOf, noseAt, outlineOf, pathOf } from "./footprint.js";
+import { boundsOf, CORNER_R, cornered, noseAt, outlineOf, pathOf } from "./footprint.js";
 
 // --- addresses and the index -----------------------------------------------------------------
 
@@ -486,8 +486,9 @@ export function decksLayout(index, deck) {
     const [cx, cy] = centre(room.cell);
     if (room.blister) return { room, kind: "blister", cx, cy, r: PLAN.blister };
     if (!room.passage) {
-      const outline = outlineOf(room.footprint);
-      const points = inset(outline.map(([x, y]) => [x * PLAN.w, y * PLAN.h]), PLAN.inset).map(([x, y]) => [cx + x, cy - y]);
+      const fp = room.footprint;
+      const outline = outlineOf(fp);
+      const points = (fp?.outline ? inset(outline.map(([x, y]) => [x * PLAN.w, y * PLAN.h]), PLAN.inset) : planBox(fp, outline)).map(([x, y]) => [cx + x, cy - y]);
       if (isUnit(outline)) return { room, kind: "room", cx, cy, w: PLAN.w - 2 * PLAN.inset, h: PLAN.h - 2 * PLAN.inset, points };
       const b = boundsOf(points);
       return { room, kind: "room", cx: (b.x0 + b.x1) / 2, cy: (b.y0 + b.y1) / 2, w: b.x1 - b.x0, h: b.y1 - b.y0, points, shaped: true };
@@ -574,6 +575,18 @@ export function decksLayout(index, deck) {
 /** A polygon's outline as an SVG path, to a tenth of a unit. */
 export function pathD(points) {
   return `M${points.map((p) => p.map((v) => +v.toFixed(1)).join(",")).join("L")}Z`;
+}
+
+/**
+ * A span-and-corners footprint's room box on the plan, about its cell's centre, y up: its outline's
+ * bounds inset as a box is, its corners that size less the inset (none left, square), so a small r
+ * never folds the box over itself.
+ */
+function planBox(fp, outline) {
+  const b = boundsOf(outline);
+  const box = { x0: b.x0 * PLAN.w + PLAN.inset, x1: b.x1 * PLAN.w - PLAN.inset, y0: b.y0 * PLAN.h + PLAN.inset, y1: b.y1 * PLAN.h - PLAN.inset };
+  const r = fp?.r ?? CORNER_R;
+  return cornered(box, fp?.corners, r * PLAN.w - PLAN.inset, r * PLAN.h - PLAN.inset);
 }
 
 /**

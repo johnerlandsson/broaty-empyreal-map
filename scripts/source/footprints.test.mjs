@@ -72,4 +72,14 @@ describe("hullClash", () => {
     expect(hullClash(orrin.rooms, look({ 3: deck3 }, { fixtures: [mast(1)] }))).toBeNull();
     expect(hullClash(orrin.rooms, look({ 3: deck3 }, { fixtures: [mast(1), { ...mast(1), frame: 3 }] }))).toEqual({ deck: "3", fixture: 1, type: "mast" });
   });
+
+  it("finds nothing for a rounded or cut room at any r in a hull round its cell (S14)", () => {
+    const rooms = [{ id: "x.a", at: { deck: 1, frame: 0, side: 0 } }];
+    const hull = { 1: [[-0.6, -0.6], [0.6, -0.6], [0.6, 0.6], [-0.6, 0.6]] };
+    for (const corners of ["rounded", "cut"]) {
+      for (const r of [0, 0.02, 0.05, 0.1, 0.15, 0.3, 0.45]) {
+        expect(hullClash(rooms, { hull, footprints: { a: { corners, r } }, fixtures: [] }), `${corners} ${r}`).toBeNull();
+      }
+    }
+  });
 });

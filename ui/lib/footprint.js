@@ -4,7 +4,7 @@
 
 const UNIT = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]];
 /** A corner's radius or chamfer when the footprint gives none, in cells. */
-const R = 0.2;
+export const CORNER_R = 0.2;
 /** Points on each rounded corner's quarter circle, its two ends included: 3 arcs, then the edge to the next. */
 const ARC = 4;
 
@@ -21,7 +21,7 @@ function area2(points) {
 /**
  * A footprint's outline, counter-clockwise. With none, the unit square. `span` reaches past the
  * cell by cells fore, aft, port and starboard; `corners` (square, rounded or cut) shapes each
- * corner by `r`; an `outline` replaces both.
+ * corner by `r` (at r 0, square); an `outline` replaces both.
  * @param {{span?: Record<string, number>, corners?: string, r?: number, outline?: number[][]}} [fp]
  * @returns {number[][]}
  */
@@ -36,29 +36,42 @@ export function outlineOf(fp) {
   const x1 = 0.5 + (span.starboard ?? 0);
   const y0 = -0.5 - (span.aft ?? 0);
   const y1 = 0.5 + (span.fore ?? 0);
-  const box = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
-  if (!fp.corners || fp.corners === "square") return box;
+  return cornered({ x0, x1, y0, y1 }, fp.corners, fp.r ?? CORNER_R);
+}
 
-  const r = fp.r ?? R;
+/**
+ * A box's outline, counter-clockwise, its corners square, rounded or cut: each reaching rx along
+ * the edges across and ry along those up and down (a rounded one a quarter ellipse). A corner whose
+ * rx or ry is 0 or less is square; no point is there twice.
+ * @param {{x0: number, x1: number, y0: number, y1: number}} bounds
+ * @param {string} [corners]  square, rounded or cut
+ * @param {number} [rx]
+ * @param {number} [ry]
+ * @returns {number[][]}
+ */
+export function cornered({ x0, x1, y0, y1 }, corners, rx = 0, ry = rx) {
+  const box = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  if (!corners || corners === "square" || !(rx > 0 && ry > 0)) return box;
   const out = [];
   box.forEach(([x, y], i) => {
-    // From r along the edge coming in to r along the edge going out; a rounded corner's quarter
-    // circle, centred r in from both, between them.
-    const toward = ([u, v]) => [Math.sign(u - x) * r, Math.sign(v - y) * r];
+    // From the corner's size along the edge coming in to it along the edge going out; a rounded
+    // corner's quarter ellipse, centred that far in from both, between them.
+    const toward = ([u, v]) => [Math.sign(u - x) * rx, Math.sign(v - y) * ry];
     const [ix, iy] = toward(box[(i + 3) % 4]);
     const [ox, oy] = toward(box[(i + 1) % 4]);
     out.push([x + ix, y + iy]);
-    if (fp.corners === "rounded") {
+    if (corners === "rounded") {
       const [cx, cy] = [x + ix + ox, y + iy + oy];
       const start = (Math.PI / 2) * (i + 2);
       for (let k = 1; k < ARC - 1; k++) {
         const a = start + (Math.PI / 2) * (k / (ARC - 1));
-        out.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+        out.push([cx + rx * Math.cos(a), cy + ry * Math.sin(a)]);
       }
     }
     out.push([x + ox, y + oy]);
   });
-  return out;
+  const same = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) <= 1e-9;
+  return out.filter((p, i) => !same(p, out[(i + out.length - 1) % out.length]));
 }
 
 /**

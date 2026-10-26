@@ -19,6 +19,7 @@ import {
   locateDecks,
   parseAddress,
 } from "./decks.js";
+import { crosses } from "../../scripts/source/footprints.mjs";
 import { boundsOf, noseAt, pathOf } from "./footprint.js";
 import { DISTRICT_COLOURS } from "./geometry.js";
 import { infoLine } from "./locate.js";
@@ -549,6 +550,25 @@ describe("footprints and hull paths", () => {
     it("keeps the hull's box: every outline is inside the cells", () => {
       expect(index.hull).toEqual({ x0: -1, x1: 1, y0: 1, y1: 3, z0: 2, z1: 3 });
     });
+  });
+
+  describe("rounded and cut corners at any r (S14)", () => {
+    for (const corners of ["rounded", "cut"]) {
+      for (const r of [0, 0.02, 0.05, 0.1, 0.15, 0.3, 0.45]) {
+        it(`draws ${corners} at r ${r} as one simple outline inside the cell's inset box`, () => {
+          const layout = decksLayout(indexDecks(tweak({ charts: { corners, r } })), 3);
+          const c = layout.cells.find((x) => x.room.id === "orrin.charts");
+          const [x, y] = layout.centre(c.room.cell);
+          expect(c.points.flat().every(Number.isFinite)).toBe(true);
+          expect(JSON.stringify(decksShape(layout, { kind: "room", id: "orrin.charts" }))).not.toMatch(/NaN|null/);
+          expect(crosses(c.points)).toBe(false);
+          for (const [px, py] of c.points) {
+            expect(Math.abs(px - x)).toBeLessThanOrEqual(PLAN.w / 2 - PLAN.inset + 1e-9);
+            expect(Math.abs(py - y)).toBeLessThanOrEqual(PLAN.h / 2 - PLAN.inset + 1e-9);
+          }
+        });
+      }
+    }
   });
 
   describe("a nose that reaches fore (Review Focus 2)", () => {

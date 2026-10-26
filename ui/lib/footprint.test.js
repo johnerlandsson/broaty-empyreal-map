@@ -35,6 +35,10 @@ describe("outlineOf", () => {
     for (const [x, y] of pts.filter(([x, y]) => x > 0.3 && y > 0.3)) expect(Math.hypot(x - 0.3, y - 0.3)).toBeCloseTo(0.2, 9);
   });
 
+  it("is square at r 0, with no point twice", () => {
+    for (const corners of ["rounded", "cut"]) expect(outlineOf({ corners, r: 0 })).toEqual(outlineOf());
+  });
+
   it("takes r for the corners", () => {
     expect(outlineOf({ corners: "cut", r: 0.1 })).toContainEqual([0.5, 0.4]);
   });
