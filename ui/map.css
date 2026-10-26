@@ -56,12 +56,14 @@ body {
   border-radius: 9px;
   background: #0e131a;
   border: 1px solid #2b3646;
-  font: 600 10px Inter, system-ui, sans-serif;
+  font: 400 10px Inter, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
-  color: #e3eaf2;
+  color: #9aa7b7;
   white-space: nowrap;
   pointer-events: none;
 }
+/* The time itself, brighter than the weekday and the sun beside it. */
+.station-clock b { font-weight: 600; color: #e3eaf2; }
 
 /* What you're doing (ui/action-card.js): cards stacked in the deck band's top-left corner, clear of
  * the zoom buttons, yours over the ship's move. Dark like the plan under them, whatever the theme,

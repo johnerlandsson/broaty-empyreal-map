@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import cases from "../../dev/sky-cases.json" with { type: "json" };
 import { daylit, indexCharts } from "./orbits.js";
-import { groundSky, isDark, isUp, skyAngle, skyScene, sunBand } from "./sky.js";
+import { groundSky, isDark, isUp, skyAngle, skyScene, sunBand, sunPhase } from "./sky.js";
 
 // The game's own sky over Zennor, recorded by dev/sky-cases.ts from ground.ts (empyreal 7492196):
 // its Space.Charts, and the text either side of every change over a Tamsin year.
@@ -15,6 +15,15 @@ describe("groundSky against the game", () => {
 
   it("counts whole ticks: 999 ms into a tick is still that tick", () => {
     for (const c of cases.cases) expect(groundSky(idx, "zennor", at(c.tick, 999))?.text, `tick ${c.tick}`).toBe(c.text);
+  });
+
+  it("puts the sun where the game's words do: dawn as it comes up, dusk as it goes down", () => {
+    const words = { overhead: "day", "well up": "day", low: "day", night: "night" };
+    for (const c of cases.cases) {
+      const { sun, band } = groundSky(idx, "zennor", at(c.tick));
+      const want = words[band] ?? (/has just come up|is paling/.test(c.text) ? "dawn" : "dusk");
+      expect(sunPhase(sun.alt, sun.rising), `tick ${c.tick}: ${c.text}`).toBe(want);
+    }
   });
 
   it("agrees with daylit()", () => {
@@ -195,6 +204,15 @@ describe("the thresholds exactly on their lines, as ground.ts compares them", ()
     expect(sunBand(0)).toBe("up");
     expect(sunBand(-10)).toBe("night");
     expect(sunBand(-9.999)).toBe("twilight");
+  });
+
+  it("is day from 10, night at -10, and dawn or dusk between by which way it's going", () => {
+    expect(sunPhase(10, true)).toBe("day");
+    expect(sunPhase(9.999, true)).toBe("dawn");
+    expect(sunPhase(9.999, false)).toBe("dusk");
+    expect(sunPhase(-9.999, true)).toBe("dawn");
+    expect(sunPhase(-9.999, false)).toBe("dusk");
+    expect(sunPhase(-10, false)).toBe("night");
   });
 
   it("is dark below -5, not at it", () => {

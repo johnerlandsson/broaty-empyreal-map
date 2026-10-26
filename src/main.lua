@@ -20,6 +20,7 @@ local A = require('station_map.action')
 local K = require('station_map.course')
 local B = require('station_map.belt')
 local F = require('station_map.note')
+local T = require('station_map.clock')
 
 local panel = mud.panel('map')
 local state = L.new()
@@ -32,6 +33,7 @@ local doing = A.new()
 local course = K.new()
 local belt = B.new()
 local notes = F.new()
+local clock = T.new()
 
 -- storage is per plugin and world, but charts are per character, so the lanes' sightings are kept under
 -- `lanes:<name>`, loaded when Char.Status names her. `lanes` alone is the old record, before charts were per
@@ -143,6 +145,10 @@ end
 
 local function post_course()
   panel:post('course', K.message(course))
+end
+
+local function post_clock()
+  panel:post('clock', T.message(clock))
 end
 
 local function post_settings()
@@ -291,6 +297,10 @@ local function on_gmcp(package, data)
     if K.ship_course(course, data) then post_course() end
     return
   end
+  if name == 'empyreal.clock' then
+    if T.empyreal_clock(clock, data) then post_clock() end
+    return
+  end
   local both = scene_reducers[name]
   if both then
     both(data)
@@ -300,7 +310,7 @@ local function on_gmcp(package, data)
 end
 
 -- Subscribe with the names Mallard advertises (original casing).
-for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Ship.Course', 'Ship.List', 'Space.Contacts', 'Char.Status', 'Char.Action' }) do
+for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Ship.Course', 'Ship.List', 'Space.Contacts', 'Char.Status', 'Char.Action', 'Empyreal.Clock' }) do
   gmcp.on(prefix, on_gmcp)
 end
 
@@ -324,6 +334,7 @@ world.on('disconnect', function()
   if K.reset(course) then post_course() end
   if B.reset(belt) then post_belt() end
   save_belts()
+  if T.reset(clock) then post_clock() end -- the tab hides till the next login's
   doing_now = nil -- the views stay as they are; the first status after it fits them
   moving_now = nil
 end)
@@ -345,6 +356,7 @@ panel:on_message('ready', function()
   if next(W.message(work)) then post_work() end
   if A.message(doing).action then post_action() end
   if K.message(course).course then post_course() end
+  if T.message(clock).clock then post_clock() end
 end)
 
 panel:on_message('chart', function(data)

@@ -1,0 +1,81 @@
+<!doctype html>
+<!-- Station clock, second round, 2026-10-26: the tab now runs on Empyreal time (Empyreal.Clock), and
+     these are three ways to add the weekday, as `time` says it ("Wednesday, 14:32."), and on Tamsin's
+     ports where the sun is, as `time` says that ("Senara's going down", ground.ts's sunPhase: dawn and
+     dusk within 10° of the horizon). Each option shows twice: the Market on T.I.S.S. at 14:32, and
+     Zennor's Square at dusk at 17:26. Each frame is the real preview (dev/preview.html); the tab is
+     restyled and refilled from here. Serve the repo root over http to open it. A throwaway: take its
+     look, not its code. B was picked. -->
+<html><head><meta charset="utf-8"><title>Station clock: the weekday and the sun</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:18px; width:1150px; }
+  .row { display:flex; gap:26px; justify-content:center; align-items:flex-start; }
+  .row + .row { margin-top:14px; }
+  figure { margin:0; text-align:center; }
+  figcaption { margin:8px 0 2px; color:#e3eaf2; font-size:14px; }
+  figcaption small { display:block; color:#7d8a9a; max-width:360px; margin:4px auto 0; font-size:12px; line-height:1.4; min-height:34px; }
+  .where { color:#7d8a9a; font-size:11px; margin-top:6px; }
+  iframe { display:block; width:360px; height:420px; border:1px solid #2b3646; border-radius:6px; margin-top:4px; background:#04060c; }
+</style></head><body>
+<div class="row">
+  <figure><figcaption>A · in words, as <code>time</code> says it<small>The weekday whole. On a port, the sun in <code>time</code>'s own words after a dot; nothing in space or on a station.</small></figcaption></figure>
+  <figure><figcaption>B · short day, one word for the sun<small>"Wed", and on a port the sun's phase as one word: day, dawn, dusk or night.</small></figcaption></figure>
+  <figure><figcaption>C · short day, a sun mark<small>"Wed", and on a port a small mark: the sun on its horizon, half under at dawn and dusk, with which way it's going.</small></figcaption></figure>
+</div>
+<div class="row">
+  <figure><div class="where">T.I.S.S., the Market, 14:32</div><iframe data-opt="a" data-at="tiss"></iframe></figure>
+  <figure><div class="where">T.I.S.S., the Market, 14:32</div><iframe data-opt="b" data-at="tiss"></iframe></figure>
+  <figure><div class="where">T.I.S.S., the Market, 14:32</div><iframe data-opt="c" data-at="tiss"></iframe></figure>
+</div>
+<div class="row">
+  <figure><div class="where">Zennor, the Square, at dusk, 17:26</div><iframe data-opt="a" data-at="zennor"></iframe></figure>
+  <figure><div class="where">Zennor, the Square, at dusk, 17:26</div><iframe data-opt="b" data-at="zennor"></iframe></figure>
+  <figure><div class="where">Zennor, the Square, at dusk, 17:26</div><iframe data-opt="c" data-at="zennor"></iframe></figure>
+</div>
+<script>
+const CSS = `.bar { display:none !important; }
+  .station-clock { font-weight:400 !important; color:#9aa7b7 !important; display:flex; align-items:center; gap:4px; }
+  .station-clock b { font-weight:600; color:#e3eaf2; }
+  .station-clock svg { display:block; }`;
+// A sun half under its horizon, going down (an arrow down) or coming up.
+const MARK = (down) => `<svg width="16" height="10" viewBox="0 0 16 10">
+  <clipPath id="above"><rect x="0" y="0" width="16" height="7"/></clipPath>
+  <circle cx="6" cy="7" r="3.6" fill="#d9a35b" clip-path="url(#above)"/>
+  <line x1="0.5" y1="7.5" x2="11.5" y2="7.5" stroke="#7d8a9a" stroke-width="1"/>
+  <path d="${down ? "M13.5 2.5 V8 M11.8 6.3 L13.5 8 L15.2 6.3" : "M13.5 8 V2.5 M11.8 4.2 L13.5 2.5 L15.2 4.2"}" stroke="#9aa7b7" stroke-width="1" fill="none"/>
+</svg>`;
+const HTML = {
+  a: { tiss: `Wednesday <b>14:32</b>`, zennor: `Wednesday <b>17:26</b> · Senara's going down` },
+  b: { tiss: `Wed <b>14:32</b>`, zennor: `Wed <b>17:26</b> · dusk` },
+  c: { tiss: `Wed <b>14:32</b>`, zennor: `Wed <b>17:26</b> ${MARK(true)}` },
+};
+const SRC = {
+  tiss: "../../../dev/preview.html?step=2&clock=14:32",
+  zennor: "../../../dev/preview.html?sky=dusk&clock=17:26",
+};
+for (const f of document.querySelectorAll("iframe")) {
+  const { opt, at } = f.dataset;
+  f.addEventListener("load", () => {
+    const doc = f.contentDocument;
+    const style = doc.createElement("style");
+    style.textContent = CSS;
+    doc.head.appendChild(style);
+    // The tab's own text turns with the minute: refill it whenever it does.
+    const put = () => {
+      const el = doc.querySelector("main.station > .station-clock");
+      if (!el) return setTimeout(put, 100);
+      const fill = () => {
+        if (el.dataset.mock !== el.textContent) {
+          el.innerHTML = HTML[opt][at];
+          el.dataset.mock = el.textContent;
+        }
+      };
+      new MutationObserver(fill).observe(el, { childList: true, characterData: true, subtree: true });
+      fill();
+    };
+    put();
+  });
+  f.src = SRC[at];
+}
+</script>
+</body></html>

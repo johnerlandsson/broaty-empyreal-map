@@ -60,6 +60,14 @@ export function sunBand(alt) {
   return "night";
 }
 
+/** Where the sun is over a port, as ground.ts's sunPhase (time.md §4.1) and `time` have it: day
+ *  from 10 up, night below -10, and between, dawn while it climbs and dusk while it sinks. */
+export function sunPhase(alt, rising) {
+  if (alt >= TWILIGHT) return "day";
+  if (alt > -TWILIGHT) return rising ? "dawn" : "dusk";
+  return "night";
+}
+
 /** Dark, by the star's altitude: below -5, when stations spark and the planets show. */
 export const isDark = (alt) => alt < -TWILIGHT / 2;
 

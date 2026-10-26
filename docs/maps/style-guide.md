@@ -28,7 +28,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | Belt map | top | its toggle is on, at a belt | [belt.md](belt.md) |
 | Unknown location | top, bottom | the panel has loaded and the game hasn't said where you are yet | §10 |
 | What you're doing (a card, not a map) | bottom, top-left corner | you're doing something that takes time | [action-card.md](action-card.md) |
-| Station time (a tab, not a map) | on the rule between the bands, right | always | [station-clock.md](station-clock.md) |
+| Station time (a tab, not a map) | on the rule between the bands, right | once the game sends the clock | [station-clock.md](station-clock.md) |
 
 ## 2. Principles
 
@@ -64,9 +64,10 @@ Two bands, split about 42 / 58 by a 1 px rule (`#2b3646`):
   ([action-card.md](action-card.md)). It's chrome, the same size at any zoom,
   and it's hidden when you're doing nothing.
 - **Station time**, a tab on the rule between the bands at the right, says
-  the time on the station (UTC): `13:52`
-  ([station-clock.md](station-clock.md)). It always shows, and turns with the
-  minute on its own.
+  the weekday and Empyreal time, from the game's `Empyreal.Clock`: `Wed 13:52`,
+  and on a port where the sun is, `Wed 17:26 · dusk`
+  ([station-clock.md](station-clock.md)). It shows once the game has sent the
+  clock, and turns with each Empyreal minute on its own.
 
 Each band has zoom buttons (**+**, **−**, **⌂**) top right, wheel zoom and
 drag pan. **⌂** puts the view back where the map starts it.

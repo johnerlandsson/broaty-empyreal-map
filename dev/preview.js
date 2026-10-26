@@ -46,6 +46,9 @@
 //             the bar's menu switches it
 //   ?sky=S    stand in Zennor's Square under sky S (night, dusk, dawn, low, overhead or tiss-overhead): the game's
 //             own charts from dev/sky-cases.json, shifted so a recorded moment of that sky is now; the bar's menu switches it
+//   ?clock=HH:MM  station time: the clock message as src/station_map/clock.lua posts Empyreal.Clock, a
+//             Wednesday's midnight set so it's HH:MM now (14:32 unless you say); ?clock=none sends none,
+//             as before the game's first, so the tab stays hidden
 
 import { data } from "../ui/data/places.js";
 import { TRAM, ZENNOR_WALK } from "./zennor-walk.js";
@@ -888,8 +891,18 @@ function emitMove(name) {
 }
 moveMenu.addEventListener("change", () => emitMove(moveMenu.value));
 
+/** Empyreal.Clock as the Lua side posts it, Tamsin's day long, with it HH:MM on a Wednesday now. */
+function emitClock(hhmm) {
+  if (hhmm === "none") return;
+  const [h, m] = (/^\d\d?:\d\d$/.test(hhmm ?? "") ? hhmm : "14:32").split(":").map(Number);
+  const dayMs = 15247058.823529412;
+  const midnight = Math.round(Date.now() - ((h * 60 + m + 0.5) / 1440) * dayMs);
+  fp.emit("clock", { clock: { weekday: "wednesday", day: 40, midnight, dayMs } });
+}
+
 function start() {
   fp.emit("settings", { turn_model: !q.has("still") });
+  emitClock(q.get("clock"));
   if (q.has("scene")) {
     sceneMenu.value = q.get("scene");
     emitScene(q.get("scene"));
