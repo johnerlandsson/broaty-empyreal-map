@@ -7,8 +7,8 @@ import garrow from "../../tests/fixtures/generated/garrow.js";
 import kilmar from "../../tests/fixtures/generated/kilmar.js";
 import orrin from "../../tests/fixtures/generated/orrin.js";
 import places, { data as generated } from "../data/places.js";
-import freighterPlan from "../data/plans/freighter.js";
-import skiffPlan from "../data/plans/hull-skiff.js";
+import freighterPlan from "../../tests/fixtures/generated/plans/freighter.js";
+import skiffPlan from "../../tests/fixtures/generated/plans/hull-skiff.js";
 import {
   CELL,
   CHEVRON,

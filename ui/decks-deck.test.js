@@ -4,8 +4,8 @@
 
 import { describe, expect, it } from "vitest";
 import orrin from "../tests/fixtures/generated/orrin.js";
-import courierPlan from "./data/plans/hull-courier.js";
-import freighterPlan from "./data/plans/freighter.js";
+import courierPlan from "../tests/fixtures/generated/plans/hull-courier.js";
+import freighterPlan from "../tests/fixtures/generated/plans/freighter.js";
 import { fitLabel, LABEL, textWidth } from "./lib/decks.js";
 import { propBoxes } from "./lib/footprint.js";
 import { buildPlace } from "./place-views.js";

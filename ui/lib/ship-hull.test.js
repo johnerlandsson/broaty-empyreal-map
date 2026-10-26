@@ -4,8 +4,8 @@
 // them: by layer, then by the depth of their centroid.
 
 import { describe, expect, it } from "vitest";
-import freighterPlan from "../data/plans/freighter.js";
-import skiffPlan from "../data/plans/hull-skiff.js";
+import freighterPlan from "../../tests/fixtures/generated/plans/freighter.js";
+import skiffPlan from "../../tests/fixtures/generated/plans/hull-skiff.js";
 import orrin from "../../tests/fixtures/generated/orrin.js";
 import { plans } from "../data/ships.js";
 import { buildDecksModel, CELL, indexDecks } from "./decks.js";
