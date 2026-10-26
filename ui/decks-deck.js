@@ -20,14 +20,15 @@ const DECK_OF = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
 const none = { "pointer-events": "none" };
 
 /**
- * @returns {(svg: SVGElement, index: object) => object[]} the plans builder DeckView takes: one plan
- *   a deck, in the index's level order, all framed by the same extent
+ * @returns {(svg: SVGElement, index: object, opts?: {pick?: boolean}) => object[]} the plans
+ *   builder DeckView takes: one plan a deck, in the index's level order, all framed by the same
+ *   extent; with pick, every room marked for picking
  */
 export function decksPlans() {
-  return (svg, index) => index.decks.map((deck, level) => buildDeckPlan(svg, index, deck, level));
+  return (svg, index, opts) => index.decks.map((deck, level) => buildDeckPlan(svg, index, deck, level, opts?.pick));
 }
 
-function buildDeckPlan(svg, index, deck, level) {
+function buildDeckPlan(svg, index, deck, level, pick) {
   const layout = decksLayout(index, deck);
   const { cells, links, hatches, footprint: fp, plate, frames, onHull } = layout;
   const g = el("g", { display: "none" }, svg);
@@ -48,15 +49,15 @@ function buildDeckPlan(svg, index, deck, level) {
   for (const c of cells) {
     if (c.kind === "passage") {
       const r = el("rect", { x: c.cx - c.w / 2, y: c.cy - c.h / 2, width: c.w, height: c.h, fill: CORR }, g);
-      hover(r, c.room);
+      hover(r, c.room, pick);
       // a stop, unless a hatch takes the cell's middle
       const [x, y] = layout.centre(c.room.cell);
       if (!c.room.exits?.up && !c.room.exits?.down) el("circle", { cx: x, cy: y, r: 4, fill: STOP, ...none }, g);
     } else if (c.kind === "room") {
-      roomBox(g, c.room, c.cx, c.cy, c.room.tint ?? DC.industrial, c.w, c.h, c.shaped ? pathD(c.points) : undefined);
+      roomBox(g, c.room, c.cx, c.cy, c.room.tint ?? DC.industrial, c.w, c.h, c.shaped ? pathD(c.points) : undefined, pick);
       if (c.room.flags?.includes("berth")) airlocks(g, c);
     } else {
-      blister(g, c);
+      blister(g, c, pick);
     }
   }
 
@@ -104,12 +105,12 @@ function airlocks(g, c) {
 }
 
 /** A blister: a round glass room, its dome's rings drawn in, named, with any hatch above the name. */
-function blister(g, c) {
+function blister(g, c, pick) {
   const gl = el("g", {}, g);
   el("circle", { cx: c.cx, cy: c.cy, r: c.r, fill: GLASS, "fill-opacity": 0.14, stroke: GLASS, "stroke-opacity": 0.6, "stroke-width": 1.6 }, gl);
   for (const k of [0.72, 0.42]) {
     el("circle", { cx: c.cx, cy: c.cy, r: c.r * k, fill: "none", stroke: GLASS, "stroke-opacity": 0.22, "stroke-width": 1 }, gl);
   }
   label(gl, c.cx, c.cy + 10, c.room.name, 12);
-  hover(gl, c.room);
+  hover(gl, c.room, pick);
 }

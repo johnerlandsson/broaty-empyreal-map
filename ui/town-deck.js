@@ -29,13 +29,14 @@ const AWAY = 0.45; // zoomed out past this (screen px a unit), districts are nam
 
 /**
  * @param {ReturnType<typeof import("./lib/look.js").townSpec>} spec
- * @returns {(svg: SVGElement, index: object) => object[]} the plans builder DeckView takes: one plan
+ * @returns {(svg: SVGElement, index: object, opts?: {pick?: boolean}) => object[]} the plans
+ *   builder DeckView takes: one plan; with pick, every room marked for picking
  */
 export function townPlans(spec) {
-  return (svg, index) => [buildTownPlan(svg, index, spec)];
+  return (svg, index, opts) => [buildTownPlan(svg, index, spec, opts?.pick)];
 }
 
-function buildTownPlan(svg, index, spec) {
+function buildTownPlan(svg, index, spec, pick) {
   const layout = townLayout(index, spec);
   const { boxes, links, labels, bounds, districts, river, scarp, gate, tram } = layout;
   const g = el("g", { display: "none" }, svg);
@@ -115,13 +116,13 @@ function buildTownPlan(svg, index, spec) {
       el("rect", { x: r.x - 4, y: r.y - 4, width: b.w + 8, height: b.h + 8, rx: 6, fill: STONE, ...NONE }, g);
       el("rect", { ...r, rx: 5, fill: GROUND, ...NONE }, g);
       if (stops.has(b.room.id)) el("rect", { x: r.x + 4, y: r.y + 4, width: b.w - 8, height: b.h - 8, rx: 3, fill: "none", stroke: GLASS, "stroke-opacity": 0.35, ...NONE }, g);
-      roomBox(g, b.room, b.cx, b.cy, tint, b.w, b.h);
+      roomBox(g, b.room, b.cx, b.cy, tint, b.w, b.h, undefined, pick);
     } else if (b.kind === "field") field(g, b);
     else if (b.kind === "terraces" || b.kind === "old-terraces") terraces(g, b, b.kind === "old-terraces");
     else if (b.kind === "overlook") overlook(g, b);
     else if (b.kind === "square") label(g, b.cx, b.cy - 8, b.room.name, 12);
     else if (b.kind === "garden") garden(g, b);
-    if (b.kind !== "building") hit(g, townShape(layout, { kind: "room", id: b.room.id }), b.room);
+    if (b.kind !== "building") hit(g, townShape(layout, { kind: "room", id: b.room.id }), b.room, pick);
   }
 
   for (const t of labels) {
@@ -180,8 +181,8 @@ function buildTownPlan(svg, index, spec) {
   };
 }
 
-/** A transparent copy of a room's lit shape, for its tooltip. */
-function hit(g, shape, room) {
+/** A transparent copy of a room's lit shape, for its tooltip (and, with pick, picking). */
+function hit(g, shape, room, pick) {
   if (!shape) return;
   const attrs = { fill: "transparent" };
   const node =
@@ -190,7 +191,7 @@ function hit(g, shape, room) {
       : shape.kind === "path"
         ? el("path", { d: shape.d, ...attrs }, g)
         : el("rect", { x: shape.x, y: shape.y, width: shape.width, height: shape.height, ...attrs }, g);
-  hover(node, room);
+  hover(node, room, pick);
 }
 
 /** The Steps: a flight of stone treads between their two rooms, named, their seconds on hover. */

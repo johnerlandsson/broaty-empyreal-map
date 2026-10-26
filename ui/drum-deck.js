@@ -14,14 +14,15 @@ const LIGHTS = ["#59d18a", "#59d18a", "#e8b04a", "#59d18a", "#3a4556"]; // clamp
 
 /**
  * @param {ReturnType<typeof import("./lib/look.js").drumSpec>} spec
- * @returns {(svg: SVGElement, index: object) => object[]} the plans builder DeckView takes: the one
- *   plan, which fits the panel, so the view follows only a highlight near its edge
+ * @returns {(svg: SVGElement, index: object, opts?: {pick?: boolean}) => object[]} the plans
+ *   builder DeckView takes: the one plan, which fits the panel, so the view follows only a
+ *   highlight near its edge; with pick, every room marked for picking
  */
 export function drumPlans(spec) {
-  return (svg, index) => buildDrumPlan(svg, index, spec);
+  return (svg, index, opts) => buildDrumPlan(svg, index, spec, opts?.pick);
 }
 
-function buildDrumPlan(svg, index, spec) {
+function buildDrumPlan(svg, index, spec, pick) {
   const layout = drumLayout(index, spec);
   const { boxes, hall, axis, way } = layout;
   const g = el("g", { display: "none" }, svg);
@@ -53,7 +54,7 @@ function buildDrumPlan(svg, index, spec) {
     }
   }
 
-  for (const b of boxes) roomBox(g, b.room, b.cx, b.cy, spec.tints[b.room.id] ?? DC.industrial, b.w, b.h);
+  for (const b of boxes) roomBox(g, b.room, b.cx, b.cy, spec.tints[b.room.id] ?? DC.industrial, b.w, b.h, undefined, pick);
 
   // the airlock hatches down the Berths' outer wall, each with its status light
   const berth = find(`${spec.prefix}.berth`);
@@ -87,7 +88,7 @@ function buildDrumPlan(svg, index, spec) {
   else gallery(gl, axis);
   label(gl, axis.cx, axis.cy - 6, axis.room?.name ?? "", 12);
   label(gl, axis.cx, axis.cy + 10, `${axis.room?.gravity ?? 0.1} g`, 10, { fill: DIM });
-  hover(gl, axis.room);
+  hover(gl, axis.room, pick);
 
   label(g, x0 + 14, y0 + 14, "N ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
 

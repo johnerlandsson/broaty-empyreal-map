@@ -133,3 +133,31 @@ describe("camera", () => {
     expect(two.vb).toEqual([x2, y2, w2, h2]);
   });
 });
+
+describe("picking", () => {
+  const make = (pick) => {
+    const index = indexDecks(orrin);
+    return new ModelView(document.createElement("div"), index, { faces: buildDecksModel(index, orrin), keyOf: decksKey, labels: false, pick });
+  };
+  const ID = "orrin.market";
+
+  it("marks each keyed face with data-room only when asked", () => {
+    expect(make(true).geo.querySelectorAll(`path[data-room="${ID}"]`).length).toBeGreaterThan(0);
+    expect(make().geo.querySelector("[data-room]")).toBe(null);
+  });
+
+  it("calls onPick on a click on a face, not on a pan", () => {
+    const m = make(true);
+    const picked = [];
+    m.onPick((id) => picked.push(id));
+    const face = m.geo.querySelector(`path[data-room="${ID}"]`);
+    const pointer = (type, x) => face.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: x, clientY: 50, button: 0, pointerId: 1 }));
+    pointer("pointerdown", 50);
+    pointer("pointerup", 53);
+    expect(picked).toEqual([ID]);
+    pointer("pointerdown", 50);
+    pointer("pointermove", 70);
+    pointer("pointerup", 70);
+    expect(picked).toEqual([ID]);
+  });
+});

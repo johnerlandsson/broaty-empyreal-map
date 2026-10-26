@@ -20,7 +20,7 @@ import {
   shapeKey,
   ringLayout,
 } from "./lib/deck-layout.js";
-import { attachPanZoom, el, glowFilter, rng, stars, zoomButtons } from "./lib/svg.js";
+import { attachPanZoom, attachPick, el, glowFilter, rng, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
 const DOOR = { w: 22, h: 7, edge: "#fff3df" }; // the tab lit on a room's edge while you're in a unit off it
@@ -57,9 +57,11 @@ export function label(parent, x, y, s, size, attrs) {
   );
 }
 
-/** Show a tooltip while the pointer is over node. */
-export function hover(node, room) {
+/** Show a tooltip while the pointer is over node; with pick (the tweak editor's), mark it as the
+ *  room's for picking. */
+export function hover(node, room, pick) {
   if (!room) return;
+  if (pick && room.id) node.setAttribute("data-room", room.id);
   node.addEventListener("mouseenter", () => {
     window.panel?.tooltip?.show(node.getBoundingClientRect(), {
       title: room.name,
@@ -71,8 +73,9 @@ export function hover(node, room) {
 }
 
 /** A room box tinted by district, labelled; closed rooms are dashed and dimmed. Given `d`, the box
- *  is that path instead (a decks room its footprint reshapes), labelled at cx, cy. */
-export function roomBox(parent, room, cx, cy, col, w, h, d) {
+ *  is that path instead (a decks room its footprint reshapes), labelled at cx, cy. With pick, it
+ *  carries the room's id for picking. */
+export function roomBox(parent, room, cx, cy, col, w, h, d, pick) {
   const g = el("g", {}, parent);
   const open = !room.closed;
   el(
@@ -95,17 +98,17 @@ export function roomBox(parent, room, cx, cy, col, w, h, d) {
     name.length > 14 && words.length > 1 ? [words.slice(0, half).join(" "), words.slice(half).join(" ")] : [name];
   lines.forEach((t, i) => label(g, cx, cy + (i - (lines.length - 1) / 2) * 14, t, 12, { opacity: open ? 1 : 0.6 }));
   if (!open) label(g, cx, cy + h / 2 - 8, "closed", 9, { fill: DIM });
-  hover(g, room);
+  hover(g, room, pick);
   return g;
 }
 
 /** Transparent hit area so a corridor stretch or spine segment can show a tooltip. */
-function hitArea(parent, x, y, w, h, room) {
+function hitArea(parent, x, y, w, h, room, pick) {
   const r = el("rect", { x, y, width: w, height: h, fill: "transparent" }, parent);
-  hover(r, room);
+  hover(r, room, pick);
 }
 
-function buildRingPlan(svg, index, z) {
+function buildRingPlan(svg, index, z, pick) {
   const layout = ringLayout(index, z);
   const { length: L, stops } = layout;
   const g = el("g", { display: "none" }, svg);
@@ -135,12 +138,12 @@ function buildRingPlan(svg, index, z) {
     // rooms and the passages that join them to the corridor
     for (const b of layout.rooms) {
       el("rect", { x: b.door.x, y: b.door.y, width: b.door.w, height: b.door.h, fill: PASSAGE }, s);
-      roomBox(s, b.room, b.cx, b.cy, b.room.paint, b.w, b.h);
+      roomBox(s, b.room, b.cx, b.cy, b.room.paint, b.w, b.h, undefined, pick);
     }
     // stops: plain nodes, or a lift lobby with a ladder hatch beside it
     for (const st of stops) {
       const room = index.byId.get(st.id);
-      hitArea(s, st.cx - NODE / 2, -CH, NODE, 2 * CH, room);
+      hitArea(s, st.cx - NODE / 2, -CH, NODE, 2 * CH, room, pick);
       if (SPOKE_HOURS.includes(st.hour) || st.lobby) {
         el("circle", { cx: st.cx, cy: 0, r: 12, fill: "#0e131a", stroke: "#cfd8e3", "stroke-width": 2, "pointer-events": "none" }, s);
         label(s, st.cx, 1, "⇅", 13, { fill: "#cfd8e3" });
@@ -156,7 +159,7 @@ function buildRingPlan(svg, index, z) {
   return { z, g, hl, layout, ring: true, length: L, home: [0, 0], offsets: [-L, 0, L] };
 }
 
-function buildDocksPlan(svg, index) {
+function buildDocksPlan(svg, index, pick) {
   const layout = docksLayout(index);
   const { hub, bearing, transfer, blister } = layout;
   const g = el("g", { display: "none" }, svg);
@@ -187,31 +190,31 @@ function buildDocksPlan(svg, index) {
     label(g, x, y + 1, "⇅", 11, { fill: "#cfd8e3" });
     label(g, x * 1.38, hub.cy + (y - hub.cy) * 1.38, `${h || 12}`, 9, { fill: DIM });
   });
-  hover(el("circle", { cx: hub.cx, cy: hub.cy, r: HUB_R - 14, fill: "transparent" }, g), hub.room);
-  hover(el("rect", { x: -BEARING.w / 2, y: bearing.cy - BEARING.h / 2, width: BEARING.w, height: BEARING.h, fill: "transparent" }, g), bearing.room);
+  hover(el("circle", { cx: hub.cx, cy: hub.cy, r: HUB_R - 14, fill: "transparent" }, g), hub.room, pick);
+  hover(el("rect", { x: -BEARING.w / 2, y: bearing.cy - BEARING.h / 2, width: BEARING.w, height: BEARING.h, fill: "transparent" }, g), bearing.room, pick);
 
   // Freight Transfer below the Hub
-  if (transfer.room) roomBox(g, transfer.room, transfer.cx, transfer.cy, transfer.room.paint, transfer.w, transfer.h);
+  if (transfer.room) roomBox(g, transfer.room, transfer.cx, transfer.cy, transfer.room.paint, transfer.w, transfer.h, undefined, pick);
 
   // side rooms, port left and starboard right
   for (const b of layout.rooms) {
     const sg = Math.sign(b.cx);
     const inner = b.cx - sg * (b.w / 2);
     el("rect", { x: Math.min(b.from, inner), y: b.cy - 8, width: Math.abs(inner - b.from), height: 16, fill: PASSAGE }, g);
-    roomBox(g, b.room, b.cx, b.cy, b.room.paint, b.w, b.h);
+    roomBox(g, b.room, b.cx, b.cy, b.room.paint, b.w, b.h, undefined, pick);
   }
   // spine stops
   for (const s of layout.spine) {
     el("circle", { cx: 0, cy: s.cy, r: 4, fill: "#aab8c8" }, g);
     label(g, 0, s.cy + SN / 2, `Spine ${s.n}`, 9, { fill: DIM, transform: `rotate(-90 0 ${s.cy + SN / 2})` });
-    hitArea(g, -CH, s.cy - s.h / 2, 2 * CH, s.h, s.room);
+    hitArea(g, -CH, s.cy - s.h / 2, 2 * CH, s.h, s.room, pick);
   }
   // Blister dome on top
   const bx = blister.cx;
   const dome = `M${bx - blister.r},${blister.cy} A${blister.r},${blister.r} 0 0 1 ${bx + blister.r},${blister.cy} Z`;
   const dm = el("path", { d: dome, fill: "#cfe3ff", "fill-opacity": 0.18, stroke: "#cfe3ff", "stroke-width": 1.6 }, g);
   label(g, 0, blister.cy - blister.r - 16, blister.room?.name ?? "Observation Blister", 11);
-  hover(dm, blister.room);
+  hover(dm, blister.room, pick);
   label(g, -reach(-1) + 10, topY + 14, "FORE ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
 
   const hl = el("g", { "pointer-events": "none" }, g);
@@ -219,18 +222,21 @@ function buildDocksPlan(svg, index) {
 }
 
 /** T.I.S.S.'s plans, one per level: the three rings, then the Docks. */
-function tissPlans(svg, index) {
-  return [...[0, 1, 2].map((z) => buildRingPlan(svg, index, z)), buildDocksPlan(svg, index)];
+function tissPlans(svg, index, opts) {
+  const pick = opts?.pick;
+  return [...[0, 1, 2].map((z) => buildRingPlan(svg, index, z, pick)), buildDocksPlan(svg, index, pick)];
 }
 
 export class DeckView {
   /**
    * @param {HTMLElement} containerEl element the deck fills
    * @param {ReturnType<typeof import("./lib/locate.js").indexStation>} index
-   * @param {(svg: SVGElement, index: object) => object[]} [build] another station's plans, one per
-   *   level; a plan may carry shape(where) for its highlight
+   * @param {(svg: SVGElement, index: object, opts: object) => object[]} [build] another station's
+   *   plans, one per level; a plan may carry shape(where) for its highlight
+   * @param {{pick?: boolean}} [opts] `pick` (the tweak editor's): the plans mark every room for
+   *   picking, and a click on one calls onPick's callback
    */
-  constructor(containerEl, index, build = tissPlans) {
+  constructor(containerEl, index, build = tissPlans, opts = {}) {
     const id = `glow-deck-${++instances}`;
     const div = document.createElement("div");
     div.className = "deck";
@@ -256,7 +262,7 @@ export class DeckView {
     this.glow = `url(#${id})`;
     stars(el("g", {}, svg), -4000, -3000, 8000, 6000, 1600, 9);
 
-    this.plans = build(svg, index);
+    this.plans = build(svg, index, opts);
     this.level = -1;
     this.key = null; // shapeKey of what is drawn now, so repeated frames change nothing
     this.focus = null; // [x, y] of the highlight, or of the plan's home when there is none
@@ -281,6 +287,7 @@ export class DeckView {
       const h = BASE_W * this.aspect;
       this.setView([fx - BASE_W / 2, (this.plans[this.level].ring ? fy * 0.5 : fy) - h / 2, BASE_W, h]);
     });
+    if (opts.pick) attachPick(div, (id) => this.picked?.(id));
     if (typeof ResizeObserver !== "undefined") {
       new ResizeObserver(() => {
         const measured = this.fit();
@@ -412,6 +419,17 @@ export class DeckView {
     if ((changed && !plan.extent) || Math.abs(px - cx) > vw * m || Math.abs(vyFocus - cy) > vh * m) {
       this.setView([px - vw / 2, vyFocus - vh / 2, vw, vh]);
     }
+  }
+
+  /** With pick: fn(roomId) on a click (not a pan) on a room. */
+  onPick(fn) {
+    this.picked = fn;
+  }
+
+  /** The plan point [x, y] under a screen point, through the svg's screen matrix. */
+  toPlan(clientX, clientY) {
+    const p = new DOMPoint(clientX, clientY).matrixTransform(this.svg.getScreenCTM().inverse());
+    return [p.x, p.y];
   }
 
   /** Lower the deck's opacity while the player is off the station. */

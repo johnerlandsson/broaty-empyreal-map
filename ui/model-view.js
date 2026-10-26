@@ -12,7 +12,7 @@ import { keyOf } from "./lib/locate.js";
 import { buildModel } from "./lib/model.js";
 import { awayLook } from "./lib/space.js";
 import { shortestTurn, turnDuration } from "./lib/turn.js";
-import { attachPanZoom, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
+import { attachPanZoom, attachPick, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
 const HL_STROKE = "#fff3df";
@@ -101,13 +101,14 @@ export class ModelView {
    * @param {{faces?: object[], keyOf?: (where: object) => string|null,
    *   hourOf?: (where: object) => number|null, cutOf?: (where: object) => number|null,
    *   labels?: boolean, view?: {cutaway?: "off"|"hide-above"|"ghost-above",
-   *   camera?: {yaw: number, pitch: number, zoom: number}}}} [opts] another station's model: its faces, the face key and hour for a
+   *   camera?: {yaw: number, pitch: number, zoom: number}}, pick?: boolean}} [opts] another station's model: its faces, the face key and hour for a
    *   place, the deck to cut the model away above (faces with a higher `deck` are drawn as a
    *   dashed outline, and those with that `lid` as its top), and whether to draw T.I.S.S.'s ring
    *   names, and how the place is viewed: `cutaway` is whether cutting away happens at all ("off"),
    *   leaves the decks above out ("hide-above", as when absent) or draws them as a ghost
    *   ("ghost-above"), and `camera` is the angle it's seen from (CAM when absent) and how close its
-   *   home framing is (`zoom`: 1 frames the whole model, 2 is twice as close)
+   *   home framing is (`zoom`: 1 frames the whole model, 2 is twice as close); `pick` (the tweak
+   *   editor's) marks each face with a key for picking, and a click on one calls onPick's callback
    */
   constructor(containerEl, index, opts = {}) {
     this.faces = opts.faces ?? buildModel(index);
@@ -117,6 +118,7 @@ export class ModelView {
     this.cut = null;
     this.cutaway = opts.view?.cutaway ?? "hide-above";
     this.cam = camera(opts.view?.camera ?? CAM);
+    this.pick = !!opts.pick;
     this.normals = this.faces.map((f) => normalOf(f.pts));
 
     const div = document.createElement("div");
@@ -171,6 +173,12 @@ export class ModelView {
       if (f) this.zoom(f);
       else this.setView(this.home.slice());
     });
+    if (this.pick) attachPick(div, (id) => this.picked?.(id));
+  }
+
+  /** With pick: fn(key) on a click (not a pan) on a face; a room's id but on T.I.S.S.'s rings and spokes. */
+  onPick(fn) {
+    this.picked = fn;
   }
 
   computeBounds() {
@@ -307,16 +315,21 @@ export class ModelView {
     quads.sort(byDepth);
     ghosts.sort(byDepth);
 
+    // picking: a keyed face carries its key; the pointer goes through a keyless one (a hull), so a
+    // room inside it is picked through it
+    const room = (f) => (!this.pick ? {} : f.key != null ? { "data-room": f.key } : { "pointer-events": "none" });
     const geo = document.createDocumentFragment();
     const hot = document.createDocumentFragment();
     for (const { f, P, n } of quads) {
       const d = `M${P.map((p) => `${num(p[0])},${num(p[1])}`).join("L")}Z`;
-      // a ghost face is drawn only when lit (a room's cell inside a hull, seen through it)
+      // a ghost face is drawn only when lit (a room's cell inside a hull, seen through it), and
+      // unseen for picking
+      if (f.ghost && this.pick && f.key != null) el("path", { d, fill: "transparent", stroke: "none", ...room(f) }, geo);
       if (!f.ghost) {
         const fill = fillOf(f, Math.abs(n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]));
-        el("path", { d, fill, stroke: fill, "stroke-width": 0.8, "stroke-linejoin": "round" }, geo);
+        el("path", { d, fill, stroke: fill, "stroke-width": 0.8, "stroke-linejoin": "round", ...room(f) }, geo);
         const e = edgePath(P, f.edges);
-        if (e) el("path", { d: e, fill: "none", stroke: EDGE, "stroke-width": 1.3, "stroke-linecap": "round" }, geo);
+        if (e) el("path", { d: e, fill: "none", stroke: EDGE, "stroke-width": 1.3, "stroke-linecap": "round", ...room(f) }, geo);
       }
       if (key != null && f.key === key) {
         el("path", { d, fill: HL, "fill-opacity": 0.55, stroke: HL_STROKE, "stroke-width": 1.4, "stroke-linejoin": "round" }, hot);
@@ -326,9 +339,9 @@ export class ModelView {
     for (const { f, P, n } of ghosts) {
       if (f.ghost) continue;
       const fill = fillOf(f, Math.abs(n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]));
-      el("path", { d: `M${P.map((p) => `${num(p[0])},${num(p[1])}`).join("L")}Z`, fill, "fill-opacity": GHOST_FILL, stroke: "none" }, geo);
+      el("path", { d: `M${P.map((p) => `${num(p[0])},${num(p[1])}`).join("L")}Z`, fill, "fill-opacity": GHOST_FILL, stroke: "none", ...room(f) }, geo);
       const e = edgePath(P, f.edges);
-      if (e) el("path", { d: e, fill: "none", stroke: GHOST_EDGE, "stroke-opacity": 0.55, "stroke-width": 1, "stroke-linecap": "round" }, geo);
+      if (e) el("path", { d: e, fill: "none", stroke: GHOST_EDGE, "stroke-opacity": 0.55, "stroke-width": 1, "stroke-linecap": "round", ...room(f) }, geo);
     }
     const w = wire.join("");
     if (w) el("path", { d: w, fill: "none", stroke: DIM, "stroke-opacity": 0.7, "stroke-width": 1, "stroke-dasharray": "4 4" }, geo);

@@ -470,7 +470,8 @@ const ACROSS = { east: [1, 0], west: [-1, 0], north: [0, -1], south: [0, 1] }; /
  * band through its cell, running on through every side it opens to; a blister a round glass room.
  * `footprint` is the box round the hull, the same on every deck so the frames line up; `plate` the
  * deck's hull path, where it has one (else null, and the plate is the footprint); `onHull` says
- * whether this deck is inside the hull.
+ * whether this deck is inside the hull. `centre(cell)` is a cell's centre on the plan, and
+ * `cellAt(x, y)` its inverse, the [side, frame] (fractional) under a plan point.
  * @param {ReturnType<typeof indexDecks>} index
  * @param {number} deck
  */
@@ -479,6 +480,8 @@ export function decksLayout(index, deck) {
   const mid = hull ? [(hull.x0 + hull.x1) / 2, (hull.y0 + hull.y1) / 2] : [0, 0];
   const centre = ({ x, y }) => [(x - mid[0]) * PLAN.w, -(y - mid[1]) * PLAN.h];
   const toPlan = ([x, y]) => centre({ x, y });
+  // + 0 so the centreline is 0, never -0
+  const cellAt = (px, py) => [px / PLAN.w + mid[0] + 0, -py / PLAN.h + mid[1] + 0];
   const rooms = [...index.byId.values()].filter((r) => r.cell.z === deck);
   const here = (id) => rooms.find((r) => r.id === id);
 
@@ -569,7 +572,7 @@ export function decksLayout(index, deck) {
   const plate = path ? path.map(toPlan) : null;
   const frames = grid ? Array.from({ length: grid.y1 - grid.y0 + 1 }, (_, i) => ({ n: grid.y1 - i, cy: centre({ x: 0, y: grid.y1 - i })[1] })) : [];
   const onHull = !!hull && deck >= hull.z0 && deck <= hull.z1;
-  return { deck, cells, links, hatches, nearby, footprint, plate, frames, onHull, centre };
+  return { deck, cells, links, hatches, nearby, footprint, plate, frames, onHull, centre, cellAt };
 }
 
 /** A polygon's outline as an SVG path, to a tenth of a unit. */

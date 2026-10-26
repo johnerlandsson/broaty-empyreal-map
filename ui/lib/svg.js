@@ -1,6 +1,7 @@
 // Small SVG and pointer helpers for the deck plans. DOM is only touched when these are called.
 
 const NS = "http://www.w3.org/2000/svg";
+const PICK_SLOP = 4; // px a press may move and still be a click, not a pan
 
 /** Create an SVG element with attributes, optional parent and optional text. */
 export function el(tag, attrs, parent, text) {
@@ -110,6 +111,33 @@ export function attachPanZoom(div, get, set, { minW, maxW }) {
   div.addEventListener("pointercancel", end);
   div.addEventListener("lostpointercapture", end);
   return zoom;
+}
+
+/**
+ * Picking, for the tweak editor: a click on an element with data-room (a press and release within
+ * PICK_SLOP px, so never the end of a pan) calls pick(id). It listens beside attachPanZoom's own
+ * handlers and takes the room from the press, as the pan's pointer capture sends the release to div.
+ * @param {HTMLElement} div element the svg fills
+ * @param {(id: string) => void} pick
+ */
+export function attachPick(div, pick) {
+  let down = null;
+  const far = (e) => Math.hypot(e.clientX - down.x, e.clientY - down.y) > PICK_SLOP;
+  div.addEventListener("pointerdown", (e) => {
+    const node = e.button === 0 ? e.target.closest?.("[data-room]") : null;
+    down = node ? { x: e.clientX, y: e.clientY, id: node.getAttribute("data-room") } : null;
+  });
+  div.addEventListener("pointermove", (e) => {
+    if (down && far(e)) down = null;
+  });
+  div.addEventListener("pointerup", (e) => {
+    const hit = down && !far(e) ? down.id : null;
+    down = null;
+    if (hit) pick(hit);
+  });
+  div.addEventListener("pointercancel", () => {
+    down = null;
+  });
 }
 
 /** + (zoom in), - (zoom out) and a reset button; onZoom(f) gets 1/1.5, 1.5 or 0 for reset. */

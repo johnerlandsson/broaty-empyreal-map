@@ -395,6 +395,13 @@ describe("decksLayout", () => {
   it("labels the hull's three frames, fore first", () => {
     expect(layouts[3].frames.map((f) => f.n)).toEqual([3, 2, 1]);
   });
+
+  it("finds the cell under a plan point, centre's inverse", () => {
+    for (const layout of Object.values(layouts)) {
+      expect(layout.cellAt(...layout.centre({ x: 1, y: 2 }))).toEqual([1, 2]);
+      expect(layout.cellAt(...layout.centre({ x: -1, y: 0 }))).toEqual([-1, 0]);
+    }
+  });
 });
 
 describe("the Mid's halts", () => {

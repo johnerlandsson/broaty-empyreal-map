@@ -1,0 +1,45 @@
+// @vitest-environment happy-dom
+// Picking, for the tweak editor: with `pick`, Orrin's plan rooms carry data-room, and a click (not
+// a pan) on one calls onPick with its id; without it, the plan is as it was.
+
+import { describe, expect, it } from "vitest";
+import orrin from "../tests/fixtures/generated/orrin.js";
+import { buildPlace } from "./place-views.js";
+
+const ID = "orrin.market";
+
+const make = (opts) => buildPlace(orrin, "decks", document.createElement("div"), document.createElement("div"), opts);
+const planOf = (place, id) => place.deck.plans[place.index.byId.get(id).level].g;
+const pointer = (type, node, x, y) =>
+  node.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1, pointerId: 1 }));
+
+describe("picking", () => {
+  it("marks the plan's rooms with data-room only when asked", () => {
+    const on = make({ pick: true });
+    expect(planOf(on, ID).querySelector(`[data-room="${ID}"]`)).toBeTruthy();
+    const off = make();
+    expect(off.deck.svg.querySelector("[data-room]")).toBe(null);
+  });
+
+  it("calls onPick on a click on a plan room, not on a pan", () => {
+    const place = make({ pick: true });
+    const picked = [];
+    place.deck.onPick((id) => picked.push(id));
+    const node = planOf(place, ID).querySelector(`[data-room="${ID}"]`);
+    pointer("pointerdown", node, 100, 100);
+    pointer("pointerup", node, 102, 101);
+    expect(picked).toEqual([ID]);
+    pointer("pointerdown", node, 100, 100);
+    pointer("pointermove", node, 120, 100);
+    pointer("pointerup", node, 120, 100);
+    expect(picked).toEqual([ID]);
+  });
+});
+
+describe("toPlan", () => {
+  it("takes a screen point to plan units through the svg's screen matrix", () => {
+    const place = make({ pick: true });
+    place.deck.svg.getScreenCTM = () => new DOMMatrix([2, 0, 0, 2, 100, 50]); // 2 px a unit, plan 0,0 at 100,50
+    expect(place.deck.toPlan(140, 30)).toEqual([20, -10]);
+  });
+});
