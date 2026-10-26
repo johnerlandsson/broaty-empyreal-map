@@ -105,7 +105,7 @@ export function startEditor({
     preview: (look) => preview(look),
     flush: () => flush(),
     restore: (look) => {
-      preview(look);
+      preview(look ?? place?.built);
       flush();
     },
     run: (p) => (editor.busy = p),
@@ -215,13 +215,16 @@ export function startEditor({
     panel.render();
   }
 
-  /** Build the views of the place's data, replacing any; keep is the old views' state to restore. */
-  function build(id, builder, placeData, roomId, keep) {
+  /**
+   * Build the views of the place's data, replacing any; keep is the old views' state to restore.
+   * `built` is the look the last build gave (the data's own, unless it's a preview's).
+   */
+  function build(id, builder, placeData, roomId, keep, built = placeData.look) {
     place?.views.model.stop?.();
     modelEl.replaceChildren();
     deckEl.replaceChildren();
     const views = buildPlace(placeData, builder, modelEl, deckEl, { pick: true });
-    place = { id, builder, data: placeData, views, roomId: null, lastLevel: keep?.lastLevel ?? null };
+    place = { id, builder, data: placeData, views, roomId: null, lastLevel: keep?.lastLevel ?? null, built };
     views.model.onPick?.((rid) => select(rid));
     views.deck.onPick?.((rid) => select(rid));
     select(roomId);
@@ -265,7 +268,7 @@ export function startEditor({
     if (frame == null) return;
     cancelAnimationFrame(frame);
     frame = null;
-    if (place) build(place.id, place.builder, place.data, place.roomId, keepOf());
+    if (place) build(place.id, place.builder, place.data, place.roomId, keepOf(), place.built);
   }
 
   async function openPlace(id, roomId = null) {

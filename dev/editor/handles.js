@@ -8,7 +8,7 @@
 // Footprints only on rooms that aren't passages or blisters (nor drawn by hand, as an outline),
 // the hull only on a deck inside it.
 // A drag patches the open place's look as it goes, for the page to redraw, and saves on release
-// through the panel's save flow; a save refused puts the look from before back. A hull path or
+// through the panel's save flow; a save refused puts back the look the last build gave. A hull path or
 // the fixtures only inherited through `like` are copied into the place's own tweak on its first
 // edit, as the ops edit only the place's own.
 
@@ -42,11 +42,11 @@ export function ownFixtures(t, inherited) {
  * Starts the handles. Nothing is drawn until draw().
  * @param {{place: () => object | null, resolved: (placeId: string, keyPath: string[]) => {value: unknown},
  *   save: (name: string, edit: (t: object) => object) => Promise<number | undefined>,
- *   preview: (look: object) => void, flush: () => void, restore: (look: object) => void,
+ *   preview: (look: object) => void, flush: () => void, restore: (look?: object) => void,
  *   run: (p: Promise<void>) => void, changed: () => void, editable: () => boolean,
  *   showError: (text: string | null) => void}} deps the page's: `preview` sets the open place's
  *   look and redraws it within a frame, `flush` redraws now if one is due, `restore` sets the look
- *   and redraws now; `changed` is called when the picked hull point changes
+ *   (the last built one, given none) and redraws now; `changed` is called when the picked hull point changes
  * @returns {{draw: () => void, picked: () => number | null, stop: () => void}}
  */
 export function createHandles({ place, resolved, save, preview, flush, restore, run, changed, editable, showError }) {
@@ -79,13 +79,18 @@ export function createHandles({ place, resolved, save, preview, flush, restore, 
     return out;
   };
 
-  /** Saves `edit` of the open place's tweak; puts `before` back if the build refuses it. */
-  function commit(before, edit) {
+  /**
+   * Saves `edit` of the open place's tweak. If the build refuses it, puts back the last built look:
+   * not the one before the edit, which may be an earlier preview still saving, and refused too.
+   */
+  function commit(edit, { refused } = {}) {
     const id = place().id;
     run(
       save(id, edit).then((status) => {
         // a 409 has reloaded the place already
-        if (status !== 200 && status !== 409 && place()?.id === id) restore(before);
+        if (status === 200 || status === 409 || place()?.id !== id) return;
+        refused?.();
+        restore();
       }),
     );
   }
@@ -113,7 +118,14 @@ export function createHandles({ place, resolved, save, preview, flush, restore, 
         else delete fps[d.local];
         return lookWith(look, "footprints", fps);
       },
-      edit: (p, d, v) => (t) => setFootprint(t, d.local, withSpan(resolved(p.id, ["footprints", d.local]).value, d.side, v) ?? null),
+      edit: (p, d, v) => (t) => {
+        let fp = withSpan(resolved(p.id, ["footprints", d.local]).value, d.side, v);
+        // a span the place would inherit through `like` is overridden with 0, not left to show again
+        const like = resolved(p.id, ["like"]).value;
+        const base = like ? resolved(like, ["footprints", d.local]).value : undefined;
+        if (!v && base?.span?.[d.side]) fp = { ...fp, span: { ...fp?.span, [d.side]: 0 } };
+        return setFootprint(t, d.local, fp ?? null);
+      },
     },
     point: {
       start: (p, d) => ({ from: pathOn(p, d.deck)[d.i] }),
@@ -143,6 +155,7 @@ export function createHandles({ place, resolved, save, preview, flush, restore, 
 
   function onMove(e) {
     if (!drag) return;
+    if (!(e.buttons & 1)) return onUp(); // let go where we didn't hear it
     const p = place();
     if (p?.id !== drag.placeId) return void (drag = null);
     const [x, y] = cellOf(p, e);
@@ -162,7 +175,7 @@ export function createHandles({ place, resolved, save, preview, flush, restore, 
     const p = place();
     if (d.value === undefined || p?.id !== d.placeId) return; // a click
     if (JSON.stringify(d.value) === JSON.stringify(KINDS[d.kind].value(d, [0, 0]))) return restore(d.before); // back where it was
-    commit(d.before, KINDS[d.kind].edit(p, d, d.value));
+    commit(KINDS[d.kind].edit(p, d, d.value));
   }
 
   function addPoint(e, deck, i) {
@@ -177,7 +190,11 @@ export function createHandles({ place, resolved, save, preview, flush, restore, 
     preview(lookWith(before, "hull", { ...before.hull, [deck]: points }));
     flush();
     setPick({ placeId: p.id, deck, i: i + 1 });
-    commit(before, (t) => addHullPoint(ownHull(t, deck, resolved(p.id, ["hull", deck]).value), deck, i, v));
+    commit((t) => addHullPoint(ownHull(t, deck, resolved(p.id, ["hull", deck]).value), deck, i, v), {
+      refused: () => {
+        if (pick?.placeId === p.id && pick.deck === deck && pick.i === i + 1) setPick(null);
+      },
+    });
   }
 
   function onKey(e) {
@@ -194,7 +211,7 @@ export function createHandles({ place, resolved, save, preview, flush, restore, 
     preview(lookWith(before, "hull", { ...before.hull, [deck]: points.filter((_, k) => k !== i) }));
     flush();
     setPick(null);
-    commit(before, (t) => removeHullPoint(ownHull(t, deck, resolved(p.id, ["hull", deck]).value), deck, i));
+    commit((t) => removeHullPoint(ownHull(t, deck, resolved(p.id, ["hull", deck]).value), deck, i));
   }
 
   window.addEventListener("pointermove", onMove);

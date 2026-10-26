@@ -133,6 +133,31 @@ describe("footprint handles", () => {
     await editor.busy;
   });
 
+  it("sets an inherited span to an explicit 0 when dragged back to its cell", async () => {
+    const fp = { market: { span: { aft: 0.5 } } };
+    await start("#kilmar/kilmar.market", {
+      tweaks: { orrin: { json: { footprints: fp }, version: 3 } },
+      fixtures: { kilmar: withLook(kilmar, { footprints: fp }) },
+    });
+    await drag(handle("span-aft"), 0, -50);
+    expect(puts[0].url).toBe("/api/tweaks/kilmar");
+    expect(puts[0].body.json.footprints.market).toEqual({ span: { aft: 0 } });
+  });
+
+  it("ends a drag let go of outside the window at the next move, saving it", async () => {
+    await start("#orrin/orrin.freight");
+    fire(handle("span-aft"), "pointerdown", 0, 0);
+    fire(window, "pointermove", 0, 100);
+    fire(window, "pointermove", 0, 200, { buttons: 0 }); // the release went elsewhere
+    await editor.busy;
+    expect(puts).toHaveLength(1);
+    expect(puts[0].body.json.footprints.freight).toEqual({ span: { aft: 1 } });
+    fire(window, "pointermove", 0, 300);
+    fire(window, "pointerup", 0, 300);
+    await editor.busy;
+    expect(puts).toHaveLength(1);
+  });
+
   it("has none on a footprint drawn by hand as an outline", async () => {
     const outline = [[-0.5, -0.5], [0.5, -0.5], [0.6, 0.5], [-0.5, 0.5]];
     await start("#orrin/orrin.freight", { fixtures: { orrin: withLook(orrin, { footprints: { freight: { outline } } }) } });
@@ -214,6 +239,35 @@ describe("hull handles", () => {
     const bar = root.querySelector(".errbar");
     expect(bar.hidden).toBe(false);
     expect(bar.textContent).toContain("crosses itself");
+  });
+
+  it("puts back the last built look when two queued saves are both refused", async () => {
+    await start("#orrin", ownPath);
+    let answer;
+    replies.push(new Promise((r) => (answer = r)), { status: 422, body: { error: "hull.3: second" } });
+    const node = handle("point-0");
+    fire(node, "pointerdown", 0, 0);
+    fire(window, "pointermove", 14, -10);
+    fire(window, "pointerup", 14, -10); // A: saving, its answer held back
+    fire(handle("point-1"), "pointerdown", 0, 0);
+    fire(window, "pointermove", 14, 0);
+    fire(window, "pointerup", 14, 0); // B: queued behind A, its look A's preview and more
+    answer({ status: 422, body: { error: "hull.3: first" } });
+    await editor.busy;
+    expect(puts).toHaveLength(2);
+    expect(editor.place.data.look.hull["3"]).toEqual(PATH);
+    expect(root.querySelector(".errbar").textContent).toContain("second");
+  });
+
+  it("drops the picked point when an added one is refused", async () => {
+    await start("#orrin", ownPath);
+    replies.push({ status: 422, body: { error: "hull.3: bad" } });
+    const { cur } = editor.place.views.deck;
+    plan().querySelector('.handles [data-edge="0"]').dispatchEvent(new MouseEvent("dblclick", { bubbles: true, clientX: -cur[0], clientY: 62 - cur[1] }));
+    await editor.busy;
+    expect(editor.place.data.look.hull["3"]).toEqual(PATH);
+    expect(plan().querySelector(".handles .on")).toBeNull();
+    expect(root.querySelector('.side input[name="hull-r"]')).toBeNull();
   });
 
   it("makes a hull from the rooms, PUTting hull.3 as hullFromRooms gives it", async () => {
