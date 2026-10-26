@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A decks place's tweak file can reshape how a room is drawn (span, corners, outline), and any place's tweak file can set how its overview behaves (cutaway, camera home). The decks builder reads its look straight from the generated file, and every place stays exactly as it draws today until someone sets a tweak.
+**Goal:** A decks place's tweak file can draw its hull as a path per deck and reshape how a room is drawn (span, corners, outline), and any place's tweak file can set how its overview behaves (cutaway, camera home). The decks builder reads its look straight from the generated file, and every place stays exactly as it draws today until someone sets a tweak.
 
 **Architecture:**
 - **Validation:** the tweak schema gains `footprints` and `view`. The build validates them, checks for footprint overlaps, and writes them into `look`, filling in each layout kind's view defaults.
@@ -39,10 +39,10 @@
 ## Review Focus
 
 1. **Two reshaped rooms overlapping,** or a room's span reaching into another room's cell. The build must stop with an error naming both rooms and the tweak file, not draw them on top of each other. *Test in Task 1.*
-2. **A span that reaches past the hull's box** (e.g. the nose room spanning fore). The hull must grow to take it, on the model and on the plan's footprint plate, and the cradles fore of the nose must stay clear of it. *Test in Task 4.*
-3. **The player's highlight in a reshaped room** has to follow the new outline on both the plan and the model. A highlight still drawn as the old cell box is the bug most likely to be noticed. *Test in Task 4.*
+2. **A span that reaches past the hull's box** (e.g. the nose room spanning fore). The hull must grow to take it, on the model and on the plan's footprint plate, and the cradles fore of the nose must stay clear of it. *Test in Task 5.*
+3. **The player's highlight in a reshaped room** has to follow the new outline on both the plan and the model. A highlight still drawn as the old cell box is the bug most likely to be noticed. *Test in Task 5.*
 4. **An `outline` with points far outside the cell, or crossing itself.** The build must reject points outside −1.5…1.5 cells and self-crossing outlines, naming the room. *Test in Task 1.*
-5. **A camera tweak on T.I.S.S., which turns.** Its turning (which hour faces the camera) must still bring the player's hour to the front under the new yaw and pitch. *Test in Task 6.*
+5. **A camera tweak on T.I.S.S., which turns.** Its turning (which hour faces the camera) must still bring the player's hour to the front under the new yaw and pitch. *Test in Task 7.*
 
 ---
 
@@ -140,20 +140,51 @@ docs/maps/sync.md, docs/maps/decks-stations.md                         (Task 7)
   - **The ghosted cutaway:** each option shows `ghost-above` as the decks above drawn at about 15% fill opacity with their edges, beside today's `hide-above` (dashed outline).
 - [ ] **Step 3:** Render to PNG with headless chromium, as earlier mockups were rendered, and look at it yourself. If a shape is wrong, fix it before handing over.
 - [ ] **Step 4:** Commit the mockup and the PNG with `docs: footprint and cutaway options`.
-- [ ] **Step 5: STOP.** The controller takes the PNG to John and records his pick (and any changes he asks for) in the ledger, then carries it into Tasks 4 and 5's dispatches. Don't build Tasks 4 and 5 until then.
+- [ ] **Step 5: STOP.** The controller takes the PNG to John and records his pick (and any changes he asks for) in the ledger, then carries it into the later tasks' dispatches. Don't build Tasks 4–6 until then.
 
-### Task 4: Draw footprints on the decks model and plan
+**John's pick (2026-10-26):** neither A, B nor C as drawn, but B with the hull as its own editable path per deck (`docs/maps/reference/hull-path-options.png`, commit 196a8e0). With no `hull` entry a deck keeps today's box. Rooms inside the hull are drawn as today, one box per cell; a room footprint reshapes the room's box on the plan and its lit prism in the overview (as option C did), never the hull. Ghost-above uses the box-hull look from the first mockup's bottom row (decks above at about 15% fill with their edges).
+
+### Task 4: Hull paths in the tweak schema and the build
+
+**Files:**
+- Modify: `scripts/source/tweaks.mjs` (schema, validation, `resolveLook`), `scripts/build-data.mjs` (checks), `ui/lib/footprint.js` (rounded path points)
+- Test: `scripts/source/tweaks.test.mjs`, `scripts/build-data.test.mjs`, `ui/lib/footprint.test.js`
+
+**Interfaces:**
+- Consumes: `outlineOf`, `boundsOf`, and the polygon helpers in `scripts/source/footprints.mjs` (Task 1).
+- Produces:
+  - Tweak key `hull`: `{ "<deck>": [[x, y] | [x, y, r], ...] }`, at least 3 points in the place's side × frame cell grid, where a cell centre sits at its (side, frame) and spans ±0.5. `r` > 0 rounds that corner. The path must not cross itself.
+  - `pathOf(points: number[][]): number[][]` in `ui/lib/footprint.js`: the closed path with each rounded corner expanded to 4 points (3 arc segments, as for room corners), counter-clockwise.
+  - `look.hull`: `{ [deck]: points }`, decks places only, inherited key by key (per deck) through `like`.
+
+- [ ] **Step 1: Write the failing tests.**
+  - A hull with 2 points, an unknown key, a negative `r`, or a crossing path is an error naming `hull.<deck>`.
+  - A hull for a deck the place doesn't have is an orphan (`hull.<deck>`), reported like a room orphan.
+  - `pathOf([[0,0],[2,0],[2,2,0.5],[0,2]])` has 7 points, and its bounds are 0…2 on both axes.
+  - **The build:**
+    - A hull on a deck that cuts through a room's outline (a room's cell offset by its footprint isn't wholly inside the path) is an error naming the room and `hull.<deck>`.
+    - A cradle whose `side` and `deck` put its root outside its deck's hull is an error naming the fixture and `hull.<deck>`. Its root is its (side, nose of the hull) on its deck.
+    - Nothing is written on either error.
+  - With no `hull`, `look.hull` is `{}`, and the goldens are untouched.
+- [ ] **Step 2:** Run the tests. Expected: FAIL.
+- [ ] **Step 3:** Implement, reusing Task 1's polygon helpers for "inside" (a room outline's area minus its intersection with the path is ≤ 1e-6).
+- [ ] **Step 4:** Run `npm test`. Expected: PASS, with the goldens untouched.
+- [ ] **Step 5:** Run `npm run build:data` (expected: `look.hull: {}` added on decks places, and nothing else). Commit with `feat(build): hull paths per deck in the tweak files`, then restore `data/sync-report.json` if the rebuild rewrote it with no source change.
+
+### Task 5: Draw hull paths and footprints on the decks model and plan
 
 **Files:**
 - Modify: `ui/lib/decks.js` (`indexDecks` hull bounds, `buildDecksModel`, `decksLayout`, `decksShape`), `ui/decks-deck.js`
 - Test: `ui/lib/decks.test.js`
 
 **Interfaces:**
-- Consumes: `outlineOf` and `boundsOf` (Task 1); John's pick from Task 3, which the controller passes in.
+- Consumes: `outlineOf` and `boundsOf` (Task 1), `pathOf` and `look.hull` (Task 4), and John's pick (end of Task 3).
 - Produces:
   - `decksLayout(index, deck).cells[i]` gains `points`: the room's outline in plan units, centred on its cell centre.
   - `decksShape` returns `{kind: "path", d}` for a room whose footprint isn't the unit square, and the same rect as today otherwise.
   - The model's lit cell for a reshaped room is its outline extruded through the deck.
+  - A deck with a `look.hull` path gets its 3D hull (side walls, top and bottom), its plan plate, its cut-away dashed outline, and the root of its cradles from the path. A deck without one keeps today's box faces exactly.
+  - Each indexed room carries `footprint` (ruling S6), so `decksPlans()` and `buildDecksModel` read it from the index.
 
 - [ ] **Step 1: Write the failing tests** (on a copied Orrin fixture with the three Task 3 tweaks):
   - The Freight Office's plan cell `points` reach one frame aft. In plan units that's y + `PLAN.h`, with the box inset kept at the outline's outside edges.
@@ -166,18 +197,18 @@ docs/maps/sync.md, docs/maps/decks-stations.md                         (Task 7)
     - every cradle face's z is beyond the new nose.
   - An untweaked place's faces and plan cells are unchanged. The goldens cover this.
 - [ ] **Step 2:** Run it. Expected: FAIL.
-- [ ] **Step 3:** Implement the picked option. Hull bounds come from the union of the rooms' outline bounds (with fractional cells), not only from their cells.
+- [ ] **Step 3:** Implement John's pick. With no hull path, the hull's box comes from the union of the rooms' outline bounds (fractional cells allowed), not only from their cells. With a path, the hull is the path, raised through the deck. Add to the tests: Orrin with the mockup's hull paths (copy the points from `docs/maps/reference/hull-path-mockup.html`) gives a Deck 3 plate path whose bounds match the path's, and model side-wall faces along every path edge.
 - [ ] **Step 4:** Run `npx vitest run tests/golden ui/lib/decks.test.js`, then `npm test`. Expected: PASS, with the goldens untouched.
-- [ ] **Step 5:** Re-render the Task 3 mockup with the real code and compare it with the picked option. Commit with `feat(decks): rooms drawn from their footprints`.
+- [ ] **Step 5:** Render Orrin with the mockup's hull paths through the real code (a throwaway page or the preview), then compare it with `docs/maps/reference/hull-path-options.png` row 2 and say how they differ. Commit with `feat(decks): hull paths and room footprints drawn`.
 
-### Task 5: Cutaway modes in the overview
+### Task 6: Cutaway modes in the overview
 
 **Files:**
 - Modify: `ui/model-view.js` (`constructor` opts, `draw`), `ui/main.js` (pass `view`), `tests/golden/render.js`, `dev/preview.js`
 - Test: `ui/model-view.test.js` (create it if there isn't one, with `// @vitest-environment happy-dom`)
 
 **Interfaces:**
-- Consumes: `look.view.cutaway`; John's pick for the ghost style from Task 3.
+- Consumes: `look.view.cutaway`; the ghost style from John's pick (end of Task 3). With a hull path, the ghost and the dashed outline follow the path.
 - Produces: `new ModelView(el, index, {…, view: {cutaway, camera}})`. With `cutaway: "off"`, `cutOf` is ignored; with `"hide-above"`, today's behaviour; with `"ghost-above"`, faces above the cut are drawn in the picked ghost style and are never lit.
 
 - [ ] **Step 1: Write the failing tests.** For Orrin at the Exchange (Deck 2):
@@ -189,7 +220,7 @@ docs/maps/sync.md, docs/maps/decks-stations.md                         (Task 7)
 - [ ] **Step 4:** Run `npx vitest run tests/golden ui/model-view.test.js`, then `npm test`. Expected: PASS, with the goldens untouched.
 - [ ] **Step 5:** Commit with `feat(model): cutaway off, hide-above or ghost-above, per place`.
 
-### Task 6: A camera home per place
+### Task 7: A camera home per place
 
 **Files:**
 - Modify: `ui/lib/geometry.js:34-61`, `ui/model-view.js`, `ui/main.js`, `tests/golden/render.js`, `dev/preview.js`
@@ -210,11 +241,11 @@ docs/maps/sync.md, docs/maps/decks-stations.md                         (Task 7)
 - [ ] **Step 4:** Run `npx vitest run tests/golden ui/lib/geometry.test.js ui/model-view.test.js`, then `npm test`. Expected: PASS, with the goldens untouched.
 - [ ] **Step 5:** Commit with `feat(model): a camera home per place`.
 
-### Task 7: Docs
+### Task 8: Docs
 
 **Files:**
 - Modify: `docs/maps/sync.md` (tweak keys), `docs/maps/decks-stations.md`, `README.md` if it lists tweak keys
 
-- [ ] **Step 1:** Document `footprints` (units, `span`, `corners`, `r`, `outline`, and the overlap error) and `view` (`cutaway` per kind with its default, and `camera`), each with an example. Also say what is deferred: wheel, drum and town footprints, and a wheel cutaway.
+- [ ] **Step 1:** Document `hull` (per deck, points, rounded corners, the room and fixture checks), `footprints` (units, `span`, `corners`, `r`, `outline`, and the overlap error) and `view` (`cutaway` per kind with its default, and `camera`), each with an example. Also say what is deferred: hull paths and footprints on wheels, drums and towns, and a wheel cutaway (the spec describes how they'll work).
 - [ ] **Step 2:** Run `npm run build:data` (expected: nothing needs you, with no file changes), then `npm test`. Expected: PASS.
 - [ ] **Step 3:** Commit with `docs: footprints and view settings`.

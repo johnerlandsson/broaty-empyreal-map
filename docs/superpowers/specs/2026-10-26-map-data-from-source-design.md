@@ -235,8 +235,9 @@ inheritance works across places.
   "paint":      { "market": "offices" },
   "footprints": { "hold": { "span": { "aft": 0.5 }, "corners": "cut" },
                   "cockpit": { "outline": [[0,0],[1,0],[0.8,1],[0.2,1]] } },
+  "hull":       { "3": [[-1.62,1.62],[1.62,1.62],[1.62,2.38],[0.62,2.38],[0.62,3.62,0.35],[-0.62,3.62],[-0.62,2.38],[-1.62,2.38]] },
   "fixtures":   [ { "type": "mast", "at": { "side": -1, "frame": 3 }, "height": 1.2 } ],
-  "view":       { "cutaway": "ghost-above", "camera": { "yaw": 30, "pitch": 25, "distance": 1.5 } },
+  "view":       { "cutaway": "ghost-above", "camera": { "yaw": 30, "pitch": 25, "zoom": 1.5 } },
   "place":      { "transfer": { "x": 0, "y": -1, "z": 3 } },   // only for rooms the rules can't place
   "drum":       { ... }                  // a section named after the builder, for what only it has
 }
@@ -260,6 +261,24 @@ inheritance works across places.
     bends it round the ring. The plan draws the same footprint flat, in its
     own stretched proportions, which are allowed for readability. Rooms with
     no footprint get one plain cell.
+- **The hull** (added 2026-10-26, John's pick from `docs/maps/reference/hull-path-options.png`)
+  is a shape of its own, drawn as a closed path in the layout's own grid. Rooms are drawn inside it
+  and never shape it. A layout part with no `hull` entry keeps today's shape, so nothing changes
+  until someone draws one.
+  - decks: one path per deck, keyed by deck number, in the side × frame grid (a cell centre at its
+    side and frame, a cell spanning ±0.5). A point `[x, y, r]` rounds that corner with radius `r`
+    cells. The path is the plan's plate, the 3D hull (raised through the deck's height), the dashed
+    outline when the deck is cut away, and where fixtures like cradles sit. The build refuses a hull
+    that cuts through a room's footprint or leaves a fixture outside it, naming both.
+  - wheel (later): a path per ring in its unrolled hour × fore/aft grid, drawn on the ring plan
+    that repeats as you pan, and wrapped round the ring in 3D at its radius and thickness. Spokes,
+    hub and spine are numbers in the `wheel` section (radii, thicknesses, widths, lengths), not
+    paths.
+  - drum (later): the plan's plate is a path in the drum's x × y grid, as on decks; the 3D drum is
+    numbers (radius, length, the axis room's collar), with an optional path in the unrolled
+    hour × band grid wrapped round it for a bulge or a flat.
+  - The editor shows every hull path on the plan with a handle on each point and a ring on a
+    rounded one, and can seed a path from the rooms (their union) for you to adjust.
 - **Fixtures** are things outside the rooms: blisters, cradles, masts, and for
   ships drive bells, booms, the collar and the nose. Each has a type, a
   position in layout units, and its sizes. Both views place them from that
@@ -268,7 +287,7 @@ inheritance works across places.
   entries.
 - **The view section** holds `cutaway` (`off`, `hide-above`, or `ghost-above`;
   on a wheel, the rings outside yours or the near half) and `camera` (the
-  overview's home angle and distance). Each layout kind has defaults equal to
+  overview's home yaw, pitch and zoom). Each layout kind has defaults equal to
   today's behaviour.
 - **A builder's own section** holds what only that kind has: Wenna's room
   places, axis and ramp under `drum`; Zennor's ground kinds, gate, wells,
