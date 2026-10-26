@@ -279,6 +279,12 @@ inheritance works across places.
     hour × band grid wrapped round it for a bulge or a flat.
   - The editor shows every hull path on the plan with a handle on each point and a ring on a
     rounded one, and can seed a path from the rooms (their union) for you to adjust.
+- **Ship looks** (added 2026-10-26, John's pick C from `docs/maps/reference/ship-hull-looks-options.png`): a plan's tweak file can also have
+  - `profile` `{bevel, noseDrop, noseLength, spine}`: the hull's shape in height (bevelled edges, a dropped nose, a raised block aft);
+  - `surface` `{seams, windows, stripe, navLights}`: plating seams, lit window strips, a paint stripe, and nav lights (red to port, green to starboard, white at the stern);
+  - `greebles`: vents, antennae and dishes on the roof.
+
+  Defaults give an untweaked ship the look, and the editor can turn each detail off. The cockpit's canopy glass comes from the game's `canopy: true`. Ship fixtures (`bell`, `boom`, `chevrons`, and `prop` for crates, seats, the core, bulkheads, slots and rails) are depth-sorted with the hull, which hides what's behind it.
 - **Fixtures** are things outside the rooms: blisters, cradles, masts, and for
   ships drive bells, booms, the collar and the nose. Each has a type, a
   position in layout units, and its sizes. Both views place them from that

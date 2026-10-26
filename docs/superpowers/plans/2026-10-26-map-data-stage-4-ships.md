@@ -102,7 +102,22 @@
 - [ ] **Step 4:** Commit with `docs: ships from cells, options`.
 - [ ] **Step 5: STOP.** The controller takes the PNG to John and records his pick: which fixture types, their shapes, and any changes. Tasks 3–5 use it.
 
-### Task 3: Ship fixture types
+**John's pick (2026-10-26), binding for Tasks 3–8:**
+- All the proposed fixture types: `bell`, `boom`, `chevrons`, and `prop` with kinds crate, seat, core, bulkhead, slot and rails. Their shapes are in `docs/maps/reference/ships-from-cells-mockup.html`.
+- Bells are cones. The collar ring is banded yellow.
+- The hull hides fixtures behind it: ship fixtures are depth-sorted with the hull's faces (layer 0), never drawn over it (`ships-3d-mockup.html`).
+- **Hull look C** from `docs/maps/reference/ship-hull-looks-options.png` (the source is `ship-hull-looks-mockup.html`):
+  - `profile` `{bevel, noseDrop, noseLength, spine}`;
+  - `surface` `{seams, windows, stripe, navLights}`;
+  - `greebles` `[{type: vent | antenna | dish, side, frame, …}]`.
+
+  Each has the defaults shown under row C, so an untweaked ship gets them. The hull is cut into small pieces so the painter's sort holds.
+- **The editor (Task 8) lets John turn each detail off:**
+  - the bevel, the nose drop and the spine;
+  - seams, windows, the stripe (and its colour) and nav lights;
+  - each greeble (remove or add).
+
+### Task 3: Ship fixture types and hull looks (profile, surface, greebles)
 
 **Files:**
 - Modify: `scripts/source/schema.mjs` and `tweaks.mjs` (fixture types and fields), `scripts/source/footprints.mjs` (inside or outside the hull checks for the new types), `ui/lib/decks.js` (model), `ui/decks-deck.js` (plan)
@@ -111,6 +126,7 @@
 **Interfaces:**
 - Consumes: John's pick (end of Task 2): the fixture types and their exact fields.
 - Produces: the picked types validated by the build (unknown fields are errors) and drawn by the decks builder in the plan and, where the pick says so, in the model. Room-bound types (`prop`, `chevrons`) are keyed by local room id, and they are orphans when the room is gone.
+- Also produces: tweak keys `profile`, `surface` and `greebles` for plans (ships only; on a station or other place they're a build error, as `hull` is off decks). They're validated with the defaults from row C, resolved into `look`, and drawn by the decks model as in the mockup: bevelled and lofted hull pieces, the dropped nose, the raised spine, seams, canopy glass from `canopy: true`, window strips, a stripe in a palette colour, nav lights, and greebles on the roof or spine. Every ship fixture and greeble is in layer 0, depth-sorted with the hull. Station drawing (cradles, masts, plain box hulls) is unchanged, and the 17 station goldens stay untouched.
 
 - [ ] **Step 1: Write the failing tests:**
   - each type validates (good and bad fields);
@@ -217,7 +233,11 @@
 - Modify: `dev/edit-server.mjs` (state lists ship plans; the save flow works the same for plan tweak files), `dev/editor/main.js` (the rail's "Ship classes" lists plans by hull name, and opens a plan with `buildShip`), `dev/editor/panel.js` and `dev/editor/handles.js` (the new fixture types' handles where they have a position)
 - Test: `dev/edit-server.test.mjs`, `dev/editor/main.test.js`, `dev/editor/handles.test.js`
 
+- Also: the side panel's ship section has a switch or remove control for every hull-look detail (the bevel, the nose drop, the spine, seams, windows, the stripe and its colour, nav lights, each greeble) and an "add greeble" button. Greebles get drag handles like fixtures.
+
 - [ ] **Step 1: Write the failing tests:**
+  - turning seams off PUTs `surface.seams: false`;
+  - removing a greeble PUTs the shorter list;
   - the rail lists the freighter, the tug, the skiff and the courier under "Ship classes";
   - opening the freighter shows its plan and overview;
   - a paint change PUTs `freighter.json`;
