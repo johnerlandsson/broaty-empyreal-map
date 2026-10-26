@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import wenna from "../data/wenna.js";
+// Wenna as generated on the day the drum moved to generated data, frozen so a sync can't move it.
+import wenna from "../../tests/fixtures/generated/wenna.js";
 import { buildDrumModel, drumHour, drumKey, drumLayout, drumShape } from "./drum.js";
 import { indexStation, locate } from "./locate.js";
 import { drumRooms, drumSpec } from "./look.js";

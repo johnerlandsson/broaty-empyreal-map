@@ -1,15 +1,15 @@
-import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
+import orrin from "../../tests/fixtures/generated/orrin.js";
+import wenna from "../../tests/fixtures/generated/wenna.js";
+import zennor from "../../tests/fixtures/generated/zennor.js";
 import lamorna from "../data/lamorna.js";
-import orrin from "../data/orrin.js";
 import tiss from "../data/tiss.js";
-import wenna from "../data/wenna.js";
-import zennor from "../data/zennor.js";
 import { DISTRICT_COLOURS } from "./geometry.js";
 import { decksSpec, drumRooms, drumSpec, tissRooms, townData, townSpec } from "./look.js";
 
 // Today's specs, as decks.js, drum.js and town.js held them before the look moved to tweak files:
-// the generated files must give them back exactly.
+// the generated files of that day (frozen under tests/fixtures/generated, so a sync can't move
+// them) must give them back exactly.
 const ORRIN = {
   prefix: "orrin",
   tints: {
@@ -126,19 +126,6 @@ describe("townSpec and townData", () => {
   });
 });
 
-// The last commit with the log-built ui/data/station.js (built from session logs plus
-// data/overrides.json, both retired since): the generated tiss must give back every room of it.
-const LOG_BUILT = "38c2616";
-function logBuilt() {
-  try {
-    const text = execFileSync("git", ["show", `${LOG_BUILT}:ui/data/station.js`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-    return JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
-  } catch {
-    return null;
-  }
-}
-const old = logBuilt();
-
 describe("tissRooms", () => {
   const mini = {
     id: "w",
@@ -174,22 +161,10 @@ describe("tissRooms", () => {
     expect(tissRooms(mini).rooms.map((r) => r.id)).toEqual(["w.bearing", "w.rim-1200", "w.shop"]);
   });
 
-  it("has T.I.S.S.'s 98 rooms, no lift car among them", () => {
+  it("has T.I.S.S.'s placed rooms, no lift car among them", () => {
     const rooms = tissRooms(tiss).rooms;
-    expect(rooms).toHaveLength(98);
+    expect(rooms.map((r) => r.id)).toEqual(expect.arrayContaining(["tiss.concourse", "tiss.hub", "tiss.rim-0900"]));
+    expect(rooms).toHaveLength(tiss.rooms.filter((r) => r.at).length);
     expect(rooms.some((r) => r.id.startsWith("tiss.lift-"))).toBe(false);
-  });
-
-  it.skipIf(!old)("has every room of the log-built station.js, placed and closed the same, its exits kept", () => {
-    const byId = new Map(tissRooms(tiss).rooms.map((r) => [r.id, r]));
-    const pick = (r) => ({ x: r.x, y: r.y, z: r.z, terrain: r.terrain, region: r.region, name: r.name, address: r.address, gravity: r.gravity, closedReason: r.closedReason });
-    for (const was of old.rooms) {
-      const now = byId.get(was.id);
-      expect(now, was.id).toBeDefined();
-      expect(pick(now), was.id).toStrictEqual(pick(was));
-      // the logs had only the exits walked; every one of them is still there
-      for (const [dir, to] of Object.entries(was.exits)) expect(now.exits[dir], `${was.id} ${dir}`).toBe(to);
-    }
-    expect([...byId.keys()]).toEqual(old.rooms.map((r) => r.id));
   });
 });

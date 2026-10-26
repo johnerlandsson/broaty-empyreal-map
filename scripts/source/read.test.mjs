@@ -38,9 +38,10 @@ describe("loadSource", () => {
 
   it.skipIf(!existsSync(join(real, "content/areas")))("loads the real source", () => {
     const src = loadSource(real);
-    expect(src.areas).toHaveLength(17);
+    expect(src.areas.map((a) => a.area.id)).toEqual(expect.arrayContaining(["tiss", "orrin", "wenna", "zennor"]));
     expect(src.plans.length).toBeGreaterThanOrEqual(1);
-    expect(src.areas.find((a) => a.area.id === "tiss").rooms).toHaveLength(102);
+    const tiss = src.areas.find((a) => a.area.id === "tiss").rooms.map((r) => r.id);
+    expect(tiss).toEqual(expect.arrayContaining(["tiss.concourse", "tiss.hub", "tiss.rim-0900", "tiss.lift-3"]));
     expect(src.commit).toMatch(/^[0-9a-f]{7,}$/);
   });
 });

@@ -2,13 +2,15 @@
 // What every place draws today, kept as golden files: a change to the map data or how it's built
 // must leave these the same. GOLDEN_RECORD=1 writes the files from the current code instead.
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import places from "../../ui/data/places.js";
 import { renderPlace } from "./render.js";
 
-const IDS = ["tiss", "wenna", "zennor", "orrin", "morvah", "gwithian", "carrow", "lanyon", "kynance", "marazion", "penwith", "botallack", "polperro", "lamorna", "kilmar", "caradon", "garrow"];
+// every place the generated index has: a new one fails till its golden is recorded
+const IDS = places.map((p) => p.id);
 const DIR = dirname(fileURLToPath(import.meta.url));
 const RECORD = process.env.GOLDEN_RECORD === "1";
 
@@ -21,6 +23,7 @@ describe("golden renders", () => {
       const file = join(DIR, `${id}.txt`);
       const got = text(await renderPlace(id));
       if (RECORD) writeFileSync(file, got);
+      else if (!existsSync(file)) throw new Error(`no golden for ${id}: record it with GOLDEN_RECORD=1 npx vitest run tests/golden`);
       else expect(got).toBe(readFileSync(file, "utf8"));
     });
   }

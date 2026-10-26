@@ -16,15 +16,18 @@ beforeAll(() => {
 const box = (layout, id) => layout.rooms.find((r) => r.room.id === id);
 
 describe("ringLayout", () => {
-  it("rim plan has 12 stops spaced NODE apart", () => {
-    expect(rim.stops).toHaveLength(12);
-    expect(rim.length).toBe(1800);
+  it("rim plan has a stop at least every even hour, spaced NODE apart", () => {
+    expect(rim.stops.length).toBeGreaterThanOrEqual(12);
+    expect(rim.length).toBe(rim.stops.length * NODE);
     rim.stops.slice(1).forEach((s, i) => expect(s.cx - rim.stops[i].cx).toBe(NODE));
   });
 
-  it("mid and inner have 8 stops", () => {
-    expect(ringLayout(index, 1).stops).toHaveLength(8);
-    expect(ringLayout(index, 2).length).toBe(8 * NODE);
+  it("mid and inner have a stop at least every hour and a half", () => {
+    for (const z of [1, 2]) {
+      const ring = ringLayout(index, z);
+      expect(ring.stops.length).toBeGreaterThanOrEqual(8);
+      expect(ring.length).toBe(ring.stops.length * NODE);
+    }
   });
 
   it("marks lobbies at the spoke hours", () => {

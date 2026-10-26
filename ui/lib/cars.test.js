@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import tissData from "../data/tiss.js";
-import generated from "../data/zennor.js";
+import generated from "../../tests/fixtures/generated/zennor.js";
 import { CARS, carDoing, carInfo, carKind, carName, stopLine, stopNames } from "./cars.js";
 import { indexStation } from "./locate.js";
 import { tissRooms, townData, townSpec } from "./look.js";

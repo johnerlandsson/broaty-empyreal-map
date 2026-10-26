@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import generated from "../data/zennor.js";
+// Zennor as generated on the day the town moved to generated data, frozen so a sync can't move it.
+import generated from "../../tests/fixtures/generated/zennor.js";
 import { townData, townSpec } from "./look.js";
 import { CELL, STEP, exitTo, indexTown, locateTown, placeRooms, townFrame, townInfo, townLayout, townShape } from "./town.js";
 
