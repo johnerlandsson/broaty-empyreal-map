@@ -10,6 +10,7 @@
     "pack": "rm -f empyreal-map-$npm_package_version.mallardx && zip -r empyreal-map-$npm_package_version.mallardx plugin.toml README.md src ui -x 'ui/**/*.test.js'"
   },
   "devDependencies": {
+    "happy-dom": "^21.0.4",
     "vitest": "^2.0.0"
   }
 }
