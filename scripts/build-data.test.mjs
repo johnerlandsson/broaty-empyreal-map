@@ -150,6 +150,27 @@ describe("build", () => {
     expect(report.knownDroppedFlags).toEqual(["charger", "shop", "vault"]);
   });
 
+  it("names a nested field new to the source once, by dotted name, and leaves it out", async () => {
+    const opts = setup();
+    await build(opts);
+    editArea(opts.source, "wheelie.yaml", (doc) => {
+      doc.area.layout.hub.spin = 2;
+      doc.area.districts[0].music = "brass";
+      doc.rooms[0].exits[Object.keys(doc.rooms[0].exits)[0]] = { to: Object.values(doc.rooms[0].exits)[0], hidden: true };
+    });
+    const { report } = await build(opts);
+    expect(report.unknownFields).toEqual([
+      { name: "districts.*.music", places: ["wheelie"] },
+      { name: "exits.*.hidden", places: ["wheelie"] },
+      { name: "layout.hub.spin", places: ["wheelie"] },
+    ]);
+    const w = await load(join(opts.outDir, "wheelie.js"));
+    expect(w.layout.hub).toEqual({ gravity: 0 });
+    expect(w.districts[0]).not.toHaveProperty("music");
+    expect(JSON.stringify(w.rooms)).not.toContain("hidden");
+    expect((await build(opts)).report.unknownFields).toEqual([]);
+  });
+
   it("lists a wheel room the rules can't place, with no place tweak, as unplaced", async () => {
     const opts = setup({});
     const { report } = await build(opts);

@@ -15,7 +15,38 @@
   "unplaced": [],
   "orphans": [],
   "droppedFlags": [],
-  "unknownFields": [],
+  "unknownFields": [
+    {
+      "name": "car.dwell",
+      "places": [
+        "zennor"
+      ]
+    },
+    {
+      "name": "car.floor",
+      "places": [
+        "zennor"
+      ]
+    },
+    {
+      "name": "car.load",
+      "places": [
+        "zennor"
+      ]
+    },
+    {
+      "name": "car.perStop",
+      "places": [
+        "zennor"
+      ]
+    },
+    {
+      "name": "car.stops.*.press",
+      "places": [
+        "zennor"
+      ]
+    }
+  ],
   "knownDroppedFlags": [
     "barber",
     "broker",
@@ -30,5 +61,11 @@
     "terminal",
     "workshops"
   ],
-  "knownUnknownFields": []
+  "knownUnknownFields": [
+    "car.dwell",
+    "car.floor",
+    "car.load",
+    "car.perStop",
+    "car.stops.*.press"
+  ]
 }

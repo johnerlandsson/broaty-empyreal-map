@@ -661,29 +661,18 @@ export default {
         "kind": "tram",
         "stops": [
           {
-            "room": "zennor.tram-riverside",
-            "press": "riverside"
+            "room": "zennor.tram-riverside"
           },
           {
-            "room": "zennor.tram-market",
-            "press": "market"
+            "room": "zennor.tram-market"
           },
           {
-            "room": "zennor.tram-uptown",
-            "press": "uptown"
+            "room": "zennor.tram-uptown"
           },
           {
-            "room": "zennor.tram-downs",
-            "press": "downs"
+            "room": "zennor.tram-downs"
           }
-        ],
-        "perStop": 15,
-        "dwell": 8,
-        "floor": [
-          400,
-          250
-        ],
-        "load": 4000
+        ]
       }
     }
   ],

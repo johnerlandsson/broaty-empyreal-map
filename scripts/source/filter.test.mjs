@@ -25,9 +25,28 @@ describe("keepRoom", () => {
   });
 
   it("keeps gravity, district, canopy and car, even when falsy", () => {
-    const { room, dropped } = keepRoom({ id: "a.b", gravity: 0, district: "d", canopy: true, car: true });
-    expect(room).toEqual({ id: "a.b", gravity: 0, district: "d", canopy: true, car: true });
+    const car = { kind: "tram", stops: [{ room: "a.c" }] };
+    const { room, dropped } = keepRoom({ id: "a.b", gravity: 0, district: "d", canopy: false, car });
+    expect(room).toEqual({ id: "a.b", gravity: 0, district: "d", canopy: false, car });
     expect(dropped).toEqual({ fields: [], flags: [] });
+  });
+
+  it("keeps of a car only its kind and its stops' rooms, naming the rest by dotted name", () => {
+    const { room, dropped } = keepRoom({
+      id: "a.b",
+      car: { kind: "tram", stops: [{ room: "a.c", press: "c" }, { room: "a.d", press: "d" }], perStop: 15, dwell: 8 },
+    });
+    expect(room.car).toStrictEqual({ kind: "tram", stops: [{ room: "a.c" }, { room: "a.d" }] });
+    expect(dropped.fields).toEqual(["car.perStop", "car.dwell", "car.stops.*.press"]);
+  });
+
+  it("keeps of an exit only where it goes, the way through and its seconds", () => {
+    const { room, dropped } = keepRoom({
+      id: "a.b",
+      exits: { north: "a.c", up: { to: "a.d", via: "steps", seconds: 12, hidden: true }, down: { to: "a.e", hidden: true } },
+    });
+    expect(room.exits).toStrictEqual({ north: "a.c", up: { to: "a.d", via: "steps", seconds: 12 }, down: { to: "a.e" } });
+    expect(dropped.fields).toEqual(["exits.*.hidden"]);
   });
 
   it("drops a flags list that empties out", () => {
@@ -51,10 +70,32 @@ describe("keepArea", () => {
       districts: [{ id: "d" }],
       fallbackRoom: "t.r",
     };
-    expect(keepArea(area)).toEqual({ id: "t", name: "T", gravity: 0.9, layout: { kind: "wheel" }, districts: [{ id: "d" }] });
+    expect(keepArea(area)).toEqual({ area: { id: "t", name: "T", gravity: 0.9, layout: { kind: "wheel" }, districts: [{ id: "d" }] }, dropped: { fields: [] } });
   });
 
   it("omits districts when there are none", () => {
-    expect(keepArea({ id: "t", name: "T", gravity: 0, layout: { kind: "decks" } })).not.toHaveProperty("districts");
+    expect(keepArea({ id: "t", name: "T", gravity: 0, layout: { kind: "decks" } }).area).not.toHaveProperty("districts");
+  });
+
+  it("keeps of a layout and its districts only what the map reads, naming the rest by dotted name", () => {
+    const layout = {
+      kind: "wheel",
+      rings: { rim: { every: 1, gravity: 0.9, colour: "red" }, mid: { every: 1.5, gravity: 0.6 } },
+      spokes: [12, 3],
+      spine: { length: 4, gravity: 0, lit: true },
+      hub: { gravity: 0, spin: 1 },
+      tilt: 3,
+    };
+    const districts = [{ id: "d", name: "D", entrance: "t.r", music: "x" }];
+    const { area, dropped } = keepArea({ id: "t", name: "T", gravity: 0.9, layout, districts });
+    expect(area.layout).toStrictEqual({
+      kind: "wheel",
+      rings: { rim: { every: 1, gravity: 0.9 }, mid: { every: 1.5, gravity: 0.6 } },
+      spokes: [12, 3],
+      spine: { length: 4, gravity: 0 },
+      hub: { gravity: 0 },
+    });
+    expect(area.districts).toStrictEqual([{ id: "d", name: "D", entrance: "t.r" }]);
+    expect(dropped.fields).toEqual(["layout.tilt", "layout.rings.*.colour", "layout.spine.lit", "layout.hub.spin", "districts.*.music"]);
   });
 });

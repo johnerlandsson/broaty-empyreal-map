@@ -173,16 +173,18 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
   // Stage 1 reads and places the plans, to check them, but doesn't write them.
   for (const { area, rooms } of src.plans) placeRooms(area, rooms);
 
-  // Dropped flags and fields are named by name, the first build their name appears anywhere in the source.
-  const dropped = [...src.areas, ...src.plans].flatMap(({ area, rooms }) =>
-    rooms.map((raw) => ({ place: area.id, dropped: keepRoom(raw).dropped })),
-  );
+  // Dropped flags and fields are named by name, the first build their name appears anywhere in the
+  // source; a nested field by its dotted name ("car.perStop").
+  const dropped = [...src.areas, ...src.plans].flatMap(({ area, rooms }) => [
+    { place: area.id, dropped: { ...keepArea(area).dropped, flags: [] } },
+    ...rooms.map((raw) => ({ place: area.id, dropped: keepRoom(raw).dropped })),
+  ]);
   Object.assign(report, droppedOf(dropped, previous));
 
   for (const { file, area, rooms: raw } of src.areas) {
     const id = area.id;
     if (id === "places") throw new Error(`content/areas/${file}: an area can't be called places (ui/data/places.js is the index)`);
-    const kept = keepArea(area);
+    const kept = keepArea(area).area;
     const layout = kept.layout ?? { kind: "none" };
     const tweak = resolveTweak(id, tweaks);
     const builder = builderOf(layout.kind, tweak);
