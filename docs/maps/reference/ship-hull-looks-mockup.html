@@ -1,0 +1,699 @@
+<!doctype html>
+<!-- Ship hull looks, 2026-10-26 (stage 4, task 2, third round): the hull hides the fixtures behind it
+     (every fixture depth-sorted with the hull's faces, none in a layer above), and three ways to
+     make a hull more than its extruded path: A a profile (bevels, a dropped nose, a spine), B a
+     surface (seams, lit windows, a canopy, a paint stripe, nav lights), C both plus greebles. The
+     skiff and the freighter, from the band camera and from astern. "Today" is the real decks
+     builder's hull; A to C are lofted here from the same hull path. Serve the repo root over http
+     to open it. A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Ship hull looks: options</title>
+<style>
+  body { margin:0; background:#0b0f16; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:12px 20px 24px; width:2290px; }
+  h1 { color:#e3eaf2; font-size:18px; margin:4px 0 4px; }
+  h2 { color:#e3eaf2; font-size:16px; margin:18px 0 2px; }
+  h2 small, .top { color:#8f9bab; font-weight:400; font-size:12.5px; }
+  .top { line-height:1.5; max-width:1700px; }
+  .row { display:grid; grid-template-columns:repeat(4, 560px); gap:10px; margin-top:6px; }
+  .pane { position:relative; height:380px; background:#04060c; border-radius:6px; outline:1px solid #222c3a; overflow:hidden; }
+  .pane .tag { position:absolute; left:8px; top:6px; z-index:4; font:10.5px "DejaVu Sans Mono", monospace; color:#9aa7b7; letter-spacing:.5px; text-transform:uppercase; pointer-events:none; }
+  .pane .slot { position:absolute; inset:0; }
+  .pane button, .pane .zoom { display:none !important; }
+  .under { display:grid; grid-template-columns:1130px 1130px; gap:10px; margin-top:6px; }
+  pre { margin:0; font:11px/1.45 "DejaVu Sans Mono", monospace; color:#b9c5d3; white-space:pre-wrap; background:#0e131a; border-radius:6px; padding:8px 10px; outline:1px solid #1c2531; }
+  .note { font-size:12px; line-height:1.5; color:#8f9bab; }
+</style></head><body>
+<h1>Ship hull looks: options</h1>
+<div class="top">The skiff and the freighter, each from the band camera (yaw 16, pitch 38, nose toward you) and from astern (yaw 196, pitch 24). Cone bells and the yellow-banded ring, as picked. <b style="color:#c9d3df">Every fixture is now depth-sorted with the hull's faces</b> (layer 0, as the hull), so the hull hides a bell behind it; the hull is cut into pieces of a quarter cell so the painter's sort by centroid holds. No room is lit, so the hull shows whole.</div>
+<script type="module">
+import skiffPlan from "../../../ui/data/plans/hull-skiff.js";
+import courierPlan from "../../../ui/data/plans/hull-courier.js";
+import freighterPlan from "../../../ui/data/plans/freighter.js";
+import tugPlan from "../../../ui/data/plans/tug.js";
+import { HULLS } from "../../../ui/lib/hulls.js";
+import { shipPlans, updateShip } from "../../../ui/ship-deck.js";
+import { DeckView, DIM, TXT, PASSAGE, PLATE } from "../../../ui/deck-view.js";
+import { ModelView } from "../../../ui/model-view.js";
+import { buildPlace } from "../../../ui/place-views.js";
+import { CELL, PLAN, buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "../../../ui/lib/decks.js";
+import { noseAt } from "../../../ui/lib/footprint.js";
+import { el } from "../../../ui/lib/svg.js";
+
+const S = 60; // drawing units per cell, both ways
+const HULL_LINE = "#9fb0c3", EDGE = "#3b4a5c", FIXTURE = "#0e131a", CHEVRON = "#e8b04a";
+const r2 = (v) => Math.round(v * 100) / 100;
+
+/** A ship's mapping from today's drawing to cells: drawing point (ax, ay) is cell (0, frame). */
+function mapping(ay, frame) {
+  const pt = ([x, y]) => [r2((x - 100) / S), r2(frame + (ay - y) / S)];
+  const len = (v) => r2(v / S);
+  /** A hull path from drawing points, [x, y] or [x, y, r]. */
+  const hull = (points) => points.map(([x, y, r]) => (r ? [...pt([x, y]), len(r)] : pt([x, y])));
+  /** A footprint outline round a drawing box, for a room in cell (cx, cy): grown by the plan's
+   *  inset (14 plan units: 0.1 cells across, 0.14 along) so the drawn box is the drawing's. */
+  const box = ({ x, y, width, height }, [cx, cy]) => {
+    const [x0, y1] = pt([x, y]), [x1, y0] = pt([x + width, y + height]);
+    const ix = PLAN.inset / PLAN.w, iy = PLAN.inset / PLAN.h;
+    const o = [[x0 - cx - ix, y0 - cy - iy], [x1 - cx + ix, y0 - cy - iy], [x1 - cx + ix, y1 - cy + iy], [x0 - cx - ix, y1 - cy + iy]];
+    return { outline: o.map((p) => p.map(r2)) };
+  };
+  /** A point as an offset from a room's cell, for a prop. */
+  const from = ([cx, cy], p) => { const [x, y] = pt(p); return [r2(x - cx), r2(y - cy)]; };
+  return { pt, len, hull, box, from };
+}
+
+// --- the looks: each ship's hull, footprints and fixtures, from today's drawing ----------------------
+const sk = mapping(99, 1); // the skiff's cockpit centre is frame 1
+const co = mapping(68, 1); // the courier's
+const fr = mapping(80, 3); // the freighter's passage row is frame 3
+const FR = { cockpit: [0, 4], airlock: [-1, 3], passage: [0, 3], collar: [1, 3], hold: [0, 2], engine: [0, 1] };
+const L = (k) => HULLS.freighter.rooms.find((r) => r.key === k).shape;
+
+const LOOKS = {
+  skiff: {
+    hull: { 1: sk.hull([[60, 60], [100, 52], [140, 60], [160, 110], [160, 215], [140, 230], [60, 230], [40, 215], [40, 110]]) },
+    footprints: { cockpit: sk.box(HULLS.skiff.rooms[0].shape, [0, 1]) },
+    fixtures: [
+      { type: "boom", side: 0, deck: 1, len: sk.len(52 - 2) },
+      { type: "prop", kind: "crate", room: "cockpit", at: sk.from([0, 1], [100, 173]), size: [sk.len(21), sk.len(25)], grid: [3, 2], gap: 0.08 },
+      { type: "bell", side: sk.pt([76, 0])[0], deck: 1, r: sk.len(9), len: sk.len(22) },
+      { type: "bell", side: 0, deck: 1, r: sk.len(10), len: sk.len(26) },
+      { type: "bell", side: sk.pt([124, 0])[0], deck: 1, r: sk.len(9), len: sk.len(22) },
+    ],
+  },
+  courier: {
+    hull: { 1: co.hull([[100, 15], [122, 40, 66], [122, 255], [112, 266], [88, 266], [78, 255], [78, 40, 66]]) },
+    footprints: { cockpit: co.box(HULLS.courier.rooms[0].shape, [0, 1]) },
+    fixtures: [
+      { type: "prop", kind: "seat", room: "cockpit", at: co.from([0, 1], [100, 69]), size: [co.len(12), co.len(12)], grid: [1, 2], gap: co.len(10) },
+      { type: "prop", kind: "bulkhead", room: "cockpit", at: co.from([0, 1], [100, 102]), size: [co.len(40), 0] },
+      { type: "prop", kind: "crate", room: "cockpit", at: co.from([0, 1], [100, 121]), size: [co.len(12), co.len(22)], grid: [2, 1], gap: co.len(2) },
+      { type: "prop", kind: "slot", room: "cockpit", at: co.from([0, 1], [100, 150]), size: [co.len(24), co.len(18)] },
+      { type: "prop", kind: "core", room: "cockpit", at: co.from([0, 1], [100, 209]), size: [co.len(28), co.len(82)], ribs: 7 },
+      { type: "bell", side: co.pt([92.5, 0])[0], deck: 1, r: co.len(7), len: co.len(19) },
+      { type: "bell", side: co.pt([107.5, 0])[0], deck: 1, r: co.len(7), len: co.len(19) },
+    ],
+  },
+  freighter: {
+    hull: { 1: fr.hull([[64, 58], [64, 8, 35], [136, 8, 35], [136, 58], [168, 58, 8], [168, 256], [158, 268], [42, 268], [32, 256], [32, 58, 8]]) },
+    footprints: Object.fromEntries(Object.entries(FR).map(([k, c]) => [k, fr.box(L(k), c)])),
+    fixtures: [
+      { type: "prop", kind: "seat", room: "cockpit", at: fr.from(FR.cockpit, [100, 44.5]), size: [fr.len(10), fr.len(9)], grid: [2, 1], gap: fr.len(6) },
+      { type: "prop", kind: "rails", room: "hold", at: fr.from(FR.hold, [100, 155]), size: [fr.len(114), fr.len(82)] },
+      { type: "chevrons", room: "collar", wall: "starboard" },
+      { type: "bell", side: fr.pt([70, 0])[0], deck: 1, r: fr.len(14), len: fr.len(25) },
+      { type: "bell", side: fr.pt([130, 0])[0], deck: 1, r: fr.len(14), len: fr.len(25) },
+    ],
+  },
+  tug: {
+    hull: { 1: [[-0.62, 0.42, 0.12], [0.62, 0.42, 0.12], [0.62, 2.2], [0.3, 2.62, 0.1], [-0.3, 2.62, 0.1], [-0.62, 2.2]] },
+    footprints: { cockpit: { corners: "rounded", r: 0.3 }, collar: { corners: "cut", r: 0.22 } },
+    fixtures: [
+      { type: "chevrons", room: "collar", wall: "aft" },
+      { type: "bell", side: -0.42, deck: 1, r: 0.1, len: 0.26 },
+      { type: "bell", side: 0.42, deck: 1, r: 0.1, len: 0.26 },
+    ],
+  },
+};
+
+/** A plan with the rooms' "of the {name}" taken off and a look patched in. */
+function shipData(plan, look) {
+  const rooms = plan.rooms.map((r) => ({ ...r, name: r.name.replace(" of the {name}", "") }));
+  return { ...plan, rooms, look: { ...plan.look, ...(look ?? {}) } };
+}
+
+// --- the proposed fixtures on the plan ----------------------------------------------------------------
+/** Where a hull path is at side x: its aft end (lowest frame), or null. */
+function tailAt(path, x) {
+  let tail = null;
+  path.forEach((a, i) => {
+    const b = path[(i + 1) % path.length];
+    if ((a[0] - x) * (b[0] - x) > 0 || a[0] === b[0]) return;
+    const y = a[1] + ((x - a[0]) / (b[0] - a[0])) * (b[1] - a[1]);
+    if (tail === null || y < tail) tail = y;
+  });
+  return tail;
+}
+/** Where a hull path is at frame y: its starboard (or port) side. */
+function sideAt(path, y, dir) {
+  let best = null;
+  path.forEach((a, i) => {
+    const b = path[(i + 1) % path.length];
+    if ((a[1] - y) * (b[1] - y) > 0 || a[1] === b[1]) return;
+    const x = a[0] + ((y - a[1]) / (b[1] - a[1])) * (b[0] - a[0]);
+    if (best === null || (x - best) * dir > 0) best = x;
+  });
+  return best;
+}
+const WALL = { starboard: [1, 0], port: [-1, 0], fore: [0, 1], aft: [0, -1] };
+const ln = (pts) => `M${pts.map((p) => p.map((v) => +v.toFixed(1)).join(",")).join("L")}`;
+
+/** A drive bell, out of the hull's aft end at its side: a throat flaring to its mouth. */
+function planBell(g, P, f, tail) {
+  const t = f.r * 0.3, y0 = tail + 0.03, y1 = tail - f.len;
+  const [a, b, c, d] = [P([f.side - t, y0]), P([f.side - t, tail - f.len * 0.45]), P([f.side - f.r, y1]), P([f.side + f.r, y1])];
+  const [e, h] = [P([f.side + t, tail - f.len * 0.45]), P([f.side + t, y0])];
+  el("path", { d: `M${a}Q${b} ${c}L${d}Q${e} ${h}Z`, fill: PLATE, stroke: HULL_LINE, "stroke-width": 1.6, "stroke-linejoin": "round" }, g);
+  el("path", { d: ln([P([f.side - f.r * 0.82, y1 + f.len * 0.12]), P([f.side + f.r * 0.82, y1 + f.len * 0.12])]), stroke: EDGE, "stroke-width": 1.2 }, g);
+}
+/** The mining laser boom, out of the nose at its side: rod, crossbar, the emitter's diamond, its prongs. */
+function planBoom(g, P, f, nose) {
+  const u = f.len, at = (dx, dy) => P([f.side + dx * u, nose + dy * u]);
+  const s = { stroke: HULL_LINE, "stroke-width": 1.8, fill: "none", "stroke-linecap": "round" };
+  el("path", { d: ln([at(0, -0.06), at(0, 0.64)]), ...s }, g);
+  el("path", { d: ln([at(-0.11, 0.28), at(0.11, 0.28)]), ...s }, g);
+  el("path", { d: `${ln([at(0, 0.6), at(0.11, 0.74), at(0, 0.88), at(-0.11, 0.74)])}Z`, ...s, fill: PLATE }, g);
+  el("path", { d: `${ln([at(0, 0.93), at(0, 1)])}${ln([at(-0.11, 0.95), at(-0.07, 0.9)])}${ln([at(0.11, 0.95), at(0.07, 0.9)])}`, ...s }, g);
+}
+/** A prop inside the hull, plan only: one, or a grid of them, centred on its room's cell plus `at`. */
+function planProp(g, P, f, [cx, cy]) {
+  const [w, h] = f.size, [nx, ny] = f.grid ?? [1, 1], gap = f.gap ?? 0;
+  for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) {
+    const x = cx + f.at[0] + (i - (nx - 1) / 2) * (w + gap);
+    const y = cy + f.at[1] - (j - (ny - 1) / 2) * (h + gap);
+    propOne(g, f, P([x - w / 2, y + h / 2]), P([x + w / 2, y - h / 2]));
+  }
+}
+function propOne(g, f, [x0, y0], [x1, y1]) {
+  const W = x1 - x0, H = y1 - y0, line = { fill: "none", stroke: DIM, "stroke-width": 1.4, "stroke-linejoin": "round" };
+  if (f.kind === "crate") {
+    el("rect", { x: x0, y: y0, width: W, height: H, rx: 2, ...line }, g);
+    el("path", { d: ln([[x0, y0], [x1, y1]]), ...line }, g);
+  } else if (f.kind === "seat") {
+    el("path", { d: `M${x0},${y0}h${W}v${H * 0.66}h${-W}Z M${x0},${y0 + H * 0.66}l${W * 0.2},${H * 0.34}h${W * 0.6}l${W * 0.2},${-H * 0.34}`, ...line, stroke: TXT, "stroke-width": 1.3 }, g);
+  } else if (f.kind === "core") {
+    const bw = W * 0.36;
+    el("rect", { x: x0 + (W - bw) / 2, y: y0, width: bw, height: H, rx: 3, ...line }, g);
+    const n = f.ribs ?? 7;
+    for (let i = 0; i < n; i++) {
+      const y = y0 + H * (0.1 + (0.8 * i) / (n - 1));
+      el("path", { d: ln([[x0, y], [x1, y]]), ...line }, g);
+    }
+  } else if (f.kind === "bulkhead") {
+    el("path", { d: ln([[x0, y0], [x1, y0]]), stroke: HULL_LINE, "stroke-width": 2 }, g);
+  } else if (f.kind === "slot") {
+    el("rect", { x: x0, y: y0, width: W, height: H, rx: 3, ...line, stroke: PASSAGE }, g);
+    for (const [bx, by] of [[0.15, 0.2], [0.85, 0.2], [0.15, 0.8], [0.85, 0.8]]) el("circle", { cx: x0 + W * bx, cy: y0 + H * by, r: 2.2, fill: PASSAGE }, g);
+  } else if (f.kind === "rails") {
+    for (const [x, s] of [[x0, 1], [x1, -1]]) {
+      el("path", { d: ln([[x, y0], [x, y1]]), ...line, opacity: 0.6 }, g);
+      for (let i = 1; i < 6; i++) el("path", { d: ln([[x, y0 + (H * i) / 6], [x + s * 7, y0 + (H * i) / 6]]), ...line, opacity: 0.6 }, g);
+    }
+  }
+}
+/** The collar's ring where the room's wall meets the hull: a way out to it, the ring, and its yellow chevrons pointing out. */
+function planChevrons(g, P, f, room, hullPt) {
+  const [dx, dy] = WALL[f.wall];
+  const along = 0.4, out = 0.12; // the ring's length along the hull and how far it stands out, in cells
+  const [hx, hy] = hullPt;
+  const ring = dx ? [P([hx - 0.02 * dx, hy + along / 2]), P([hx + out * dx, hy - along / 2])] : [P([hx + along / 2, hy - 0.02 * dy]), P([hx - along / 2, hy + out * dy])];
+  const [rx0, rx1] = [Math.min(ring[0][0], ring[1][0]), Math.max(ring[0][0], ring[1][0])];
+  const [ry0, ry1] = [Math.min(ring[0][1], ring[1][1]), Math.max(ring[0][1], ring[1][1])];
+  // the way out, from the room's box to the hull, as the decks builder draws a link
+  const [px, py] = P([hx, hy]);
+  if (dx) {
+    const from = room.cx + (dx * room.w) / 2;
+    el("rect", { x: Math.min(from, px), y: py - 8, width: Math.abs(px - from), height: 16, fill: PASSAGE }, g);
+  } else {
+    const from = room.cy - (dy * room.h) / 2;
+    el("rect", { x: px - 8, y: Math.min(from, py), width: 16, height: Math.abs(py - from), fill: PASSAGE }, g);
+  }
+  el("rect", { x: rx0, y: ry0, width: rx1 - rx0, height: ry1 - ry0, rx: 3, fill: FIXTURE, stroke: HULL_LINE, "stroke-width": 1.6 }, g);
+  const c = { stroke: CHEVRON, "stroke-width": 1.8, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" };
+  const [mx, my] = [(rx0 + rx1) / 2, (ry0 + ry1) / 2];
+  for (const k of [-1, 1]) {
+    if (dx) {
+      const yy = my + k * (ry1 - ry0) * 0.24, s = 3.4;
+      el("path", { d: ln([[mx - dx * s, yy - s], [mx + dx * s, yy], [mx - dx * s, yy + s]]), ...c }, g);
+    } else {
+      const xx = mx + k * (rx1 - rx0) * 0.24, s = 3.4, sy = -dy;
+      el("path", { d: ln([[xx - s, my - sy * s], [xx, my + sy * s], [xx + s, my - sy * s]]), ...c }, g);
+    }
+  }
+}
+
+/** Draw the look's proposed fixtures onto a built decks plan, outside ones under the hull plate. */
+function drawFixtures(plan, index, data) {
+  const { g, layout } = plan;
+  const P = ([x, y]) => layout.centre({ x, y });
+  const under = el("g", {}, null), over = el("g", {}, null);
+  const local = (id) => id.slice(data.id.length + 1);
+  for (const f of data.look.fixtures ?? []) {
+    const path = index.hullPaths[f.deck ?? 1];
+    if (f.type === "bell") planBell(under, P, f, path ? tailAt(path, f.side) : index.hull.y0 - 0.5);
+    else if (f.type === "boom") planBoom(under, P, f, path ? noseAt(path, f.side) : index.hull.y1 + 0.5);
+    else if (f.type === "prop" || f.type === "chevrons") {
+      const room = [...index.byId.values()].find((r) => local(r.id) === f.room);
+      if (!room) continue;
+      if (f.type === "prop") planProp(over, P, f, [room.cell.x, room.cell.y]);
+      else {
+        const cell = layout.cells.find((c) => c.room === room);
+        const [dx, dy] = WALL[f.wall];
+        const hp = dx ? [sideAt(path, room.cell.y, dx), room.cell.y] : [room.cell.x, dy < 0 ? tailAt(path, room.cell.x) : noseAt(path, room.cell.x)];
+        planChevrons(under, P, f, cell, hp);
+      }
+    }
+  }
+  g.insertBefore(under, g.firstChild);
+  g.insertBefore(over, plan.hl);
+}
+
+// --- the proposed fixtures in 3D ------------------------------------------------------------------------
+const CUBE = [
+  [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]], [[-1, 1, -1], [1, 1, -1], [1, -1, -1], [-1, -1, -1]],
+  [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]], [[-1, 1, 1], [1, 1, 1], [1, 1, -1], [-1, 1, -1]],
+  [[1, -1, -1], [1, 1, -1], [1, 1, 1], [1, -1, 1]], [[-1, -1, 1], [-1, 1, 1], [-1, 1, -1], [-1, -1, -1]],
+];
+function outward(pts, from) {
+  const [a, b, c] = pts;
+  const u = b.map((v, i) => v - a[i]), w = c.map((v, i) => v - a[i]);
+  const n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+  const m = pts.reduce((s, p) => s.map((v, i) => v + p[i] / pts.length), [0, 0, 0]);
+  return n.reduce((s, v, i) => s + v * (m[i] - from[i]), 0) >= 0 ? pts : pts.slice().reverse();
+}
+const face = (pts, extra) => ({ pts, kind: "dock", key: null, tint: null, edges: pts.map(() => true), turns: false, cull: true, layer: 0, deck: 1, ...extra }); // layer 0: depth-sorted with the hull
+const cuboid = (c, h) => CUBE.map((s) => face(s.map((q) => c.map((v, k) => v + q[k] * h[k]))));
+/** A tube along model axis k from s0 (radius r0) to s1 (radius r1) about centre c, capped; `paint(i)` a segment's extra. */
+function tube(c, k, s0, s1, r0, r1, n, paint = () => ({})) {
+  const [u, v] = [0, 1, 2].filter((j) => j !== k);
+  const ring = (s, r) => Array.from({ length: n }, (_, i) => {
+    const a = ((i + 0.5) / n) * 2 * Math.PI, p = c.slice();
+    p[k] = s; p[u] += r * Math.cos(a); p[v] += r * Math.sin(a);
+    return p;
+  });
+  const [A, B] = [ring(s0, r0), ring(s1, r1)];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const i1 = (i + 1) % n, axis = c.slice();
+    axis[k] = (s0 + s1) / 2;
+    out.push(face(outward([A[i], A[i1], B[i1], B[i]], axis), { edges: [false, true, false, true], ...paint(i) }));
+  }
+  // a point inside the tube, so each cap faces out of it (the first mockup had this the wrong way round)
+  const cap = (R, s, beyond) => { const f = c.slice(); f[k] = s + Math.sign(s1 - s0) * beyond; return face(outward(R, f)); };
+  out.push(cap(A, s0, 1), cap(B, s1, -1));
+  return out;
+}
+/** The model faces for the look's 3D fixtures: bells (cones or discs), the boom, the collar ring (plain or painted). */
+function modelFixtures(index, data, { discs, painted }) {
+  const { hull } = index;
+  const mid = [(hull.x0 + hull.x1) / 2, (hull.y0 + hull.y1) / 2, (hull.z0 + hull.z1) / 2];
+  const at = (x, y, z) => [(x - mid[0]) * CELL.side, (z - mid[2]) * CELL.deck, (y - mid[1]) * CELL.frame];
+  const faces = [];
+  for (const f of data.look.fixtures ?? []) {
+    const path = index.hullPaths[f.deck ?? 1];
+    if (f.type === "bell") {
+      const tail = tailAt(path, f.side);
+      const c = at(f.side, tail, f.deck);
+      const z0 = c[2] + 2;
+      if (discs) faces.push(...tube(c, 2, z0, z0 - 0.07 * CELL.frame, f.r * CELL.side, f.r * CELL.side, 14));
+      else faces.push(...tube(c, 2, z0, c[2] - f.len * CELL.frame, f.r * 0.3 * CELL.side, f.r * CELL.side, 14));
+    } else if (f.type === "boom") {
+      const nose = noseAt(path, f.side), u = f.len;
+      const p = (d) => at(f.side, nose + d * u, f.deck);
+      const [a, b] = [p(-0.06), p(0.64)];
+      faces.push(...cuboid([a[0], a[1], (a[2] + b[2]) / 2], [1.8, 1.8, (b[2] - a[2]) / 2]));
+      faces.push(...cuboid(p(0.28), [0.11 * u * CELL.side, 1.4, 1.4]));
+      const h = p(0.74), [hx, hy, hz] = [0.11 * u * CELL.side, 0.08 * u * CELL.side, 0.14 * u * CELL.frame];
+      const V = [[h[0] + hx, h[1], h[2]], [h[0], h[1] + hy, h[2]], [h[0] - hx, h[1], h[2]], [h[0], h[1] - hy, h[2]]];
+      for (const tip of [[h[0], h[1], h[2] + hz], [h[0], h[1], h[2] - hz]]) {
+        for (let i = 0; i < 4; i++) faces.push(face(outward([tip, V[i], V[(i + 1) % 4]], h)));
+      }
+      const [t0, t1] = [p(0.88), p(1)];
+      faces.push(...cuboid([t0[0], t0[1], (t0[2] + t1[2]) / 2], [1.2, 1.2, (t1[2] - t0[2]) / 2]));
+    } else if (f.type === "chevrons") {
+      const local = (id) => id.slice(data.id.length + 1);
+      const room = [...index.byId.values()].find((r) => local(r.id) === f.room);
+      const [dx, dy] = WALL[f.wall];
+      const R = 0.2 * CELL.frame * 0.8, out = 0.3;
+      const paint = painted ? (i) => (i % 2 ? { kind: "fore", tint: CHEVRON } : {}) : undefined;
+      if (dx) {
+        const x = sideAt(path, room.cell.y, dx);
+        const c = at(x, room.cell.y, room.cell.z);
+        faces.push(...tube(c, 0, c[0] - dx * 2, c[0] + dx * out * CELL.side, R, R, 12, paint));
+      } else {
+        const y = dy < 0 ? tailAt(path, room.cell.x) : noseAt(path, room.cell.x);
+        const c = at(room.cell.x, y, room.cell.z);
+        faces.push(...tube(c, 2, c[2] - dy * 2, c[2] + dy * out * CELL.frame, R, R, 12, paint));
+      }
+    }
+  }
+  return faces;
+}
+
+function ends(view, index) {
+  const { hull, hullPaths } = index;
+  const mid = [(hull.x0 + hull.x1) / 2, (hull.y0 + hull.y1) / 2, (hull.z0 + hull.z1) / 2];
+  const at = (x, y, z) => [(x - mid[0]) * CELL.side, (z - mid[2]) * CELL.deck, (y - mid[1]) * CELL.frame];
+  const path = hullPaths[1];
+  const nose = Math.max(...path.map((p) => p[1])), tail = Math.min(...path.map((p) => p[1]));
+  const span = nose - tail;
+  const [vx, vy, vw] = view.home;
+  const size = vw * 0.03;
+  const g = el("g", { "pointer-events": "none" }, view.svg);
+  for (const [word, from, to] of [["FORE", nose + span * 0.06, nose + span * 0.2], ["AFT", tail - span * 0.22, tail - span * 0.36]]) {
+    const [a, b] = [view.cam.project(at(0, from, 1)), view.cam.project(at(0, to, 1))];
+    el("path", { d: `M${a[0]},${a[1]}L${b[0]},${b[1]}`, stroke: "#e3eaf2", "stroke-width": size * 0.12, "marker-end": "url(#arrow)" }, g);
+    const d = [b[0] - a[0], b[1] - a[1]], m = Math.hypot(...d) || 1;
+    el("text", { x: b[0] + (d[0] / m) * size * 1.3, y: b[1] + (d[1] / m) * size * 1.3, "font-size": size, fill: "#e3eaf2", "text-anchor": "middle", "dominant-baseline": "middle", "font-family": "Inter, system-ui, sans-serif", "font-weight": 600, "letter-spacing": 1 }, g, word);
+  }
+  const defs = el("defs", {}, view.svg);
+  const mk = el("marker", { id: "arrow", viewBox: "0 0 10 10", refX: 5, refY: 5, markerWidth: 4, markerHeight: 4, orient: "auto-start-reverse" }, defs);
+  el("path", { d: "M0,0L10,5L0,10Z", fill: "#e3eaf2" }, mk);
+  // frame the ship and both labels, at the panel's aspect
+  const b = g.getBBox(), [hx, hy, hw, hh] = view.home;
+  const x0 = Math.min(hx, b.x), y0 = Math.min(hy, b.y), x1 = Math.max(hx + hw, b.x + b.width), y1 = Math.max(hy + hh, b.y + b.height);
+  const pad = 0.06 * Math.max(x1 - x0, y1 - y0);
+  view.setView([x0 - pad, y0 - pad, x1 - x0 + 2 * pad, y1 - y0 + 2 * pad]);
+}
+
+/** Every fixture's position measured against the hull path, as the 3D draws it. */
+// --- the hull, lofted from its path -------------------------------------------------------------------
+const H = CELL.deck / 2; // a deck's half-height, model units
+const TILE = 0.25; // cells: the roof, the floor and every wall are cut this fine for the painter's sort
+const PALETTE = freighterPlan.look.palette;
+
+/** Newell's normal of a polygon. */
+function newell(P) {
+  const N = [0, 0, 0];
+  P.forEach((p, i) => {
+    const q = P[(i + 1) % P.length];
+    N[0] += (p[1] - q[1]) * (p[2] + q[2]); N[1] += (p[2] - q[2]) * (p[0] + q[0]); N[2] += (p[0] - q[0]) * (p[1] + q[1]);
+  });
+  return N;
+}
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+/** A face wound away from `from`, started at a corner whose three points give its true normal
+ *  (ModelView takes the normal from the first three). */
+function oriented(pts, edges, from, extra) {
+  let P = pts, E = edges;
+  const m = P.reduce((s, p) => s.map((v, i) => v + p[i] / P.length), [0, 0, 0]);
+  if (dot(newell(P), m.map((v, i) => v - from[i])) < 0) {
+    const n = P.length;
+    P = P.slice().reverse();
+    E = P.map((_, j) => edges[(n - 2 - j + 2 * n) % n]);
+  }
+  const N = newell(P), n = P.length;
+  let best = 0, most = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const [a, b, c] = [P[i], P[(i + 1) % n], P[(i + 2) % n]];
+    const u = b.map((v, k) => v - a[k]), w = c.map((v, k) => v - a[k]);
+    const d = dot([u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]], N);
+    if (d > most) [best, most] = [i, d];
+  }
+  const turn = (xs) => xs.slice(best).concat(xs.slice(0, best));
+  return { pts: turn(P), edges: turn(E), kind: "outer", key: null, tint: null, turns: false, cull: true, layer: 0, deck: 1, ...extra };
+}
+/** A counter-clockwise path moved in by d cells, each corner along its bisector (mitre kept to 3d). */
+function insetPts(pts, d) {
+  const n = pts.length;
+  const nrm = (a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], m = Math.hypot(dx, dy) || 1; return [-dy / m, dx / m]; };
+  return pts.map((p, i) => {
+    const n1 = nrm(pts[(i + n - 1) % n], p), n2 = nrm(p, pts[(i + 1) % n]);
+    let k = d / Math.max(0.2, 1 + n1[0] * n2[0] + n1[1] * n2[1]);
+    const v = [(n1[0] + n2[0]) * k, (n1[1] + n2[1]) * k], m = Math.hypot(...v);
+    const s = m > 3 * d ? (3 * d) / m : 1;
+    return [p[0] + v[0] * s, p[1] + v[1] * s];
+  });
+}
+function clip(points, k, v, keep) {
+  const kept = (p) => (p[k] - v) * keep >= -1e-9;
+  const out = [];
+  points.forEach((p, i) => {
+    const q = points[(i + 1) % points.length];
+    if (kept(p)) out.push(p);
+    if (kept(p) !== kept(q)) { const t = (v - p[k]) / (q[k] - p[k]); out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); }
+  });
+  return out;
+}
+function onPoly(poly, [x, y]) {
+  return poly.some(([ax, ay], i) => {
+    const [bx, by] = poly[(i + 1) % poly.length];
+    const len = Math.hypot(bx - ax, by - ay) || 1;
+    const t = ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / (len * len);
+    return Math.abs((x - ax) * (by - ay) - (y - ay) * (bx - ax)) / len < 1e-6 && t > -1e-6 && t < 1 + 1e-6;
+  });
+}
+const onSeam = (v) => Math.abs(v - Math.round(v - 0.5) - 0.5) < 1e-6; // a cell boundary, k + 0.5
+const area = (P) => P.reduce((s, [x, y], i) => { const [u, v] = P[(i + 1) % P.length]; return s + x * v - u * y; }, 0) / 2;
+
+/**
+ * A solid lofted from a counter-clockwise path in cells: walls between rings (bottom bevel, bands,
+ * top bevel), and its top and bottom cut into tiles. o: bot(x, y) and top(x, y) in model units;
+ * bevel (cells, also its height); bevelBottom; bands (fractions up the wall between the bevels, each
+ * a ring); band(i) the extra for the wall between ring i and i + 1; tint(x, y); seams; skipTop(x, y)
+ * for tiles hidden under something; kind; bottomCap.
+ */
+function loft(M, path, o) {
+  const faces = [];
+  const b = o.bevel ?? 0, bv = b * CELL.side;
+  const inner = b ? insetPts(path, b) : path;
+  const lo = (x, y) => o.bot(x, y) + (b && o.bevelBottom !== false ? bv : 0);
+  const hi = (x, y) => o.top(x, y) - (b ? bv : 0);
+  const rings = [];
+  if (b && o.bevelBottom !== false) rings.push({ P: inner, h: o.bot });
+  rings.push({ P: path, h: lo });
+  for (const f of o.bands ?? []) rings.push({ P: path, h: (x, y) => lo(x, y) + (hi(x, y) - lo(x, y)) * f });
+  rings.push({ P: path, h: hi });
+  if (b) rings.push({ P: inner, h: o.top });
+  const n = path.length;
+  const turnAt = (a, p, c) => { let t = Math.abs(Math.atan2(c[1] - p[1], c[0] - p[0]) - Math.atan2(p[1] - a[1], p[0] - a[0])); return t > Math.PI ? 2 * Math.PI - t : t; };
+  const sharp = path.map((p, i) => turnAt(path[(i + n - 1) % n], p, path[(i + 1) % n]) > (35 * Math.PI) / 180);
+  const tint = o.tint ?? (() => null);
+  // the walls: each path edge cut at the cell boundaries and every TILE, ring to ring
+  for (let i = 0; i < n; i++) {
+    const a = path[i], c = path[(i + 1) % n];
+    const len = Math.hypot(c[0] - a[0], c[1] - a[1]);
+    if (len < 1e-9) continue;
+    const cuts = new Set([0, 1]);
+    for (const k of [0, 1]) {
+      const [u, v] = [Math.min(a[k], c[k]), Math.max(a[k], c[k])];
+      for (let s = Math.ceil(u - 0.5) + 0.5; s < v; s++) { const t = (s - a[k]) / (c[k] - a[k]); if (t > 1e-6 && t < 1 - 1e-6) cuts.add(t); }
+    }
+    const m = Math.ceil(len / TILE);
+    for (let j = 1; j < m; j++) cuts.add(j / m);
+    const ts = [...cuts].sort((p, q) => p - q);
+    const nx = (c[1] - a[1]) / len, ny = -(c[0] - a[0]) / len; // outward, right of a CCW path
+    for (let j = 0; j + 1 < ts.length; j++) {
+      const [t0, t1] = [ts[j], ts[j + 1]];
+      const seamAt = (t) => o.seams && [0, 1].some((k) => onSeam(a[k] + (c[k] - a[k]) * t) && Math.abs(c[k] - a[k]) > 1e-9);
+      const vEdge = (t, end) => (end === 0 ? (t0 === 0 && sharp[i]) : (t1 === 1 && sharp[(i + 1) % n])) || seamAt(t);
+      for (let r = 0; r + 1 < rings.length; r++) {
+        const at = (R, t) => { const p = R.P[i], q = R.P[(i + 1) % n]; const x = p[0] + (q[0] - p[0]) * t, y = p[1] + (q[1] - p[1]) * t; return M(x, y, R.h(x, y)); };
+        const [R0, R1] = [rings[r], rings[r + 1]];
+        const pts = [at(R0, t0), at(R0, t1), at(R1, t1), at(R1, t0)];
+        const mx = a[0] + (c[0] - a[0]) * (t0 + t1) / 2, my = a[1] + (c[1] - a[1]) * (t0 + t1) / 2;
+        const from = M(mx - nx * 0.3, my - ny * 0.3, (R0.h(mx, my) + R1.h(mx, my)) / 2);
+        const extra = { kind: o.kind ?? "outer", tint: tint(mx, my), ...(o.band?.(r - (b && o.bevelBottom !== false ? 1 : 0)) ?? {}) };
+        faces.push(oriented(pts, [r > 0 || o.baseEdge !== false, vEdge(t1, 1), true, vEdge(t0, 0)], from, extra));
+      }
+    }
+  }
+  // the top and the bottom, in tiles
+  const caps = [[inner, o.top, 1]];
+  if (o.bottomCap !== false) caps.push([b && o.bevelBottom !== false ? inner : path, o.bot, -1]);
+  for (const [P, h, up] of caps) {
+    const xs = P.map((p) => p[0]), ys = P.map((p) => p[1]);
+    // the tile lines: every TILE, and any extra cuts (where something stands on the top)
+    const lines = (lo, hi, extra) => {
+      const v = new Set(extra.filter((e) => e > lo && e < hi).map((e) => +e.toFixed(6)));
+      for (let t = Math.floor(lo / TILE) * TILE; t <= hi + TILE; t += TILE) v.add(+t.toFixed(6));
+      return [...v].sort((p, q) => p - q);
+    };
+    const LX = lines(Math.min(...xs), Math.max(...xs), o.cutsX ?? []), LY = lines(Math.min(...ys), Math.max(...ys), o.cutsY ?? []);
+    for (let ix = 0; ix + 1 < LX.length; ix++) {
+      for (let iy = 0; iy + 1 < LY.length; iy++) {
+        const [x, x1, y, y1] = [LX[ix], LX[ix + 1], LY[iy], LY[iy + 1]];
+        let piece = clip(clip(clip(clip(P, 0, x, 1), 0, x1, -1), 1, y, 1), 1, y1, -1);
+        if (piece.length < 3 || Math.abs(area(piece)) < 1e-6) continue;
+        const cx = piece.reduce((s, p) => s + p[0], 0) / piece.length, cy = piece.reduce((s, p) => s + p[1], 0) / piece.length;
+        if (up > 0 && o.skipTop?.(cx, cy)) continue;
+        const edges = piece.map((p, k) => {
+          const q = piece[(k + 1) % piece.length], m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+          if (onPoly(P, m)) return true;
+          return !!o.seams && ((Math.abs(p[0] - q[0]) < 1e-9 && onSeam(p[0])) || (Math.abs(p[1] - q[1]) < 1e-9 && onSeam(p[1])));
+        });
+        const pts = piece.map(([px, py]) => M(px, py, h(px, py)));
+        faces.push(oriented(pts, edges, M(cx, cy, h(cx, cy) - up * 5), { kind: o.kind ?? "outer", tint: tint(cx, cy) }));
+      }
+    }
+  }
+  return faces;
+}
+
+// --- the looks, A to C -------------------------------------------------------------------------------
+const STYLES = {
+  skiff: {
+    profile: { bevel: 0.12, noseDrop: 0.35, noseLength: 0.8, spine: { from: -1.1, to: 0.25, width: 1.25, height: 0.3 } },
+    surface: { seams: true, windows: ["cockpit"], stripe: { paint: "residential", at: 0.3, width: 0.14 }, navLights: true },
+    greebles: [{ type: "vent", side: -0.25, frame: -0.45 }, { type: "vent", side: 0.25, frame: -0.45 }, { type: "antenna", side: -0.7, frame: 0.05, height: 0.7 }, { type: "dish", side: 0.65, frame: -0.65, r: 0.14 }],
+  },
+  freighter: {
+    profile: { bevel: 0.12, noseDrop: 0.35, noseLength: 0.8, spine: { from: 0, to: 1.0, width: 1.5, height: 0.3 } },
+    surface: { seams: true, windows: ["cockpit", "passage"], stripe: { paint: "residential", at: 0.3, width: 0.14 }, navLights: true },
+    greebles: [{ type: "vent", side: -0.35, frame: 0.5 }, { type: "vent", side: 0.35, frame: 0.5 }, { type: "antenna", side: -0.85, frame: 2.4, height: 0.8 }, { type: "dish", side: 0.8, frame: 1.6, r: 0.16 }],
+  },
+};
+
+/** The model for one ship in one look: "today" the real builder's hull, else the lofted one. */
+function shipFaces(index, data, look, opts) {
+  const { hull } = index;
+  const mid = [(hull.x0 + hull.x1) / 2, (hull.y0 + hull.y1) / 2];
+  const M = (x, y, h) => [(x - mid[0]) * CELL.side, h, (y - mid[1]) * CELL.frame];
+  const fixtures = modelFixtures(index, data, PICK);
+  if (look === "today") return [...buildDecksModel(index, data), ...fixtures];
+  const path = index.hullPaths[1];
+  const profile = opts.profile, surface = opts.surface;
+  const nose = Math.max(...path.map((p) => p[1])), tail = Math.min(...path.map((p) => p[1]));
+  const sm = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
+  const dropAt = (y) => (profile ? sm((y - (nose - profile.noseLength)) / profile.noseLength) * profile.noseDrop * CELL.deck : 0);
+  const top = (x, y) => H - dropAt(y);
+  const bot = (x, y) => -H + dropAt(y) * 0.3;
+  const rooms = [...index.byId.values()];
+  const local = (r) => r.id.slice(data.id.length + 1);
+  const tint = (x, y) => {
+    const g = index.grid;
+    const cx = Math.min(g.x1, Math.max(g.x0, Math.round(x))), cy = Math.min(g.y1, Math.max(g.y0, Math.round(y)));
+    return rooms.find((r) => r.cell.x === cx && r.cell.y === cy)?.tint ?? null;
+  };
+  const sp = profile?.spine;
+  const inSpine = (x, y) => sp && Math.abs(x) < sp.width / 2 - 1e-6 && y > sp.from + 1e-6 && y < sp.to - 1e-6;
+  const spineTop = H + (sp?.height ?? 0) * CELL.deck;
+  const roof = (x, y) => (inSpine(x, y) ? spineTop : top(x, y));
+  const stripe = surface?.stripe;
+  const bands = stripe ? [stripe.at, stripe.at + stripe.width] : [];
+  if (surface?.seams) bands.push(0.62);
+  bands.sort((p, q) => p - q);
+  const stripeBand = stripe ? bands.indexOf(stripe.at) + 1 : -1;
+  const faces = loft(M, path, {
+    bot, top, bevel: profile?.bevel ?? 0, bands, tint, seams: surface?.seams,
+    band: (i) => (stripe && i === stripeBand ? { kind: "fore", tint: PALETTE[stripe.paint] } : null),
+    skipTop: (x, y) => inSpine(x, y),
+    cutsX: sp ? [-sp.width / 2, sp.width / 2] : [], cutsY: sp ? [sp.from, sp.to] : [],
+  });
+  if (sp) {
+    const w = sp.width / 2;
+    faces.push(...loft(M, [[-w, sp.from], [w, sp.from], [w, sp.to], [-w, sp.to]], {
+      bot: (x, y) => top(x, y) - 1, top: () => spineTop, bevel: 0.06, bevelBottom: false, bottomCap: false, baseEdge: false, tint, seams: surface?.seams,
+    }));
+  }
+  // footprint bounds of a room, in cells
+  const boundsOf = (r) => {
+    const o = data.look.footprints?.[local(r)]?.outline ?? [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]];
+    const xs = o.map((p) => p[0] + r.cell.x), ys = o.map((p) => p[1] + r.cell.y);
+    return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+  };
+  if (surface) {
+    // the cockpit's canopy: glass over the fore of the room, on the roof
+    for (const r of rooms.filter((q) => q.canopy)) {
+      const bb = boundsOf(r), cx = (bb.x0 + bb.x1) / 2, hw = (bb.x1 - bb.x0) / 2 - 0.12;
+      const y0 = (bb.y0 + bb.y1) / 2 - 0.05, y1 = bb.y1 - 0.08;
+      faces.push(...loft(M, [[cx - hw, y0], [cx + hw, y0], [cx + hw, y1], [cx - hw, y1]], {
+        bot: (x, y) => roof(x, y) - 1, top: (x, y) => roof(x, y) + 6, bevel: 0.06, bevelBottom: false, bottomCap: false, baseEdge: false, kind: "blister",
+      }));
+    }
+    // lit window strips on the hull's walls beside each windowed room, a pane a wall piece
+    const lo = (x, y) => bot(x, y) + (profile?.bevel ?? 0) * CELL.side, hi = (x, y) => top(x, y) - (profile?.bevel ?? 0) * CELL.side;
+    const n = path.length;
+    for (const key of surface.windows) {
+      const r = rooms.find((q) => local(q) === key);
+      if (!r) continue;
+      const bb = boundsOf(r);
+      for (let i = 0; i < n; i++) {
+        const a = path[i], c = path[(i + 1) % n], len = Math.hypot(c[0] - a[0], c[1] - a[1]);
+        const pieces = Math.max(1, Math.round(len / 0.18));
+        for (let j = 0; j < pieces; j++) {
+          const t0 = (j + 0.18) / pieces, t1 = (j + 0.82) / pieces;
+          const p0 = [a[0] + (c[0] - a[0]) * t0, a[1] + (c[1] - a[1]) * t0], p1 = [a[0] + (c[0] - a[0]) * t1, a[1] + (c[1] - a[1]) * t1];
+          const m = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2];
+          if (m[0] < bb.x0 - 0.3 || m[0] > bb.x1 + 0.3 || m[1] < bb.y0 - 0.05 || m[1] > bb.y1 + 0.05) continue;
+          const nx = (c[1] - a[1]) / len, ny = -(c[0] - a[0]) / len, off = 0.8 / CELL.side;
+          const q0 = [p0[0] + nx * off, p0[1] + ny * off], q1 = [p1[0] + nx * off, p1[1] + ny * off];
+          const hAt = (p, f) => lo(...p) + (hi(...p) - lo(...p)) * f;
+          const pts = [M(...q0, hAt(p0, 0.66)), M(...q1, hAt(p1, 0.66)), M(...q1, hAt(p1, 0.84)), M(...q0, hAt(p0, 0.84))];
+          faces.push(oriented(pts, [false, false, false, false], M(m[0] - nx * 0.3, m[1] - ny * 0.3, 0), { kind: "lamp" }));
+        }
+      }
+    }
+    if (surface.navLights) {
+      // at her widest each side, the point nearest her middle frame
+      const midY = (nose + tail) / 2;
+      const widest = (dir) => { const w = Math.max(...path.map((p) => p[0] * dir)); return path.filter((p) => p[0] * dir > w - 1e-6).reduce((p, q) => (Math.abs(q[1] - midY) < Math.abs(p[1] - midY) ? q : p)); };
+      const port = widest(-1), star = widest(1);
+      const s = 3.2;
+      for (const [p, dx, tintc] of [[port, -1, "#ff2a2a"], [star, 1, "#22ff55"]]) {
+        const c = M(p[0], p[1], 0); c[0] += dx * (s + 0.5); c[1] = top(...p) - (profile?.bevel ?? 0) * CELL.side - s - 1;
+        faces.push(...cuboid(c, [s, s, s]).map((f) => ({ ...f, kind: "fore", tint: tintc })));
+      }
+      const c = M(0, tail, 0); c[2] -= s + 0.5; c[1] = top(0, tail) - (profile?.bevel ?? 0) * CELL.side - s - 1;
+      faces.push(...cuboid(c, [s, s, s]).map((f) => ({ ...f, kind: "lamp" })));
+    }
+  }
+  for (const g of opts.greebles ?? []) {
+    const base = roof(g.side, g.frame), [x, , z] = M(g.side, g.frame, 0);
+    if (g.type === "vent") {
+      faces.push(...cuboid([x, base + 1.5, z], [0.1 * CELL.side, 2, 0.07 * CELL.frame]));
+      faces.push(...cuboid([x, base + 3.8, z], [0.075 * CELL.side, 0.6, 0.05 * CELL.frame]).map((f) => ({ ...f, kind: "outer", tint: "#0d1218" })));
+    } else if (g.type === "antenna") {
+      const t = g.height * CELL.deck;
+      faces.push(...cuboid([x, base + t / 2, z], [1.1, t / 2, 1.1]));
+      faces.push(...cuboid([x, base + t, z], [2.2, 2.2, 2.2]).map((f) => ({ ...f, kind: "lamp" })));
+    } else if (g.type === "dish") {
+      faces.push(...cuboid([x, base + 3, z], [1.4, 3, 1.4]));
+      faces.push(...tube([x, base + 6, z], 1, base + 5.5, base + 9.5, 2, g.r * CELL.side, 14));
+    }
+  }
+  return [...faces, ...fixtures];
+}
+
+// --- the page -------------------------------------------------------------------------------------------
+const PICK = { discs: false, painted: true };
+const CAMS = [{ yaw: 16, pitch: 38, tag: "band camera" }, { yaw: 196, pitch: 24, tag: "from astern" }];
+const SHIPS = [
+  { id: "skiff", plan: skiffPlan, look: LOOKS.skiff, title: "Skiff" },
+  { id: "freighter", plan: freighterPlan, look: LOOKS.freighter, title: "Freighter" },
+];
+const fmt = (v) => JSON.stringify(v, null, 1).replace(/\n\s*/g, " ").replace(/\[ /g, "[").replace(/ \]/g, "]");
+const OPTIONS = [
+  { id: "today", title: "Today · the plain extrusion, the occlusion fixed", note: "The real decks builder's hull: its path raised one deck high, straight up. The fixtures are now sorted with it, so from the band camera the hull hides the bells' throats, and from astern the bells stand in front of the stern.",
+    opts: () => ({}), json: () => `No new keys. Fixtures are layer 0, the hull's: sorted by depth with it, never drawn over it.` },
+  { id: "A", title: "A · shape: a profile, not a straight extrusion", note: "Top and bottom edges bevelled 0.12 cells; the nose drops to two thirds of the deck's height over its last 0.8 cells; a raised block runs aft (the skiff's crate bay, the freighter's engine room).",
+    opts: (s) => ({ profile: STYLES[s].profile }),
+    json: (s) => `"profile": ${fmt(STYLES[s].profile)}`,
+    defaults: `Defaults: "bevel": 0.12, "noseDrop": 0.35 (of the deck's height), "noseLength": 0.8 (cells), "spine": null (none; from and to are frames, width cells, height of a deck). Untweaked, a ship gets the bevel and the dropped nose.` },
+  { id: "B", title: "B · surface: today's box with detail", note: "Seams at every cell boundary and a seam line along the flank; a glass canopy over each room with a canopy (the cockpit); lit window strips on the hull beside the windowed rooms; a paint stripe along the flank in a palette colour; nav lights, red to port and green to starboard at her widest, white at the stern.",
+    opts: (s) => ({ surface: STYLES[s].surface }),
+    json: (s) => `"surface": ${fmt(STYLES[s].surface)}`,
+    defaults: `Defaults: "seams": true, "windows": every room with a canopy, "stripe": { "paint": "residential", "at": 0.3, "width": 0.14 } (fractions of the wall's height), "navLights": true. The canopy glass comes from the game's canopy: true and has no key.` },
+  { id: "C", title: "C · both, with greebles", note: "A's profile and B's surface, plus two vents on the raised block, an antenna mast with a lamp, and a small sensor dish.",
+    opts: (s) => ({ profile: STYLES[s].profile, surface: STYLES[s].surface, greebles: STYLES[s].greebles }),
+    json: (s) => `"profile": ${fmt(STYLES[s].profile)},\n"surface": ${fmt(STYLES[s].surface)},\n"greebles": [\n${STYLES[s].greebles.map((g) => `  ${fmt(g)}`).join(",\n")}\n]`,
+    defaults: `Defaults: profile and surface as A and B; "greebles": [] (none). Each greeble is { "type": "vent" | "antenna" | "dish", "side", "frame" } in cells, on the roof (or the raised block) there; an antenna has "height" (of a deck), a dish "r" (cells).` },
+];
+
+for (const o of OPTIONS) {
+  const h = document.body.appendChild(document.createElement("h2"));
+  h.innerHTML = `${o.title}<br><small>${o.note}</small>`;
+  const row = document.body.appendChild(document.createElement("div"));
+  row.className = "row";
+  for (const s of SHIPS) {
+    const data = shipData(s.plan, s.look);
+    const index = indexDecks(data);
+    const faces = shipFaces(index, data, o.id, o.opts(s.id));
+    for (const c of CAMS) {
+      const p = row.appendChild(document.createElement("div"));
+      p.className = "pane";
+      p.innerHTML = `<span class="tag">${o.id} · ${s.title} · ${c.tag}</span><div class="slot"></div>`;
+      const view = new ModelView(p.querySelector(".slot"), index, { faces, keyOf: decksKey, hourOf: () => null, cutOf: () => null, labels: false, view: { cutaway: "off", camera: { yaw: c.yaw, pitch: c.pitch, zoom: 1 } } });
+      view.set({ kind: "off", name: "" });
+      ends(view, index);
+    }
+  }
+  const under = document.body.appendChild(document.createElement("div"));
+  under.className = "under";
+  for (const s of SHIPS) {
+    const d = under.appendChild(document.createElement("div"));
+    d.innerHTML = `<pre></pre>${o.defaults ? `<div class="note">${o.defaults}</div>` : ""}`;
+    d.querySelector("pre").textContent = `${s.title}: ${o.json(s.id)}`;
+  }
+}
+</script>
+</body></html>
