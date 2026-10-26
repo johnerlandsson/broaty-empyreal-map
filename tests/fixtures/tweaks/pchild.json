@@ -1,0 +1,1 @@
+{ "like": "pbase", "place": { "b": {"x":9,"y":9,"z":9} }, "town": { "root": "gone", "gate": "gate", "wells": ["market","nope"], "ground": {"zz": 1}, "river": {"bridge":"gate"}, "uphill":"east" }, "fixtures": [{"type":"blister","room":"stale"}] }

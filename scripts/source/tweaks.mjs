@@ -123,10 +123,22 @@ export function loadTweaks(dir) {
     checkTweak(shown(file), tweak, palette);
     places[entry.slice(0, -".json".length)] = tweak;
   }
-  return { palette, places };
+  const loaded = { palette, places };
+  for (const id of Object.keys(places)) merged(id, loaded); // a bad `like` fails here, rendered or not
+  return loaded;
 }
 
-/** A place's tweak with its `like` chain merged under it; nearest file wins. */
+/**
+ * A place's tweak with its `like` chain merged under it; nearest file wins. Throws on a like
+ * cycle or a like naming no file. A place with no file is `{}`.
+ * @param {string} placeId
+ * @param {{palette: Record<string, string>, places: Record<string, object>}} tweaks
+ * @returns {object}
+ */
+export function resolveTweak(placeId, tweaks) {
+  return merged(placeId, tweaks);
+}
+
 function merged(placeId, tweaks, chain = []) {
   const own = tweaks.places[placeId];
   if (chain.includes(placeId)) {
@@ -147,11 +159,17 @@ function merged(placeId, tweaks, chain = []) {
 function namedRooms(tweak) {
   const named = [];
   for (const id of Object.keys(tweak.paint ?? {})) named.push([`paint.${id}`, id]);
+  for (const id of Object.keys(tweak.place ?? {})) named.push([`place.${id}`, id]);
   (tweak.fixtures ?? []).forEach((f, i) => {
     if (f.room !== undefined) named.push([`fixtures[${i}].room`, f.room]);
   });
   for (const id of Object.keys(tweak.drum?.rooms ?? {})) named.push([`drum.rooms.${id}`, id]);
   if (tweak.drum?.axis?.room !== undefined) named.push(["drum.axis.room", tweak.drum.axis.room]);
+  const town = tweak.town ?? {};
+  for (const key of ["root", "gate"]) if (town[key] !== undefined) named.push([`town.${key}`, town[key]]);
+  (town.wells ?? []).forEach((id, i) => named.push([`town.wells[${i}]`, id]));
+  for (const id of Object.keys(town.ground ?? {})) named.push([`town.ground.${id}`, id]);
+  if (town.river?.bridge !== undefined) named.push(["town.river.bridge", town.river.bridge]);
   return named;
 }
 
@@ -166,7 +184,7 @@ function namedRooms(tweak) {
  * @returns {{look: object, orphans: string[]}}  orphans: paths of this place's own tweaks that name a room it lacks
  */
 export function resolveLook(placeId, rooms, layoutKind, tweaks) {
-  const tweak = merged(placeId, tweaks);
+  const tweak = resolveTweak(placeId, tweaks);
   const file = `data/tweaks/${placeId}.json`;
   const have = new Set(rooms.map((r) => local(r.id)));
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadTweaks, resolveLook } from "./tweaks.mjs";
+import { loadTweaks, resolveLook, resolveTweak } from "./tweaks.mjs";
 
 const dir = (name = "") => new URL(`../../tests/fixtures/tweaks/${name}`, import.meta.url).pathname;
 const room = (id, extra = {}) => ({ id: `p.${id}`, name: id, address: "Mid 1:00, fore", ...extra });
@@ -9,7 +9,7 @@ describe("loadTweaks", () => {
 
   it("reads the palette and every place by file name", () => {
     expect(tweaks.palette.docks).toBe("#6a7a8a");
-    expect(Object.keys(tweaks.places).sort()).toEqual(["base", "loop-a", "loop-b", "mid", "top"]);
+    expect(Object.keys(tweaks.places).sort()).toEqual(["base", "mid", "pbase", "pchild", "top"]);
   });
 
   it("names the file and key of an unknown top-level key", () => {
@@ -22,6 +22,19 @@ describe("loadTweaks", () => {
 
   it("names the file of a JSON error", () => {
     expect(() => loadTweaks(dir("bad-json"))).toThrow(/x\.json/);
+  });
+});
+
+describe("loadTweaks like", () => {
+  it("fails at load on a like naming no file", () => {
+    expect(() => loadTweaks(dir("bad-like"))).toThrow(/x\.json: like.*typo/);
+  });
+});
+
+describe("resolveTweak", () => {
+  it("merges a parent's place entries under the child's own", () => {
+    const t = resolveTweak("pchild", loadTweaks(dir()));
+    expect(t.place).toEqual({ a: { x: 1, y: 2, z: 3 }, b: { x: 9, y: 9, z: 9 } });
   });
 });
 
@@ -72,8 +85,8 @@ describe("resolveLook inheritance", () => {
     expect(resolveLook("mid", rooms, "decks", tweaks).look.fixtures).toEqual([{ type: "blister", room: "market" }]);
   });
 
-  it("reports a like cycle with its chain", () => {
-    expect(() => resolveLook("loop-a", rooms, "decks", tweaks)).toThrow(/loop-a\.json.*loop-a -> loop-b -> loop-a/);
+  it("reports a like cycle with its chain, at load", () => {
+    expect(() => loadTweaks(dir("loop"))).toThrow(/a\.json.*a -> b -> a/);
   });
 
   it("reports a like to a missing place", () => {
@@ -93,5 +106,20 @@ describe("resolveLook orphans", () => {
 
   it("does not report inherited keys for rooms the place lacks", () => {
     expect(resolveLook("mid", [room("gate")], "decks", tweaks).orphans).toEqual([]);
+  });
+});
+
+describe("resolveLook orphans in place, town and fixtures", () => {
+  it("reports stale place, town and fixture rooms, and only those", () => {
+    const rooms = [room("a"), room("b"), room("gate"), room("market")];
+    const { orphans } = resolveLook("pchild", rooms, "decks", loadTweaks(dir()));
+    expect(orphans).toEqual(["fixtures[0].room", "town.root", "town.wells[1]", "town.ground.zz"]);
+  });
+
+  it("reports a stale place entry and a stale town gate", () => {
+    const { orphans } = resolveLook("pchild", [room("a"), room("gate"), room("market")], "decks", loadTweaks(dir()));
+    expect(orphans).toContain("place.b");
+    const t = { palette: {}, places: { x: { town: { gate: "gone" } } } };
+    expect(resolveLook("x", [], "decks", t).orphans).toEqual(["town.gate"]);
   });
 });
