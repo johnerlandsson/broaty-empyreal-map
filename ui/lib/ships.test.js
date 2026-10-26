@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import ships, { plans } from "../data/ships.js";
-import { hullFor, isShipRoom, planFor, shipCaption, shipInfo, shipKey } from "./ships.js";
+import { genericPlanId, hullFor, isShipRoom, planFor, shipCaption, shipInfo, shipKey } from "./ships.js";
 import { hullName } from "./contacts.js";
 
 describe("hullFor and planFor", () => {
@@ -12,10 +12,25 @@ describe("hullFor and planFor", () => {
   });
   it("falls back to a generic one-cell ship", () => {
     for (const id of [undefined, null, "", "ore_hauler", 7, {}, "generic", "toString"]) {
-      expect(hullFor(id)).toMatchObject({ id: "generic", plan: "hull-skiff" });
+      expect(hullFor(id)).toMatchObject({ id: "generic", plan: genericPlanId(plans) });
       expect(typeof hullFor(id).name).toBe("string");
-      expect(planFor(id)).toBe(plans["hull-skiff"]);
+      expect(planFor(id)).toBeDefined();
+      expect(planFor(id)).toBe(plans[genericPlanId(plans)]);
     }
+  });
+});
+
+describe("genericPlanId", () => {
+  const plan = (n) => ({ rooms: Array.from({ length: n }, (_, i) => ({ id: `r${i}` })) });
+  it("is hull-skiff while there is one", () => {
+    expect(genericPlanId({ freighter: plan(3), "hull-skiff": plan(1), tug: plan(1) })).toBe("hull-skiff");
+  });
+  it("is the first one-room plan once the skiff has a plan of her own", () => {
+    expect(genericPlanId({ freighter: plan(3), skiff: plan(1), tug: plan(1) })).toBe("skiff");
+  });
+  it("is the first plan when none has one room, and nothing with no plans", () => {
+    expect(genericPlanId({ freighter: plan(3), tug: plan(2) })).toBe("freighter");
+    expect(genericPlanId({})).toBeUndefined();
   });
 });
 

@@ -3,8 +3,21 @@
 
 import ships, { plans } from "../data/ships.js";
 
+/**
+ * The plan an unknown hull draws as: the planless skiff's, hull-skiff, while there is one; else
+ * the first one-room plan; else the first plan. (Once the game gives the skiff a plan of her own,
+ * hull-skiff is gone from the index.)
+ * @param {Record<string, {rooms: object[]}>} all  the plans by id, as data/ships.js has them
+ * @returns {string | undefined}
+ */
+export function genericPlanId(all) {
+  if (Object.hasOwn(all, "hull-skiff")) return "hull-skiff";
+  const ids = Object.keys(all);
+  return ids.find((id) => all[id]?.rooms?.length === 1) ?? ids[0];
+}
+
 // a hull with no entry draws as the one-cell skiff look
-const GENERIC = { id: "generic", name: "ship", class: null, plan: "hull-skiff" };
+const GENERIC = { id: "generic", name: "ship", class: null, plan: genericPlanId(plans) };
 
 /** Whether a room id is aboard a ship: anything starting "ship.". */
 export function isShipRoom(id) {
