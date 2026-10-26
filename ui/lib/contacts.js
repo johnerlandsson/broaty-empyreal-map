@@ -5,18 +5,16 @@
 // system's zero, +y (navigation.md decision 18: every frame in a system has the star's axes).
 
 import { ago } from "./orbits.js";
+import ships from "../data/ships.js";
 
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const fmt = (n) => Math.round(n).toLocaleString("en");
-
-// hulls.yaml's names, by the id a named ship's `hull` gives
-export const HULLS = { skiff: "prospecting skiff", courier: "courier", freighter: "medium freighter" };
 
 export const isShip = (c) => c?.kind === "ship" || c?.kind === "unknown";
 export const isDark = (c) => c?.kind === "unknown";
 
 /** A hull's name ("prospecting skiff"), or its id for one this doesn't know; null for none. */
-export const hullName = (id) => (id ? (HULLS[id] ?? String(id)) : null);
+export const hullName = (id) => (id ? (Object.hasOwn(ships.hulls, id) ? ships.hulls[id].name : String(id)) : null);
 
 /** The point km along a bearing (degrees clockwise from +y) from p. */
 export function along(p, km, bearing) {
