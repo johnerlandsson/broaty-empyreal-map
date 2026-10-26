@@ -1,6 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import botallack from "../data/botallack.js";
 import caradon from "../data/caradon.js";
@@ -18,7 +15,6 @@ import penwith from "../data/penwith.js";
 import polperro from "../data/polperro.js";
 import {
   CELL,
-  DECKS,
   buildDecksModel,
   decksCut,
   decksKey,
@@ -30,6 +26,7 @@ import {
 } from "./decks.js";
 import { DISTRICT_COLOURS } from "./geometry.js";
 import { infoLine } from "./locate.js";
+import { decksSpec } from "./look.js";
 
 const sub = (a, b) => a.map((c, i) => c - b[i]);
 const cross = (u, v) => [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
@@ -38,7 +35,7 @@ const centroid = (pts) => pts.reduce((s, p) => s.map((c, i) => c + p[i] / pts.le
 // the renderer's normal: from the first three points
 const normal = ([a, b, c]) => cross(sub(b, a), sub(c, a));
 
-const spec = DECKS.orrin;
+const spec = decksSpec(orrin);
 const index = indexDecks(orrin, spec);
 const ids = orrin.rooms.map((r) => r.id);
 const room = (id) => index.byId.get(id);
@@ -65,13 +62,13 @@ describe("parseAddress", () => {
   });
 });
 
-// every station on decks, by its spec's key: its data, and its area file in the Empyreal source
+// every station on decks, by its place id: its generated data
 const STATIONS = { orrin, morvah, gwithian, carrow, lanyon, kynance, marazion, penwith, botallack, polperro, lamorna, kilmar, caradon, garrow };
 // how many rooms each has: Orrin and the halts built as it is nine, the Mid's six
 const ROOMS = { ...Object.fromEntries(Object.keys(STATIONS).map((k) => [k, 9])), kilmar: 6, caradon: 6, garrow: 6 };
 
 describe.each(Object.entries(STATIONS))("%s's data", (key, data) => {
-  const spec = DECKS[key];
+  const spec = decksSpec(data);
   const index = indexDecks(data, spec);
   const room = (id) => index.byId.get(id);
 
@@ -147,27 +144,6 @@ describe.each(Object.entries(STATIONS))("%s's data", (key, data) => {
     const nose = [...index.byId.values()].find((r) => r.flags.includes("berth")).cell;
     expect(nose.y).toBe(hull.y1);
     for (const c of spec.cradles) expect(c[1] >= hull.z0 && c[1] <= hull.z1, String(c)).toBe(true);
-  });
-
-  const yaml = join(homedir(), `dev/empyreal/content/areas/${key}.yaml`);
-  it.skipIf(!existsSync(yaml))(`matches ${key}.yaml's names, addresses, flags, exits and gravity`, () => {
-    const text = readFileSync(yaml, "utf8");
-    const gravity = Number(/\n {2}gravity: ([\d.]+)/.exec(text)[1]);
-    const rooms = text
-      .split(/\n {2}- id: /)
-      .slice(1)
-      .map((chunk) => {
-        const id = chunk.split("\n")[0].trim();
-        const name = /\n {4}name: (.+)/.exec(chunk)[1].trim();
-        const address = /\n {4}address: (.+)/.exec(chunk)[1].trim();
-        const flags = /\n {4}flags: \[(.*)\]/.exec(chunk)?.[1].split(",").map((f) => f.trim()).filter(Boolean) ?? [];
-        const block = /\n {4}exits:\n((?: {6}.+\n?)+)/.exec(chunk)[1];
-        const exits = Object.fromEntries([...block.matchAll(/ {6}(\w+): ([\w.-]+)/g)].map((m) => [m[1], m[2]]));
-        return { id, name, address, gravity, flags, exits };
-      });
-    expect(data.rooms.map(({ id, name, address, gravity, flags, exits }) => ({ id, name, address, gravity, flags, exits }))).toEqual(
-      rooms,
-    );
   });
 });
 
@@ -306,15 +282,16 @@ describe("buildDecksModel", () => {
 
   it("has no mast unless its spec gives it one", () => {
     for (const [key, data] of Object.entries(STATIONS)) {
-      if (DECKS[key].masts) continue;
-      const fs = buildDecksModel(indexDecks(data, DECKS[key]), DECKS[key]);
+      const spec = decksSpec(data);
+      if (spec.masts) continue;
+      const fs = buildDecksModel(indexDecks(data, spec), spec);
       expect(fs.some((f) => f.kind === "mast" || f.kind === "lamp"), key).toBe(false);
     }
   });
 });
 
 describe("Lamorna Light's lamp", () => {
-  const spec = DECKS.lamorna;
+  const spec = decksSpec(lamorna);
   const index = indexDecks(lamorna, spec);
   const faces = buildDecksModel(index, spec);
   const of = (kind) => faces.filter((f) => f.kind === kind);
@@ -429,7 +406,7 @@ describe("decksLayout", () => {
 
 describe("the Mid's halts", () => {
   const shapes = { kilmar, caradon, garrow };
-  const at = (key) => indexDecks(shapes[key], DECKS[key]);
+  const at = (key) => indexDecks(shapes[key], decksSpec(shapes[key]));
 
   it("are smaller boxes than Orrin's, each its own shape", () => {
     expect(at("kilmar").hull).toEqual({ x0: -1, x1: 1, y0: 1, y1: 3, z0: 2, z1: 2 }); // one deck, three frames
@@ -461,7 +438,7 @@ describe("the Mid's halts", () => {
     expect(deck1.onHull).toBe(true);
     expect(deck1.cells.find((c) => c.room.id === "garrow.lookout").kind).toBe("room");
     expect(deck1.links.length).toBe(1); // the Lookout to the Commons
-    const faces = buildDecksModel(index, DECKS.garrow);
+    const faces = buildDecksModel(index, decksSpec(garrow));
     expect(faces.some((f) => f.kind.startsWith("blister"))).toBe(false);
     expect(faces.some((f) => f.kind === "cell" && f.key === "garrow.lookout")).toBe(true);
   });

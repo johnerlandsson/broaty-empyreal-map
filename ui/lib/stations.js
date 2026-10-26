@@ -2,45 +2,12 @@
 // station), else the one your ship is docked at, else whichever was showing; none for a station
 // there's no plan of. Pure; no DOM.
 
-const ROOM_PREFIX = {
-  tiss: "tiss",
-  orrin: "orrin",
-  wenna: "wenna",
-  morvah: "morvah",
-  gwithian: "gwithian",
-  carrow: "carrow",
-  lanyon: "lanyon",
-  kynance: "kynance",
-  marazion: "marazion",
-  penwith: "penwith",
-  botallack: "botallack",
-  polperro: "polperro",
-  lamorna: "lamorna",
-  kilmar: "kilmar",
-  caradon: "caradon",
-  garrow: "garrow",
-  zennor: "zennor",
-};
-// Ship.Status `location` (a Space.Charts place id) while docked, or landed at a port
-const DOCK = {
-  tiss: "tiss",
-  orrin_station: "orrin",
-  wenna_halt: "wenna",
-  morvah_deep: "morvah",
-  gwithian_reach: "gwithian",
-  carrow_yard: "carrow",
-  lanyon_high: "lanyon",
-  kynance_spindle: "kynance",
-  marazion_quay: "marazion",
-  penwith_vats: "penwith",
-  botallack_head: "botallack",
-  polperro_old_dock: "polperro",
-  lamorna_light: "lamorna",
-  kilmar_steading: "kilmar",
-  caradon_works: "caradon",
-  garrow_stop: "garrow",
-  zennor: "zennor",
-};
+import places from "../data/places.js";
+
+// A room id's prefix -> its place, and Ship.Status `location` (a Space.Charts place id) while
+// docked, or landed at a port -> the place whose Berths it is; both from the generated index.
+const ROOM_PREFIX = Object.fromEntries(places.map((p) => [p.prefix, p.id]));
+const DOCK = Object.fromEntries(places.flatMap((p) => p.docks.map((d) => [d, p.id])));
 
 /** The station a room or lift id belongs to ("tiss.market" -> "tiss"), or null. */
 export function stationOfRoom(id) {

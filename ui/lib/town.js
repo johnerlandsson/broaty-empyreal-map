@@ -4,50 +4,6 @@
 // terraces, a lookout. Everything here is the plan's layout and highlight; the drawing is
 // town-deck.js. Pure; no DOM.
 
-import { DISTRICT_COLOURS } from "./geometry.js";
-
-// --- the towns -------------------------------------------------------------------------------
-
-/**
- * What the exits and flags don't say. `root` is the room placed first, at the plan's middle;
- * `uphill` the compass way `up` goes on the plan (`down` the other); `tints` a colour per district;
- * `ground` the kind of open ground a room is, where it isn't street (a berth is a landing field
- * without saying); `gate` the room with the old wall's arch; `wells` rooms with a wellhead; `river`
- * the river along the plan's downhill side and the room on its bridge; `scarp` the district on
- * the flat above the scarp the Steps climb.
- */
-export const TOWNS = {
-  // Tamsin's capital: low, thick-walled stone against the dust, climbing the east side of the
-  // Carn's valley from the river to the Downs, where the landing field is.
-  zennor: {
-    prefix: "zennor",
-    root: "zennor.square",
-    uphill: "east",
-    tints: {
-      downs: DISTRICT_COLOURS.docks, // the port's own: the field, sensors, comms, the charts
-      "old-town": DISTRICT_COLOURS.commons,
-      "market-quarter": DISTRICT_COLOURS.concourse,
-      courts: DISTRICT_COLOURS.offices,
-      rows: DISTRICT_COLOURS.residential,
-      riverside: DISTRICT_COLOURS.industrial, // the mills and the kiln
-      terraces: DISTRICT_COLOURS.hydroponics,
-    },
-    ground: {
-      "zennor.square": "square",
-      "zennor.exchange-square": "square",
-      "zennor.garden": "garden",
-      "zennor.ridge-path": "path",
-      "zennor.overlook": "overlook",
-      "zennor.terraces": "terraces",
-      "zennor.lower-terraces": "old-terraces", // "wider and older than those above, their walls slumped"
-    },
-    gate: "zennor.gate",
-    wells: ["zennor.square", "zennor.exchange-square"], // the old well, and the Conduit
-    river: { name: "the Carn", bridge: "zennor.carn-bridge" },
-    scarp: "downs",
-  },
-};
-
 // --- placing rooms by their exits ------------------------------------------------------------
 
 /** A step each compass way: x east, y north. */
@@ -267,7 +223,7 @@ function crosses(p1, p2, p3, p4) {
  * garden, path, field, terraces, old-terraces, overlook), its district's name and the area's
  * gravity; the area, its districts and its cars (the tram).
  * @param {typeof import("../data/zennor.js").default} data
- * @param {typeof TOWNS.zennor} spec
+ * @param {ReturnType<typeof import("./look.js").townSpec>} spec
  */
 export function indexTown(data, spec) {
   const placed = placeRooms(data?.rooms ?? [], spec.root, spec.uphill);
@@ -366,7 +322,7 @@ function edge(b, ux, uy) {
  * river, the scarp, the gate's arch, the tram's line, the labels beside the streets, and the
  * frame.
  * @param {ReturnType<typeof indexTown>} index
- * @param {typeof TOWNS.zennor} spec
+ * @param {ReturnType<typeof import("./look.js").townSpec>} spec
  */
 export function townLayout(index, spec) {
   const boxes = [];

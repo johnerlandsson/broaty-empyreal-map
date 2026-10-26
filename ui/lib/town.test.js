@@ -1,11 +1,10 @@
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import zennor from "../data/zennor.js";
-import { CELL, STEP, TOWNS, exitTo, indexTown, locateTown, placeRooms, townFrame, townInfo, townLayout, townShape } from "./town.js";
+import generated from "../data/zennor.js";
+import { townData, townSpec } from "./look.js";
+import { CELL, STEP, exitTo, indexTown, locateTown, placeRooms, townFrame, townInfo, townLayout, townShape } from "./town.js";
 
-const spec = TOWNS.zennor;
+const zennor = townData(generated);
+const spec = townSpec(generated);
 const index = indexTown(zennor, spec);
 const layout = townLayout(index, spec);
 const room = (id) => index.byId.get(`zennor.${id}`);
@@ -98,7 +97,7 @@ describe("Zennor's data", () => {
   it("has the 45 rooms of content/areas/zennor.yaml in its seven districts at 1 g, all placed", () => {
     expect(zennor.rooms.length).toBe(45);
     expect(index.byId.size).toBe(45);
-    expect(zennor.area).toMatchObject({ id: "zennor", name: "Zennor", gravity: 1 });
+    expect(zennor.area).toMatchObject({ id: "zennor", gravity: 1 });
     expect(zennor.area.districts.map((d) => d.id)).toEqual(["downs", "old-town", "market-quarter", "courts", "rows", "riverside", "terraces"]);
     for (const r of index.byId.values()) {
       expect(r.gravity, r.id).toBe(1);
@@ -191,40 +190,6 @@ describe("Zennor's data", () => {
       "lower-terraces": "old-terraces",
     });
     for (const d of zennor.area.districts) expect(spec.tints[d.id], d.id).toBeTruthy();
-  });
-
-  const yaml = join(homedir(), "dev/empyreal/content/areas/zennor.yaml");
-  it.skipIf(!existsSync(yaml))("matches zennor.yaml's rooms, districts, exits, the Steps and the tram", () => {
-    const text = readFileSync(yaml, "utf8");
-    expect(Number(/\n {2}gravity: ([\d.]+)/.exec(text)[1])).toBe(zennor.area.gravity);
-    expect(/\n {2}name: (.+)/.exec(text)[1].trim()).toBe(zennor.area.name);
-    const districts = [...text.matchAll(/\n {4}- \{ id: ([\w-]+), name: ([^,]+), entrance: ([\w.-]+) \}/g)].map((m) => ({ id: m[1], name: m[2].trim(), entrance: m[3] }));
-    expect(zennor.area.districts).toEqual(districts);
-    // `{ to: x, via: steps, seconds: 12 }` as an object; anything else a plain id
-    const value = (v) => {
-      if (!v.startsWith("{")) return v;
-      const o = Object.fromEntries(v.slice(1, -1).split(",").map((s) => s.split(":").map((t) => t.trim())));
-      return { ...o, seconds: Number(o.seconds) };
-    };
-    const rooms = [];
-    const cars = [];
-    for (const chunk of text.split(/\n {2}- id: /).slice(1)) {
-      const id = chunk.split("\n")[0].trim();
-      const name = /\n {4}name: (.+)/.exec(chunk)[1].trim();
-      if (/\n {4}car:/.test(chunk)) {
-        const kind = /\n {6}kind: (\w+)/.exec(chunk)[1];
-        const stops = [...chunk.matchAll(/\n {8}- \{ room: ([\w.-]+)/g)].map((m) => m[1]);
-        cars.push({ id, name, kind, stops });
-        continue;
-      }
-      const district = /\n {4}district: (.+)/.exec(chunk)[1].trim();
-      const flags = /\n {4}flags: \[(.*)\]/.exec(chunk)[1].split(",").map((f) => f.trim()).filter(Boolean);
-      const block = /\n {4}exits:\n((?: {6}.+\n?)+)/.exec(chunk)[1];
-      const exits = Object.fromEntries([...block.matchAll(/ {6}(\w+): (.+)/g)].map((m) => [m[1], value(m[2].trim())]));
-      rooms.push({ id, name, district, flags, exits });
-    }
-    expect(zennor.rooms.map(({ id, name, district, flags, exits }) => ({ id, name, district, flags, exits }))).toEqual(rooms);
-    expect(zennor.cars).toEqual(cars);
   });
 });
 
@@ -379,10 +344,11 @@ describe("locateTown and townInfo", () => {
   });
 
   it("says the room, its district, the town and the gravity", () => {
+    // the generated file has no area name: the town's is the game's, which every room message has
     const line = (msg) => townInfo(locateTown(index, msg), msg, index);
-    expect(line({ roomId: "zennor.exchange-square", name: "Conduit Square", gravity: 1 })).toBe("CONDUIT SQUARE · the Market Quarter · Zennor · 1 g");
-    expect(line({ roomId: "zennor.overlook" })).toBe("THE OVERLOOK · the Old Town · Zennor · 1 g");
-    expect(line({ roomId: "zennor.embankment" })).toBe("THE EMBANKMENT · Riverside · Zennor · 1 g");
+    expect(line({ roomId: "zennor.exchange-square", name: "Conduit Square", areaName: "Zennor", gravity: 1 })).toBe("CONDUIT SQUARE · the Market Quarter · Zennor · 1 g");
+    expect(line({ roomId: "zennor.overlook", areaName: "Zennor" })).toBe("THE OVERLOOK · the Old Town · Zennor · 1 g");
+    expect(line({ roomId: "zennor.embankment", areaName: "Zennor" })).toBe("THE EMBANKMENT · Riverside · Zennor · 1 g");
     expect(line({ roomId: "zennor.tram", name: "The Tram" })).toBe("THE TRAM");
     expect(line({ roomId: "ship.41.cockpit", name: "Cockpit of the Magpie" })).toBe("COCKPIT OF THE MAGPIE");
     expect(townInfo(null, null, index)).toBe("");

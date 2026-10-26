@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import wenna from "../data/wenna.js";
-import { DRUMS, buildDrumModel, drumHour, drumKey, drumLayout, drumShape } from "./drum.js";
+import { buildDrumModel, drumHour, drumKey, drumLayout, drumShape } from "./drum.js";
 import { indexStation, locate } from "./locate.js";
+import { drumRooms, drumSpec } from "./look.js";
 
 const sub = (a, b) => a.map((c, i) => c - b[i]);
 const cross = (u, v) => [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
@@ -12,8 +13,8 @@ const normal = ([a, b, c]) => cross(sub(b, a), sub(c, a));
 
 // Orrin Station was a drum until it was rebuilt on decks (decks.test.js).
 describe.each([["Wenna Halt", "wenna", wenna, "lounge", 0.6]])("%s", (_, p, data, up, g) => {
-  const spec = DRUMS[p];
-  const index = indexStation(data);
+  const spec = drumSpec(data);
+  const index = indexStation({ rooms: drumRooms(data) });
   const faces = buildDrumModel(index, spec);
   const ids = data.rooms.map((r) => r.id);
   const axisId = `${p}.${up}`;

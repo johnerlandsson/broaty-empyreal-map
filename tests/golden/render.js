@@ -22,10 +22,12 @@ import zennor from "../../ui/data/zennor.js";
 import { DeckView } from "../../ui/deck-view.js";
 import { decksPlans } from "../../ui/decks-deck.js";
 import { drumPlans } from "../../ui/drum-deck.js";
-import { DECKS, buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "../../ui/lib/decks.js";
-import { DRUMS, buildDrumModel, drumHour, drumKey } from "../../ui/lib/drum.js";
+import places from "../../ui/data/places.js";
+import { buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "../../ui/lib/decks.js";
+import { buildDrumModel, drumHour, drumKey } from "../../ui/lib/drum.js";
 import { indexStation, locate } from "../../ui/lib/locate.js";
-import { TOWNS, indexTown, locateTown } from "../../ui/lib/town.js";
+import { decksSpec, drumRooms, drumSpec, townData, townSpec } from "../../ui/lib/look.js";
+import { indexTown, locateTown } from "../../ui/lib/town.js";
 import { ModelView } from "../../ui/model-view.js";
 import { townPlans } from "../../ui/town-deck.js";
 import { SkyView } from "../../ui/town-view.js";
@@ -44,8 +46,9 @@ function tiss(modelEl, deckEl) {
   return { index, model: new ModelView(modelEl, index), deck: new DeckView(deckEl, index), locate };
 }
 
-function drum(modelEl, deckEl, data, spec) {
-  const index = indexStation(data);
+function drum(modelEl, deckEl, data) {
+  const spec = drumSpec(data);
+  const index = indexStation({ rooms: drumRooms(data) });
   const model = new ModelView(modelEl, index, {
     faces: buildDrumModel(index, spec),
     keyOf: drumKey,
@@ -55,7 +58,8 @@ function drum(modelEl, deckEl, data, spec) {
   return { index, model, deck: new DeckView(deckEl, index, drumPlans(spec)), locate };
 }
 
-function decks(modelEl, deckEl, data, spec) {
+function decks(modelEl, deckEl, data) {
+  const spec = decksSpec(data);
   const index = indexDecks(data, spec);
   const model = new ModelView(modelEl, index, {
     faces: buildDecksModel(index, spec),
@@ -67,19 +71,20 @@ function decks(modelEl, deckEl, data, spec) {
   return { index, model, deck: new DeckView(deckEl, index, decksPlans(spec)), locate: locateDecks };
 }
 
-function town(modelEl, deckEl, data, spec) {
-  const index = indexTown(data, spec);
+function town(modelEl, deckEl, data) {
+  const spec = townSpec(data);
+  const index = indexTown(townData(data), spec);
   const model = new SkyView(modelEl, index, "zennor");
   model.draw(SKY_AT);
   return { index, model, deck: new DeckView(deckEl, index, townPlans(spec)), locate: locateTown };
 }
 
-const DATA = { orrin, morvah, gwithian, carrow, lanyon, kynance, marazion, penwith, botallack, polperro, lamorna, kilmar, caradon, garrow };
+// T.I.S.S. is still drawn from station.js (Task 8 moves it); every other place from its generated file
+const DATA = { botallack, caradon, carrow, garrow, gwithian, kilmar, kynance, lamorna, lanyon, marazion, morvah, orrin, penwith, polperro, wenna, zennor };
+const BUILDERS = { drum, decks, town };
 const BUILD = {
+  ...Object.fromEntries(places.filter((p) => BUILDERS[p.builder] && DATA[p.id]).map((p) => [p.id, (m, d) => BUILDERS[p.builder](m, d, DATA[p.id])])),
   tiss: (m, d) => tiss(m, d),
-  wenna: (m, d) => drum(m, d, wenna, DRUMS.wenna),
-  zennor: (m, d) => town(m, d, zennor, TOWNS.zennor),
-  ...Object.fromEntries(Object.entries(DATA).map(([id, data]) => [id, (m, d) => decks(m, d, data, DECKS[id])])),
 };
 
 // The SVG's markup without its seeded starfield (a constant, whatever the map data), and with the

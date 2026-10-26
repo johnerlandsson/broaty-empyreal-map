@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import zennor from "../ui/data/zennor.js";
+import generated from "../ui/data/zennor.js";
+import { townData } from "../ui/lib/look.js";
 import { exitTo } from "../ui/lib/town.js";
 import { TRAM, ZENNOR_WALK } from "./zennor-walk.js";
 
+const zennor = townData(generated);
 const byId = new Map(zennor.rooms.map((r) => [r.id, r]));
 const stops = zennor.cars.find((c) => c.id === TRAM).stops;
 

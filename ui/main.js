@@ -30,6 +30,7 @@ import marazion from "./data/marazion.js";
 import morvah from "./data/morvah.js";
 import orrin from "./data/orrin.js";
 import penwith from "./data/penwith.js";
+import places from "./data/places.js";
 import polperro from "./data/polperro.js";
 import station from "./data/station.js";
 import wenna from "./data/wenna.js";
@@ -38,14 +39,15 @@ import { DeckView } from "./deck-view.js";
 import { LanesView } from "./lanes-view.js";
 import { decksPlans } from "./decks-deck.js";
 import { drumPlans } from "./drum-deck.js";
-import { DECKS, buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "./lib/decks.js";
-import { DRUMS, buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
+import { buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "./lib/decks.js";
+import { buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
 import { carInfo, carKind, carName, stopNames } from "./lib/cars.js";
 import { hullOf, isShipRoom, shipInfo } from "./lib/hulls.js";
 import { indexStation, infoLine, locate } from "./lib/locate.js";
+import { decksSpec, drumRooms, drumSpec, townData, townSpec } from "./lib/look.js";
 import { moveCard } from "./lib/space.js";
 import { noPlanLine, pickStation, stationOfDock } from "./lib/stations.js";
-import { TOWNS, indexTown, locateTown, townInfo } from "./lib/town.js";
+import { indexTown, locateTown, townInfo } from "./lib/town.js";
 import { ModelView } from "./model-view.js";
 import { SpaceView } from "./space-view.js";
 import { shipPlans, updateShip } from "./ship-deck.js";
@@ -62,8 +64,9 @@ function tiss() {
 }
 
 /** Wenna Halt: one drum, one plan. */
-function drum(data, spec) {
-  const index = indexStation(data);
+function drum(data) {
+  const spec = drumSpec(data);
+  const index = indexStation({ rooms: drumRooms(data) });
   const model = new ModelView(modelEl, index, {
     faces: buildDrumModel(index, spec),
     keyOf: drumKey,
@@ -74,7 +77,8 @@ function drum(data, spec) {
 }
 
 /** Orrin Station and the halts: a box on decks, cut away above your deck; a plan a deck, rooms placed by address. */
-function decks(data, spec) {
+function decks(data) {
+  const spec = decksSpec(data);
   const index = indexDecks(data, spec);
   const model = new ModelView(modelEl, index, {
     faces: buildDecksModel(index, spec),
@@ -87,31 +91,20 @@ function decks(data, spec) {
 }
 
 /** Zennor: a city on the ground, rooms placed by their compass exits, ⌂ framing your district; its sky over it. */
-function town(data, spec) {
-  const index = indexTown(data, spec);
+function town(data) {
+  const spec = townSpec(data);
+  const index = indexTown(townData(data), spec);
   return { index, model: new SkyView(modelEl, index, "zennor"), deck: new DeckView(deckEl, index, townPlans(spec)), lastLevel: null, locate: locateTown, info: townInfo };
 }
 
 // Each station is built the first time it shows: a model and a plan apiece, each over its own
 // starfield, cost tens of milliseconds and thousands of nodes, and most never show in a session.
+// Every place in the generated index (data/places.js) by its builder; T.I.S.S. still from station.js.
+const DATA = { botallack, caradon, carrow, garrow, gwithian, kilmar, kynance, lamorna, lanyon, marazion, morvah, orrin, penwith, polperro, wenna, zennor };
+const BUILDERS = { decks, drum, town };
 const BUILD = {
+  ...Object.fromEntries(places.filter((p) => BUILDERS[p.builder] && DATA[p.id]).map((p) => [p.id, () => BUILDERS[p.builder](DATA[p.id])])),
   tiss: () => tiss(),
-  orrin: () => decks(orrin, DECKS.orrin),
-  wenna: () => drum(wenna, DRUMS.wenna),
-  zennor: () => town(zennor, TOWNS.zennor),
-  morvah: () => decks(morvah, DECKS.morvah),
-  gwithian: () => decks(gwithian, DECKS.gwithian),
-  carrow: () => decks(carrow, DECKS.carrow),
-  lanyon: () => decks(lanyon, DECKS.lanyon),
-  kynance: () => decks(kynance, DECKS.kynance),
-  marazion: () => decks(marazion, DECKS.marazion),
-  penwith: () => decks(penwith, DECKS.penwith),
-  botallack: () => decks(botallack, DECKS.botallack),
-  polperro: () => decks(polperro, DECKS.polperro),
-  lamorna: () => decks(lamorna, DECKS.lamorna),
-  kilmar: () => decks(kilmar, DECKS.kilmar),
-  caradon: () => decks(caradon, DECKS.caradon),
-  garrow: () => decks(garrow, DECKS.garrow),
 };
 const stations = {}; // station key -> its views, once built
 let turning = true; // the turn_model setting, for stations built after it came

@@ -28,7 +28,7 @@ const FADE = [5, 6.5]; // a room's 12-unit name fades out between these sizes on
 const AWAY = 0.45; // zoomed out past this (screen px a unit), districts are named over their middles
 
 /**
- * @param {typeof import("./lib/town.js").TOWNS.zennor} spec
+ * @param {ReturnType<typeof import("./lib/look.js").townSpec>} spec
  * @returns {(svg: SVGElement, index: object) => object[]} the plans builder DeckView takes: one plan
  */
 export function townPlans(spec) {

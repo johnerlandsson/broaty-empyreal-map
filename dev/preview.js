@@ -63,7 +63,7 @@ import penwith from "../ui/data/penwith.js";
 import polperro from "../ui/data/polperro.js";
 import station from "../ui/data/station.js";
 import wenna from "../ui/data/wenna.js";
-import zennor from "../ui/data/zennor.js";
+import zennorFile from "../ui/data/zennor.js";
 import { TRAM, ZENNOR_WALK } from "./zennor-walk.js";
 import skyCases from "./sky-cases.json" with { type: "json" };
 import { DeckView } from "../ui/deck-view.js";
@@ -71,13 +71,16 @@ import { BeltView } from "../ui/belt-view.js";
 import { LanesView } from "../ui/lanes-view.js";
 import { ModelView } from "../ui/model-view.js";
 import { lanesOf } from "../ui/lib/lanes.js";
+import { townData } from "../ui/lib/look.js";
 import { ChartView } from "../ui/chart-view.js";
 import { indexCharts, positionOf } from "../ui/lib/orbits.js";
 import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts, senaraContacts } from "./charts-fixture.js";
 
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
-const town = zennor.rooms.map((r) => ({ ...r, gravity: zennor.area.gravity })); // the area's gravity, as the game sends it
+const zennor = townData(zennorFile); // its rooms on foot, and the tram as a car
+// the area's gravity and name, as the game sends them (the generated file has no area name)
+const town = zennor.rooms.map((r) => ({ ...r, gravity: zennor.area.gravity, areaName: "Zennor" }));
 const DATA = [
   station.rooms,
   orrin.rooms,
@@ -91,7 +94,7 @@ const byId = new Map(DATA.flat().map((r) => [r.id, r]));
 
 const room = (id) => {
   const r = byId.get(id);
-  return { label: r.name, msg: { roomId: id, name: r.name, area: id.split(".")[0], address: r.address ?? undefined, district: r.district ?? undefined, gravity: r.gravity } };
+  return { label: r.name, msg: { roomId: id, name: r.name, area: id.split(".")[0], areaName: r.areaName, address: r.address ?? undefined, district: r.district ?? undefined, gravity: r.gravity } };
 };
 
 /** Board lift `hour` at fromId, ride to toId; messages as Empyreal.Room + Empyreal.Vehicle fold them,

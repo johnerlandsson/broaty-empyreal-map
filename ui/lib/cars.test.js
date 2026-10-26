@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import station from "../data/station.js";
-import zennor from "../data/zennor.js";
+import generated from "../data/zennor.js";
 import { CARS, carDoing, carInfo, carKind, carName, stopLine, stopNames } from "./cars.js";
 import { indexStation } from "./locate.js";
-import { TOWNS, indexTown } from "./town.js";
+import { townData, townSpec } from "./look.js";
+import { indexTown } from "./town.js";
 
 const tiss = indexStation(station);
-const city = indexTown(zennor, TOWNS.zennor);
+const zennor = townData(generated);
+const city = indexTown(zennor, townSpec(generated));
 const tram = (lift) => ({ gravity: 1, lift: { id: "zennor.tram", kind: "tram", floors: zennor.cars[0].stops.map((id) => ({ id })), ...lift } });
 const LIFT_FLOORS = ["tiss.rim-0300", "tiss.mid-0300", "tiss.inner-0300", "tiss.hub"].map((id) => ({ id }));
 const lift = (l) => ({ name: "Lift 3", gravity: 0.9, lift: { id: "tiss.lift-3", kind: "lift", floors: LIFT_FLOORS, ...l } });

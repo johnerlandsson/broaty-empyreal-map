@@ -13,7 +13,7 @@ const STEPS = "#cfd8e3";
 const LIGHTS = ["#59d18a", "#59d18a", "#e8b04a", "#59d18a", "#3a4556"]; // clamped, cycling, empty
 
 /**
- * @param {typeof import("./lib/drum.js").DRUMS.wenna} spec
+ * @param {ReturnType<typeof import("./lib/look.js").drumSpec>} spec
  * @returns {(svg: SVGElement, index: object) => object[]} the plans builder DeckView takes: the one
  *   plan, which fits the panel, so the view follows only a highlight near its edge
  */

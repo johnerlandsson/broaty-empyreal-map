@@ -19,7 +19,7 @@ const DECK_OF = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
 const none = { "pointer-events": "none" };
 
 /**
- * @param {typeof import("./lib/decks.js").DECKS.orrin} spec
+ * @param {ReturnType<typeof import("./lib/look.js").decksSpec>} spec
  * @returns {(svg: SVGElement, index: object) => object[]} the plans builder DeckView takes: one plan
  *   a deck, in the index's level order, all framed by the same extent
  */

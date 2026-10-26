@@ -4,38 +4,7 @@
 // frame as T.I.S.S.'s (X = 3 o'clock, Y = 12 o'clock, Z = fore along the axis), so the one camera
 // and renderer draw them all. Pure; no DOM.
 
-import { DISTRICT_COLOURS, P3, roll } from "./geometry.js";
-
-// --- the stations ----------------------------------------------------------------------------
-
-/**
- * What differs between the drums. `prefix` is the rooms' id prefix ("wenna.berth"); `axis` the
- * room up at the axis and the size of its window collar; `cradles` the blocks outside the Berths,
- * each [hour offset, z, half-width, height, half-length]; `way` how you go up to the axis room.
- */
-export const DRUMS = {
-  // An older, better-kept halt: kelp planters in a carpeted hall, a neat office for freight, a
-  // clean row of cradles sized for couriers, and a ramp up to a lounge with one wide window.
-  wenna: {
-    prefix: "wenna",
-    axis: { id: "wenna.lounge", r: 58, len: 18 },
-    way: "ramp",
-    tints: {
-      "wenna.concourse": DISTRICT_COLOURS.hydroponics, // the kelp planters
-      "wenna.market": DISTRICT_COLOURS.concourse,
-      "wenna.freight": DISTRICT_COLOURS.offices,
-      "wenna.berth": DISTRICT_COLOURS.docks,
-      "wenna.charts": DISTRICT_COLOURS.docks,
-      "wenna.lounge": DISTRICT_COLOURS.docks,
-    },
-    cradles: [
-      [-0.3, -12, 8, 20, 11],
-      [-0.08, -12, 8, 20, 11],
-      [0.14, -12, 8, 20, 11],
-      [0.36, -12, 8, 20, 11],
-    ],
-  },
-};
+import { P3, roll } from "./geometry.js";
 
 // --- the model -------------------------------------------------------------------------------
 
@@ -53,7 +22,7 @@ const AXLE = { r: 30, len: 22 };
  * (`cull`); a cradle is also hidden while its foot is on the far side (`anchor`). `layer` draws
  * the axle under the drum and the cradles and the collar over it.
  * @param {ReturnType<typeof import("./locate.js").indexStation>} index
- * @param {typeof DRUMS.wenna} spec
+ * @param {ReturnType<typeof import("./look.js").drumSpec>} spec
  */
 export function buildDrumModel(index, spec) {
   const faces = [];
@@ -157,7 +126,7 @@ export const WAY = { x: 96, r: 13 }; // the foot of the stair or ramp up to the 
 export const AXIS_R = 40;
 
 /**
- * @param {typeof DRUMS.wenna} spec
+ * @param {ReturnType<typeof import("./look.js").drumSpec>} spec
  * @returns {{boxes: {room: object, cx: number, cy: number, w: number, h: number}[],
  *   hall: object|null, axis: {room: object|undefined, cx: number, cy: number, r: number},
  *   way: {cx: number, cy: number, r: number}}}
