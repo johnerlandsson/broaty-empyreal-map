@@ -1,0 +1,280 @@
+// The tweak editor's page (dev/edit.html, served by npm run edit): layout A. Down the left, the
+// last sync's report and every place; in the middle, the place's overview above its plan, as the
+// panel stacks them; on the right, the selected room and the view (Task 6 fills the rest).
+// A room picked on either view, or in the "pretend I'm in" picker, is lit in both, as main.js
+// lights where the player is. A build the server announces that names the open place re-imports
+// its data and rebuilds the views, keeping the selection, the plan's deck and both view boxes.
+// The URL hash (#<placeId>/<roomId>) holds the place and room, so a reload or a headless
+// screenshot opens them. window.editor has small hooks for later tasks and tests.
+
+import { buildPlace } from "../../ui/place-views.js";
+
+/** The builders a station is drawn with; any other place is a ship class (stage 4). */
+const STATIONS = new Set(["decks", "drum", "town", "wheel"]);
+
+const SHELL = `
+  <nav class="rail"></nav>
+  <div class="middle">
+    <div class="pane"><span class="tag">overview</span><div id="model"></div></div>
+    <div class="rule"></div>
+    <div class="pane"><span class="tag" id="plan-tag">plan</span><div id="deck"></div><div class="errbar" hidden></div></div>
+  </div>
+  <aside class="side">
+    <div id="inspector"></div>
+    <div class="sec">View · whole station</div>
+    <div class="row"><label for="pretend">pretend I'm in</label><select id="pretend" class="btn"></select></div>
+  </aside>
+`;
+
+const h = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+};
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** The hash's place and room: `#orrin/orrin.market`. */
+function parseHash(hash) {
+  const [placeId = "", roomId = ""] = decodeURIComponent(hash.replace(/^#/, "")).split("/");
+  return { placeId: placeId || null, roomId: roomId || null };
+}
+
+/** Per place, what the last sync says of it: new, rooms changed, orphans. In report order. */
+function reportItems(report) {
+  const items = new Map();
+  const item = (place) => {
+    if (!items.has(place)) items.set(place, { place, isNew: false, rooms: 0, orphans: 0 });
+    return items.get(place);
+  };
+  for (const p of report?.newPlaces ?? []) item(p.place).isNew = true;
+  for (const list of Object.values(report?.rooms ?? {})) for (const r of list) item(r.place).rooms++;
+  for (const o of report?.orphans ?? []) item(o.place).orphans++;
+  return [...items.values()];
+}
+
+/**
+ * Starts the page in root.
+ * @param {{root?: Element, fetch?: typeof fetch, EventSource?: typeof EventSource,
+ *   importPlace?: (id: string, version: number) => Promise<object>}} [deps] the page's own by
+ *   default; tests pass stubs.
+ */
+export function startEditor({
+  root = document.body,
+  fetch: get = (...a) => window.fetch(...a),
+  EventSource: Events = window.EventSource,
+  importPlace = (id, version) => import(/* @vite-ignore */ `/ui/data/${id}.js?v=${version}`).then((m) => m.default),
+} = {}) {
+  root.innerHTML = SHELL;
+  const rail = root.querySelector(".rail");
+  const modelEl = root.querySelector("#model");
+  const deckEl = root.querySelector("#deck");
+  const planTag = root.querySelector("#plan-tag");
+  const errbar = root.querySelector(".errbar");
+  const pretend = root.querySelector("#pretend");
+
+  let state = { places: [], report: null, palette: {}, tweaks: {} };
+  let version = Date.now(); // the data version to import by; each build bumps it
+  const data = new Map(); // place id -> its data at `version`
+  const changed = new Set(); // place ids rebuilt since their data was imported
+  let place = null; // {id, builder, data, views, roomId, lastLevel}
+
+  const load = async (id) => {
+    if (!data.has(id) || changed.has(id)) {
+      changed.delete(id);
+      data.set(id, await importPlace(id, version));
+    }
+    return data.get(id);
+  };
+
+  function showError(text) {
+    errbar.textContent = text ?? "";
+    errbar.hidden = !text;
+  }
+
+  function renderRail() {
+    rail.replaceChildren();
+    const open = (id) => () => openPlace(id).catch((err) => showError(err.message));
+    const entry = (id, label, badges = []) => {
+      const it = h("div", "it");
+      it.dataset.place = id;
+      it.classList.toggle("on", id === place?.id);
+      it.append(h("span", null, label));
+      for (const [cls, text] of badges) it.append(h("span", `badge ${cls}`, text));
+      it.addEventListener("click", open(id));
+      return it;
+    };
+    const nameOf = (id) => data.get(id)?.name ?? id;
+    const known = new Set(state.places.map((p) => p.id));
+
+    const report = state.report;
+    rail.append(h("div", "grp", report?.commit ? `From the last sync · ${report.commit}` : "From the last sync"));
+    const items = reportItems(report);
+    if (!items.length) rail.append(h("div", "it none", "nothing new"));
+    for (const r of items) {
+      const badges = [];
+      if (r.isNew) badges.push(["new", "new"]);
+      if (r.rooms) badges.push(["chg", plural(r.rooms, "room")]);
+      if (r.orphans) badges.push(["orph", plural(r.orphans, "orphan")]);
+      const it = entry(r.place, nameOf(r.place), badges);
+      if (!known.has(r.place)) it.classList.add("gone"); // no data to open (yet)
+      rail.append(it);
+    }
+
+    rail.append(h("div", "grp", "Stations"));
+    for (const p of state.places.filter((p) => STATIONS.has(p.builder))) rail.append(entry(p.id, nameOf(p.id)));
+    rail.append(h("div", "grp", "Ship classes"));
+    const ships = state.places.filter((p) => !STATIONS.has(p.builder));
+    if (!ships.length) rail.append(h("div", "it none", "none yet"));
+    for (const p of ships) rail.append(entry(p.id, nameOf(p.id)));
+  }
+
+  function renderPicker() {
+    pretend.replaceChildren(h("option", null, "(nowhere)"));
+    pretend.firstChild.value = "";
+    if (!place) return;
+    const rooms = [...place.views.index.byId.values()].filter((r) => r?.id).sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id));
+    for (const r of rooms) {
+      const o = h("option", null, r.name ?? r.id);
+      o.value = r.id;
+      pretend.append(o);
+    }
+    pretend.value = place.roomId ?? "";
+  }
+
+  function renderPlanTag() {
+    const level = place?.views.deck.level;
+    const deck = place?.builder === "decks" ? place.data.levels?.[level] : undefined;
+    planTag.textContent = deck != null ? `plan · Deck ${deck}` : "plan";
+  }
+
+  function writeHash() {
+    const hash = place ? `#${place.id}${place.roomId ? `/${place.roomId}` : ""}` : "";
+    if (window.location.hash !== hash) history.replaceState(null, "", hash || window.location.pathname + window.location.search);
+  }
+
+  /** Light roomId in both views, as main.js lights where the player is; null clears it. */
+  function select(roomId) {
+    if (!place) return;
+    const { views } = place;
+    const room = roomId ? views.index.byId.get(roomId) : undefined;
+    place.roomId = room ? roomId : null;
+    const msg = room ? { roomId, district: room.district } : {};
+    const where = views.locate(views.index, msg, place.lastLevel);
+    if (where.kind !== "off") place.lastLevel = where.level;
+    views.model.set(where, msg);
+    views.deck.set(where);
+    pretend.value = place.roomId ?? "";
+    renderPlanTag();
+    writeHash();
+  }
+
+  /** Build the views of the place's data, replacing any; keep is the old views' state to restore. */
+  function build(id, builder, placeData, roomId, keep) {
+    place?.views.model.stop?.();
+    modelEl.replaceChildren();
+    deckEl.replaceChildren();
+    const views = buildPlace(placeData, builder, modelEl, deckEl, { pick: true });
+    place = { id, builder, data: placeData, views, roomId: null, lastLevel: keep?.lastLevel ?? null };
+    views.model.onPick?.((rid) => select(rid));
+    views.deck.onPick?.((rid) => select(rid));
+    select(roomId);
+    if (keep) {
+      if (keep.level >= 0 && keep.level < views.deck.plans.length && views.deck.level !== keep.level) views.deck.show(keep.level);
+      views.deck.setView(keep.deck);
+      views.model.setView(keep.model);
+      if (keep.phi != null && "phi" in views.model) {
+        views.model.phi = keep.phi;
+        views.model.draw?.();
+      }
+      renderPlanTag();
+    }
+    renderPicker();
+    renderRail();
+  }
+
+  async function openPlace(id, roomId = null) {
+    const entry = state.places.find((p) => p.id === id);
+    if (!entry) throw new Error(`no such place: ${id}`);
+    build(id, entry.builder, await load(id), roomId);
+  }
+
+  /** Re-import the open place and rebuild its views as they were. */
+  async function rebuild() {
+    const { id, builder, roomId, lastLevel, views } = place;
+    const keep = { model: views.model.vb.slice(), deck: views.deck.cur.slice(), level: views.deck.level, phi: views.model.phi, lastLevel };
+    const fresh = await load(id);
+    if (place?.id !== id) return; // another place was opened meanwhile
+    build(id, builder, fresh, roomId, keep);
+  }
+
+  async function fetchState() {
+    const res = await get("/api/state", { cache: "no-store" });
+    if (!res.ok) throw new Error(`GET /api/state: ${res.status}`);
+    state = await res.json();
+    const broken = Object.values(state.tweaks ?? {}).find((t) => t.error);
+    if (broken) showError(broken.error);
+    await Promise.all(state.places.map((p) => load(p.id).catch(() => {})));
+    renderRail();
+  }
+
+  /** Re-read the state, and rebuild the open place from data freshly imported. */
+  async function reload() {
+    version = Date.now();
+    for (const id of data.keys()) changed.add(id);
+    await fetchState();
+    if (place) await rebuild();
+  }
+
+  async function onBuilt(event) {
+    version = event.version;
+    for (const id of event.changed ?? []) changed.add(id);
+    showError(null);
+    await fetchState();
+    if (place && event.changed?.includes(place.id)) await rebuild();
+  }
+
+  const editor = {
+    get place() {
+      return place;
+    },
+    get state() {
+      return state;
+    },
+    select,
+    reload: () => (editor.busy = reload()),
+    open: (id, roomId) => (editor.busy = openPlace(id, roomId)),
+    busy: Promise.resolve(),
+    ready: null,
+  };
+
+  pretend.addEventListener("change", () => select(pretend.value || null));
+  window.addEventListener("hashchange", () => {
+    const { placeId, roomId } = parseHash(window.location.hash);
+    if (!placeId) return;
+    if (placeId !== place?.id) editor.open(placeId, roomId);
+    else if (roomId !== place.roomId) select(roomId);
+  });
+
+  const events = new Events("/api/events");
+  events.onmessage = (e) => {
+    let event;
+    try {
+      event = JSON.parse(e.data);
+    } catch {
+      return;
+    }
+    if (event.type === "error") showError(`build failed: ${event.error}`);
+    else if (event.type === "built") editor.busy = onBuilt(event).catch((err) => showError(err.message));
+  };
+
+  editor.ready = editor.busy = (async () => {
+    await fetchState();
+    const { placeId, roomId } = parseHash(window.location.hash);
+    if (placeId && state.places.some((p) => p.id === placeId)) await openPlace(placeId, roomId);
+  })().catch((err) => showError(err.message));
+
+  window.editor = editor;
+  return editor;
+}

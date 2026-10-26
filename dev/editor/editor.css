@@ -1,0 +1,50 @@
+/* The tweak editor's page (dev/edit.html): layout A of docs/maps/reference/tweak-editor-options.png.
+ * The rail of places on the left, the overview above the plan in the middle at the panel's 42 : 58
+ * (as ui/map.css stacks them), the selected room and the view on the right. */
+
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  background: #04060c;
+  color: #b9c5d3;
+  font: 13px Inter, system-ui, sans-serif;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 220px 1fr 300px;
+}
+
+.rail, .side { background: #0d121a; color: #b9c5d3; font-size: 12.5px; min-height: 0; overflow-y: auto; }
+.rail { border-right: 1px solid #1d2632; padding: 10px 0; }
+.side { border-left: 1px solid #1d2632; padding: 12px 14px; }
+
+.middle { display: grid; grid-template-rows: 42fr 1px 58fr; min-width: 0; min-height: 0; }
+.pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #04060c; }
+.pane > #model, .pane > #deck { position: absolute; inset: 0; }
+.pane .tag {
+  position: absolute; left: 8px; top: 6px; z-index: 4; pointer-events: none;
+  font: 10.5px "DejaVu Sans Mono", monospace; color: #7d8a9a; letter-spacing: .5px; text-transform: uppercase;
+}
+.rule { background: #2b3646; }
+
+/* a failed build, over the plan */
+.errbar {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 6;
+  padding: 6px 12px; background: #3a1b1b; color: #ff7b7b; border-bottom: 1px solid #5a2a2a;
+  font: 11.5px "DejaVu Sans Mono", monospace; white-space: pre-wrap;
+}
+.errbar[hidden] { display: none; }
+
+.grp { font: 10.5px "DejaVu Sans Mono", monospace; color: #6f7c8c; text-transform: uppercase; letter-spacing: .6px; padding: 8px 14px 3px; }
+.it { padding: 3px 14px 3px 22px; display: flex; justify-content: space-between; align-items: center; gap: 6px; cursor: pointer; }
+.it:hover { background: #141c27; }
+.it.on { background: #1a2533; color: #e3eaf2; box-shadow: inset 3px 0 #5aa9ff; }
+.it.none, .it.gone { color: #6f7c8c; cursor: default; }
+.it.none:hover { background: none; }
+.badge { font: 10px "DejaVu Sans Mono", monospace; border-radius: 3px; padding: 0 5px; white-space: nowrap; }
+.new { background: #173a28; color: #59d18a; }
+.chg { background: #3a3017; color: #e8b04a; }
+.orph { background: #3a1b1b; color: #ff7b7b; }
+
+.sec { font: 10.5px "DejaVu Sans Mono", monospace; color: #6f7c8c; text-transform: uppercase; letter-spacing: .6px; margin: 12px 0 5px; }
+.row { display: flex; justify-content: space-between; align-items: center; margin: 4px 0; gap: 8px; }
+.btn { border: 1px solid #2b3646; border-radius: 4px; padding: 2px 8px; color: #b9c5d3; font: 11.5px Inter, system-ui, sans-serif; background: #0d121a; }
+select.btn { max-width: 170px; }
