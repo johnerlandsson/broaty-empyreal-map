@@ -1,0 +1,79 @@
+<!doctype html>
+<!-- Ships, final check, 2026-10-26 (stage 4, task 4): each ship's hand drawing today (lib/hulls.js
+     through ship-deck.js) beside her generated plan (ui/data/plans, with the look from
+     data/tweaks/<plan>.json) drawn by the real decks builder, unpatched, and her real 3D model from
+     the band camera and from astern. Nothing here draws a ship itself. Serve the repo root over
+     http to open it; the PNG is ships-from-cells-final.png. -->
+<html><head><meta charset="utf-8"><title>Ships: the final check</title>
+<style>
+  body { margin:0; background:#0b0f16; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:12px 20px 24px; width:1780px; }
+  h1 { color:#e3eaf2; font-size:18px; margin:4px 0 4px; }
+  h2 { color:#e3eaf2; font-size:16px; margin:20px 0 2px; }
+  h2 small, .top { color:#8f9bab; font-weight:400; font-size:12.5px; }
+  .top { line-height:1.5; max-width:1700px; }
+  .row { display:grid; grid-template-columns:400px 400px 480px 480px; gap:10px; margin-top:6px; align-items:start; }
+  .pane { position:relative; height:440px; background:#04060c; border-radius:6px; outline:1px solid #222c3a; overflow:hidden; }
+  .pane.none { display:flex; align-items:center; justify-content:center; color:#5c6878; font-size:12.5px; }
+  .pane .tag { position:absolute; left:8px; top:6px; z-index:4; font:10.5px "DejaVu Sans Mono", monospace; color:#9aa7b7; letter-spacing:.5px; text-transform:uppercase; pointer-events:none; }
+  .pane .slot { position:absolute; inset:0; }
+  .pane button, .pane .zoom { display:none !important; }
+</style></head><body>
+<h1>Ships: today's drawings and the generated ones</h1>
+<div class="top">Each row: (a) today's hand drawing from <code>lib/hulls.js</code>; (b) the generated plan with her tweak file's look, drawn by the real decks builder (<code>buildPlace</code>), nothing patched in; (c) her real 3D model from the band camera (yaw 16, pitch 38) and (d) from astern (yaw 196, pitch 24). The cockpit is where you are, so it is lit.</div>
+<script type="module">
+import skiffPlan from "../../../ui/data/plans/hull-skiff.js";
+import courierPlan from "../../../ui/data/plans/hull-courier.js";
+import freighterPlan from "../../../ui/data/plans/freighter.js";
+import tugPlan from "../../../ui/data/plans/tug.js";
+import { HULLS } from "../../../ui/lib/hulls.js";
+import { shipPlans, updateShip } from "../../../ui/ship-deck.js";
+import { DeckView } from "../../../ui/deck-view.js";
+import { ModelView } from "../../../ui/model-view.js";
+import { buildPlace } from "../../../ui/place-views.js";
+import { buildDecksModel, decksCut, decksKey, locateDecks } from "../../../ui/lib/decks.js";
+
+const hidden = document.body.appendChild(document.createElement("div"));
+hidden.style.display = "none";
+function pane(row, tag) {
+  const p = row.appendChild(document.createElement("div"));
+  p.className = "pane";
+  p.innerHTML = `<span class="tag">${tag}</span><div class="slot"></div>`;
+  return p.querySelector(".slot");
+}
+/** As the panel names a plan's rooms: "of the {name}" filled with the ship's name. */
+const named = (plan, name) => ({ ...plan, rooms: plan.rooms.map((r) => ({ ...r, name: r.name.replace("{name}", name) })) });
+const CAMS = [{ yaw: 16, pitch: 38, tag: "(c) 3D · band camera" }, { yaw: 196, pitch: 24, tag: "(d) 3D · from astern" }];
+
+const SHIPS = [
+  { hull: "skiff", plan: skiffPlan, title: "Prospecting skiff", name: "Kestrel" },
+  { hull: "courier", plan: courierPlan, title: "Courier", name: "Swift" },
+  { hull: "freighter", plan: freighterPlan, title: "Medium freighter", name: "Mallard" },
+  { hull: null, plan: tugPlan, title: "Tug", name: "Brock" },
+];
+
+for (const s of SHIPS) {
+  const data = named(s.plan, s.name);
+  const h = document.body.appendChild(document.createElement("h2"));
+  h.innerHTML = `${s.title}<br><small>data/tweaks/${s.plan.id}.json</small>`;
+  const row = document.body.appendChild(document.createElement("div"));
+  row.className = "row";
+  if (s.hull) {
+    const v = new DeckView(pane(row, "(a) today · lib/hulls.js"), null, shipPlans(HULLS[s.hull]));
+    updateShip(v, { hullName: s.name });
+    v.set({ kind: "room", id: "ship.1.cockpit", level: 0, room: "cockpit" });
+  } else {
+    const p = row.appendChild(document.createElement("div"));
+    p.className = "pane none";
+    p.textContent = "no drawing today";
+  }
+  const { index, deck } = buildPlace(data, "decks", hidden, pane(row, "(b) generated · decks builder"));
+  const where = locateDecks(index, { roomId: `${data.id}.cockpit` });
+  deck.set(where);
+  const faces = buildDecksModel(index, data);
+  for (const c of CAMS) {
+    const view = { ...data.look.view, camera: { yaw: c.yaw, pitch: c.pitch, zoom: 1 } };
+    new ModelView(pane(row, c.tag), index, { faces, keyOf: decksKey, hourOf: () => null, cutOf: (w) => decksCut(index, w), labels: false, view }).set(where);
+  }
+}
+</script>
+</body></html>

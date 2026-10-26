@@ -2,7 +2,8 @@
 export default {
   "source": {
     "commit": "266aa9b",
-    "file": "content/plans/tug.yaml"
+    "file": "content/plans/tug.yaml",
+    "tweaks": "data/tweaks/tug.json"
   },
   "id": "tug",
   "name": "tug",
@@ -59,9 +60,69 @@ export default {
       "cockpit": "industrial",
       "collar": "docks"
     },
-    "fixtures": [],
-    "footprints": {},
-    "hull": {},
+    "fixtures": [
+      {
+        "type": "chevrons",
+        "room": "collar",
+        "wall": "aft"
+      },
+      {
+        "type": "bell",
+        "side": -0.5,
+        "deck": 1,
+        "r": 0.1,
+        "len": 0.26
+      },
+      {
+        "type": "bell",
+        "side": 0.5,
+        "deck": 1,
+        "r": 0.1,
+        "len": 0.26
+      }
+    ],
+    "footprints": {
+      "cockpit": {
+        "corners": "rounded",
+        "r": 0.3
+      },
+      "collar": {
+        "corners": "cut",
+        "r": 0.22
+      }
+    },
+    "hull": {
+      "1": [
+        [
+          -0.62,
+          0.42,
+          0.12
+        ],
+        [
+          0.62,
+          0.42,
+          0.12
+        ],
+        [
+          0.62,
+          2.2
+        ],
+        [
+          0.3,
+          2.62,
+          0.12
+        ],
+        [
+          -0.3,
+          2.62,
+          0.12
+        ],
+        [
+          -0.62,
+          2.2
+        ]
+      ]
+    },
     "profile": {
       "bevel": 0.12,
       "noseDrop": 0.35,

@@ -2,7 +2,8 @@
 export default {
   "source": {
     "commit": "266aa9b",
-    "file": "content/plans/freighter.yaml"
+    "file": "content/plans/freighter.yaml",
+    "tweaks": "data/tweaks/freighter.json"
   },
   "id": "freighter",
   "name": "medium freighter",
@@ -123,19 +124,244 @@ export default {
       "hold": "industrial",
       "engine": "industrial"
     },
-    "fixtures": [],
-    "footprints": {},
-    "hull": {},
+    "fixtures": [
+      {
+        "type": "prop",
+        "kind": "seat",
+        "room": "cockpit",
+        "at": [
+          0,
+          -0.41
+        ],
+        "size": [
+          0.17,
+          0.15
+        ],
+        "grid": [
+          2,
+          1
+        ],
+        "gap": 0.1
+      },
+      {
+        "type": "prop",
+        "kind": "rails",
+        "room": "hold",
+        "at": [
+          0,
+          -0.25
+        ],
+        "size": [
+          1.9,
+          1.37
+        ]
+      },
+      {
+        "type": "chevrons",
+        "room": "collar",
+        "wall": "starboard"
+      },
+      {
+        "type": "bell",
+        "side": -0.5,
+        "deck": 1,
+        "r": 0.23,
+        "len": 0.42
+      },
+      {
+        "type": "bell",
+        "side": 0.5,
+        "deck": 1,
+        "r": 0.23,
+        "len": 0.42
+      }
+    ],
+    "footprints": {
+      "cockpit": {
+        "outline": [
+          [
+            -0.46,
+            -0.63
+          ],
+          [
+            0.46,
+            -0.63
+          ],
+          [
+            0.46,
+            0.06
+          ],
+          [
+            -0.46,
+            0.06
+          ]
+        ]
+      },
+      "airlock": {
+        "outline": [
+          [
+            -0.17,
+            -0.36
+          ],
+          [
+            0.54,
+            -0.36
+          ],
+          [
+            0.54,
+            0.36
+          ],
+          [
+            -0.17,
+            0.36
+          ]
+        ]
+      },
+      "passage": {
+        "outline": [
+          [
+            -0.43,
+            -0.36
+          ],
+          [
+            0.43,
+            -0.36
+          ],
+          [
+            0.43,
+            0.36
+          ],
+          [
+            -0.43,
+            0.36
+          ]
+        ]
+      },
+      "collar": {
+        "outline": [
+          [
+            -0.54,
+            -0.36
+          ],
+          [
+            0.17,
+            -0.36
+          ],
+          [
+            0.17,
+            0.36
+          ],
+          [
+            -0.54,
+            0.36
+          ]
+        ]
+      },
+      "hold": {
+        "outline": [
+          [
+            -1.17,
+            -1.13
+          ],
+          [
+            1.17,
+            -1.13
+          ],
+          [
+            1.17,
+            0.63
+          ],
+          [
+            -1.17,
+            0.63
+          ]
+        ]
+      },
+      "engine": {
+        "outline": [
+          [
+            -1.15,
+            -1.12
+          ],
+          [
+            1.15,
+            -1.12
+          ],
+          [
+            1.15,
+            -0.14
+          ],
+          [
+            -1.15,
+            -0.14
+          ]
+        ]
+      }
+    },
+    "hull": {
+      "1": [
+        [
+          -0.6,
+          3.37
+        ],
+        [
+          -0.6,
+          4.2,
+          0.58
+        ],
+        [
+          0.6,
+          4.2,
+          0.58
+        ],
+        [
+          0.6,
+          3.37
+        ],
+        [
+          1.13,
+          3.37,
+          0.13
+        ],
+        [
+          1.13,
+          0.07
+        ],
+        [
+          0.97,
+          -0.13
+        ],
+        [
+          -0.97,
+          -0.13
+        ],
+        [
+          -1.13,
+          0.07
+        ],
+        [
+          -1.13,
+          3.37,
+          0.13
+        ]
+      ]
+    },
     "profile": {
       "bevel": 0.12,
       "noseDrop": 0.35,
       "noseLength": 0.8,
-      "spine": null
+      "spine": {
+        "from": 0,
+        "to": 1,
+        "width": 1.5,
+        "height": 0.3
+      }
     },
     "surface": {
       "seams": true,
       "windows": [
-        "cockpit"
+        "cockpit",
+        "passage"
       ],
       "stripe": {
         "paint": "residential",
@@ -144,7 +370,30 @@ export default {
       },
       "navLights": true
     },
-    "greebles": [],
+    "greebles": [
+      {
+        "type": "vent",
+        "side": -0.35,
+        "frame": 0.5
+      },
+      {
+        "type": "vent",
+        "side": 0.35,
+        "frame": 0.5
+      },
+      {
+        "type": "antenna",
+        "side": -0.85,
+        "frame": 2.4,
+        "height": 0.8
+      },
+      {
+        "type": "dish",
+        "side": 0.8,
+        "frame": 1.6,
+        "r": 0.16
+      }
+    ],
     "view": {
       "cutaway": "hide-above"
     },

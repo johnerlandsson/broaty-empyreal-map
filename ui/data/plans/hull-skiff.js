@@ -2,7 +2,8 @@
 export default {
   "source": {
     "commit": "266aa9b",
-    "file": "content/game/hulls.yaml"
+    "file": "content/game/hulls.yaml",
+    "tweaks": "data/tweaks/hull-skiff.json"
   },
   "id": "hull-skiff",
   "name": "prospecting skiff",
@@ -39,14 +40,125 @@ export default {
     "paint": {
       "cockpit": "industrial"
     },
-    "fixtures": [],
-    "footprints": {},
-    "hull": {},
+    "fixtures": [
+      {
+        "type": "boom",
+        "side": 0,
+        "deck": 1,
+        "len": 0.83
+      },
+      {
+        "type": "prop",
+        "kind": "crate",
+        "room": "cockpit",
+        "at": [
+          0,
+          -1.23
+        ],
+        "size": [
+          0.35,
+          0.42
+        ],
+        "grid": [
+          3,
+          2
+        ],
+        "gap": 0.08
+      },
+      {
+        "type": "bell",
+        "side": -0.4,
+        "deck": 1,
+        "r": 0.15,
+        "len": 0.37
+      },
+      {
+        "type": "bell",
+        "side": 0,
+        "deck": 1,
+        "r": 0.17,
+        "len": 0.43
+      },
+      {
+        "type": "bell",
+        "side": 0.4,
+        "deck": 1,
+        "r": 0.15,
+        "len": 0.37
+      }
+    ],
+    "footprints": {
+      "cockpit": {
+        "outline": [
+          [
+            -0.8,
+            -0.62
+          ],
+          [
+            0.8,
+            -0.62
+          ],
+          [
+            0.8,
+            0.62
+          ],
+          [
+            -0.8,
+            0.62
+          ]
+        ]
+      }
+    },
+    "hull": {
+      "1": [
+        [
+          -0.67,
+          1.65
+        ],
+        [
+          0,
+          1.78
+        ],
+        [
+          0.67,
+          1.65
+        ],
+        [
+          1,
+          0.82
+        ],
+        [
+          1,
+          -0.93
+        ],
+        [
+          0.67,
+          -1.18
+        ],
+        [
+          -0.67,
+          -1.18
+        ],
+        [
+          -1,
+          -0.93
+        ],
+        [
+          -1,
+          0.82
+        ]
+      ]
+    },
     "profile": {
       "bevel": 0.12,
       "noseDrop": 0.35,
       "noseLength": 0.8,
-      "spine": null
+      "spine": {
+        "from": -1.1,
+        "to": 0.25,
+        "width": 1.25,
+        "height": 0.3
+      }
     },
     "surface": {
       "seams": true,
@@ -60,7 +172,30 @@ export default {
       },
       "navLights": true
     },
-    "greebles": [],
+    "greebles": [
+      {
+        "type": "vent",
+        "side": -0.25,
+        "frame": -0.45
+      },
+      {
+        "type": "vent",
+        "side": 0.25,
+        "frame": -0.45
+      },
+      {
+        "type": "antenna",
+        "side": -0.7,
+        "frame": 0.05,
+        "height": 0.7
+      },
+      {
+        "type": "dish",
+        "side": 0.8,
+        "frame": -0.65,
+        "r": 0.14
+      }
+    ],
     "view": {
       "cutaway": "hide-above"
     },
