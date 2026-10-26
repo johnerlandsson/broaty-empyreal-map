@@ -1,6 +1,6 @@
 // The tweak editor's page (dev/edit.html, served by npm run edit): layout A. Down the left, the
 // last sync's report and every place; in the middle, the place's overview above its plan, as the
-// panel stacks them; on the right, the selected room and the view (Task 6 fills the rest).
+// panel stacks them; on the right, the selected room and the view, edited through panel.js.
 // A room picked on either view, or in the "pretend I'm in" picker, is lit in both, as main.js
 // lights where the player is. A build the server announces that names the open place re-imports
 // its data and rebuilds the views, keeping the selection, the plan's deck and both view boxes.
@@ -8,6 +8,7 @@
 // screenshot opens them. window.editor has small hooks for later tasks and tests.
 
 import { buildPlace } from "../../ui/place-views.js";
+import { createPanel } from "./panel.js";
 
 /** The builders a station is drawn with; any other place is a ship class (stage 4). */
 const STATIONS = new Set(["decks", "drum", "town", "wheel"]);
@@ -21,7 +22,7 @@ const SHELL = `
   </div>
   <aside class="side">
     <div id="inspector"></div>
-    <div class="sec">View · whole station</div>
+    <div id="view"></div>
     <div class="row"><label for="pretend">pretend I'm in</label><select id="pretend" class="btn"></select></div>
   </aside>
 `;
@@ -79,6 +80,19 @@ export function startEditor({
   const planTag = root.querySelector("#plan-tag");
   const errbar = root.querySelector(".errbar");
   const pretend = root.querySelector("#pretend");
+  const panel = createPanel({
+    inspector: root.querySelector("#inspector"),
+    view: root.querySelector("#view"),
+    put: async (url, body) => {
+      const res = await get(url, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      return { status: res.status, body: await res.json().catch(() => ({})) };
+    },
+    place: () => place,
+    state: () => state,
+    reload: () => reload(),
+    showError: (text) => showError(text),
+    run: (p) => (editor.busy = p),
+  });
 
   let state = { places: [], report: null, palette: {}, tweaks: {} };
   let version = Date.now(); // the data version to import by; each build bumps it
@@ -174,6 +188,7 @@ export function startEditor({
     pretend.value = place.roomId ?? "";
     renderPlanTag();
     writeHash();
+    panel.render();
   }
 
   /** Build the views of the place's data, replacing any; keep is the old views' state to restore. */
@@ -223,6 +238,7 @@ export function startEditor({
     if (broken) showError(broken.error);
     await Promise.all(state.places.map((p) => load(p.id).catch(() => {})));
     renderRail();
+    panel.render();
   }
 
   /** Re-read the state, and rebuild the open place from data freshly imported. */
