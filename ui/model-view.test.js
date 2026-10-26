@@ -78,8 +78,32 @@ describe("camera", () => {
     m.set(AT_3);
     const off = (((m.phi + 3 - front) % 12) + 12) % 12;
     expect(Math.min(off, 12 - off)).toBeCloseTo(0, 9);
+    let target;
+    m.animateTo = (t) => (target = t); // catch the turn's target rather than run it
+    m.set({ kind: "room", id: "tiss.elsewhere", level: 0, x: 14 }); // hour 7
+    expect(target).toBeDefined();
+    const off7 = (((target + 7 - front) % 12) + 12) % 12;
+    expect(Math.min(off7, 12 - off7)).toBeCloseTo(0, 9);
     m.setTurning(false);
     expect(m.phi).toBeCloseTo(front, 9);
+  });
+
+  it("zoom 2 can still zoom out past the whole model", () => {
+    const m = tiss({ yaw: 40, pitch: 25, zoom: 2 });
+    for (let i = 0; i < 10; i++) m.zoom(1.5);
+    expect(m.vb[2]).toBeGreaterThanOrEqual(m.bounds[2]);
+    expect(m.vb[2]).toBeCloseTo(m.bounds[2] * 1.2, 9);
+  });
+
+  it("zoom 0.5 takes its first zoom step from home without a snap", () => {
+    const m = tiss({ yaw: 40, pitch: 25, zoom: 0.5 });
+    const w = m.home[2];
+    expect(w).toBeCloseTo(m.bounds[2] * 2, 9);
+    m.zoom(1 / 1.5);
+    expect(m.vb[2]).toBeCloseTo(w / 1.5, 9);
+    m.setView(m.home.slice());
+    m.zoom(1.5);
+    expect(m.vb[2]).toBeCloseTo(w * 1.2, 9); // out to a bit past home, the farther of the two
   });
 
   it("no camera is the default camera at zoom 1", () => {

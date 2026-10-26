@@ -164,8 +164,9 @@ export class ModelView {
     this.away = 0; // 0 as docked, 1 backed out of the berth (setAway)
     this.draw();
 
-    const W = this.home[2];
-    this.zoom = attachPanZoom(div, () => this.vb, (v) => this.setView(v), { minW: W * 0.25, maxW: W * 1.2 });
+    // from a quarter of the nearer of home and the whole model to a bit past the farther one
+    const [near, far] = [Math.min(this.home[2], this.bounds[2]), Math.max(this.home[2], this.bounds[2])];
+    this.zoom = attachPanZoom(div, () => this.vb, (v) => this.setView(v), { minW: near * 0.25, maxW: far * 1.2 });
     zoomButtons(div, "8px", (f) => {
       if (f) this.zoom(f);
       else this.setView(this.home.slice());
