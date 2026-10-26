@@ -8,8 +8,12 @@ source is only ever read. Never edit it.
 
 1. `git -C ~/dev/empyreal pull`
 2. `npm run build:data`
-3. Read the report to John: what changed, and what needs a human.
-4. `npm test`, then look at the preview (`dev/preview.html`). A golden render
+3. Read the report to John: what changed, and what needs a human. For a
+   change in look (a new room to colour, a layout that moved, an orphan
+   key), use the tweak editor (`npm run edit`, see [editor.md](editor.md))
+   or edit the tweak file by hand.
+4. `npm test`, then look at the preview (`dev/preview.html`), or the editor
+   (`npm run edit`), which draws the same places. A golden render
    (`tests/golden/`) that fails for a place the report names is expected: the
    source changed it. Check that place in `dev/preview.html`, then
    `GOLDEN_RECORD=1 npx vitest run tests/golden` and commit the goldens with
@@ -90,7 +94,8 @@ Each list is empty when there is nothing to say.
 ## Tweak files
 
 The look is in `data/tweaks/<place>.json`, one file per place, with the
-place's id as its name. Room keys are the local ids, without the area prefix
+place's id as its name. The tweak editor ([editor.md](editor.md)) edits these
+files from the browser. Room keys are the local ids, without the area prefix
 (`gallery`, not `orrin.gallery`). The colours are names from
 `data/tweaks/palette.json` (`concourse`, `residential`, `hydroponics`,
 `commons`, `offices`, `midring`, `industrial`, `docks`, `hub`). An unknown

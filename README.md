@@ -331,6 +331,11 @@ from the end and `&stop=N` stopping it N seconds in. `?action=climbing-tiss` (or
 `drag-orrin`) plays an action to its end, from the bar's menu too. `?debug` shows how often the model
 turned and redrew.
 
+**Tweak editor.** `npm run edit` serves a page on `localhost:8766` for the
+look of each place: colours, footprints, hulls and the view, with drag
+handles on the plan. It writes `data/tweaks/` and `ui/data/` only. See
+[docs/maps/editor.md](docs/maps/editor.md).
+
 ### Rebuilding the station data
 
 The station maps in `ui/data/` are built from the Empyreal source by
