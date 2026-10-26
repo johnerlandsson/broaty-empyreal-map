@@ -2,27 +2,10 @@
 // builds it, into a detached 600×400 container, its model still and drawn once, then its plan with
 // each level shown in turn; the starfields are left out. Needs a DOM (happy-dom).
 
-import botallack from "../../ui/data/botallack.js";
-import caradon from "../../ui/data/caradon.js";
-import carrow from "../../ui/data/carrow.js";
-import garrow from "../../ui/data/garrow.js";
-import gwithian from "../../ui/data/gwithian.js";
-import kilmar from "../../ui/data/kilmar.js";
-import kynance from "../../ui/data/kynance.js";
-import lamorna from "../../ui/data/lamorna.js";
-import lanyon from "../../ui/data/lanyon.js";
-import marazion from "../../ui/data/marazion.js";
-import morvah from "../../ui/data/morvah.js";
-import orrin from "../../ui/data/orrin.js";
-import penwith from "../../ui/data/penwith.js";
-import polperro from "../../ui/data/polperro.js";
-import tissData from "../../ui/data/tiss.js";
-import wenna from "../../ui/data/wenna.js";
-import zennor from "../../ui/data/zennor.js";
 import { DeckView } from "../../ui/deck-view.js";
 import { decksPlans } from "../../ui/decks-deck.js";
 import { drumPlans } from "../../ui/drum-deck.js";
-import places from "../../ui/data/places.js";
+import places, { data } from "../../ui/data/places.js";
 import { buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "../../ui/lib/decks.js";
 import { buildDrumModel, drumHour, drumKey } from "../../ui/lib/drum.js";
 import { indexStation, locate } from "../../ui/lib/locate.js";
@@ -42,7 +25,7 @@ function box() {
 
 // the builders of ui/main.js, each into its own pair of containers
 function tiss(modelEl, deckEl) {
-  const index = indexStation(tissRooms(tissData));
+  const index = indexStation(tissRooms(data.tiss));
   return { index, model: new ModelView(modelEl, index), deck: new DeckView(deckEl, index), locate };
 }
 
@@ -80,10 +63,9 @@ function town(modelEl, deckEl, data) {
 }
 
 // every place from its generated file, T.I.S.S. by its own builder
-const DATA = { botallack, caradon, carrow, garrow, gwithian, kilmar, kynance, lamorna, lanyon, marazion, morvah, orrin, penwith, polperro, wenna, zennor };
 const BUILDERS = { drum, decks, town };
 const BUILD = {
-  ...Object.fromEntries(places.filter((p) => BUILDERS[p.builder] && DATA[p.id]).map((p) => [p.id, (m, d) => BUILDERS[p.builder](m, d, DATA[p.id])])),
+  ...Object.fromEntries(places.filter((p) => BUILDERS[p.builder] && data[p.id]).map((p) => [p.id, (m, d) => BUILDERS[p.builder](m, d, data[p.id])])),
   tiss: (m, d) => tiss(m, d),
 };
 

@@ -84,8 +84,9 @@ Orrin Station was a drum until the game rebuilt it on decks (empyreal
 
 `ui/data/orrin.js` (and `morvah.js`, `gwithian.js`, `carrow.js`,
 `lanyon.js`, `kynance.js`, `marazion.js`, `penwith.js`, `botallack.js`,
-`polperro.js`, `lamorna.js`, `kilmar.js`, `caradon.js`, `garrow.js`), copied from `content/areas/orrin.yaml` (and the others) in the
-Empyreal source: each room's id, name, address, flags and exits, as the YAML has them
+`polperro.js`, `lamorna.js`, `kilmar.js`, `caradon.js`, `garrow.js`),
+generated from `content/areas/orrin.yaml` (and the others) in the Empyreal
+source: each room's id, name, address, flags and exits, as the YAML has them
 (north fore, south aft, west port, east starboard), and the area's gravity.
 Nothing is placed by hand. `parseAddress()` in `ui/lib/decks.js` reads each
 address as the game's coords do: x the side (starboard positive), y the frame
@@ -177,11 +178,13 @@ address, `DECK 3, FRAME 2 · 0 g`.
 
 ## Adding a decks station
 
-Run `npm run build:data`: it makes the data file from the area's YAML. Add
+The game adds the area. Run `npm run build:data`: it makes the data file and
+adds the station to `ui/data/places.js`, which the plugin, the tests and the
+preview all read, so no code changes. If it needs colours, add
 `data/tweaks/<place>.json` with `paint` (tints from the palette) and
-`fixtures`, or a `like` an existing station. Add its prefix and dock id to `ui/lib/stations.js`, wire
-it with `decks()` in `ui/main.js`, and add it to the tests and the preview's
-walk. The hull is always the cells' box: Kilmar's cross and Caradon's and Garrow's
+`fixtures`, or a `like` naming a station it looks like. See `sync.md`. The
+preview's walk is the one thing to add by hand, if you want the new station
+in it. The hull is always the cells' box: Kilmar's cross and Caradon's and Garrow's
 empty cells are drawn as hull, as Orrin's corners are. A hull drawn from its
 cells alone, and a blister set into a cell inside the box, were tried for the
 Mid's halts and not taken. Signs and lifts on decks aren't in

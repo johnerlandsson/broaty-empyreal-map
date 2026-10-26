@@ -63,10 +63,12 @@ each station).
 
 ## Adding a drum
 
-Run `npm run build:data` for its room data file, add `data/tweaks/<place>.json`
-choosing tints from the palette, add its prefix and dock id to
-`ui/lib/stations.js`, and add it to the drum tests and the preview's walk.
-A station that isn't laid out like these six rooms needs its own map type
+The game adds the area. Run `npm run build:data`: it makes the data file and
+adds the drum to `ui/data/places.js`, so no code changes. The game gives a
+drum no layout, so add `data/tweaks/<place>.json` with a `drum` section
+placing the rooms, tints from the palette (`paint`) and the cradles
+(`fixtures`). Without a `drum` section the build reports it as `noBuilder`.
+See `sync.md`. A station that isn't laid out like these six rooms needs its own map type
 and its own doc, as Orrin Station's decks have.
 
 ## Where it differs from the style guide

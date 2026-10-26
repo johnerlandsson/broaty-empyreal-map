@@ -17,24 +17,7 @@ import { ActionCard } from "./action-card.js";
 import { BeltView } from "./belt-view.js";
 import { carPlans, nameCar, updateCar } from "./car-deck.js";
 import { ChartView } from "./chart-view.js";
-import botallack from "./data/botallack.js";
-import caradon from "./data/caradon.js";
-import carrow from "./data/carrow.js";
-import garrow from "./data/garrow.js";
-import gwithian from "./data/gwithian.js";
-import kilmar from "./data/kilmar.js";
-import kynance from "./data/kynance.js";
-import lamorna from "./data/lamorna.js";
-import lanyon from "./data/lanyon.js";
-import marazion from "./data/marazion.js";
-import morvah from "./data/morvah.js";
-import orrin from "./data/orrin.js";
-import penwith from "./data/penwith.js";
-import places from "./data/places.js";
-import polperro from "./data/polperro.js";
-import tissData from "./data/tiss.js";
-import wenna from "./data/wenna.js";
-import zennor from "./data/zennor.js";
+import places, { data } from "./data/places.js";
 import { DeckView } from "./deck-view.js";
 import { LanesView } from "./lanes-view.js";
 import { decksPlans } from "./decks-deck.js";
@@ -60,7 +43,7 @@ const deckEl = document.getElementById("deck");
 
 /** T.I.S.S.: a wheel, its rings, hub and spine. */
 function tiss() {
-  const index = indexStation(tissRooms(tissData));
+  const index = indexStation(tissRooms(data.tiss));
   return { index, model: new ModelView(modelEl, index), deck: new DeckView(deckEl, index), lastLevel: null };
 }
 
@@ -101,10 +84,9 @@ function town(data) {
 // Each station is built the first time it shows: a model and a plan apiece, each over its own
 // starfield, cost tens of milliseconds and thousands of nodes, and most never show in a session.
 // Every place in the generated index (data/places.js) by its builder; T.I.S.S. by its own.
-const DATA = { botallack, caradon, carrow, garrow, gwithian, kilmar, kynance, lamorna, lanyon, marazion, morvah, orrin, penwith, polperro, wenna, zennor };
 const BUILDERS = { decks, drum, town };
 const BUILD = {
-  ...Object.fromEntries(places.filter((p) => BUILDERS[p.builder] && DATA[p.id]).map((p) => [p.id, () => BUILDERS[p.builder](DATA[p.id])])),
+  ...Object.fromEntries(places.filter((p) => BUILDERS[p.builder] && data[p.id]).map((p) => [p.id, () => BUILDERS[p.builder](data[p.id])])),
   tiss: () => tiss(),
 };
 const stations = {}; // station key -> its views, once built

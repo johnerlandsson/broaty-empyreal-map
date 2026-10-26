@@ -47,23 +47,7 @@
 //   ?sky=S    stand in Zennor's Square under sky S (night, dusk, dawn, low, overhead or tiss-overhead): the game's
 //             own charts from dev/sky-cases.json, shifted so a recorded moment of that sky is now; the bar's menu switches it
 
-import botallack from "../ui/data/botallack.js";
-import caradon from "../ui/data/caradon.js";
-import carrow from "../ui/data/carrow.js";
-import garrow from "../ui/data/garrow.js";
-import gwithian from "../ui/data/gwithian.js";
-import kilmar from "../ui/data/kilmar.js";
-import kynance from "../ui/data/kynance.js";
-import lamorna from "../ui/data/lamorna.js";
-import lanyon from "../ui/data/lanyon.js";
-import marazion from "../ui/data/marazion.js";
-import morvah from "../ui/data/morvah.js";
-import orrin from "../ui/data/orrin.js";
-import penwith from "../ui/data/penwith.js";
-import polperro from "../ui/data/polperro.js";
-import tissData from "../ui/data/tiss.js";
-import wenna from "../ui/data/wenna.js";
-import zennorFile from "../ui/data/zennor.js";
+import { data } from "../ui/data/places.js";
 import { TRAM, ZENNOR_WALK } from "./zennor-walk.js";
 import skyCases from "./sky-cases.json" with { type: "json" };
 import { DeckView } from "../ui/deck-view.js";
@@ -78,15 +62,13 @@ import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts, senaraContacts } 
 
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
-const station = tissRooms(tissData); // the wheel's rooms, placed
-const zennor = townData(zennorFile); // its rooms on foot, and the tram as a car
+const station = tissRooms(data.tiss); // the wheel's rooms, placed
+const zennor = townData(data.zennor); // its rooms on foot, and the tram as a car
 // the area's gravity and name, as the game sends them
 const town = zennor.rooms.map((r) => ({ ...r, gravity: zennor.area.gravity, areaName: zennor.area.name }));
 const DATA = [
   station.rooms,
-  orrin.rooms,
-  wenna.rooms,
-  ...[morvah, gwithian, carrow, lanyon, kynance, marazion, penwith, botallack, polperro, lamorna, kilmar, caradon, garrow].map((d) => d.rooms),
+  ...Object.entries(data).filter(([id]) => id !== "tiss" && id !== "zennor").map(([, d]) => d.rooms),
   town,
 ];
 const byId = new Map(DATA.flat().map((r) => [r.id, r]));

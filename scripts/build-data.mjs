@@ -64,6 +64,22 @@ function previousReport(path) {
   }
 }
 
+/**
+ * The index module: a static import of every place file, the index array as default, and `data`,
+ * id -> place data, so a new place needs no code change. Names are JS-safe; two ids that clash throw.
+ */
+function indexText(commit, places) {
+  const names = new Map();
+  for (const { id } of places) {
+    const name = `place_${id.replace(/\W/g, "_")}`;
+    if ([...names.values()].includes(name)) throw new Error(`area ${id}: its name as an import clashes with another area's`);
+    names.set(id, name);
+  }
+  const imports = places.map(({ id }) => `import ${names.get(id)} from ${JSON.stringify(`./${id}.js`)};`);
+  const data = places.map(({ id }) => `  ${JSON.stringify(id)}: ${names.get(id)},`);
+  return `${STAMP}${commit ?? "unknown"}. Do not edit.\n${imports.join("\n")}\n\nexport default ${JSON.stringify(places, null, 2)};\n\nexport const data = {\n${data.join("\n")}\n};\n`;
+}
+
 /** The ids of generated place files in the out dir (stamped; hand-made files aren't). */
 function generatedIds(outDir) {
   if (!existsSync(outDir)) return [];
@@ -181,7 +197,7 @@ export async function build({ source, tweaksDir, outDir, reportPath }) {
   report.removedPlaces.push(...gone.map((place) => ({ place })));
 
   places.sort((a, b) => (a.id < b.id ? -1 : 1));
-  files.set(join(outDir, "places.js"), moduleText(src.commit, places));
+  files.set(join(outDir, "places.js"), indexText(src.commit, places));
   sortReport(report);
   files.set(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 

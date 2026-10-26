@@ -19,7 +19,7 @@ landed there: while landed, Ship.Status `location` is the port's id,
 
 ## Where its data comes from
 
-`ui/data/zennor.js`, copied from `content/areas/zennor.yaml` in the Empyreal
+`ui/data/zennor.js`, generated from `content/areas/zennor.yaml` in the Empyreal
 source: each room's id, name, district, flags and exits as the YAML has them
 (an exit `via: steps` as `{ to, via, seconds }`), the area's name, gravity
 and districts (id, name, entrance), and the tram car's stops bottom to top in
@@ -307,11 +307,12 @@ address, so the district and the town stand where an address would. In the
 
 ## Adding a town
 
-Run `npm run build:data`: it makes the data file from the area's YAML. Add
-`data/tweaks/<place>.json` with `paintDistricts` and a `town` section (root,
-uphill, open ground, gate, wells, river, scarp). Add its prefix and port id to `ui/lib/stations.js`,
-wire it with `town()` in `ui/main.js`, and add it to the tests and the
-preview's walk. The skyline is Zennor's valley; a second town would want its
+The game adds the area. Run `npm run build:data`: it makes the data file and
+adds the town to `ui/data/places.js`, so no code changes. The game gives a
+town no layout, so add `data/tweaks/<place>.json` with `paintDistricts` and a
+`town` section (root, uphill, open ground, gate, wells, river, scarp).
+Without a `town` section the build reports it as `noBuilder`. See `sync.md`.
+The skyline is Zennor's valley; a second town would want its
 own section and places for its districts. The sky works for any port the
 charts place: `SkyView` takes the port's id, and `SHORT` in `ui/lib/sky.js`
 the short names of the stations over it. The river is drawn only for an

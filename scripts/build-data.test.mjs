@@ -46,6 +46,9 @@ function setup(places = placed) {
 
 const load = async (file) => (await import(`data:text/javascript,${encodeURIComponent(readFileSync(file, "utf8"))}`)).default;
 
+// places.js imports its place files, so it loads from its path (a fresh URL each time, past the cache)
+const loadIndex = async (file) => (await import(`${file}?${Math.random()}`)).default;
+
 const lists = (r) => [r.newPlaces, r.removedPlaces, r.noBuilder, ...Object.values(r.rooms), ...Object.values(r.exits), r.unplaced, r.orphans, r.droppedFlags, r.unknownFields];
 
 describe("build", () => {
@@ -57,11 +60,24 @@ describe("build", () => {
       { place: "wheelie", builder: "wheel" },
     ]);
     expect(report.rooms).toEqual({ added: [], removed: [], renamed: [] });
-    expect(await load(join(opts.outDir, "places.js"))).toEqual([
+    expect(await loadIndex(join(opts.outDir, "places.js"))).toEqual([
       { id: "mini", prefix: "mini", builder: "decks", docks: ["mini"] },
       { id: "wheelie", prefix: "wheelie", builder: "wheel", docks: ["wheelie"] },
     ]);
     expect(JSON.parse(readFileSync(opts.reportPath, "utf8"))).toEqual(report);
+  });
+
+  it("writes places.js with a static import of every place and their data by id", async () => {
+    const opts = setup();
+    await build(opts);
+    const text = readFileSync(join(opts.outDir, "places.js"), "utf8");
+    expect(text).toContain('import place_mini from "./mini.js";');
+    expect(text).toContain('import place_wheelie from "./wheelie.js";');
+    expect(text).toContain('  "mini": place_mini,');
+    const mod = await import(`${join(opts.outDir, "places.js")}?data`);
+    expect(Object.keys(mod.data)).toEqual(["mini", "wheelie"]);
+    expect(mod.data.mini.id).toBe("mini");
+    expect(mod.default.map((p) => p.id)).toEqual(["mini", "wheelie"]);
   });
 
   it("writes each place in the spec's shape, stamped and with the palette inlined", async () => {
@@ -202,7 +218,7 @@ describe("build", () => {
     expect(report.removedPlaces).toEqual([{ place: "mini" }]);
     expect(existsSync(join(opts.outDir, "mini.js"))).toBe(false);
     expect(existsSync(join(opts.outDir, "hand.js"))).toBe(true);
-    expect((await load(join(opts.outDir, "places.js"))).map((p) => p.id)).toEqual(["wheelie"]);
+    expect((await loadIndex(join(opts.outDir, "places.js"))).map((p) => p.id)).toEqual(["wheelie"]);
     expect((await build(opts)).report.removedPlaces).toEqual([]);
   });
 
@@ -233,7 +249,7 @@ describe("build", () => {
     expect(report.noBuilder).toEqual([{ place: "nowhere", file: "content/areas/nowhere.yaml" }]);
     expect(report.newPlaces.map((p) => p.place)).toEqual(["mini", "wheelie"]);
     expect(existsSync(join(opts.outDir, "nowhere.js"))).toBe(false);
-    expect((await load(join(opts.outDir, "places.js"))).map((p) => p.id)).toEqual(["mini", "wheelie"]);
+    expect((await loadIndex(join(opts.outDir, "places.js"))).map((p) => p.id)).toEqual(["mini", "wheelie"]);
   });
 
   it("builds a none area with a drum tweak as a drum", async () => {
