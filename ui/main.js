@@ -11,13 +11,14 @@
 // keeps the plan where it was). The system chart (◎), the lanes map (⋈) or the belt map can cover the
 // top band, one at a time; while one does, the space scene doesn't draw. Docking and undocking, the station
 // model shows through the space scene, drawing near or falling away on the game's clock. What you're
-// doing (Char.Action) is a card in the deck band's corner, over whichever plan shows; the overview is
-// left as it is. Station time (Empyreal time, from the game's clock) is a tab on the rule between the
+// doing (Char.Action) is a card in the deck band's corner, over whichever plan shows, and so is her waiting
+// on Control's clearance for a dock or an undock; the overview is left as it is. Station time (Empyreal time, from the game's clock) is a tab on the rule between the
 // bands, once the game has sent it.
 // Until the game says where you are, both bands show an unknown location (unknown-view.js), and no
 // station is built till one is picked.
 
 import { ActionCard } from "./action-card.js";
+import { clearanceCard } from "./lib/action.js";
 import { BeltView } from "./belt-view.js";
 import { carPlans, nameCar, updateCar } from "./car-deck.js";
 import { ChartView } from "./chart-view.js";
@@ -70,6 +71,7 @@ space.onAway = (away) => stations[current]?.model.setAway?.(away);
 let unknown = new UnknownView(modelEl, deckEl); // both bands until the game says where you are
 const doing = new ActionCard(deckEl);
 const moving = new ActionCard(deckEl, moveCard); // her thrusters, or closing on a rock, under yours
+const waiting = new ActionCard(deckEl, clearanceCard); // waiting on Control to dock or undock, under that
 const info = document.getElementById("info");
 const clock = new StationClock(document.querySelector("main.station")); // station time, on the rule between the bands
 const panel = window.panel;
@@ -297,6 +299,9 @@ panel.on("manoeuvre", (msg) => {
   }
   render();
 });
+
+// Called in or out, she waits for Control's answer; the run, once cleared, is the manoeuvre message's.
+panel.on("clearance", (msg) => waiting.set(msg));
 
 panel.on("charts", (msg) => {
   chart.setCharts(msg);

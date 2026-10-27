@@ -15,7 +15,7 @@
 //             orbit over Tamsin, which also emits charts and chart-ship putting her on that side, or on no
 //             side known); the bar's menu switches it
 //   ?hull=H   aboard a ship, send hull H (skiff, courier, freighter or tug: ui/data/ships.js) as the server will;
-//             the bar's menu switches it. With no ?step (and no manoeuvre, action or sky) it opens aboard the
+//             the bar's menu switches it. With no ?step (and no manoeuvre, clearance, action or sky) it opens aboard the
 //             Magpie with that hull, in her room ?room=K (cockpit when absent; the hold, the engine...), so
 //             with ?scene (belt, port-day...) your own ship stands in front of the scene in the top band
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
@@ -44,6 +44,10 @@
 //             (dock-orrin, 20 s), with the manoeuvre and scene messages the Lua side posts, the scene
 //             changing as the run ends; ?left=N opens it with N s left, as a panel opened mid-run;
 //             ?stop=N stops it N s in, as `stop` or a fault does, so it eases back; the bar's menu switches it
+//   ?clearance=C  aboard the Magpie, wait on Control's clearance and then go, with the clearance message
+//             the Lua side posts: undock-tiss (3 s, then the undock), dock-orrin-queued (10 s behind
+//             other ships' calls, then the dock) or land-zennor (1 s, the automated voice, over Zennor;
+//             the overview draws no landing); ?stop=N stops it N s into the wait; the bar's menu switches it
 //   ?action=A play what you're doing, as the Lua side posts Char.Action (climbing on T.I.S.S., repair aboard the skiff in
 //             three stages, or dragging a crate on Orrin): it runs to its end, a move landing you in the next room;
 //             the bar's menu switches it
@@ -398,13 +402,14 @@ const MANOEUVRES = {
 const manoeuvreMenu = document.getElementById("manoeuvre");
 let manoeuvreTimers = [];
 
-function emitManoeuvre(name) {
+/** Play manoeuvre `name`, by default with ?left and ?stop; a run after a wait for clearance (emitClearance) has neither. */
+function emitManoeuvre(name, opts = { left: q.get("left"), stop: q.get("stop") }) {
   manoeuvreTimers.forEach(clearTimeout);
   manoeuvreTimers = [];
   const m = MANOEUVRES[name];
   if (!m) return fp.emit("manoeuvre", { verb: null });
-  const left = q.has("left") ? Math.max(0, Math.min(m.total, Number(q.get("left")) || 0)) : m.total;
-  const stop = q.has("stop") ? Number(q.get("stop")) : null;
+  const left = opts.left != null ? Math.max(0, Math.min(m.total, Number(opts.left) || 0)) : m.total;
+  const stop = opts.stop != null ? Number(opts.stop) : null;
   emitLocation(COCKPIT);
   fp.emit("scene", m.before);
   fp.emit("manoeuvre", { verb: m.verb, left, total: m.total, at: m.at });
@@ -424,6 +429,45 @@ function emitManoeuvre(name) {
   });
 }
 manoeuvreMenu.addEventListener("change", () => emitManoeuvre(manoeuvreMenu.value));
+
+// --- waiting on Control's clearance: the clearance message (src/station_map/clearance.lua), then the run ---
+
+// Each the wait in seconds (Control answers two to four seconds on, the automated voice one, longer
+// behind other ships' calls) and the manoeuvre that follows, if the overview draws one.
+const CLEARANCES = {
+  "undock-tiss": { verb: "undock", at: "T.I.S.S.", wait: 3, run: "undock-tiss", scene: { scene: "station", station: "tiss" } },
+  "dock-orrin-queued": { verb: "dock", at: "Orrin Station", wait: 10, run: "dock-orrin", scene: { scene: "parked" } },
+  "land-zennor": { verb: "dock", at: "Zennor", wait: 1, run: null, scene: "port-day" },
+};
+const clearanceMenu = document.getElementById("clearance");
+let clearanceTimer = 0;
+
+function emitClearance(name) {
+  clearTimeout(clearanceTimer);
+  emitManoeuvre(""); // a run under way ends
+  const c = CLEARANCES[name];
+  if (!c) return fp.emit("clearance", { verb: null });
+  const stop = q.has("stop") ? Number(q.get("stop")) : null;
+  emitLocation(COCKPIT);
+  if (typeof c.scene === "string") emitScene(c.scene);
+  else fp.emit("scene", c.scene);
+  fp.emit("clearance", { verb: c.verb, at: c.at });
+  status.textContent = `${name} · awaiting clearance ${c.wait} s${stop !== null && stop < c.wait ? ` · stops ${stop} s in` : ""}`;
+  if (stop !== null && stop < c.wait) {
+    clearanceTimer = setTimeout(() => {
+      fp.emit("clearance", { verb: null });
+      status.textContent = `${name} · stopped`;
+    }, stop * 1000);
+    return;
+  }
+  clearanceTimer = setTimeout(() => {
+    // cleared: Ship.Devices comes again with `left`, the wait ends and the run starts
+    fp.emit("clearance", { verb: null });
+    if (c.run) emitManoeuvre(c.run, {});
+    else status.textContent = `${name} · cleared`;
+  }, c.wait * 1000);
+}
+clearanceMenu.addEventListener("change", () => emitClearance(clearanceMenu.value));
 
 hullMenu.addEventListener("change", () => {
   if (lastMsg?.roomId?.startsWith("ship.")) fp.emit("location", structuredClone(withHull(lastMsg, true)));
@@ -940,6 +984,10 @@ function start() {
     manoeuvreMenu.value = q.get("manoeuvre");
     emitManoeuvre(manoeuvreMenu.value);
   }
+  if (q.has("clearance")) {
+    clearanceMenu.value = q.get("clearance");
+    emitClearance(clearanceMenu.value);
+  }
   if (q.has("action")) {
     actionMenu.value = q.get("action");
     emitAction(actionMenu.value);
@@ -956,7 +1004,7 @@ function start() {
     walk(n ?? 0, Math.min(until, ROUTE.length - 1));
     return;
   }
-  if (n === null && q.has("hull") && !q.has("manoeuvre")) {
+  if (n === null && q.has("hull") && !q.has("manoeuvre") && !q.has("clearance")) {
     // aboard her, in your room: with a space scene, her model in front of it
     const key = q.get("room") || "cockpit";
     emitLocation(withHull({ ...COCKPIT, roomId: `ship.41.${key}`, name: key === "cockpit" ? COCKPIT.name : key }, true));
@@ -964,7 +1012,7 @@ function start() {
     return;
   }
   if (n === null) {
-    if (!q.has("manoeuvre")) show(1); // Main Concourse
+    if (!q.has("manoeuvre") && !q.has("clearance")) show(1); // Main Concourse
     return;
   }
   show(n);

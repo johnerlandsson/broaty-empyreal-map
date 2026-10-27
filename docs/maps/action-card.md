@@ -1,6 +1,6 @@
 # What you're doing
 
-*Status: built. Last updated 2026-10-24.*
+*Status: built. Last updated 2026-10-27.*
 
 ## What it is and when it shows
 
@@ -54,6 +54,23 @@ while closing comes with no message.
 └ ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬──────── ┘
 ```
 
+**Waiting on Control's clearance** is a third card under those: `awaiting
+clearance · T.I.S.S.`, a port's name for a landing or a lift-off (`awaiting
+clearance · Zennor`), a ship's for docking at one (`awaiting clearance · the
+Full Measure`), plain `awaiting clearance` when her status names nowhere. It
+has no seconds and no bar: the game sends no countdown for the wait. `dock`
+and `undock` (land and lift too) call on the system's traffic and wait for
+the answer (Empyreal 96249e1, channels.md decision 39): a controller two to
+four seconds on, the automated voice one, longer behind other ships' calls.
+It goes as she's cleared and the run starts (the overview's dock or undock,
+[space-scenes.md](space-scenes.md)), as she stops, as you step off her and
+on a disconnect.
+
+```
+┌ awaiting clearance · T.I.S.S.     ┐
+└───────────────────────────────────┘
+```
+
 ## Where its data comes from
 
 GMCP `Char.Action` (`~/dev/empyreal`, docs/actions.md §9 and §13 step 4,
@@ -85,6 +102,18 @@ verb, label, stage, stages, ends, total, queued } }`, or `{}` for nothing:
 
 Posted as `action` on each change, replayed on `ready` while something's under
 way, and cleared on disconnect.
+
+The clearance card's is `Ship.Devices`: waiting, the nav is busy `dock` or
+`undock` with `left` null (the game's own test is space.ts
+`awaitingClearance()`); cleared, the frame comes again with `left` and the
+run is `manoeuvre.lua`'s, which times nothing till then.
+`src/station_map/clearance.lua` folds it into `{ verb, at }`, or `{ verb =
+nil }`. Where she waits is her `Ship.Status` text's, `awaiting clearance at
+<place>`, which the game sends just before `Ship.Devices`; it only names the
+place, kept till the wait ends, and whether she waits is `Ship.Devices`'
+alone. A null `Ship.Status` (off her) ends it, as `Ship.Devices` stops coming.
+Posted as `clearance` on each change, replayed on `ready` while she waits,
+and cleared on disconnect.
 
 ## Top band
 
@@ -132,12 +161,19 @@ Unchanged: it says where you are, and the card says what you're doing.
 - `ui/action-card.js`: the card, its bar's animation and its timer; given
   `moveCard` (`ui/lib/space.js`, tested in `ui/lib/space.test.js`) it's the
   ship's move, which also wakes at `recheck` to go when she's stopped.
+- `src/station_map/clearance.lua`: the clearance reducer; `tests/clearance_test.lua`,
+  and the wait being no run in `tests/manoeuvre_test.lua`. `clearanceCard(msg)`
+  in `ui/lib/action.js` gives its card; the third card's wiring is
+  `ui/clearance-card.test.js`.
 - `ui/map.css`: `.action-cards` (the stack in the corner) and `.action-card`.
 - `dev/preview.js`: `?action=climbing-tiss`, `repair-skiff` and `drag-orrin`
   (and the bar's menu) play an action to its end. The repair goes through its
   three stages with a line waiting, and a move lands you in the next room.
   `?move=rcs-out`, `closing-cut` and `halted` show the ship's card; with
-  `&action=repair-skiff` too, both stack.
+  `&action=repair-skiff` too, both stack. `?clearance=undock-tiss` (3 s),
+  `dock-orrin-queued` (10 s, behind other calls) and `land-zennor` (1 s, the
+  automated voice) wait aboard the Magpie and then go into the run; `&stop=N`
+  stops N s into the wait.
 
 ## Where it differs from the style guide
 
