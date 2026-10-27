@@ -106,6 +106,18 @@ describe("footprint handles", () => {
     for (const side of ["fore", "aft", "port", "starboard"]) expect(handle(`span-${side}`)).toBeTruthy();
   });
 
+  it("draws them as amber arrows pointing out, unlike the hull's blue squares", async () => {
+    await start("#orrin/orrin.freight");
+    const fore = handle("span-fore");
+    expect(fore.tagName.toLowerCase()).toBe("path");
+    expect(fore.getAttribute("fill")).toBe("#e8b04a");
+    // the tip is above the side's middle: fore is up on the plan
+    const c = editor.place.views.deck.plans[editor.place.views.deck.level].layout.cells.find((x) => x.room.id === "orrin.freight");
+    const [tx, ty] = fore.getAttribute("d").slice(1).split("L")[0].split(",").map(Number);
+    expect(tx).toBeCloseTo(c.cx);
+    expect(ty).toBeLessThan(c.cy - c.h / 2);
+  });
+
   it("tries footprints.freight.span.aft 1 for the Freight Office's aft handle dragged one frame down", async () => {
     await start("#orrin/orrin.freight");
     await drag(handle("span-aft"), 0, 100);

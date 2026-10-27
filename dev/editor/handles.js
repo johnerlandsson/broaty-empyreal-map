@@ -1,5 +1,6 @@
 // The tweak editor's drag handles, on a decks place's plan, in an overlay <g class="handles"> over
-// the plan's deck: a square mid-way along each side of the selected room's box, dragging that
+// the plan's deck: an amber arrow mid-way along each side of the selected room's box, pointing out
+// the way its span grows (option B of docs/maps/reference/editor-handles-options.png), dragging that
 // side's span (snapped to 0.05 cells, never below 0); the deck's hull path in blue with a square on
 // each point and a ring with its r on a rounded one, as row 3 of
 // docs/maps/reference/hull-path-options.png (a point drags, snapped to 0.01; a double-click on an
@@ -21,6 +22,7 @@ import { el } from "../../ui/lib/svg.js";
 import { addHullPoint, moveFixture, moveGreeble, moveHullPoint, removeHullPoint, setFootprint, setHull } from "./ops.js";
 
 const EDIT = "#5aa9ff";
+const SPAN = "#e8b04a"; // a room's side, unlike the hull's points
 const DARK = "#04060c";
 const SQUARE = 9; // a handle's size, in plan units
 /** Each footprint side's way out, in cells: x to starboard, y fore. */
@@ -244,13 +246,25 @@ export function createHandles({ place, resolved, change, preview, flush, restore
     return r;
   }
 
+  /** An arrow at (x, y) pointing out of a room's side, that starts a drag of spec. */
+  function arrow(g, name, x, y, side, spec) {
+    const s = SQUARE * 0.9;
+    const [ox, oy] = [OUT[side][0], -OUT[side][1]]; // on the plan, fore is up
+    const [nx, ny] = [-oy, ox];
+    const at = (u, v) => `${x + ox * u + nx * v},${y + oy * u + ny * v}`;
+    const a = el("path", { d: `M${at(s, 0)}L${at(-2, s * 0.8)}L${at(-2, -s * 0.8)}Z`, fill: SPAN, stroke: DARK, "stroke-width": 1, "stroke-linejoin": "round", cursor: ox ? "ew-resize" : "ns-resize" }, g);
+    a.dataset.handle = name;
+    a.addEventListener("pointerdown", (e) => begin(e, spec));
+    return a;
+  }
+
   function drawFootprint(g, p, layout) {
     const room = p.roomId && p.views.index.byId.get(p.roomId);
     if (!room || room.passage || room.blister || room.footprint?.outline) return; // an outline drawn by hand has no span
     const c = layout.cells.find((x) => x.room.id === room.id && x.kind === "room");
     if (!c) return; // on another deck
     const at = { fore: [c.cx, c.cy - c.h / 2], aft: [c.cx, c.cy + c.h / 2], port: [c.cx - c.w / 2, c.cy], starboard: [c.cx + c.w / 2, c.cy] };
-    for (const [side, [x, y]] of Object.entries(at)) square(g, `span-${side}`, x, y, { kind: "span", side, local: local(room.id) });
+    for (const [side, [x, y]] of Object.entries(at)) arrow(g, `span-${side}`, x, y, side, { kind: "span", side, local: local(room.id) });
   }
 
   function drawHull(g, p, layout, deck) {
