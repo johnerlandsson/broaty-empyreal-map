@@ -10,7 +10,12 @@
 // opened with buildShip as the panel draws a ship, her rooms' "{name}" filled with EXAMPLE.
 // On a decks place or a plan the plan carries drag handles (handles.js): a drag patches the open place's
 // look in memory and the views are rebuilt from it at most once a frame, the plan's cells kept
-// where they were on the screen, until the save on release.
+// where they were on the screen, until the change on release.
+// Changes stay unsaved (panel.js) until Save, in the bar over the map (option A of
+// docs/maps/reference/editor-save-options.png), which says what's unsaved and where; the rail dots
+// each place with any. While edits are unsaved, a place the last trial build changed is drawn
+// from that trial (served by the edit server), else from ui/data. Leaving the page with any asks
+// first; Ctrl+S saves.
 
 import { locateDecks } from "../../ui/lib/decks.js";
 import { buildPlace, buildShip } from "../../ui/place-views.js";
@@ -23,7 +28,7 @@ const EXAMPLE = "Example";
 const SHELL = `
   <nav class="rail"></nav>
   <div class="middle">
-    <div class="pane"><span class="tag">overview</span><div id="model"></div></div>
+    <div class="pane"><div class="savebar" hidden></div><span class="tag">overview</span><div id="model"></div></div>
     <div class="rule"></div>
     <div class="pane"><span class="tag" id="plan-tag">plan</span><div id="deck"></div><div class="errbar" hidden></div></div>
   </div>
@@ -74,14 +79,17 @@ const named = (plan) => ({ ...plan, rooms: (plan?.rooms ?? []).map((r) => (typeo
 /**
  * Starts the page in root.
  * @param {{root?: Element, fetch?: typeof fetch, EventSource?: typeof EventSource,
- *   importPlace?: (id: string, version: number, kind: "place" | "plan") => Promise<object>}} [deps]
+ *   importPlace?: (id: string, version: number, kind: "place" | "plan", trial?: number) => Promise<object>}} [deps]
  *   the page's own by default; tests pass stubs.
  */
 export function startEditor({
   root = document.body,
   fetch: get = (...a) => window.fetch(...a),
   EventSource: Events = window.EventSource,
-  importPlace = (id, version, kind) => import(/* @vite-ignore */ `/ui/data/${kind === "plan" ? "plans/" : ""}${id}.js?v=${version}`).then((m) => m.default),
+  importPlace = (id, version, kind, trial) =>
+    import(/* @vite-ignore */ trial != null ? `/api/trial/${trial}/${kind === "plan" ? "plans/" : ""}${id}.js` : `/ui/data/${kind === "plan" ? "plans/" : ""}${id}.js?v=${version}`).then(
+      (m) => m.default,
+    ),
 } = {}) {
   root.innerHTML = SHELL;
   const rail = root.querySelector(".rail");
@@ -90,24 +98,30 @@ export function startEditor({
   const planTag = root.querySelector("#plan-tag");
   const errbar = root.querySelector(".errbar");
   const pretend = root.querySelector("#pretend");
+  const savebar = root.querySelector(".savebar");
   const panel = createPanel({
     inspector: root.querySelector("#inspector"),
     view: root.querySelector("#view"),
-    put: async (url, body) => {
-      const res = await get(url, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    send: async (method, url, body) => {
+      const res = await get(url, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       return { status: res.status, body: await res.json().catch(() => ({})) };
     },
     place: () => place,
     state: () => state,
-    reload: () => reload(),
+    refresh: () => fetchState(),
     showError: (text) => showError(text),
     run: (p) => (editor.busy = p),
+    tried: (next) => tried(next),
+    changedPending: () => {
+      renderBar();
+      renderRail();
+    },
     hullPoint: () => handles.picked(),
   });
   const handles = createHandles({
     place: () => place,
     resolved: panel.resolved,
-    save: panel.save,
+    change: panel.change,
     preview: (look) => preview(look),
     flush: () => flush(),
     restore: (look) => {
@@ -128,6 +142,7 @@ export function startEditor({
   const data = new Map(); // place id -> its data at `version`
   const changed = new Set(); // place ids rebuilt since their data was imported
   let place = null; // {id, builder, kind, data, views, roomId, lastLevel}; a plan's builder is decks
+  let trial = null; // the last trial build of the unsaved edits: {n, changed: Set of ids it changed}
 
   /** The place or plan by id, as the state lists it: {id, builder, kind}, or undefined. */
   const entryOf = (id) => {
@@ -139,7 +154,7 @@ export function startEditor({
   const load = async (id, kind = entryOf(id)?.kind ?? "place") => {
     if (!data.has(id) || changed.has(id)) {
       changed.delete(id);
-      const fresh = await importPlace(id, version, kind);
+      const fresh = await importPlace(id, version, kind, trial?.changed.has(id) ? trial.n : undefined);
       data.set(id, kind === "plan" ? named(fresh) : fresh);
     }
     return data.get(id);
@@ -150,6 +165,38 @@ export function startEditor({
     errbar.hidden = !text;
   }
 
+  /** The bar over the map: what's unsaved, in which files, and Save and Discard; hidden with nothing unsaved. */
+  function renderBar() {
+    const { count, files, stale, checking } = panel.pending();
+    savebar.hidden = !count;
+    savebar.parentElement.classList.toggle("saving", !!count);
+    if (!count) return savebar.replaceChildren();
+    const what = h("span", "pend", `● ${plural(count, "unsaved change")}`);
+    const list = h("span", "files");
+    for (const [name, n] of files) list.append(h("span", stale.includes(name) ? "stale" : null, `${name}.json · ${n}`));
+    const check = h("span", "checking", checking ? "checking…" : "");
+    const discard = h("button", "btn discard", "Discard");
+    discard.name = "discard";
+    discard.addEventListener("click", () => panel.discard());
+    const save = h("button", "btn save", files.length === 1 ? "Save" : `Save ${files.length} files`);
+    save.name = "save";
+    save.disabled = checking || stale.length > 0;
+    save.addEventListener("click", () => panel.saveAll());
+    savebar.replaceChildren(what, list, check, h("span", "gap"), discard, save);
+  }
+
+  /**
+   * Has the views drawn from a trial build of the unsaved edits, or from ui/data again (null): each
+   * place it or the last changed is imported afresh, the open one rebuilt as it was.
+   */
+  async function tried(next) {
+    const ids = new Set([...(trial?.changed ?? []), ...(next?.changed ?? [])]);
+    trial = next ? { n: next.trial, changed: new Set(next.changed) } : null;
+    for (const id of ids) changed.add(id);
+    renderRail();
+    if (place && ids.has(place.id)) await rebuild();
+  }
+
   function renderRail() {
     rail.replaceChildren();
     const open = (id) => () => openPlace(id).catch((err) => showError(err.message));
@@ -157,7 +204,13 @@ export function startEditor({
       const it = h("div", "it");
       it.dataset.place = id;
       it.classList.toggle("on", id === place?.id);
-      it.append(h("span", null, label));
+      const name = h("span", null, label);
+      if (unsaved.has(id)) {
+        const dot = h("i", "dot");
+        dot.title = "unsaved";
+        name.append(dot);
+      }
+      it.append(name);
       for (const [cls, text] of badges) it.append(h("span", `badge ${cls}`, text));
       it.addEventListener("click", open(id));
       return it;
@@ -165,6 +218,7 @@ export function startEditor({
     const nameOf = (id) => data.get(id)?.name ?? id;
     const plans = state.plans ?? [];
     const known = new Set([...state.places, ...plans].map((p) => p.id));
+    const unsaved = new Set(panel.pending().files.map(([name]) => name));
 
     const report = state.report;
     rail.append(h("div", "grp", report?.commit ? `From the last sync · ${report.commit}` : "From the last sync"));
@@ -322,6 +376,7 @@ export function startEditor({
     for (const id of data.keys()) changed.add(id);
     await fetchState();
     if (place) await rebuild();
+    await panel.rebase();
   }
 
   async function onBuilt(event) {
@@ -330,6 +385,7 @@ export function startEditor({
     showError(null);
     await fetchState();
     if (place && event.changed?.includes(place.id)) await rebuild();
+    await panel.rebase();
   }
 
   const editor = {
@@ -347,6 +403,8 @@ export function startEditor({
     /** Stops listening on the window and to the server, so a test's editor is gone after it. */
     stop: () => {
       window.removeEventListener("hashchange", onHash);
+      window.removeEventListener("beforeunload", onLeave);
+      window.removeEventListener("keydown", onSaveKey);
       handles.stop();
       events.close?.();
       if (frame != null) cancelAnimationFrame(frame);
@@ -366,6 +424,20 @@ export function startEditor({
     else if (roomId !== place.roomId) select(roomId);
   }
   window.addEventListener("hashchange", onHash);
+
+  // leaving with edits unsaved asks first; Ctrl+S (or Cmd+S) saves
+  function onLeave(e) {
+    if (!panel.pending().count) return;
+    e.preventDefault();
+    e.returnValue = "";
+  }
+  function onSaveKey(e) {
+    if (e.key !== "s" || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+    e.preventDefault();
+    if (panel.pending().count) panel.saveAll();
+  }
+  window.addEventListener("beforeunload", onLeave);
+  window.addEventListener("keydown", onSaveKey);
 
   // The stream drops while the server is down; EventSource reconnects by itself. A build announced
   // meanwhile is lost, so on each reopen after the first the page reloads (which clears the bar).

@@ -9,8 +9,9 @@
 // side, and a circle on each greeble on the top deck, which drags in side and frame.
 // Footprints only on rooms that aren't passages or blisters (nor drawn by hand, as an outline),
 // the hull only on a deck inside it.
-// A drag patches the open place's look as it goes, for the page to redraw, and saves on release
-// through the panel's save flow; a save refused puts back the look the last build gave. A hull path or
+// A drag patches the open place's look as it goes, for the page to redraw, and makes its change on
+// release through the panel (kept unsaved once a trial build passes); a change refused puts back
+// the look the last build gave. A hull path or
 // the fixtures or greebles only inherited through `like` are copied into the place's own tweak on
 // its first edit, as the ops edit only the place's own.
 
@@ -49,7 +50,7 @@ export function ownGreebles(t, inherited) {
 /**
  * Starts the handles. Nothing is drawn until draw().
  * @param {{place: () => object | null, resolved: (placeId: string, keyPath: string[]) => {value: unknown},
- *   save: (name: string, edit: (t: object) => object) => Promise<number | undefined>,
+      change: (name: string, edit: (t: object) => object) => Promise<{ok: boolean}>,
  *   preview: (look: object) => void, flush: () => void, restore: (look?: object) => void,
  *   run: (p: Promise<void>) => void, changed: () => void, editable: () => boolean,
  *   showError: (text: string | null) => void}} deps the page's: `preview` sets the open place's
@@ -57,7 +58,7 @@ export function ownGreebles(t, inherited) {
  *   (the last built one, given none) and redraws now; `changed` is called when the picked hull point changes
  * @returns {{draw: () => void, picked: () => number | null, stop: () => void}}
  */
-export function createHandles({ place, resolved, save, preview, flush, restore, run, changed, editable, showError }) {
+export function createHandles({ place, resolved, change, preview, flush, restore, run, changed, editable, showError }) {
   let layer = null; // the overlay drawn last
   let drag = null; // the drag going on
   let pick = null; // {placeId, deck, i}: the hull point picked
@@ -88,15 +89,14 @@ export function createHandles({ place, resolved, save, preview, flush, restore, 
   };
 
   /**
-   * Saves `edit` of the open place's tweak. If the build refuses it, puts back the last built look:
-   * not the one before the edit, which may be an earlier preview still saving, and refused too.
+   * Makes `edit` of the open place's tweak. If the trial build refuses it, puts back the last built
+   * look: not the one before the edit, which may be an earlier preview still being tried, and refused too.
    */
   function commit(edit, { refused } = {}) {
     const id = place().id;
     run(
-      save(id, edit).then(({ status, written }) => {
-        // a 409 has reloaded the place already
-        if (written || status === 409 || place()?.id !== id) return;
+      change(id, edit).then(({ ok }) => {
+        if (ok || place()?.id !== id) return;
         refused?.();
         restore();
       }),

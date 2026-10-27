@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 // The drag handles on the plan: a room's footprint sides, a deck's hull path and its points, the
-// cradles and masts. Each drag patches the open place's look as it goes and saves on release
-// through the panel's save flow; a refused save puts the look back. fetch and EventSource are
+// cradles and masts. Each drag patches the open place's look as it goes and makes its change on
+// release through the panel, tried with a trial build and kept unsaved; a refused one puts the
+// look back. fetch and EventSource are
 // stubbed, and so is DeckView's toPlan (no screen matrix in happy-dom): a client pixel is a plan
 // unit, from the view box's corner.
 
@@ -15,6 +16,7 @@ import skiff from "../../tests/fixtures/generated/plans/hull-skiff.js";
 import skiffJson from "../../tests/fixtures/generated/plans/hull-skiff.tweak.json";
 import { DeckView } from "../../ui/deck-view.js";
 import { hullFromRooms } from "./hull.js";
+import { fakeServer } from "./fake-server.js";
 import { startEditor } from "./main.js";
 
 // Deck 3's path round its cross of cells, 0.38 outside each; and one with a rounded corner
@@ -31,15 +33,14 @@ const withLook = (data, look) => ({ ...data, look: { ...data.look, ...look } });
 
 let root;
 let editor;
-let puts;
+let puts; // each change's trial, as fake-server.js records it
+let saves;
 let replies;
 
 const start = async (hash, { tweaks = {}, fixtures = {} } = {}) => {
   root = document.createElement("div");
   document.body.replaceChildren(root);
   window.location.hash = hash;
-  puts = [];
-  replies = [];
   const disk = {
     places: [
       { id: "kilmar", prefix: "kilmar", builder: "decks", docks: [] },
@@ -62,16 +63,9 @@ const start = async (hash, { tweaks = {}, fixtures = {} } = {}) => {
     },
   };
   const data = { orrin, kilmar, tiss, freighter, "hull-skiff": skiff, ...fixtures };
-  const fetch = vi.fn(async (url, init = {}) => {
-    if (init.method === "PUT") {
-      const sent = JSON.parse(init.body);
-      puts.push({ url, body: sent });
-      const { status, body } = (await replies.shift()) ?? { status: 200, body: { ok: true, version: 99, changed: [] } };
-      if (status === 200) disk.tweaks[url.split("/").pop()] = { json: sent.json, version: body.version };
-      return { ok: status === 200, status, json: async () => body };
-    }
-    return { ok: true, status: 200, json: async () => structuredClone(disk) };
-  });
+  const server = fakeServer(disk);
+  ({ tries: puts, saves, replies } = server);
+  const fetch = vi.fn(server.fetch);
   editor = startEditor({ root, fetch, EventSource: FakeEvents, importPlace: async (id) => structuredClone(data[id]) });
   await editor.ready;
 };
@@ -112,7 +106,7 @@ describe("footprint handles", () => {
     for (const side of ["fore", "aft", "port", "starboard"]) expect(handle(`span-${side}`)).toBeTruthy();
   });
 
-  it("PUTs footprints.freight.span.aft 1 for the Freight Office's aft handle dragged one frame down", async () => {
+  it("tries footprints.freight.span.aft 1 for the Freight Office's aft handle dragged one frame down", async () => {
     await start("#orrin/orrin.freight");
     await drag(handle("span-aft"), 0, 100);
     expect(puts).toHaveLength(1);
@@ -126,7 +120,10 @@ describe("footprint handles", () => {
     await drag(handle("span-port"), -33, 0);
     expect(puts[0].body.json.footprints.freight.span).toEqual({ port: 0.25 });
     await drag(handle("span-port"), 200, 0);
-    expect(puts[1].body.json.footprints?.freight).toBeUndefined(); // back to its cell
+    // back to its cell, the file as it was read: nothing unsaved, nothing more to try
+    expect(puts).toHaveLength(1);
+    expect(root.querySelector(".savebar").hidden).toBe(true);
+    expect(editor.place.data.look.footprints?.freight).toBeUndefined();
   });
 
   it("follows the drag in the place's look, and rebuilds the views", async () => {
@@ -199,7 +196,7 @@ describe("hull handles", () => {
     expect(plan().querySelector(".handles .ring-label").textContent).toBe("r 0.35");
   });
 
-  it("PUTs the moved point when point 0 is dragged, keeping the others", async () => {
+  it("tries the moved point when point 0 is dragged, keeping the others", async () => {
     await start("#orrin", ownPath);
     await drag(handle("point-0"), 14, -10);
     expect(puts).toHaveLength(1);
@@ -251,12 +248,12 @@ describe("hull handles", () => {
     expect(bar.textContent).toContain("crosses itself");
   });
 
-  it("keeps the dragged look when the save is written but ui/data's rebuild fails (500 with a version)", async () => {
+  it("keeps the dragged look, unsaved, when the trial passes", async () => {
     await start("#orrin", ownPath);
-    replies.push({ status: 500, body: { error: "saved data/tweaks/orrin.json, but rebuilding ui/data failed: boom", version: 42 } });
     await drag(handle("point-0"), 14, -10);
     expect(editor.place.data.look.hull["3"]).not.toEqual(PATH);
-    expect(root.querySelector(".errbar").textContent).toContain("rebuilding ui/data failed");
+    expect(root.querySelector(".savebar").hidden).toBe(false);
+    expect(root.querySelector(".errbar").hidden).toBe(true);
   });
 
   it("puts back the last built look when two queued saves are both refused", async () => {
@@ -288,7 +285,7 @@ describe("hull handles", () => {
     expect(root.querySelector('.side input[name="hull-r"]')).toBeNull();
   });
 
-  it("makes a hull from the rooms, PUTting hull.3 as hullFromRooms gives it", async () => {
+  it("makes a hull from the rooms, trying hull.3 as hullFromRooms gives it", async () => {
     await start("#orrin");
     root.querySelector('.side [name="hull-from-rooms"]').click();
     await editor.busy;
@@ -360,7 +357,7 @@ describe("ship handles", () => {
   // the frozen freighter and skiff; each expected value is worked out from them
   const near = (n) => Number(n.toFixed(2));
 
-  it("drags a bell along its side, PUTting its new position", async () => {
+  it("drags a bell along its side, trying its new position", async () => {
     await start("#freighter");
     const i = freighterJson.fixtures.findIndex((f) => f.type === "bell");
     expect(handle(`fixture-${i}`)).toBeTruthy();

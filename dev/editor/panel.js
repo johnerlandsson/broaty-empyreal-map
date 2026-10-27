@@ -2,11 +2,14 @@
 // docs/maps/reference/tweak-editor-options.png): the selected room, as the game gives it, then its
 // paint and footprint; below, the place's view. Each value says where it comes from ("set here",
 // or "from <place>" through `like`) and, where it's the place's own, has a reset.
-// Every change runs one of ops.js's edits on the place's own tweak and PUTs it with the version
-// the page holds, one save at a time. A save the build refuses (422) shows its message in the bar
-// at the plan's foot and puts the inputs back; one beaten by a hand edit (409) reloads the state.
-// One written whose rebuild of ui/data then failed (a 500 with a version) is held as saved, its
-// message shown; the next build fixes the view.
+// Every change runs one of ops.js's edits on the place's own tweak and is kept unsaved
+// (pending.js), once the server's trial build of every unsaved file with it passes; the page
+// previews that trial. One the trial refuses (422) shows its message in the bar at the plan's foot
+// and puts the inputs back, and is dropped. A value unsaved is marked so, in amber. Save PUTs every
+// unsaved file with the version it was read at, in one build; Discard drops them all. A save beaten
+// by a hand edit (409) reads the state again and takes the edits over to the file as it is now,
+// trying them again; so does a build the server announces, a hand edit's. One written whose
+// rebuild of ui/data then failed (a 500 with versions) is held as saved, its message shown.
 // What each kind of place allows matches the build: footprints only on decks rooms that aren't
 // passages or blisters, a cutaway and a hull only on decks, a camera on anything but a town.
 // The hull section is the plan's deck's: a path made round the rooms' footprints or back to the
@@ -23,6 +26,7 @@ import { GREEBLE_KEYS, PALETTE_NAME, PROFILE_DEFAULTS, SURFACE_DEFAULTS } from "
 import { hullFromRooms, roomPieces } from "./hull.js";
 import { ownGreebles, ownHull } from "./handles.js";
 import { addGreeble, boxHull, origin, removeGreeble, reset, setFootprint, setHull, setHullCorner, setPaint, setProfile, setSurface, setView } from "./ops.js";
+import { countOf, jsonOf, markedStale, rebased, staleOf, withEdit } from "./pending.js";
 
 const CORNERS = ["square", "rounded", "cut"];
 const CUTAWAYS = [
@@ -68,96 +72,223 @@ const numberOf = (input) => (input.value.trim() === "" || !Number.isFinite(Numbe
 
 /**
  * Starts the panel in its two elements.
- * @param {{inspector: Element, view: Element, put: (url: string, body: object) => Promise<{status: number, body: object}>,
- *   place: () => object | null, state: () => object, reload: () => Promise<void>, showError: (text: string | null) => void,
- *   run: (p: Promise<void>) => void, hullPoint?: () => number | null}} deps `place` and `state` are
- *   the page's; `reload` re-reads the state and rebuilds the open place; `run` is handed each save,
- *   for the page's `busy`; `hullPoint` is the point of the plan's deck's path picked on the plan.
- * @returns {{render: () => void, save: (name: string, edit: (t: object) => object) => Promise<{status?: number, written: boolean}>,
+ * @param {{inspector: Element, view: Element, send: (method: string, url: string, body: object) => Promise<{status: number, body: object}>,
+ *   place: () => object | null, state: () => object, refresh: () => Promise<void>, showError: (text: string | null) => void,
+ *   run: (p: Promise<void>) => void, tried: (trial: {trial: number, changed: string[]} | null) => Promise<void>,
+ *   changedPending?: () => void, hullPoint?: () => number | null}} deps `place` and `state` are the
+ *   page's; `refresh` re-reads the state; `run` is handed each change and save, for the page's
+ *   `busy`; `tried` has the page preview a trial of the unsaved edits (null: none, ui/data as it
+ *   is); `changedPending` is called when the unsaved edits or the checking of them change;
+ *   `hullPoint` is the point of the plan's deck's path picked on the plan.
+ * @returns {{render: () => void, change: (name: string, edit: (t: object) => object) => Promise<{ok: boolean}>,
+ *   saveAll: () => Promise<void>, discard: () => Promise<void>, rebase: () => Promise<void>,
+ *   pending: () => {count: number, files: [string, number][], stale: string[], checking: boolean},
  *   resolved: (placeId: string, keyPath: string[]) => {value: unknown, from: string | null, own: boolean},
- *   broken: (name: string) => string | null}} `save` resolves to the PUT's status (undefined where it
- *   never got one) and whether the file was written
+ *   broken: (name: string) => string | null}} `change` resolves to whether the edit was kept
  */
-export function createPanel({ inspector, view, put, place: currentPlace, state: currentState, reload, showError, run, hullPoint = () => null }) {
+export function createPanel({
+  inspector,
+  view,
+  send,
+  place: currentPlace,
+  state: currentState,
+  refresh,
+  showError,
+  run,
+  tried,
+  changedPending = () => {},
+  hullPoint = () => null,
+}) {
   let queue = Promise.resolve();
+  let pending = {}; // pending.js's: the unsaved edits, by tweak file
+  let checking = 0; // trials and saves under way
 
-  /** The tweaks as scripts/source/tweaks.mjs takes them: the palette and each place's own JSON. */
-  function tweaks() {
+  /**
+   * The tweaks as scripts/source/tweaks.mjs takes them: the palette and each place's own JSON,
+   * each with its unsaved edits, or (`saved`) as last read.
+   */
+  function tweaks({ saved = false } = {}) {
     const s = currentState();
+    const json = (name) => (!saved && pending[name] ? pending[name].json : s.tweaks?.[name]?.json);
     const places = {};
-    for (const [name, entry] of Object.entries(s.tweaks ?? {})) if (name !== "palette") places[name] = entry.json ?? {};
-    return { palette: s.palette ?? {}, places };
+    for (const name of new Set([...Object.keys(s.tweaks ?? {}), ...Object.keys(pending)])) if (name !== "palette") places[name] = json(name) ?? {};
+    return { palette: (saved || !pending.palette ? s.palette : pending.palette.json) ?? {}, places };
   }
 
-  /** The place's resolved value at [key, sub] and where it comes from: {value, from, own}. */
-  function resolved(placeId, keyPath) {
-    const t = tweaks();
+  /** The palette, with its unsaved colours. */
+  const palette = () => tweaks().palette;
+
+  /** The value at [key, sub] of a place's tweaks as `tweaks` resolves them, and where it comes from. */
+  function resolvedIn(t, placeId, keyPath) {
     const { from, own } = origin(t, placeId, keyPath);
     const [key, sub] = keyPath;
     const value = from ? (sub === undefined ? t.places[from][key] : t.places[from][key]?.[sub]) : undefined;
     return { value, from, own };
   }
 
+  /** The place's resolved value at [key, sub], unsaved edits and all, and where it comes from: {value, from, own}. */
+  function resolved(placeId, keyPath) {
+    const t = tweaks();
+    return resolvedIn(t, placeId, keyPath);
+  }
+
+  /** Whether the place's resolved value at [key, sub] differs from what's saved. */
+  const unsaved = (placeId, keyPath) =>
+    JSON.stringify(resolvedIn(tweaks(), placeId, keyPath)) !== JSON.stringify(resolvedIn(tweaks({ saved: true }), placeId, keyPath));
+
   const entryOf = (name) => currentState().tweaks?.[name] ?? { json: {}, version: 0 };
   const brokenError = (name) => currentState().tweaks?.[name]?.error ?? null;
 
-  /**
-   * Saves `edit` of a tweak file's own JSON (a place's, or "palette"), after any save before it,
-   * with the version held when it runs.
-   */
-  function save(name, edit) {
-    const url = name === "palette" ? "/api/palette" : `/api/tweaks/${encodeURIComponent(name)}`;
-    const step = queue
-      .then(async () => {
-        if (brokenError(name)) {
-          render();
-          return { written: false };
-        }
-        const entry = entryOf(name);
-        const json = edit(entry.json ?? {});
-        const { status, body } = await put(url, { json, version: entry.version });
-        // any reply with a version but a 409 wrote the file: a 200, or a 500 whose rebuild failed
-        const written = status === 200 || (status !== 409 && typeof body?.version === "number");
-        if (written) {
-          const s = currentState();
-          s.tweaks ??= {};
-          s.tweaks[name] = { json, version: body.version };
-          if (name === "palette") s.palette = json;
-          showError(status === 200 ? null : (body.error ?? `PUT ${url}: ${status}`));
-          render();
-        } else if (status === 409) {
-          await reload();
-          showError("changed on disk, reloaded");
-        } else {
-          showError(body?.error ?? `PUT ${url}: ${status}`);
-          render();
-        }
-        return { status, written };
-      })
-      .catch((err) => {
-        showError(err.message);
-        render();
-        return { written: false };
-      });
-    queue = step.then(() => {});
+  /** Runs `job` after every change and save before it, for the page's `busy`; it's checking meanwhile. */
+  function enqueue(job) {
+    const step = queue.then(async () => {
+      checking++;
+      changedPending();
+      try {
+        return await job();
+      } finally {
+        checking--;
+        changedPending();
+      }
+    });
+    queue = step.then(
+      () => {},
+      () => {},
+    );
     run(queue);
     return step;
   }
 
+  /**
+   * Tries `next` as the unsaved edits with a trial build of every file in it; on a pass, makes it
+   * the unsaved edits and has the page preview the trial. Resolves to the trial's error, or null.
+   */
+  async function tryOut(next) {
+    if (!Object.keys(next).length) {
+      pending = next;
+      await tried(null);
+      return null;
+    }
+    const { status, body } = await send("POST", "/api/trial", { files: jsonOf(next) });
+    if (status !== 200) return body?.error ?? `POST /api/trial: ${status}`;
+    pending = next;
+    await tried({ trial: body.trial, changed: body.changed ?? [] });
+    return null;
+  }
+
+  /**
+   * Makes `edit` of a tweak file's own JSON (a place's, or "palette"), unsaved edits and all, after
+   * any change before it; kept unsaved if a trial build of it and the rest passes.
+   */
+  function change(name, edit) {
+    return enqueue(async () => {
+      if (brokenError(name)) {
+        render();
+        return { ok: false };
+      }
+      let error;
+      try {
+        error = await tryOut(withEdit(pending, name, entryOf(name), edit));
+      } catch (err) {
+        error = err.message;
+      }
+      showError(error);
+      render();
+      return { ok: !error };
+    });
+  }
+
+  /**
+   * Takes the unsaved edits on each file changed on disk over to the file as it is now (read by the
+   * page's last `refresh`), and tries them all again. Says what it did in the bar.
+   */
+  async function rebaseNow() {
+    const { pending: next, moved, stale } = rebased(pending, currentState().tweaks ?? {});
+    if (!moved.length && !stale.length && Object.keys(next).length === Object.keys(pending).length) return;
+    const files = (names) => names.map((n) => `data/tweaks/${n}.json`).join(", ");
+    let error;
+    try {
+      error = await tryOut(next);
+    } catch (err) {
+      error = err.message;
+    }
+    if (error) {
+      // the edits ran but don't build over what's there now: kept, but not to be saved
+      pending = markedStale(next, moved, error);
+      await tried(null);
+    }
+    const lines = [];
+    if (moved.length) lines.push(`${files(moved)} changed on disk; your unsaved edits are now on top of it`);
+    if (error) lines.push(`and no longer build: ${error}`);
+    for (const n of stale) lines.push(`data/tweaks/${n}.json changed on disk, and your unsaved edits to it no longer apply: ${pending[n].stale}`);
+    if (staleOf(pending).length) lines.push("Discard to take the files as they are.");
+    showError(lines.join("\n") || null);
+    render();
+  }
+
+  /** rebaseNow after any change or save under way. */
+  const rebase = () => enqueue(rebaseNow);
+
+  /** Saves every unsaved file, with the version each was read at, in one build; none if any is stale. */
+  function saveAll() {
+    return enqueue(async () => {
+      const names = Object.keys(pending);
+      if (!names.length) return;
+      const stale = staleOf(pending);
+      if (stale.length) return showError(`${stale.map((n) => `data/tweaks/${n}.json`).join(", ")}: your unsaved edits no longer apply over the file on disk. Discard them first.`);
+      const files = Object.fromEntries(names.map((n) => [n, { json: pending[n].json, version: pending[n].version }]));
+      const { status, body } = await send("PUT", "/api/tweaks", { files });
+      // any reply with versions but a 409 wrote the files: a 200, or a 500 whose rebuild failed
+      if (status !== 409 && body?.versions) {
+        const s = currentState();
+        s.tweaks ??= {};
+        for (const n of names) s.tweaks[n] = { json: files[n].json, version: body.versions[n] };
+        if (files.palette) s.palette = files.palette.json;
+        pending = {};
+        await tried(null);
+        showError(status === 200 ? null : (body.error ?? `PUT /api/tweaks: ${status}`));
+      } else if (status === 409) {
+        // nothing written: a file was changed by hand since it was read
+        await refresh();
+        await rebaseNow();
+      } else showError(body?.error ?? `PUT /api/tweaks: ${status}`);
+      render();
+    });
+  }
+
+  /** Drops every unsaved edit. */
+  function discard() {
+    return enqueue(async () => {
+      pending = {};
+      await tried(null);
+      showError(null);
+      render();
+    });
+  }
+
+  /** What's unsaved: how many edits, each file with its count, the stale ones, and whether a check is under way. */
+  const summary = () => ({
+    count: countOf(pending),
+    files: Object.entries(pending).map(([n, p]) => [n, p.edits.length]),
+    stale: staleOf(pending),
+    checking: checking > 0,
+  });
+
   /** "set here · reset", "from <place>" or "default", for the value at keyPath. */
   function mark(placeId, keyPath, disabled) {
     const { from, own } = origin(tweaks(), placeId, keyPath);
-    const m = h("span", own ? "own" : "inh");
+    const pend = unsaved(placeId, keyPath);
+    const m = h("span", `${own ? "own" : "inh"}${pend ? " pend" : ""}`);
     m.dataset.key = keyPath.join(".");
     if (own) {
-      m.append("● set here");
+      m.append(pend ? "● unsaved" : "● set here");
       if (!disabled) {
         m.append(" · ");
         const r = h("u", "reset", "reset");
-        r.addEventListener("click", () => save(placeId, (t) => reset(t, keyPath)));
+        r.addEventListener("click", () => change(placeId, (t) => reset(t, keyPath)));
         m.append(r);
       }
-    } else m.append(from ? `from ${from}` : "default");
+    } else m.append(`${pend ? "● unsaved · " : ""}${from ? `from ${from}` : "default"}`);
     return m;
   }
 
@@ -225,16 +356,15 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     inspector.append(h("div", "sec", "Paint"));
     const paint = resolved(p.id, ["paint", id]);
     const current = paint.value ?? p.data.look?.paint?.[id];
-    const palette = currentState().palette ?? {};
     const sw = h("span", "sw");
-    for (const [name, colour] of Object.entries(palette)) {
+    for (const [name, colour] of Object.entries(palette())) {
       const i = h("i", name === current ? "on" : null);
       i.title = name;
       i.style.background = colour;
       i.addEventListener("click", () => {
         if (disabled || name === current) return;
         for (const x of sw.children) x.classList.toggle("on", x === i);
-        save(p.id, (t) => setPaint(t, id, name));
+        change(p.id, (t) => setPaint(t, id, name));
       });
       sw.append(i);
     }
@@ -257,10 +387,10 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
       const n = name.value.trim();
       if (!n) return showError("a new colour needs a name");
       if (!PALETTE_NAME.test(n)) return showError(`${JSON.stringify(n)} is not a palette name: lower-case letters, digits and hyphens, starting with a letter`);
-      if (Object.hasOwn(currentState().palette ?? {}, n)) return showError(`the palette already has ${n}`);
+      if (Object.hasOwn(palette(), n)) return showError(`the palette already has ${n}`);
       name.defaultValue = name.value;
       colour.defaultValue = colour.value;
-      save("palette", (t) => ({ ...t, [n]: colour.value }));
+      change("palette", (t) => ({ ...t, [n]: colour.value }));
     });
     const addRow = h("div", "row");
     const addTools = h("span", "tools");
@@ -275,8 +405,8 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     sec.dataset.sec = "footprint";
     inspector.append(sec);
     const fp = resolved(p.id, ["footprints", id]).value ?? null;
-    const change = (patch) =>
-      save(p.id, (t) => {
+    const footprint = (patch) =>
+      change(p.id, (t) => {
         const next = structuredClone(resolved(p.id, ["footprints", id]).value ?? {});
         patch(next);
         if (next.span && !Object.keys(next.span).length) delete next.span;
@@ -288,7 +418,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
       const l = h("label", null, label);
       l.append(
         numberInput(key, fp?.span?.[key], { step: 0.05, min: 0, placeholder: 0, disabled }, (n) =>
-          change((next) => {
+          footprint((next) => {
             next.span ??= {};
             if (n) next.span[key] = n;
             else delete next.span[key];
@@ -302,7 +432,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
       row(
         "corners",
         seg("corners", CORNERS.map((c) => [c, c]), fp?.corners ?? "square", disabled, (c) =>
-          change((next) => {
+          footprint((next) => {
             if (c === "square") delete next.corners;
             else next.corners = c;
           }),
@@ -313,7 +443,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
       row(
         "r",
         numberInput("r", fp?.r, { step: 0.05, min: 0, placeholder: CORNER_R, disabled }, (n) =>
-          change((next) => {
+          footprint((next) => {
             if (n === undefined) delete next.r;
             else next.r = n;
           }),
@@ -331,7 +461,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     if (!p) return;
     if (p.builder === "decks") {
       const cut = resolved(p.id, ["view", "cutaway"]);
-      view.append(row("cutaway", seg("cutaway", CUTAWAYS, cut.value ?? "hide-above", disabled, (c) => save(p.id, (t) => setView(t, { cutaway: c })))));
+      view.append(row("cutaway", seg("cutaway", CUTAWAYS, cut.value ?? "hide-above", disabled, (c) => change(p.id, (t) => setView(t, { cutaway: c })))));
       const m = h("div", "row");
       m.append(h("span"), mark(p.id, ["view", "cutaway"], disabled));
       view.append(m);
@@ -339,8 +469,8 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     if (p.builder === "town") return;
     const camera = () => ({ ...CAM, zoom: 1, ...resolved(p.id, ["view", "camera"]).value });
     const cam = camera();
-    // the camera as it is when the save runs, after any before it
-    const setCam = (patch) => save(p.id, (t) => setView(t, { camera: { ...camera(), ...patch } }));
+    // the camera as it is when the change runs, after any before it
+    const setCam = (patch) => change(p.id, (t) => setView(t, { camera: { ...camera(), ...patch } }));
     const inputs = h("span", "spans");
     for (const [key, step] of [
       ["yaw", 1],
@@ -395,8 +525,8 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
           const traced = hullFromRooms(index, deck, footprints);
           if (!traced.length) return showError(`Deck ${deck} has no rooms to make a hull from`);
           const pieces = roomPieces(index, deck, footprints);
-          const step = save(p.id, (t) => setHull(t, key, traced)).then(({ status }) => {
-            if (status === 200 && pieces > 1) showError(`warning: the rooms on Deck ${deck} make ${pieces} pieces; the hull goes round the largest only`);
+          const step = change(p.id, (t) => setHull(t, key, traced)).then(({ ok }) => {
+            if (ok && pieces > 1) showError(`warning: the rooms on Deck ${deck} make ${pieces} pieces; the hull goes round the largest only`);
           });
           run(step);
         }),
@@ -406,7 +536,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
         button("hull-box", "back to the box", () => {
           const like = tweaks().places[p.id]?.like;
           const inherited = !!like && Array.isArray(resolved(like, ["hull", key]).value);
-          save(p.id, (t) => boxHull(t, key, inherited));
+          change(p.id, (t) => boxHull(t, key, inherited));
         }),
       );
     }
@@ -419,7 +549,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
         row(
           `point ${i} r`,
           numberInput("hull-r", points[i][2], { step: 0.05, min: 0, placeholder: 0, disabled }, (n) =>
-            save(p.id, (t) => setHullCorner(ownHull(t, key, path()), key, i, n ?? 0)),
+            change(p.id, (t) => setHullCorner(ownHull(t, key, path()), key, i, n ?? 0)),
           ),
         ),
       );
@@ -460,7 +590,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
       box.checked = isOn(valueOf(p.id, section, key));
       box.disabled = disabled;
       box.addEventListener("change", () =>
-        save(p.id, (t) => {
+        change(p.id, (t) => {
           const set = setOf[section];
           if (!box.checked) return set(t, { [key]: off });
           // on: the place's own value goes, where what's left is on; else the default's is set
@@ -478,14 +608,14 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     const stripe = valueOf(p.id, "surface", "stripe");
     if (stripe) {
       const sw = h("span", "sw stripe");
-      for (const [name, colour] of Object.entries(currentState().palette ?? {})) {
+      for (const [name, colour] of Object.entries(palette())) {
         const i = h("i", name === stripe.paint ? "on" : null);
         i.title = name;
         i.style.background = colour;
         i.addEventListener("click", () => {
           if (disabled || name === stripe.paint) return;
           for (const x of sw.children) x.classList.toggle("on", x === i);
-          save(p.id, (t) => setSurface(t, { stripe: { ...valueOf(p.id, "surface", "stripe"), paint: name } }));
+          change(p.id, (t) => setSurface(t, { stripe: { ...valueOf(p.id, "surface", "stripe"), paint: name } }));
         });
         sw.append(i);
       }
@@ -502,7 +632,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
       const b = h("button", "btn", "remove");
       b.name = `greeble-remove-${i}`;
       b.disabled = disabled;
-      b.addEventListener("click", () => save(p.id, (t) => removeGreeble(own(t), i)));
+      b.addEventListener("click", () => change(p.id, (t) => removeGreeble(own(t), i)));
       view.append(row(`${g.type} · ${g.side}, ${g.frame}`, b));
     });
     const type = h("select", "btn");
@@ -522,7 +652,7 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
       const g = { type: type.value, side: 0, frame: snap((y0 + y1) / 2) };
       if (g.type === "antenna") g.height = 0.6;
       if (g.type === "dish") g.r = 0.15;
-      save(p.id, (t) => addGreeble(own(t), g));
+      change(p.id, (t) => addGreeble(own(t), g));
     });
     const tools = h("span", "tools");
     tools.append(type, add);
@@ -591,5 +721,5 @@ export function createPanel({ inspector, view, put, place: currentPlace, state: 
     if (p?.kind === "plan" && p.views.index.hull) renderShip(p, disabled);
   }
 
-  return { render, save, resolved, broken: brokenError };
+  return { render, change, saveAll, discard, rebase, pending: summary, resolved, broken: brokenError };
 }

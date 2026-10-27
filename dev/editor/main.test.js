@@ -9,6 +9,7 @@ import kilmar from "../../tests/fixtures/generated/kilmar.js";
 import orrin from "../../tests/fixtures/generated/orrin.js";
 import freighter from "../../tests/fixtures/generated/plans/freighter.js";
 import freighterJson from "../../tests/fixtures/generated/plans/freighter.tweak.json";
+import { fakeServer } from "./fake-server.js";
 import { startEditor } from "./main.js";
 
 const FIXTURES = { orrin, kilmar };
@@ -203,10 +204,11 @@ describe("ship classes", () => {
     { id: "tug", name: "tug", hulls: ["tug"] },
   ];
   let puts;
+  let saves;
+  let replies;
 
   const open = async (hash = "") => {
     imports = [];
-    puts = [];
     root = document.createElement("div");
     document.body.replaceChildren(root);
     window.location.hash = hash;
@@ -216,21 +218,15 @@ describe("ship classes", () => {
       palette: PALETTE,
       tweaks: { freighter: { json: structuredClone(freighterJson), version: 5 }, palette: { json: PALETTE, version: 1 } },
     };
-    const fetch = vi.fn(async (url, init = {}) => {
-      if (init.method === "PUT") {
-        const sent = JSON.parse(init.body);
-        puts.push({ url, body: sent });
-        disk.tweaks[url.split("/").pop()] = { json: sent.json, version: 99 };
-        return { ok: true, status: 200, json: async () => ({ ok: true, version: 99, changed: [] }) };
-      }
-      return { ok: true, status: 200, json: async () => structuredClone(disk) };
-    });
+    const server = fakeServer(disk);
+    ({ tries: puts, saves, replies } = server);
+    const fetch = vi.fn(server.fetch);
     editor = startEditor({
       root,
       fetch,
       EventSource: FakeEvents,
-      importPlace: async (id, version, kind) => {
-        imports.push([id, version, kind]);
+      importPlace: async (id, version, kind, trial) => {
+        imports.push([id, version, kind, trial]);
         return structuredClone(kind === "plan" ? { freighter }[id] : FIXTURES[id]);
       },
     });
@@ -273,17 +269,21 @@ describe("ship classes", () => {
     expect(side().querySelector(".h").textContent).toBe("Cockpit of the Example");
   });
 
-  it("PUTs freighter.json for a paint change", async () => {
+  it("tries freighter.json for a paint change, and saves it at the version read", async () => {
     await open("#freighter/freighter.hold");
     side().querySelector('.sw i[title="concourse"]').click();
     await editor.busy;
     expect(puts).toHaveLength(1);
     expect(puts[0].url).toBe("/api/tweaks/freighter");
     expect(puts[0].body.json.paint).toEqual({ hold: "concourse" });
-    expect(puts[0].body.version).toBe(5);
+    expect(root.querySelector('.rail .it[data-place="freighter"] .dot')).toBeTruthy();
+    root.querySelector('.savebar [name="save"]').click();
+    await editor.busy;
+    expect(saves[0].freighter.version).toBe(5);
+    expect(saves[0].freighter.json.paint).toEqual({ hold: "concourse" });
   });
 
-  it("PUTs surface.seams false when seams are turned off, keeping the windows", async () => {
+  it("tries surface.seams false when seams are turned off, keeping the windows", async () => {
     await open("#freighter");
     expect(side().querySelector('input[name="surface-seams"]').checked).toBe(true);
     await toggle("surface-seams");
@@ -311,7 +311,10 @@ describe("ship classes", () => {
     await toggle("surface-seams");
     expect(side().querySelector('input[name="surface-seams"]').checked).toBe(false);
     await toggle("surface-seams");
-    expect(puts.at(-1).body.json.surface).toEqual(freighterJson.surface);
+    // the file is back as it was read: nothing unsaved, nothing more to try
+    expect(puts).toHaveLength(1);
+    expect(root.querySelector(".savebar").hidden).toBe(true);
+    expect(side().querySelector('input[name="surface-seams"]').checked).toBe(true);
     await toggle("profile-spine");
     await toggle("profile-spine");
     expect(puts.at(-1).body.json.profile.spine).toMatchObject({ height: 0.3 });
@@ -324,7 +327,7 @@ describe("ship classes", () => {
     expect(puts[0].body.json.surface.stripe).toEqual({ ...freighter.look.surface.stripe, paint: "docks" });
   });
 
-  it("PUTs the shorter list when a greeble is removed, and a longer one when one is added", async () => {
+  it("tries the shorter list when a greeble is removed, and a longer one when one is added", async () => {
     await open("#freighter");
     side().querySelector('[name="greeble-remove-1"]').click();
     await editor.busy;
@@ -344,6 +347,18 @@ describe("ship classes", () => {
     await editor.busy;
     expect(puts[0].body.json.greebles.at(-1)).toMatchObject({ type: "antenna" });
     expect(side().querySelector('select[name="greeble-type"]').value).toBe("antenna");
+  });
+
+  it("draws the plan from the trial of the unsaved edits, and from ui/data again on Discard", async () => {
+    await open("#freighter/freighter.hold");
+    replies.push({ status: 200, body: { ok: true, trial: 7, changed: ["freighter"] } });
+    side().querySelector('.sw i[title="concourse"]').click();
+    await editor.busy;
+    expect(imports.at(-1)).toEqual(["freighter", expect.any(Number), "plan", 7]);
+    expect(editor.place.roomId).toBe("freighter.hold");
+    root.querySelector('.savebar [name="discard"]').click();
+    await editor.busy;
+    expect(imports.at(-1)).toEqual(["freighter", expect.any(Number), "plan", undefined]);
   });
 
   it("heads the view section as a ship's", async () => {

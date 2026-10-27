@@ -77,3 +77,22 @@ select.btn { max-width: 170px; }
 button.btn { cursor: pointer; }
 .note { font-size: 11.5px; color: #6f7c8c; margin: 6px 0; line-height: 1.45; }
 .broken { font: 11px "DejaVu Sans Mono", monospace; color: #ff7b7b; background: #3a1b1b; border-radius: 4px; padding: 6px 8px; margin-bottom: 10px; white-space: pre-wrap; }
+
+/* unsaved edits (option A of docs/maps/reference/editor-save-options.png): a bar over the map with
+ * what's unsaved and where, Discard and Save; a dot in the rail on each place with any; a value
+ * not yet saved marked in amber */
+.savebar {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 8; display: flex; align-items: center; gap: 10px;
+  padding: 5px 10px; background: #2a2312; border-bottom: 1px solid #5a4a22; color: #e8b04a; font-size: 12px;
+}
+.savebar[hidden] { display: none; }
+.savebar .files { display: inline-flex; gap: 10px; font: 10.5px "DejaVu Sans Mono", monospace; color: #b9a170; }
+.savebar .files .stale { color: #ff7b7b; text-decoration: line-through; }
+.savebar .checking { color: #8592a2; font-size: 11.5px; }
+.savebar .gap { margin-left: auto; }
+.savebar .btn.save { background: #1f3550; border-color: #5aa9ff; color: #e3eaf2; font-weight: 600; }
+.savebar .btn:disabled { opacity: .5; cursor: default; }
+.pane.saving > .tag { top: 34px; }
+.pane.saving > #model { top: 31px; } /* the zoom buttons below the bar */
+.rail .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #e8b04a; margin-left: 6px; vertical-align: 1px; }
+.own.pend, .inh.pend { color: #e8b04a; }
