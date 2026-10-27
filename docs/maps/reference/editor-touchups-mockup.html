@@ -1,0 +1,334 @@
+<!doctype html>
+<!-- Tweak editor touch-ups, 2026-10-27: options for the grid on the plan, another deck's hull, snap
+     and align guides, the handles' looks, and Save / Discard with the pending state. Each option is
+     the real editor (dev/editor/main.js) run against `npm run edit`, in an iframe of this page with
+     ?frame=<topic>&opt=<A|B|C>, its option drawn over it. Orrin is given the Deck 2 and Deck 3 hull
+     paths of hull-path-mockup.html in memory only; nothing is saved.
+     Open it at http://localhost:8766/docs/maps/reference/editor-touchups-mockup.html?topic=grid
+     with the edit server running. A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Tweak editor touch-ups: options</title>
+<link rel="stylesheet" href="../../../dev/editor/editor.css">
+<style>
+  body.outer { display:block; overflow:visible; height:auto; background:#0b0f16; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:12px 20px; width:1660px; }
+  .outer h2 { color:#e3eaf2; font-size:16px; margin:16px 0 2px; }
+  .outer h2 small { color:#8f9bab; font-weight:400; font-size:12.5px; }
+  .outer .row { display:grid; gap:10px; margin-top:6px; }
+  .outer .cell { min-width:0; }
+  .outer .cap { color:#b9c5d3; font-size:12.5px; margin:8px 0 4px; line-height:1.45; }
+  .outer .cap b { color:#e3eaf2; }
+  .outer iframe { border:0; border-radius:6px; outline:1px solid #222c3a; display:block; background:#04060c; }
+  .outer .top { color:#8f9bab; font-size:12.5px; line-height:1.5; max-width:1600px; }
+  .outer code { color:#b9c5d3; font:12px "DejaVu Sans Mono", monospace; }
+  /* a frame showing the plan alone */
+  body.plan-only { grid-template-columns: 0 1fr 0; }
+  body.plan-only .rail, body.plan-only .side { visibility:hidden; padding:0; border:0; }
+  body.plan-only .middle { grid-template-rows: 0 0 1fr; }
+  body.plan-only .zoom, body.plan-only .deck button { display:none !important; }
+  /* the mockups' own chrome */
+  .card { position:absolute; z-index:7; background:#0d121acc; border:1px solid #2b3646; border-radius:6px; padding:5px 9px; color:#b9c5d3; font:11.5px Inter, system-ui, sans-serif; }
+  .card .k { font:10.5px "DejaVu Sans Mono", monospace; color:#6f7c8c; }
+  .seg2 { display:inline-flex; border:1px solid #2b3646; border-radius:4px; overflow:hidden; font-size:11px; vertical-align:middle; }
+  .seg2 span { padding:1px 7px; } .seg2 span.on { background:#1f3550; color:#e3eaf2; }
+  .pend { color:#e8b04a; }
+  .btn.save { background:#1f3550; border-color:#5aa9ff; color:#e3eaf2; font-weight:600; }
+  .btn.discard { color:#b9c5d3; }
+  .dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:#e8b04a; margin-left:6px; }
+</style></head><body>
+<script type="module">
+const q = new URLSearchParams(location.search);
+const NS = "http://www.w3.org/2000/svg";
+const EDIT = "#5aa9ff", AMBER = "#e8b04a", DARK = "#04060c", GUIDE = "#ff5fd2", TEAL = "#3fb6b2";
+
+// --- the outer page: the options of a topic side by side ---------------------------------------
+const TOPICS = {
+  grid: {
+    title: "1 · A grid on the plan", sub: "Orrin, Deck 2, with its hull path. Shown while editing; a switch in the plan's corner turns it off.",
+    w: 540, h: 470,
+    opts: {
+      A: "<b>A · Lines under the rooms.</b> Cell edges in a solid line, quarter cells faint, drawn under the plate: you see them where the hull is, not across the rooms.",
+      B: "<b>B · Lines over everything, faint.</b> Cell edges and quarter cells over the rooms too, with side and frame numbers on the plan's edges.",
+      C: "<b>C · Dots.</b> A dot at every quarter cell, a brighter cross at each cell corner, over everything. The quietest over the rooms.",
+    },
+  },
+  ghost: {
+    title: "3 · Another deck's hull while editing", sub: "Editing Deck 2's hull. Deck 3 above is a cross with a chamfered nose; Deck 1 below has only the Gallery blister (no hull).",
+    w: 540, h: 470,
+    opts: {
+      A: "<b>A · The deck above, dashed over the plan.</b> One thin dashed line, with its deck at the nose. Seen over the rooms as well. Switch: above / below / off.",
+      B: "<b>B · A faint plate behind.</b> The other deck's plate as a pale silhouette under this one, so only where it differs shows. Quiet, but hidden under this deck's plate.",
+      C: "<b>C · Dashed over, its points shown.</b> As A, with a small ring on each of the other deck's points: what a dragged point can snap to. The deck below, when it has a hull, in teal.",
+    },
+  },
+  guides: {
+    title: "4 · Snapping and aligning a hull point", sub: "Dragging Deck 2's fore-starboard point out: it has snapped to x of Deck 3's point 4 and y of its own point 3. Alt held drags free, as today (0.01).",
+    w: 540, h: 470,
+    opts: {
+      A: "<b>A · Long guides.</b> A thin magenta line right across the plan for each match, with what it matched at its end.",
+      B: "<b>B · Short ties and a readout.</b> A line from the point to what it matched only, a × on that point, and the point's x, y beside the cursor.",
+      C: "<b>C · Guides and the target lit.</b> Long guides, the matched point ringed, and the grid line it sits on lit; a corner card names the snaps.",
+    },
+  },
+  handles: {
+    title: "5 · Telling room-edge handles from hull-point handles", sub: "Orrin, Deck 2, the Exchange selected: its four span handles and the hull path's points.",
+    w: 540, h: 470,
+    opts: {
+      A: "<b>A · Points round, edges as bars.</b> Hull points become blue dots; a room's sides get short amber bars along the side, as you'd grab a box's edge.",
+      B: "<b>B · Points square, edges as arrows.</b> Hull points stay blue squares; a room's sides get amber triangles pointing out, the way the span grows.",
+      C: "<b>C · Edges white, the room boxed.</b> The selected room is outlined dashed in white with white pill handles; hull points stay blue squares.",
+    },
+  },
+  save: {
+    title: "2 · Save / Discard and the pending state", sub: "Two edits pending on Orrin (the Exchange's paint and a hull point) and one on the palette; Kilmar has one too. The panel marks a value not yet saved in amber.",
+    w: 1240, h: 640, cols: 1,
+    opts: {
+      A: "<b>A · A bar over the map.</b> Across the top of the middle column: what's unsaved, in which files, and the two buttons. Amber dots in the rail on each place with pending edits.",
+      B: "<b>B · At the panel's foot.</b> A card pinned to the bottom of the side panel with the files and the buttons; the rail dots as A.",
+      C: "<b>C · A corner card on the plan.</b> A small card in the plan's bottom-right, as the plugin shows transient state; it says <i>checking…</i> while the trial build runs.",
+      D: "<b>6 · The opt-out, from the error bar.</b> An edit to Orrin's hull that cuts through a halt's room is refused; the bar gets a button that adds <code>\"hull\": {\"1\": null}</code> to each file it names and tries the edit again (all still pending).",
+    },
+  },
+};
+
+if (!q.has("frame")) {
+  document.body.className = "outer";
+  const topic = TOPICS[q.get("topic") ?? "grid"];
+  const scale = topic.scale ?? 1;
+  document.body.insertAdjacentHTML("beforeend", `<h2>${topic.title} <small>${topic.sub}</small></h2><div class="row"></div>`);
+  const row = document.querySelector(".row");
+  const keys = Object.keys(topic.opts);
+  row.style.gridTemplateColumns = `repeat(${topic.cols ?? keys.length}, ${topic.w * scale}px)`;
+  for (const opt of keys) {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    cell.innerHTML = `<div class="cap">${topic.opts[opt]}</div><div style="width:${topic.w * scale}px;height:${topic.h * scale}px;overflow:hidden"><iframe src="?frame=${q.get("topic") ?? "grid"}&opt=${opt}" width="${topic.w}" height="${topic.h}" style="transform:scale(${scale});transform-origin:0 0"></iframe></div>`;
+    row.append(cell);
+  }
+} else {
+  frame(q.get("frame"), q.get("opt")).catch((err) => document.body.append(String(err.stack ?? err)));
+}
+
+// --- a frame: the editor, with an option drawn over it -----------------------------------------
+async function frame(topic, opt) {
+  const { startEditor } = await import("../../../dev/editor/main.js");
+  const { pathOf } = await import("../../../ui/lib/footprint.js");
+  const { pathD } = await import("../../../ui/lib/decks.js");
+  const M = 0.5 + 0.12;
+  const HULL = {
+    3: [[-M, 1 - M], [M, 1 - M], [M, 2 - M], [1 + M, 2 - M], [1 + M, 2 + M], [M, 2 + M], [M, 3 + M - 0.3], [M - 0.3, 3 + M], [-M + 0.3, 3 + M], [-M, 3 + M - 0.3], [-M, 2 + M], [-1 - M, 2 + M], [-1 - M, 2 - M], [-M, 2 - M]],
+    2: [[-M, 1 - M], [M, 1 - M], [M, 2 + M], [-1 - M, 2 + M, 0.35], [-1 - M, 2 - M], [-M, 2 - M]],
+  };
+  if (topic !== "save") document.body.classList.add("plan-only");
+  const room = topic === "handles" || topic === "save" ? "/orrin.market" : "/orrin.concourse";
+  location.hash = `#orrin${room}`;
+  const editor = startEditor({
+    importPlace: async (id, version, kind) => {
+      const m = await import(`/ui/data/${kind === "plan" ? "plans/" : ""}${id}.js?v=${version}`);
+      const data = structuredClone(m.default);
+      if (id === "orrin") data.look = { ...data.look, hull: HULL };
+      return data;
+    },
+  });
+  await editor.ready;
+  await editor.busy;
+  await new Promise((r) => setTimeout(r, 300));
+  await editor.busy;
+  document.querySelector(".errbar").hidden = true; // the mockup's own hash change, before the state is in
+  const p = editor.place;
+  const view = p.views.deck;
+  const level = view.level;
+  const plan = view.plans[level];
+  const { layout } = plan;
+  const g = plan.g;
+  const C = (x, y) => layout.centre({ x, y });
+  const mk = (tag, attrs, parent = g, text) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (text != null) n.textContent = text;
+    parent.append(n);
+    return n;
+  };
+  const before = (n) => { g.insertBefore(n, g.firstChild); return n; };
+  const handles = () => g.querySelector("g.handles");
+  const under = (tag, attrs) => { const n = mk(tag, attrs); handles()?.before(n); return n; };
+  const pathOn = (deck) => pathD(pathOf(HULL[deck]).map(([x, y]) => C(x, y)));
+  const font = { "font-family": "Inter, system-ui, sans-serif" };
+  // frame the plan round Deck 2/3's hulls, a little zoomed
+  const [ax, ay] = C(-2.3, 4.6), [bx, by] = C(2.3, -0.6);
+  view.setView([ax, ay, bx - ax, by - ay]);
+  const vb = view.cur;
+  const X0 = vb[0], Y0 = vb[1], X1 = vb[0] + vb[2], Y1 = vb[1] + vb[3];
+
+  function grid(kind) {
+    const lines = mk("g", { class: "grid", "pointer-events": "none" });
+    const cells = { x: [-4, 4], y: [-1, 6] };
+    const steps = [];
+    for (let v = cells.x[0]; v <= cells.x[1]; v += 0.25) steps.push(["x", v]);
+    for (let v = cells.y[0]; v <= cells.y[1]; v += 0.25) steps.push(["y", v]);
+    for (const [axis, v] of steps) {
+      const edge = Math.abs(((v - 0.5) % 1 + 1) % 1) < 1e-9;
+      if (kind === "dots") continue;
+      const [x1, y1] = axis === "x" ? C(v, cells.y[0]) : C(cells.x[0], v);
+      const [x2, y2] = axis === "x" ? C(v, cells.y[1]) : C(cells.x[1], v);
+      mk("line", { x1, y1, x2, y2, stroke: edge ? "#3a4a5e" : "#1f2935", "stroke-width": edge ? 1 : 0.7, "stroke-opacity": kind === "over" ? (edge ? 0.55 : 0.35) : 1 }, lines);
+    }
+    if (kind === "dots") {
+      for (let x = cells.x[0]; x <= cells.x[1]; x += 0.25)
+        for (let y = cells.y[0]; y <= cells.y[1]; y += 0.25) {
+          const corner = Math.abs(((x - 0.5) % 1 + 1) % 1) < 1e-9 && Math.abs(((y - 0.5) % 1 + 1) % 1) < 1e-9;
+          const [px, py] = C(x, y);
+          if (corner) mk("path", { d: `M${px - 4},${py}h8M${px},${py - 4}v8`, stroke: "#7d8a9a", "stroke-width": 1, "stroke-opacity": 0.8 }, lines);
+          else mk("circle", { cx: px, cy: py, r: 1.1, fill: "#4a586b", "fill-opacity": 0.8 }, lines);
+        }
+    }
+    if (kind === "under") before(lines);
+    else handles()?.before(lines);
+    if (kind === "over") {
+      for (let x = -1; x <= 1; x++) mk("text", { x: C(x, 0)[0], y: Y1 - 8, "font-size": 10, fill: "#6f7c8c", "text-anchor": "middle", ...font }, lines, `side ${x}`);
+      for (let y = 1; y <= 3; y++) mk("text", { x: X1 - 8, y: C(0, y)[1] + 3, "font-size": 10, fill: "#6f7c8c", "text-anchor": "end", ...font }, lines, `fr ${y}`);
+    }
+    corner(`<span class="k">GRID</span> <span class="seg2"><span class="on">on</span><span>off</span></span> <span class="k">0.25 cell</span>`, "right:10px;top:8px");
+  }
+
+  function corner(html, pos) {
+    const c = document.createElement("div");
+    c.className = "card";
+    c.style.cssText = pos;
+    c.innerHTML = html;
+    document.querySelector("#deck").parentElement.append(c);
+    return c;
+  }
+
+  function ghost(opt) {
+    if (opt === "B") {
+      before(mk("path", { d: pathOn(3), fill: "#1b2a3d", "fill-opacity": 0.85, stroke: "#5aa9ff", "stroke-opacity": 0.35, "stroke-width": 1.2, "stroke-linejoin": "round" }));
+      const [lx, ly] = C(1.62, 2.62);
+      mk("text", { x: lx - 4, y: ly - 6, "font-size": 10, fill: "#7d9cc0", "text-anchor": "end", ...font }, g, "Deck 3 above");
+    } else {
+      under("path", { d: pathOn(3), fill: "none", stroke: AMBER, "stroke-width": 1.4, "stroke-dasharray": "7 5", "stroke-linejoin": "round", "stroke-opacity": 0.85, "pointer-events": "none" });
+      const [lx, ly] = C(1.62, 2.62);
+      under("text", { x: lx - 4, y: ly - 6, "font-size": 10, fill: AMBER, "text-anchor": "end", ...font }).textContent = "Deck 3 ▲";
+      if (opt === "C") for (const [x, y] of HULL[3]) {
+        const [px, py] = C(x, y);
+        under("circle", { cx: px, cy: py, r: 3.2, fill: DARK, stroke: AMBER, "stroke-width": 1.2, "pointer-events": "none" });
+      }
+    }
+    const pick = "above";
+    corner(`<span class="k">SHOW DECK</span> <span class="seg2"><span class="${pick === "above" ? "on" : ""}">above</span><span>below</span><span class="${pick === "both" ? "on" : ""}">both</span><span>off</span></span>`, "right:10px;top:8px");
+  }
+
+  function guides(opt) {
+    // point 1 of Deck 2, dragged to (M, 1.5 - ...): matched x of point 2 (x = M) and Deck 3's y of its point 2 (y = 2 - M)
+    const at = [1 + M, 2 + M];
+    const [px, py] = C(...at);
+    // the path drawn as if moved
+    const pts = HULL[2].map((q, i) => (i === 2 ? [...at] : q));
+    const hp = g.querySelector("g.handles .hull-path");
+    hp?.setAttribute("d", pathD(pathOf(pts).map(([x, y]) => C(x, y))));
+    const h1 = g.querySelector('[data-handle="point-2"]');
+    h1?.setAttribute("x", px - 4.5); h1?.setAttribute("y", py - 4.5);
+    h1?.setAttribute("fill", EDIT);
+    under("path", { d: pathOn(3), fill: "none", stroke: AMBER, "stroke-width": 1.2, "stroke-dasharray": "7 5", "stroke-opacity": 0.6, "pointer-events": "none" });
+    const g2 = C(-1 - M, 2 + M), d3 = C(1 + M, 2 + M);
+    const gl = mk("g", { "pointer-events": "none" });
+    if (opt === "A" || opt === "C") {
+      mk("line", { x1: px, y1: Y0, x2: px, y2: Y1, stroke: GUIDE, "stroke-width": 1, "stroke-opacity": 0.9 }, gl);
+      mk("line", { x1: X0, y1: py, x2: X1, y2: py, stroke: GUIDE, "stroke-width": 1, "stroke-opacity": 0.9 }, gl);
+      mk("text", { x: px - 5, y: Y1 - 40, "font-size": 10, fill: GUIDE, "text-anchor": "end", ...font }, gl, "x = Deck 3 · point 4");
+      mk("text", { x: X0 + 8, y: py + 14, "font-size": 10, fill: GUIDE, ...font }, gl, "y = point 3");
+    }
+    if (opt === "B") {
+      mk("line", { x1: px, y1: py, x2: g2[0], y2: g2[1], stroke: GUIDE, "stroke-width": 1.2, "stroke-dasharray": "4 3" }, gl);
+      const cross = (x, y) => mk("path", { d: `M${x - 5},${y - 5}l10,10M${x + 5},${y - 5}l-10,10`, stroke: GUIDE, "stroke-width": 1.6 }, gl);
+      cross(...g2);
+      mk("circle", { cx: d3[0], cy: d3[1], r: 8, fill: "none", stroke: GUIDE, "stroke-width": 1.2 }, gl);
+      mk("rect", { x: px - 104, y: py + 10, width: 92, height: 20, rx: 4, fill: "#0d121a", stroke: "#2b3646" }, gl);
+      mk("text", { x: px - 98, y: py + 24, "font-size": 10.5, fill: "#e3eaf2", "font-family": "DejaVu Sans Mono, monospace" }, gl, `${at[0].toFixed(2)}, ${at[1].toFixed(2)}`);
+      mk("text", { x: g2[0] + 14, y: g2[1] - 8, "font-size": 10, fill: GUIDE, ...font }, gl, "point 3");
+      mk("text", { x: d3[0] - 12, y: d3[1] - 10, "font-size": 10, fill: GUIDE, "text-anchor": "end", ...font }, gl, "on Deck 3 · point 4");
+    }
+    if (opt === "C") {
+      mk("circle", { cx: g2[0], cy: g2[1], r: 10, fill: "none", stroke: GUIDE, "stroke-width": 1.4 }, gl);
+      mk("circle", { cx: d3[0], cy: d3[1], r: 10, fill: "none", stroke: GUIDE, "stroke-width": 1.4 }, gl);
+      corner(`<span class="k">SNAPPED</span> x to Deck 3 · point 4 · y to point 3<br><span class="k">${at[0].toFixed(2)}, ${at[1].toFixed(2)} · Alt: free</span>`, "left:10px;bottom:10px");
+    } else corner(`<span class="k">snap: grid · points · decks &nbsp; Alt: free</span>`, "left:10px;bottom:10px");
+  }
+
+  function handleLooks(opt) {
+    const hs = handles();
+    for (const r of hs.querySelectorAll('[data-handle^="point-"]')) {
+      if (opt !== "A") continue;
+      const x = +r.getAttribute("x") + 4.5, y = +r.getAttribute("y") + 4.5;
+      mk("circle", { cx: x, cy: y, r: 5, fill: EDIT, stroke: DARK, "stroke-width": 1.4 }, hs);
+      r.remove();
+    }
+    const c = layout.cells.find((x) => x.room.id === "orrin.market" && x.kind === "room");
+    for (const r of hs.querySelectorAll('[data-handle^="span-"]')) {
+      const side = r.dataset.handle.slice(5);
+      const x = +r.getAttribute("x") + 4.5, y = +r.getAttribute("y") + 4.5;
+      const across = side === "fore" || side === "aft";
+      r.remove();
+      if (opt === "A") {
+        const [w, h] = across ? [26, 5] : [5, 26];
+        mk("rect", { x: x - w / 2, y: y - h / 2, width: w, height: h, rx: 2, fill: AMBER, stroke: DARK, "stroke-width": 1 }, hs);
+      } else if (opt === "B") {
+        const out = { fore: [0, -1], aft: [0, 1], port: [-1, 0], starboard: [1, 0] }[side];
+        const s = 8, [ox, oy] = out, [nx, ny] = [-oy, ox];
+        const tip = [x + ox * s, y + oy * s], b1 = [x + nx * s * 0.8 - ox * 2, y + ny * s * 0.8 - oy * 2], b2 = [x - nx * s * 0.8 - ox * 2, y - ny * s * 0.8 - oy * 2];
+        mk("path", { d: `M${tip}L${b1}L${b2}Z`, fill: AMBER, stroke: DARK, "stroke-width": 1, "stroke-linejoin": "round" }, hs);
+      } else {
+        const [w, h] = across ? [22, 8] : [8, 22];
+        mk("rect", { x: x - w / 2, y: y - h / 2, width: w, height: h, rx: 4, fill: "#e3eaf2", stroke: DARK, "stroke-width": 1.2 }, hs);
+        const d = across ? `M${x - 5},${y}h10` : `M${x},${y - 5}v10`;
+        mk("path", { d, stroke: DARK, "stroke-width": 1.2 }, hs);
+      }
+    }
+    if (opt === "C" && c) {
+      const box = mk("rect", { x: c.cx - c.w / 2, y: c.cy - c.h / 2, width: c.w, height: c.h, fill: "none", stroke: "#e3eaf2", "stroke-width": 1.2, "stroke-dasharray": "5 4", "pointer-events": "none" });
+      hs.insertBefore(box, hs.firstChild);
+    }
+  }
+
+  function pending(opt) {
+    // the rail's dots, the panel's marks
+    for (const id of ["orrin", "kilmar"]) for (const it of document.querySelectorAll(`.rail .it[data-place="${id}"]`)) it.querySelector("span").insertAdjacentHTML("beforeend", '<i class="dot" title="unsaved"></i>');
+    const m = document.querySelector('[data-key="paint.market"]');
+    if (m) { m.className = "own pend"; m.textContent = "● unsaved · undo"; }
+    const sw = document.querySelector(".sw");
+    if (sw) { for (const i of sw.children) i.classList.toggle("on", i.title === "commons"); }
+    const hm = document.querySelector('[data-key="hull.2"]');
+    if (hm) { hm.className = "own pend"; hm.textContent = "● unsaved"; }
+    document.title = "● Map tweak editor";
+    const files = `<span class="k">orrin.json · 2&nbsp;&nbsp; kilmar.json · 1&nbsp;&nbsp; palette.json · 1</span>`;
+    const buttons = `<button class="btn discard">Discard</button> <button class="btn save">Save 3 files</button>`;
+    if (opt === "A") {
+      const bar = document.createElement("div");
+      bar.style.cssText = "position:absolute;left:0;right:0;top:0;z-index:8;display:flex;align-items:center;gap:10px;padding:5px 10px;background:#2a2312;border-bottom:1px solid #5a4a22;color:#e8b04a;font-size:12px";
+      bar.innerHTML = `<span>● 4 unsaved changes</span>${files}<span style="margin-left:auto"></span>${buttons}`;
+      document.querySelector(".middle .pane").append(bar);
+      document.querySelector(".middle .pane .tag").style.top = "34px";
+    } else if (opt === "B") {
+      const side = document.querySelector(".side");
+      side.style.paddingBottom = "90px";
+      const card = document.createElement("div");
+      card.style.cssText = "position:fixed;right:0;bottom:0;width:300px;box-sizing:border-box;z-index:8;padding:9px 14px;background:#161c26;border-top:1px solid #5a4a22;border-left:1px solid #1d2632;font-size:12px";
+      card.innerHTML = `<div class="pend" style="margin-bottom:3px">● 4 unsaved changes</div><div style="margin-bottom:7px">${files}</div><div style="display:flex;gap:6px;justify-content:flex-end">${buttons}</div>`;
+      document.body.append(card);
+    } else if (opt === "C") {
+      corner(`<div class="pend" style="margin-bottom:2px">● 4 unsaved · <span style="color:#8592a2">checking…</span></div>${files}<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:5px">${buttons}</div>`, "right:10px;bottom:10px;background:#0d121aee;border-color:#5a4a22");
+    } else if (opt === "D") {
+      const bar = document.querySelector(".errbar");
+      bar.hidden = false;
+      bar.innerHTML = `data/tweaks/wenna.json: hull.2 (from orrin.json via like) cuts through wenna.store; add "hull": {"2": null} to wenna.json to keep the box. Nothing written\n<button class="btn" style="margin-top:5px;color:#ffb0b0;border-color:#7a3a3a;background:#2a1414">keep the box in wenna.json, and try again</button> <button class="btn" style="color:#b9c5d3">dismiss</button>`;
+      corner(`<div class="pend">● 1 unsaved · orrin.json</div><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:5px">${buttons.replace("Save 3 files", "Save")}</div>`, "right:10px;top:8px");
+    }
+  }
+
+  if (topic === "grid") grid({ A: "under", B: "over", C: "dots" }[opt]);
+  if (topic === "ghost") ghost(opt);
+  if (topic === "guides") guides(opt);
+  if (topic === "handles") handleLooks(opt);
+  if (topic === "save") pending(opt);
+  document.body.dataset.ready = "1";
+}
+</script>
+</body></html>
