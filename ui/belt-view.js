@@ -30,7 +30,7 @@ import {
 } from "./lib/belt.js";
 import { isDark } from "./lib/contacts.js";
 import { followStep, spreadOnEdge } from "./lib/orbits.js";
-import { attachPanZoom, brackets, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
+import { attachPanZoom, brackets, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
 const HL_STROKE = "#fff3df";
@@ -88,9 +88,8 @@ export class BeltView {
     this.marks = el("g", {}, svg);
     // her chevron pulses; only the children of `lit` are replaced, so the pulse never restarts
     const hot = el("g", { filter: `url(#${id}-glow)` }, svg);
-    this.pulse = el("g", {}, hot);
+    this.pulse = pulse(el("g", {}, hot));
     this.lit = el("g", {}, this.pulse);
-    el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, this.pulse);
     this.words = el("g", { "pointer-events": "none" }, svg);
 
     const btn = document.createElement("button");

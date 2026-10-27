@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import orrin from "../tests/fixtures/generated/orrin.js";
+import tiss from "./data/tiss.js";
 import { buildPlace } from "./place-views.js";
 
 const ID = "orrin.market";
@@ -42,5 +43,38 @@ describe("toPlan", () => {
     const place = make({ pick: true });
     place.deck.svg.getScreenCTM = () => new DOMMatrix([2, 0, 0, 2, 100, 50]); // 2 px a unit, plan 0,0 at 100,50
     expect(place.deck.toPlan(140, 30)).toEqual([20, -10]);
+  });
+});
+
+describe("the pulse", () => {
+  // T.I.S.S.'s ring plan wraps, so its light is drawn once a lap: three copies, each pulsing
+  const make = () => {
+    const place = buildPlace(tiss, "wheel", document.createElement("div"), document.createElement("div"));
+    const at = (id) => place.locate(place.index, { roomId: id });
+    return { place, at };
+  };
+  const pulsing = (deck) => [...deck.plans[deck.level].hl.querySelectorAll("[opacity]")];
+
+  it("lights each lap of the ring, pulsing from full", () => {
+    const { place, at } = make();
+    place.deck.set(at("tiss.market"));
+    const lit = pulsing(place.deck);
+    expect(lit).toHaveLength(3);
+    for (const n of lit) expect(n.getAttribute("opacity")).toBe("1");
+    expect(place.deck.svg.querySelector("animate")).toBe(null);
+  });
+
+  it("keeps the pulse running for the same place, and starts it again for a new one", () => {
+    const { place, at } = make();
+    place.deck.set(at("tiss.market"));
+    const lit = pulsing(place.deck);
+    for (const n of lit) n.setAttribute("opacity", "0.6"); // part way through a breath
+    place.deck.set(at("tiss.market"));
+    expect(pulsing(place.deck)).toEqual(lit);
+    for (const n of lit) expect(n.getAttribute("opacity")).toBe("0.6");
+    place.deck.set(at("tiss.laundry"));
+    const next = pulsing(place.deck);
+    expect(next.some((n) => lit.includes(n))).toBe(false);
+    for (const n of next) expect(n.getAttribute("opacity")).toBe("1");
   });
 });

@@ -7,271 +7,271 @@
   "zennor.authority-house": {
    "level": 0,
    "view": "-1108.7 -272.38 537.4 465.75",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-892\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-892\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=courts"
   },
   "zennor.barber": {
    "level": 0,
    "view": "-276.1 -332.52 676.2 586.04",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"88\" y=\"69\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"88\" y=\"69\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=old-town"
   },
   "zennor.carn-bridge": {
    "level": 0,
    "view": "-1176.39 8.43 664.79 576.15",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-994,274L-966,274L-966,274L-910,274L-910,302L-966,302L-966,302L-994,302L-994,302L-994,302L-994,274L-994,274Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-994,274L-966,274L-966,274L-910,274L-910,302L-966,302L-966,302L-994,302L-994,302L-994,302L-994,274L-994,274Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=riverside"
   },
   "zennor.chandlers": {
    "level": 0,
    "view": "-892.39 -96.07 664.79 576.15",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-574,178L-546,178L-546,178L-546,178L-546,206L-546,206L-546,206L-574,206L-574,206L-574,206L-574,178L-574,178Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-574,178L-546,178L-546,178L-546,178L-546,206L-546,206L-546,206L-574,206L-574,206L-574,206L-574,178L-574,178Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=market-quarter"
   },
   "zennor.cistern-lane": {
    "level": 0,
    "view": "-892.39 -96.07 664.79 576.15",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-574,370L-546,370L-546,370L-490,370L-490,398L-546,398L-546,398L-574,398L-574,398L-700,398L-700,370L-574,370Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-574,370L-546,370L-546,370L-490,370L-490,398L-546,398L-546,398L-574,398L-574,398L-700,398L-700,370L-574,370Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=rows"
   },
   "zennor.court-street": {
    "level": 0,
    "view": "-892.39 -96.07 664.79 576.15",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-714,-14L-686,-14L-686,-14L-560,-14L-560,14L-686,14L-686,14L-714,14L-714,14L-770,14L-770,-14L-714,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-714,-14L-686,-14L-686,-14L-560,-14L-560,14L-686,14L-686,14L-714,14L-714,14L-770,14L-770,-14L-714,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=courts"
   },
   "zennor.covered-market": {
    "level": 0,
    "view": "-892.39 -96.07 664.79 576.15",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-472\" y=\"165\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-472\" y=\"165\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=market-quarter"
   },
   "zennor.embankment": {
    "level": 0,
    "view": "-1172.39 95.93 664.79 576.15",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-854,336L-826,336L-826,370L-700,370L-700,398L-826,398L-826,432L-854,432L-854,398L-854,398L-854,370L-854,370Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-854,336L-826,336L-826,370L-700,370L-700,398L-826,398L-826,432L-854,432L-854,398L-854,398L-854,370L-854,370Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=riverside"
   },
   "zennor.exchange": {
    "level": 0,
    "view": "-835.09 -286.77 792.17 686.55",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-472\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-472\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=market-quarter"
   },
   "zennor.exchange-square": {
    "level": 0,
    "view": "-835.09 -286.77 792.17 686.55",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-463\" y=\"-33\" width=\"86\" height=\"66\" rx=\"10\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-463\" y=\"-33\" width=\"86\" height=\"66\" rx=\"10\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=true district=market-quarter"
   },
   "zennor.field": {
    "level": 0,
    "view": "291.3 -272.38 537.4 465.75",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"496\" y=\"-134\" width=\"128\" height=\"76\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"496\" y=\"-134\" width=\"128\" height=\"76\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=true district=downs"
   },
   "zennor.field-office": {
    "level": 0,
    "view": "291.3 -272.38 537.4 465.75",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"368\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"368\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=downs"
   },
   "zennor.fore-foot": {
    "level": 0,
    "view": "-276.1 -332.52 676.2 586.04",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-154,-14L-126,-14L-126,-14L-70,-14L-70,14L-126,14L-126,14L-154,14L-154,14L-210,14L-210,-14L-154,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-154,-14L-126,-14L-126,-14L-70,-14L-70,14L-126,14L-126,14L-154,14L-154,14L-210,14L-210,-14L-154,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=old-town"
   },
   "zennor.fore-top": {
    "level": 0,
    "view": "-276.1 -332.52 676.2 586.04",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M126,-48L154,-48L154,-14L210,-14L210,14L154,14L154,14L126,14L126,14L70,14L70,-14L126,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M126,-48L154,-48L154,-14L210,-14L210,14L154,14L154,14L126,14L126,14L70,14L70,-14L126,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=old-town"
   },
   "zennor.garden": {
    "level": 0,
    "view": "-1108.7 -272.38 537.4 465.75",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-883\" y=\"-33\" width=\"86\" height=\"66\" rx=\"10\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-883\" y=\"-33\" width=\"86\" height=\"66\" rx=\"10\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=true district=courts"
   },
   "zennor.gate": {
    "level": 0,
    "view": "-276.1 -332.52 676.2 586.04",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M266,-14L294,-14L294,-14L294,-14L294,14L294,14L294,14L266,14L266,14L210,14L210,-14L266,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M266,-14L294,-14L294,-14L294,-14L294,14L294,14L294,14L266,14L266,14L210,14L210,-14L266,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=old-town"
   },
   "zennor.inn": {
    "level": 0,
    "view": "-276.1 -332.52 676.2 586.04",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-52\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-52\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=old-town"
   },
   "zennor.kiln-yard": {
    "level": 0,
    "view": "-1176.39 8.43 664.79 576.15",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-854,178L-826,178L-826,178L-826,178L-826,206L-826,206L-826,240L-854,240L-854,206L-854,206L-854,178L-854,178Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-854,178L-826,178L-826,178L-826,178L-826,206L-826,206L-826,240L-854,240L-854,206L-854,206L-854,178L-854,178Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=riverside"
   },
   "zennor.leat-walk": {
    "level": 0,
    "view": "-1176.39 8.43 664.79 576.15",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-854,432L-826,432L-826,466L-826,466L-826,494L-826,494L-826,528L-854,528L-854,494L-854,494L-854,466L-854,466Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-854,432L-826,432L-826,466L-826,466L-826,494L-826,494L-826,528L-854,528L-854,494L-854,494L-854,466L-854,466Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=riverside"
   },
   "zennor.lower-terraces": {
    "level": 0,
    "view": "-990.94 484.25 437.88 379.5",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-904\" y=\"737\" width=\"128\" height=\"62\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-904\" y=\"737\" width=\"128\" height=\"62\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=true district=terraces"
   },
   "zennor.market-hill": {
    "level": 0,
    "view": "-835.09 -286.77 792.17 686.55",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-294,-14L-266,-14L-266,-14L-210,-14L-210,14L-266,14L-266,14L-294,14L-294,14L-350,14L-350,-14L-294,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-294,-14L-266,-14L-266,-14L-210,-14L-210,14L-266,14L-266,14L-294,14L-294,14L-350,14L-350,-14L-294,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=market-quarter"
   },
   "zennor.mill-lane": {
    "level": 0,
    "view": "-1176.39 8.43 664.79 576.15",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-854,240L-826,240L-826,274L-826,274L-826,302L-826,302L-826,336L-854,336L-854,302L-910,302L-910,274L-854,274Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-854,240L-826,240L-826,274L-826,274L-826,302L-826,302L-826,336L-854,336L-854,302L-910,302L-910,274L-854,274Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=riverside"
   },
   "zennor.moot-hall": {
    "level": 0,
    "view": "-1108.7 -272.38 537.4 465.75",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-1032\" y=\"-27\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-1032\" y=\"-27\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=courts"
   },
   "zennor.overlook": {
    "level": 0,
    "view": "-276.1 -332.52 676.2 586.04",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><circle cx=\"280\" cy=\"-96\" r=\"36\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></circle></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><circle cx=\"280\" cy=\"-96\" r=\"36\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></circle></g></g>",
    "model": "outdoors=true district=old-town"
   },
   "zennor.port-road": {
    "level": 0,
    "view": "291.3 -272.38 537.4 465.75",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M546,-48L574,-48L574,-14L574,-14L574,14L574,14L574,14L546,14L546,14L490,14L490,-14L546,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M546,-48L574,-48L574,-14L574,-14L574,14L574,14L574,14L546,14L546,14L490,14L490,-14L546,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=downs"
   },
   "zennor.ridge-path": {
    "level": 0,
    "view": "-276.1 -332.52 676.2 586.04",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M130,-106L150,-106L150,-106L150,-106L150,-86L150,-86L150,-48L130,-48L130,-86L130,-86L130,-106L130,-106Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M130,-106L150,-106L150,-106L150,-106L150,-86L150,-86L150,-48L130,-48L130,-86L130,-86L130,-106L130,-106Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=old-town"
   },
   "zennor.rolls-office": {
    "level": 0,
    "view": "-1108.7 -272.38 537.4 465.75",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-752\" y=\"69\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-752\" y=\"69\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=courts"
   },
   "zennor.salt-pan": {
    "level": 0,
    "view": "-835.09 -286.77 792.17 686.55",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-612\" y=\"261\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-612\" y=\"261\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=market-quarter"
   },
   "zennor.schoolhouse": {
    "level": 0,
    "view": "-687.4 157.29 542.8 470.43",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-332\" y=\"453\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-332\" y=\"453\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=rows"
   },
   "zennor.seed-house": {
    "level": 0,
    "view": "-990.94 484.25 437.88 379.5",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-752\" y=\"549\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-752\" y=\"549\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=terraces"
   },
   "zennor.slate-rows": {
    "level": 0,
    "view": "-687.4 157.29 542.8 470.43",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-434,370L-406,370L-406,370L-406,370L-406,398L-406,398L-406,432L-434,432L-434,398L-490,398L-490,370L-434,370Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-434,370L-406,370L-406,370L-406,370L-406,398L-406,398L-406,432L-434,432L-434,398L-490,398L-490,370L-434,370Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=rows"
   },
   "zennor.square": {
    "level": 0,
    "view": "-276.1 -332.52 676.2 586.04",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-43\" y=\"-33\" width=\"86\" height=\"66\" rx=\"10\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-43\" y=\"-33\" width=\"86\" height=\"66\" rx=\"10\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=true district=old-town"
   },
   "zennor.steps-head": {
    "level": 0,
    "view": "291.3 -272.38 537.4 465.75",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M406,-14L434,-14L434,-14L490,-14L490,14L434,14L434,14L406,14L406,14L406,14L406,-14L406,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M406,-14L434,-14L434,-14L490,-14L490,14L434,14L434,14L406,14L406,14L406,14L406,-14L406,-14Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=downs"
   },
   "zennor.sweat": {
    "level": 0,
    "view": "-687.4 157.29 542.8 470.43",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-612\" y=\"453\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-612\" y=\"453\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=rows"
   },
   "zennor.tenement-court": {
    "level": 0,
    "view": "-687.4 157.29 542.8 470.43",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-434,432L-406,432L-406,466L-406,466L-406,494L-406,494L-406,494L-434,494L-434,494L-434,494L-434,466L-434,466Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-434,432L-406,432L-406,466L-406,466L-406,494L-406,494L-406,494L-434,494L-434,494L-434,494L-434,466L-434,466Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=rows"
   },
   "zennor.terrace-road": {
    "level": 0,
    "view": "-990.94 484.25 437.88 379.5",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-854,528L-826,528L-826,562L-826,562L-826,590L-826,590L-826,590L-854,590L-854,590L-854,590L-854,562L-854,562Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></path></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><path d=\"M-854,528L-826,528L-826,562L-826,562L-826,590L-826,590L-826,590L-854,590L-854,590L-854,590L-854,562L-854,562Z\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></path></g></g>",
    "model": "outdoors=true district=terraces"
   },
   "zennor.terraces": {
    "level": 0,
    "view": "-990.94 484.25 437.88 379.5",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-904\" y=\"641\" width=\"128\" height=\"62\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-904\" y=\"641\" width=\"128\" height=\"62\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=true district=terraces"
   },
   "zennor.tinners-hall": {
    "level": 0,
    "view": "-276.1 -332.52 676.2 586.04",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-192\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-192\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=old-town"
   },
   "zennor.tower": {
    "level": 0,
    "view": "291.3 -272.38 537.4 465.75",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"648\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"648\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=downs"
   },
   "zennor.tram-downs": {
    "level": 0,
    "view": "291.3 -272.38 537.4 465.75",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"508\" y=\"69\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"508\" y=\"69\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=downs"
   },
   "zennor.tram-market": {
    "level": 0,
    "view": "-835.09 -286.77 792.17 686.55",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-612\" y=\"69\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-612\" y=\"69\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=market-quarter"
   },
   "zennor.tram-riverside": {
    "level": 0,
    "view": "-835.09 -286.77 792.17 686.55",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-752\" y=\"261\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-752\" y=\"261\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=riverside"
   },
   "zennor.tram-uptown": {
    "level": 0,
    "view": "-276.1 -332.52 676.2 586.04",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-52\" y=\"69\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-52\" y=\"69\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=old-town"
   },
   "zennor.water-court": {
    "level": 0,
    "view": "-1108.7 -272.38 537.4 465.75",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-752\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-752\" y=\"-123\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=courts"
   },
   "zennor.water-house": {
    "level": 0,
    "view": "-1176.39 8.43 664.79 576.15",
-   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-752\" y=\"453\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\"><animate attributeName=\"opacity\" values=\"1;0.55;1\" dur=\"1.8s\" repeatCount=\"indefinite\"></animate></rect></g></g>",
+   "plan": "<g pointer-events=\"none\"><g transform=\"translate(0 0)\" filter=\"url(#glow-0)\"><rect x=\"-752\" y=\"453\" width=\"104\" height=\"54\" rx=\"5\" fill=\"#ffb347\" fill-opacity=\"0.3\" stroke=\"#ffb347\" stroke-width=\"3\" opacity=\"1\"></rect></g></g>",
    "model": "outdoors=false district=riverside"
   }
  }

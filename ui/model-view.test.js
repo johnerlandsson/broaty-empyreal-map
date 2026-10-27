@@ -62,6 +62,19 @@ describe("cutaway", () => {
   });
 });
 
+describe("the pulse", () => {
+  it("starts again from full only when the lit place changes", () => {
+    const m = build();
+    expect(m.svg.querySelector("animate")).toBe(null);
+    expect(m.pulse.getAttribute("opacity")).toBe("1");
+    m.pulse.setAttribute("opacity", "0.6"); // part way through a breath
+    m.set(WHERE); // the same place again
+    expect(m.pulse.getAttribute("opacity")).toBe("0.6");
+    m.set({ kind: "room", id: "orrin.berth", level: 2 });
+    expect(m.pulse.getAttribute("opacity")).toBe("1");
+  });
+});
+
 describe("camera", () => {
   const tiss = (camera) => {
     const index = indexStation(tissRooms(data.tiss));

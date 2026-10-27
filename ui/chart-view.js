@@ -34,7 +34,7 @@ import {
   systemRadius,
 } from "./lib/orbits.js";
 import { courseCard } from "./lib/course.js";
-import { attachPanZoom, brackets, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
+import { attachPanZoom, brackets, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
 import { card as sweepText, chased, isDark, markText, nameOf as contactName, shipLine, shipTip, sweepOf } from "./lib/contacts.js";
 
 const HL = "#ffb347";
@@ -157,9 +157,8 @@ export class ChartView {
     // the ship and a searched belt pulse; only the children of `lit` are replaced, so the pulse
     // never restarts (as model-view.js does)
     const hot = el("g", { filter: `url(#${id}-glow)` }, svg);
-    this.pulse = el("g", {}, hot);
+    this.pulse = pulse(el("g", {}, hot));
     this.lit = el("g", {}, this.pulse);
-    el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, this.pulse);
     this.over = el("g", { "pointer-events": "none" }, svg); // edge markers and the scale bar
 
     // the course she has plotted, while she's at rest: a card in the corner, as the action card is

@@ -55,6 +55,49 @@ export function glowFilter(defs, id) {
   el("feMergeNode", { in: "SourceGraphic" }, m);
 }
 
+const PULSE_MS = 1800; // one breath: opacity 1 -> .55 -> 1
+const PULSE_HZ = 15; // how often it's redrawn: the glow's blur repaints each time, and 15 a second reads smooth
+
+const pulsing = new Map(); // node -> { t0, seen }: when its breath began, and whether it has been on the page
+let pulseTimer = 0;
+
+/** Opacity t ms into a breath: down from 1 to .55 and back, in straight lines. */
+export function pulseAt(t) {
+  const u = (((t % PULSE_MS) + PULSE_MS) % PULSE_MS) / PULSE_MS;
+  return +(1 - 0.45 * (1 - Math.abs(1 - 2 * u))).toFixed(3);
+}
+
+function pulseTick() {
+  if (document.hidden) return;
+  const now = performance.now();
+  for (const [node, p] of pulsing) {
+    if (!node.isConnected) {
+      if (p.seen) pulsing.delete(node); // taken off the page (a new place's light): done with
+      continue; // not on the page yet: wait for it
+    }
+    p.seen = true;
+    if (!node.getClientRects().length) continue; // in a hidden view: nothing to draw
+    node.setAttribute("opacity", pulseAt(now - p.t0));
+  }
+  if (!pulsing.size) {
+    clearInterval(pulseTimer);
+    pulseTimer = 0;
+  }
+}
+
+/**
+ * Make node breathe (opacity 1 -> .55 -> 1 over 1.8 s) for as long as it's on the page, or start
+ * its breath again from full. Every pulsing node is set by one timer, PULSE_HZ times a second
+ * rather than every frame as an SVG <animate> is: each change repaints the glow's blur. A node in
+ * a hidden view is left as it is.
+ */
+export function pulse(node) {
+  pulsing.set(node, { t0: performance.now(), seen: node.isConnected });
+  node.setAttribute("opacity", 1);
+  pulseTimer ||= setInterval(pulseTick, 1000 / PULSE_HZ);
+  return node;
+}
+
 /**
  * Wheel zoom about the cursor and drag pan on a viewBox held by the caller.
  * @param {HTMLElement} div element the svg fills

@@ -19,7 +19,7 @@ import {
   seenOpenElsewhere,
   systemName,
 } from "./lib/lanes.js";
-import { attachPanZoom, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
+import { attachPanZoom, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
 const HL_STROKE = "#fff3df";
@@ -99,9 +99,8 @@ export class LanesView {
     this.marks = el("g", {}, svg);
     // her ring or chevron pulses; only the children of `lit` are replaced, so the pulse never restarts
     const hot = el("g", { filter: `url(#${id}-glow)` }, svg);
-    this.pulse = el("g", {}, hot);
+    this.pulse = pulse(el("g", {}, hot));
     this.lit = el("g", {}, this.pulse);
-    el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, this.pulse);
 
     // the key: a card in the top-left corner, folded to a line or two, unfolded to the lists
     this.unfolded ??= false; // the preview's ?unfold sets it on the prototype

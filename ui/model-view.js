@@ -12,7 +12,7 @@ import { keyOf } from "./lib/locate.js";
 import { buildModel } from "./lib/model.js";
 import { awayLook } from "./lib/space.js";
 import { shortestTurn, turnDuration } from "./lib/turn.js";
-import { attachPanZoom, attachPick, el, glowFilter, stars, zoomButtons } from "./lib/svg.js";
+import { attachPanZoom, attachPick, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
 const HL_STROKE = "#fff3df";
@@ -169,7 +169,7 @@ export class ModelView {
     if (!opts.transparent) stars(this.backdrop, -2500, -2500, 5000, 5000, 1200, 21);
     this.geo = el("g", {}, svg);
     this.hot = el("g", { filter: `url(#${id})`, "pointer-events": "none" }, svg);
-    this.pulse = el("g", {}, this.hot);
+    this.pulse = pulse(el("g", {}, this.hot));
     this.shapes = el("g", {}, this.pulse);
     if (this.labels) this.drawLabels(el("g", { "pointer-events": "none" }, svg));
 
@@ -374,8 +374,7 @@ export class ModelView {
 
   /** Restart the highlight pulse (opacity 1 -> .55 -> 1 over 1.8 s). */
   restartPulse() {
-    this.pulse.replaceChildren(this.shapes);
-    el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, this.pulse);
+    pulse(this.pulse);
   }
 
   stop() {

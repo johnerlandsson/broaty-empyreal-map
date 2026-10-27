@@ -20,7 +20,7 @@ import {
   shapeKey,
   ringLayout,
 } from "./lib/deck-layout.js";
-import { attachPanZoom, attachPick, el, glowFilter, rng, stars, zoomButtons } from "./lib/svg.js";
+import { attachPanZoom, attachPick, el, glowFilter, pulse, rng, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
 const DOOR = { w: 22, h: 7, edge: "#fff3df" }; // the tab lit on a room's edge while you're in a unit off it
@@ -352,7 +352,6 @@ export class DeckView {
   drawHighlight(plan, shape, inside = false) {
     plan.hl.replaceChildren();
     if (!shape) return;
-    const pulse = (node) => el("animate", { attributeName: "opacity", values: "1;0.55;1", dur: "1.8s", repeatCount: "indefinite" }, node);
     for (const off of plan.offsets) {
       const g = el("g", { transform: `translate(${off} 0)`, filter: this.glow }, plan.hl);
       const attrs = inside

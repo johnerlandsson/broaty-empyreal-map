@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from "vitest";
-import { attachPanZoom, el, rng, stars } from "./svg.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { attachPanZoom, el, pulse, pulseAt, rng, stars } from "./svg.js";
 
 // A stand-in for the band's div: records listeners and style, 100×100 px at the origin.
 function fakeDiv() {
@@ -100,5 +100,68 @@ describe("stars", () => {
     const [, d, opacity] = field(2000, 31).find(([, d]) => d.startsWith(`M${+(cx - +rad.toFixed(2)).toFixed(2)} ${+cy.toFixed(2)}a${+rad.toFixed(2)} `));
     expect(d).toBeTruthy();
     expect(Math.abs(opacity - o)).toBeLessThanOrEqual(0.6 / 32 + 1e-9);
+  });
+});
+
+describe("pulse", () => {
+  beforeEach(() => vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "performance"] }));
+  afterEach(() => {
+    document.body.replaceChildren();
+    vi.advanceTimersByTime(100); // the nodes are off the page: the timer lets them go and stops
+    vi.useRealTimers();
+  });
+  const lit = () => el("g", {}, el("svg", {}, document.body));
+  const opacity = (node) => Number(node.getAttribute("opacity"));
+
+  it("breathes 1 -> .55 -> 1 over 1.8 s, in straight lines", () => {
+    expect(pulseAt(0)).toBe(1);
+    expect(pulseAt(450)).toBe(0.775);
+    expect(pulseAt(900)).toBe(0.55);
+    expect(pulseAt(1350)).toBe(0.775);
+    expect(pulseAt(1800)).toBe(1);
+    expect(pulseAt(2700)).toBe(0.55);
+  });
+
+  it("starts from full and is set 15 times a second, not every frame", () => {
+    const g = pulse(lit());
+    expect(opacity(g)).toBe(1);
+    const set = vi.spyOn(g, "setAttribute");
+    vi.advanceTimersByTime(900);
+    expect(set).toHaveBeenCalledTimes(13); // 15 a second over 0.9 s
+    expect(opacity(g)).toBeCloseTo(0.55, 1);
+    vi.advanceTimersByTime(900);
+    expect(opacity(g)).toBeGreaterThan(0.95);
+  });
+
+  it("pulses again from full when asked, and never otherwise", () => {
+    const g = pulse(lit());
+    vi.advanceTimersByTime(800);
+    expect(opacity(g)).toBeLessThan(0.65);
+    pulse(g); // a new place lit
+    expect(opacity(g)).toBe(1);
+    vi.advanceTimersByTime(200);
+    expect(opacity(g)).toBeCloseTo(pulseAt(200), 1);
+  });
+
+  it("leaves a node in a hidden view alone, and one off the page goes", () => {
+    const hidden = pulse(lit());
+    hidden.getClientRects = () => []; // display: none above it: no boxes
+    const gone = pulse(lit());
+    vi.advanceTimersByTime(600);
+    expect(opacity(hidden)).toBe(1);
+    expect(opacity(gone)).toBeLessThan(0.8);
+    gone.remove();
+    const set = vi.spyOn(gone, "setAttribute");
+    vi.advanceTimersByTime(600);
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it("waits for a node built before its view is on the page", () => {
+    const g = pulse(el("g", {}, el("svg", {})));
+    vi.advanceTimersByTime(300);
+    expect(opacity(g)).toBe(1);
+    document.body.appendChild(g.parentNode);
+    vi.advanceTimersByTime(300);
+    expect(opacity(g)).toBeLessThan(1);
   });
 });
