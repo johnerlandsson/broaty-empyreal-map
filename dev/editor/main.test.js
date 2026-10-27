@@ -283,14 +283,15 @@ describe("ship classes", () => {
     expect(saves[0].freighter.json.paint).toEqual({ hold: "concourse" });
   });
 
-  it("turns off the span, corners and r of a room whose footprint is an outline, and says why", async () => {
+  it("turns off the span of a room whose footprint is an outline, saying why, and rounds its corners", async () => {
     await open("#freighter/freighter.hold");
     const note = side().querySelector(".note.outlined");
     expect(note.textContent).toContain("footprints.hold.outline in freighter.json");
-    for (const name of ["fore", "aft", "port", "starboard", "r"]) expect(side().querySelector(`input[name="${name}"]`).disabled, name).toBe(true);
+    for (const name of ["fore", "aft", "port", "starboard"]) expect(side().querySelector(`input[name="${name}"]`).disabled, name).toBe(true);
+    expect(side().querySelector('input[name="r"]').disabled).toBe(false);
     side().querySelector('.seg[data-name="corners"] [data-value="rounded"]').click();
     await editor.busy;
-    expect(puts).toHaveLength(0);
+    expect(puts[0].body.json.footprints.hold).toEqual({ ...freighterJson.footprints.hold, corners: "rounded" });
   });
 
   it("tries surface.seams false when seams are turned off, keeping the windows", async () => {

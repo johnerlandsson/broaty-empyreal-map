@@ -6,7 +6,7 @@
 // uses the other stations' frame (X = 3 o'clock, starboard; Y = 12 o'clock, up; Z = fore), so the
 // one camera and renderer draw it. Pure; no DOM.
 
-import { boundsOf, CORNER_R, cornered, noseAt, outlineOf, pathOf } from "./footprint.js";
+import { boundsOf, CORNER_R, cornered, noseAt, outlineOf, pathOf, shapedCorners } from "./footprint.js";
 import { buildShipModel } from "./ship-hull.js";
 import { area2, CELL, centre2, clip, convexFirst, CUBE, onPath, outward, SHARP, turnAt, within } from "./solid.js";
 
@@ -394,7 +394,7 @@ export function decksLayout(index, deck) {
     if (!room.passage) {
       const fp = room.footprint;
       const outline = outlineOf(fp);
-      const points = (fp?.outline ? inset(outline.map(([x, y]) => [x * PLAN.w, y * PLAN.h]), PLAN.inset) : planBox(fp, outline)).map(([x, y]) => [cx + x, cy - y]);
+      const points = (fp?.outline ? planOutline(fp) : planBox(fp, outline)).map(([x, y]) => [cx + x, cy - y]);
       if (isUnit(outline)) return { room, kind: "room", cx, cy, w: PLAN.w - 2 * PLAN.inset, h: PLAN.h - 2 * PLAN.inset, points };
       const b = boundsOf(points);
       return { room, kind: "room", cx: (b.x0 + b.x1) / 2, cy: (b.y0 + b.y1) / 2, w: b.x1 - b.x0, h: b.y1 - b.y0, points, shaped: true };
@@ -485,14 +485,25 @@ export function pathD(points) {
 
 /**
  * A span-and-corners footprint's room box on the plan, about its cell's centre, y up: its outline's
- * bounds inset as a box is, its corners that size less the inset (none left, square), so a small r
- * never folds the box over itself.
+ * bounds inset as a box is, its corners r of a cell on the box as drawn (so r 0.2 looks it, a
+ * little rounder than the overview's, which measures r on the cell), never past half a side, so
+ * the box never folds over itself (option B of docs/maps/reference/editor-corners-options.png).
  */
 function planBox(fp, outline) {
   const b = boundsOf(outline);
   const box = { x0: b.x0 * PLAN.w + PLAN.inset, x1: b.x1 * PLAN.w - PLAN.inset, y0: b.y0 * PLAN.h + PLAN.inset, y1: b.y1 * PLAN.h - PLAN.inset };
   const r = fp?.r ?? CORNER_R;
-  return cornered(box, fp?.corners, r * PLAN.w - PLAN.inset, r * PLAN.h - PLAN.inset);
+  return cornered(box, fp?.corners, Math.min(r * PLAN.w, (box.x1 - box.x0) / 2), Math.min(r * PLAN.h, (box.y1 - box.y0) / 2));
+}
+
+/**
+ * An outline footprint's room shape on the plan, about its cell's centre, y up: the outline inset
+ * as a box is, then its corners shaped as planBox's are, r of a cell on the shape as drawn.
+ */
+function planOutline(fp) {
+  const drawn = inset(outlineOf({ outline: fp.outline }).map(([x, y]) => [x * PLAN.w, y * PLAN.h]), PLAN.inset);
+  const r = fp.r ?? CORNER_R;
+  return shapedCorners(drawn, fp.corners, r * PLAN.w, r * PLAN.h);
 }
 
 /**

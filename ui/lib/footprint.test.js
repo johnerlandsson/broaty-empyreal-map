@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { boundsOf, noseAt, outlineOf, pathOf } from "./footprint.js";
+import { boundsOf, cornered, noseAt, outlineOf, pathOf, shapedCorners } from "./footprint.js";
+
+/** Whether two point lists are the same, but for floating point. */
+const close = (a, b) => a.length === b.length && a.every((p, i) => Math.hypot(p[0] - b[i][0], p[1] - b[i][1]) < 1e-9);
 
 const UNIT = { x0: -0.5, x1: 0.5, y0: -0.5, y1: 0.5 };
 
@@ -48,9 +51,43 @@ describe("outlineOf", () => {
     expect(area2(outlineOf({ outline: [[0, 0], [0, 1], [1, 0]] }))).toBeGreaterThan(0);
   });
 
-  it("returns an outline as given, ignoring span and corners", () => {
+  it("returns an outline as given, ignoring the span", () => {
     const outline = [[0, 0], [1, 0], [0.8, 1], [0.2, 1]];
-    expect(outlineOf({ outline, span: { aft: 1 }, corners: "cut" })).toEqual(outline);
+    expect(outlineOf({ outline, span: { aft: 1 } })).toEqual(outline);
+  });
+
+  it("shapes an outline's corners, r 0.2 by default", () => {
+    const outline = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]];
+    expect(close(outlineOf({ outline, corners: "cut" }), outlineOf({ corners: "cut" }))).toBe(true);
+    expect(outlineOf({ outline, corners: "rounded", r: 0.3 })).toHaveLength(16);
+  });
+});
+
+describe("shapedCorners", () => {
+  const BOX = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]];
+
+  it("shapes a box's corners as cornered does", () => {
+    for (const corners of ["rounded", "cut"]) {
+      expect(close(shapedCorners(BOX, corners, 0.2, 0.15), cornered({ x0: -0.5, x1: 0.5, y0: -0.5, y1: 0.5 }, corners, 0.2, 0.15))).toBe(true);
+    }
+    expect(shapedCorners(BOX, "square", 0.2)).toEqual(BOX);
+    expect(shapedCorners(BOX, "rounded", 0)).toEqual(BOX);
+  });
+
+  it("never reaches past half an edge, so a short one doesn't fold", () => {
+    const thin = [[0, 0], [1, 0], [1, 0.2], [0, 0.2]];
+    const cut = shapedCorners(thin, "cut", 0.3);
+    expect(Math.min(...cut.map((p) => p[1]))).toBeCloseTo(0);
+    expect(cut).toContainEqual([1, 0.1]);
+  });
+
+  it("cuts a corner that bends in, and leaves a straight one", () => {
+    const ell = [[0, 0], [2, 0], [2, 1], [1, 1], [1, 2], [0, 2], [0, 1.5]];
+    const cut = shapedCorners(ell, "cut", 0.2);
+    const has = ([x, y]) => cut.some((p) => Math.hypot(p[0] - x, p[1] - y) < 1e-9);
+    expect(has([1.2, 1]) && has([1, 1.2])).toBe(true); // the bend in, at (1, 1), cut 0.2 along each edge
+    expect(has([1, 1])).toBe(false);
+    expect(has([0, 1.5])).toBe(true); // on a straight run: left
   });
 });
 

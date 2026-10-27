@@ -48,6 +48,12 @@ describe("loadTweaks footprints and view", () => {
     expect(loadOne({ footprints, view })().places.x).toEqual({ footprints, view });
   });
 
+  it("takes corners and r on an outline, r under half its narrower side", () => {
+    const outline = [[-0.5, -0.2], [0.5, -0.2], [0.5, 0.2], [-0.5, 0.2]];
+    expect(loadOne({ footprints: { bay: { outline, corners: "cut", r: 0.15 } } })().places.x.footprints.bay.r).toBe(0.15);
+    expect(loadOne({ footprints: { bay: { outline, corners: "cut", r: 0.25 } } })).toThrow(/x\.json: footprints\.bay\.r must be 0 or more and under half/);
+  });
+
   it("names the key path of a negative span", () => {
     expect(loadOne({ footprints: { hold: { span: { aft: -1 } } } })).toThrow(/x\.json: footprints\.hold\.span\.aft/);
   });

@@ -12,8 +12,8 @@
 // rebuild of ui/data then failed (a 500 with versions) is held as saved, its message shown.
 // What each kind of place allows matches the build: footprints only on decks rooms that aren't
 // passages or blisters, a cutaway and a hull only on decks, a camera on anything but a town. A
-// room whose footprint is an outline (every ship room the plans give one) has its span, corners
-// and r off, as the outline replaces them, and says so.
+// room whose footprint is an outline (every ship room the plans give one) has its span off, as
+// the outline replaces it, and says so; its corners and r shape the outline's corners.
 // The hull section is the plan's deck's: a path made round the rooms' footprints or back to the
 // box, and the r of the point picked on the plan (handles.js draws and drags the path).
 // A ship plan has a ship section: a switch for each detail of the hull's look (the profile's
@@ -407,11 +407,12 @@ export function createPanel({
     sec.dataset.sec = "footprint";
     inspector.append(sec);
     const { value: fp = null, from } = resolved(p.id, ["footprints", id]);
-    // an outline replaces the span and corners: they'd change nothing, so they're off
+    // an outline replaces the span: it'd change nothing, so it's off; corners and r shape the outline's
     const outlined = !!fp?.outline;
-    const off = disabled || outlined;
     if (outlined) {
-      inspector.append(h("div", "note outlined", `Its shape is an outline (footprints.${id}.outline in ${from}.json), which replaces span, corners and r. Change it in the file by hand.`));
+      inspector.append(
+        h("div", "note outlined", `Its shape is an outline (footprints.${id}.outline in ${from}.json), which replaces the span; corners and r shape its corners. Change the outline in the file by hand.`),
+      );
     }
     const footprint = (patch) =>
       change(p.id, (t) => {
@@ -425,7 +426,7 @@ export function createPanel({
     for (const [key, label] of SPANS) {
       const l = h("label", null, label);
       l.append(
-        numberInput(key, fp?.span?.[key], { step: 0.05, min: 0, placeholder: 0, disabled: off }, (n) =>
+        numberInput(key, fp?.span?.[key], { step: 0.05, min: 0, placeholder: 0, disabled: disabled || outlined }, (n) =>
           footprint((next) => {
             next.span ??= {};
             if (n) next.span[key] = n;
@@ -439,7 +440,7 @@ export function createPanel({
     inspector.append(
       row(
         "corners",
-        seg("corners", CORNERS.map((c) => [c, c]), fp?.corners ?? "square", off, (c) =>
+        seg("corners", CORNERS.map((c) => [c, c]), fp?.corners ?? "square", disabled, (c) =>
           footprint((next) => {
             if (c === "square") delete next.corners;
             else next.corners = c;
@@ -450,7 +451,7 @@ export function createPanel({
     inspector.append(
       row(
         "r",
-        numberInput("r", fp?.r, { step: 0.05, min: 0, placeholder: CORNER_R, disabled: off }, (n) =>
+        numberInput("r", fp?.r, { step: 0.05, min: 0, placeholder: CORNER_R, disabled }, (n) =>
           footprint((next) => {
             if (n === undefined) delete next.r;
             else next.r = n;

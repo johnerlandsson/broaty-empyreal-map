@@ -563,6 +563,37 @@ describe("footprints and hull paths", () => {
     });
   });
 
+  describe("r on the plan, measured on the room box as drawn", () => {
+    const cell = (footprints) => {
+      const layout = decksLayout(indexDecks(tweak(footprints)), 3);
+      return layout.cells.find((x) => x.room.id === "orrin.charts");
+    };
+    const has = (pts, [x, y]) => pts.some((p) => Math.hypot(p[0] - x, p[1] - y) < 1e-6);
+
+    it("cuts r 0.2 of a cell along each side of the box, not that less the inset", () => {
+      const c = cell({ charts: { corners: "cut", r: 0.2 } });
+      const [x0, y0] = [c.cx - c.w / 2, c.cy - c.h / 2];
+      expect(has(c.points, [x0 + 0.2 * PLAN.w, y0])).toBe(true);
+      expect(has(c.points, [x0, y0 + 0.2 * PLAN.h])).toBe(true);
+    });
+
+    it("never reaches past half a side", () => {
+      const c = cell({ charts: { corners: "cut", r: 0.45 } });
+      expect(has(c.points, [c.cx, c.cy - c.h / 2])).toBe(true); // the cut meets mid-way along the top
+      expect(crosses(c.points)).toBe(false);
+    });
+
+    it("shapes an outline's corners as a box's", () => {
+      const outline = [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]];
+      for (const corners of ["rounded", "cut"]) {
+        const box = cell({ charts: { corners, r: 0.25 } }).points;
+        const drawn = cell({ charts: { outline, corners, r: 0.25 } }).points;
+        expect(drawn).toHaveLength(box.length);
+        for (const p of box) expect(has(drawn, p), `${corners} ${p}`).toBe(true);
+      }
+    });
+  });
+
   describe("rounded and cut corners at any r (S14)", () => {
     for (const corners of ["rounded", "cut"]) {
       for (const r of [0, 0.02, 0.05, 0.1, 0.15, 0.3, 0.45]) {

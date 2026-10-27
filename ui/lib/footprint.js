@@ -21,7 +21,7 @@ function area2(points) {
 /**
  * A footprint's outline, counter-clockwise. With none, the unit square. `span` reaches past the
  * cell by cells fore, aft, port and starboard; `corners` (square, rounded or cut) shapes each
- * corner by `r` (at r 0, square); an `outline` replaces both.
+ * corner by `r` (at r 0, square); an `outline` replaces the span, its own corners shaped the same.
  * @param {{span?: Record<string, number>, corners?: string, r?: number, outline?: number[][]}} [fp]
  * @returns {number[][]}
  */
@@ -29,7 +29,7 @@ export function outlineOf(fp) {
   if (!fp) return UNIT.map((p) => [...p]);
   if (fp.outline) {
     const points = fp.outline.map((p) => [...p]);
-    return area2(points) < 0 ? points.reverse() : points;
+    return shapedCorners(area2(points) < 0 ? points.reverse() : points, fp.corners, fp.r ?? CORNER_R);
   }
   const span = fp.span ?? {};
   const x0 = -0.5 - (span.port ?? 0);
@@ -72,6 +72,54 @@ export function cornered({ x0, x1, y0, y1 }, corners, rx = 0, ry = rx) {
   });
   const same = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) <= 1e-9;
   return out.filter((p, i) => !same(p, out[(i + out.length - 1) % out.length]));
+}
+
+/**
+ * A counter-clockwise polygon with each corner square, rounded or cut, as cornered shapes a box's:
+ * reaching rx along x and ry along y from it (a rounded square corner a quarter ellipse), but never
+ * past half of either edge, so a short one never folds. A corner that bends in is shaped as one that
+ * bends out; a straight one is left.
+ * @param {number[][]} points
+ * @param {string} [corners]  square, rounded or cut
+ * @param {number} [rx]
+ * @param {number} [ry]
+ * @returns {number[][]}
+ */
+export function shapedCorners(points, corners, rx = 0, ry = rx) {
+  if (!corners || corners === "square" || !(rx > 0 && ry > 0)) return points.map((p) => [...p]);
+  // in units of rx and ry, where the corner's size is 1 on both axes and a rounded one a circle
+  const pts = points.map(([x, y]) => [x / rx, y / ry]);
+  const n = pts.length;
+  const out = [];
+  pts.forEach(([x, y], i) => {
+    const prev = pts[(i + n - 1) % n];
+    const next = pts[(i + 1) % n];
+    const la = Math.hypot(prev[0] - x, prev[1] - y);
+    const lb = Math.hypot(next[0] - x, next[1] - y);
+    const a = [(prev[0] - x) / la, (prev[1] - y) / la];
+    const b = [(next[0] - x) / lb, (next[1] - y) / lb];
+    const half = Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1]))) / 2;
+    if (!(half > 1e-9 && half < Math.PI / 2 - 1e-9)) return out.push([x, y]); // straight on
+    // how far along each edge the corner reaches: 1 for a square corner, its radius for any
+    const reach = Math.min(corners === "cut" ? 1 : 1 / Math.tan(half), la / 2, lb / 2);
+    const from = [x + a[0] * reach, y + a[1] * reach];
+    const to = [x + b[0] * reach, y + b[1] * reach];
+    out.push(from);
+    if (corners === "rounded") {
+      const r = reach * Math.tan(half);
+      const h = r / Math.sin(half);
+      const m = Math.hypot(a[0] + b[0], a[1] + b[1]);
+      const [cx, cy] = [x + ((a[0] + b[0]) / m) * h, y + ((a[1] + b[1]) / m) * h];
+      const start = Math.atan2(from[1] - cy, from[0] - cx);
+      let turn = Math.atan2(to[1] - cy, to[0] - cx) - start;
+      if (turn > Math.PI) turn -= 2 * Math.PI;
+      if (turn < -Math.PI) turn += 2 * Math.PI;
+      for (let k = 1; k < ARC - 1; k++) out.push([cx + r * Math.cos(start + (turn * k) / (ARC - 1)), cy + r * Math.sin(start + (turn * k) / (ARC - 1))]);
+    }
+    out.push(to);
+  });
+  const same = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) <= 1e-9;
+  return out.filter((p, i) => !same(p, out[(i + out.length - 1) % out.length])).map(([x, y]) => [x * rx, y * ry]);
 }
 
 /**

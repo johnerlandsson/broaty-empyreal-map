@@ -173,10 +173,13 @@ frame (fore +). A room with no footprint is one plain cell.
   by `fore`, `aft`, `port` and `starboard`. Any of the four may be left out.
 - `corners`: `square` (the default), `rounded` or `cut` (chamfered).
 - `r`: the radius or chamfer of a rounded or cut corner, in cells. It is 0 or
-  more and under half the footprint's narrower side. The default is 0.2.
+  more and under half the footprint's narrower side (its outline's, where it
+  has one). The default is 0.2. The overview measures it on the room's edge;
+  the plan measures it on the room box as drawn, a little inside that, so the
+  plan's corner is a touch rounder. A corner never reaches past half an edge.
 - `outline`: a list of three or more `[x, y]` points, each within -1.5 to 1.5
-  of the cell's centre. It replaces `span` and `corners`. It must not cross
-  itself.
+  of the cell's centre. It replaces `span`. `corners` and `r` shape each of its
+  corners, those that bend in too. It must not cross itself.
 
 The build stops, naming the tweak file and the two room ids
 (`footprints: A and B overlap. Nothing written`), when two rooms on the same

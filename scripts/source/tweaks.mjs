@@ -178,7 +178,8 @@ function checkFootprint(file, path, fp) {
   }
   if (fp.corners !== undefined) expectOneOf(file, `${path}.corners`, fp.corners, CORNERS);
   if (fp.r !== undefined) {
-    const { x0, x1, y0, y1 } = boundsOf(outlineOf({ span: fp.span }));
+    // against the outline where there's one: it replaces the span
+    const { x0, x1, y0, y1 } = boundsOf(Array.isArray(fp.outline) ? fp.outline : outlineOf({ span: fp.span }));
     if (!isNumber(fp.r) || fp.r < 0 || fp.r >= Math.min(x1 - x0, y1 - y0) / 2) {
       throw new Error(`${file}: ${path}.r must be 0 or more and under half the footprint's narrower side`);
     }

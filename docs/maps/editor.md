@@ -174,9 +174,13 @@ for them the section is not shown. See the Footprints section in
 - `r`: the radius of a rounded or cut corner. The grey number is the default.
 
 If the room's footprint is an `outline`, the panel says so at the top of the
-section, with the file it is in. The outline replaces the span, corners and
-`r`, so those are turned off. Every ship room the plans give has one. The
-editor does not change an outline; edit it in the file by hand.
+section, with the file it is in. The outline replaces the span, so that is
+turned off. `corners` and `r` round or cut each of the outline's corners.
+Every ship room the plans give has an outline. The editor does not change the
+outline's points; edit them in the file by hand.
+
+On the plan, `r` is measured on the room box as it is drawn, so `r 0.2` looks
+like a fifth of a cell.
 
 ### View
 
