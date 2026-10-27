@@ -56,8 +56,12 @@ export class ActionCard {
     this.detailEl.hidden = !card.detail;
     this.barEl.hidden = card.fraction === null;
     if (card.fraction !== null) {
-      // from where it is now, drain to empty by its end, starting now rather than at the next frame
-      this.drain = this.fillEl.animate([{ width: `${(card.fraction * 100).toFixed(2)}%` }, { width: "0%" }], {
+      // from where it is now, drain to empty by its end, starting now rather than at the next frame.
+      // The fill slides out of the track's left rather than narrowing: a transform runs on the
+      // compositor, where a width is laid out and painted every frame, and it keeps the rounded end
+      // a scaleX would squash
+      const from = `translateX(${((card.fraction * 100).toFixed(2) - 100).toFixed(2)}%)`;
+      this.drain = this.fillEl.animate([{ transform: from }, { transform: "translateX(-100%)" }], {
         duration: card.ms,
         easing: "linear",
         fill: "forwards",
