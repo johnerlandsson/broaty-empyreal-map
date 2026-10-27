@@ -286,6 +286,10 @@ back to Orrin's.
 Where a halt inherits Orrin's hull and a change clashes with it, the build
 names the file the hull came from and suggests the opt-out
 `"hull": {"N": null}`. It is explained in "The hull" in [sync.md](sync.md).
+The change is refused, and the bar under its message has a button, for
+example **keep the box in caradon.json, lamorna.json, and try again**. It
+adds the opt-out to each file the message names, then makes your change
+again, all unsaved. Check the map, then Save, or Discard to drop them all.
 
 ## A refused change
 

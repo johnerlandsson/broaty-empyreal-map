@@ -107,3 +107,5 @@ button.btn { cursor: pointer; }
 .plan-card .seg { font-size: 11px; }
 .plan-card .seg span { padding: 1px 6px; }
 .pane.saving > .plan-card { top: 52px; }
+.errbar .actions { margin-top: 5px; display: flex; gap: 6px; }
+.errbar .actions .btn { color: #ffb0b0; border-color: #7a3a3a; background: #2a1414; white-space: normal; }

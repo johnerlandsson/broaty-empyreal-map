@@ -10,6 +10,10 @@
 // by a hand edit (409) reads the state again and takes the edits over to the file as it is now,
 // trying them again; so does a build the server announces, a hand edit's. One written whose
 // rebuild of ui/data then failed (a 500 with versions) is held as saved, its message shown.
+// A change refused because a hull a place gets through `like` would clash there, where the build
+// suggests the opt-out (`add "hull": {"N": null} to <file>.json to keep the box`), gets a button
+// in the bar: it makes each opt-out named, then the change again, all unsaved, in one trial (the
+// fourth frame of docs/maps/reference/editor-save-options.png).
 // What each kind of place allows matches the build: footprints only on decks rooms that aren't
 // passages or blisters, a cutaway and a hull only on decks, a camera on anything but a town. A
 // room whose footprint is an outline (every ship room the plans give one) has its span off, as
@@ -69,13 +73,16 @@ const DETAILS = [
   ["surface", "navLights", "nav lights", false, (v) => v !== false],
 ];
 const DEFAULTS = { profile: PROFILE_DEFAULTS, surface: SURFACE_DEFAULTS };
+/** The opt-out a build's clash message suggests: its deck and the file to add it to. */
+const OPT_OUT = /add "hull": \{"([^"]+)": null\} to ([a-z0-9_-]+)\.json/g;
 /** A number input's value, or undefined when it's empty or not a number. */
 const numberOf = (input) => (input.value.trim() === "" || !Number.isFinite(Number(input.value)) ? undefined : Number(input.value));
 
 /**
  * Starts the panel in its two elements.
  * @param {{inspector: Element, view: Element, send: (method: string, url: string, body: object) => Promise<{status: number, body: object}>,
- *   place: () => object | null, state: () => object, refresh: () => Promise<void>, showError: (text: string | null) => void,
+ *   place: () => object | null, state: () => object, refresh: () => Promise<void>,
+ *   showError: (text: string | null, actions?: {label: string, run: () => void}[]) => void,
  *   run: (p: Promise<void>) => void, tried: (trial: {trial: number, changed: string[]} | null) => Promise<void>,
  *   changedPending?: () => void, hullPoint?: () => number | null}} deps `place` and `state` are the
  *   page's; `refresh` re-reads the state; `run` is handed each change and save, for the page's
@@ -194,10 +201,40 @@ export function createPanel({
       } catch (err) {
         error = err.message;
       }
-      showError(error);
+      showError(error, error ? optOutAction(error, [[name, edit]]) : undefined);
       render();
       return { ok: !error };
     });
+  }
+
+  /**
+   * The bar's button for a refusal that suggests opt-outs: each file and deck the message names
+   * (`add "hull": {"N": null} to <file>.json`), boxed, then `edits` made again; none where it names none.
+   */
+  function optOutAction(error, edits) {
+    const outs = [...new Map([...error.matchAll(OPT_OUT)].map(([, deck, name]) => [`${name}/${deck}`, { name, deck }])).values()];
+    if (!outs.length) return undefined;
+    const names = [...new Set(outs.map((o) => `${o.name}.json`))];
+    const where = names.length <= 3 ? names.join(", ") : `${names.length} files`;
+    return [
+      {
+        label: `keep the box in ${where}, and try again`,
+        run: () =>
+          enqueue(async () => {
+            let next = pending;
+            let error2;
+            try {
+              for (const { name, deck } of outs) next = withEdit(next, name, entryOf(name), (t) => boxHull(t, deck, true));
+              for (const [name, edit] of edits) next = withEdit(next, name, entryOf(name), edit);
+              error2 = await tryOut(next);
+            } catch (err) {
+              error2 = err.message;
+            }
+            showError(error2, error2 ? optOutAction(error2, edits) : undefined);
+            render();
+          }),
+      },
+    ];
   }
 
   /**

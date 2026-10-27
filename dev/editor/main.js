@@ -109,7 +109,7 @@ export function startEditor({
     place: () => place,
     state: () => state,
     refresh: () => fetchState(),
-    showError: (text) => showError(text),
+    showError: (text, actions) => showError(text, actions),
     run: (p) => (editor.busy = p),
     tried: (next) => tried(next),
     changedPending: () => {
@@ -161,9 +161,18 @@ export function startEditor({
     return data.get(id);
   };
 
-  function showError(text) {
+  /** The bar at the plan's foot: text, or none to hide it, and a button for each action under it. */
+  function showError(text, actions = []) {
     errbar.textContent = text ?? "";
     errbar.hidden = !text;
+    if (!text || !actions.length) return;
+    const row = h("div", "actions");
+    for (const { label, run } of actions) {
+      const b = h("button", "btn", label);
+      b.addEventListener("click", () => run());
+      row.append(b);
+    }
+    errbar.append(row);
   }
 
   /** The bar over the map: what's unsaved, in which files, and Save and Discard; hidden with nothing unsaved. */

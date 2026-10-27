@@ -204,6 +204,41 @@ describe("the side panel", () => {
     expect(root.querySelector(".savebar").hidden).toBe(true);
   });
 
+  it("offers the opt-outs a refused change's clash names, making them and the change again, unsaved", async () => {
+    await start("#orrin/orrin.market");
+    const clash = [
+      'data/tweaks/kilmar.json: hull.2 (from orrin.json via like) cuts through kilmar.market; add "hull": {"2": null} to kilmar.json to keep the box',
+      'data/tweaks/garrow.json: fixtures[2] (cradle) is outside hull.2 (from orrin.json via like); add "hull": {"2": null} to garrow.json to keep the box',
+      'data/tweaks/garrow.json: hull.2 (from orrin.json via like) cuts through garrow.snug; add "hull": {"2": null} to garrow.json to keep the box',
+    ].join("\n");
+    replies.push({ status: 422, body: { error: `2 hull and footprint clashes. Nothing written\n${clash}` } });
+    swatch("docks").click();
+    await editor.busy;
+    const button = root.querySelector(".errbar .actions button");
+    expect(button.textContent).toBe("keep the box in kilmar.json, garrow.json, and try again");
+    expect(root.querySelector(".savebar").hidden).toBe(true);
+
+    button.click();
+    await editor.busy;
+    expect(puts.at(-1).files).toEqual({
+      kilmar: { like: "orrin", paint: { kitchen: "concourse" }, hull: { 2: null } },
+      garrow: { hull: { 2: null } },
+      orrin: { paint: { market: "docks" } },
+    });
+    expect(root.querySelector(".errbar").hidden).toBe(true);
+    expect(root.querySelector(".savebar").textContent).toContain("3 unsaved changes");
+    expect(swatch("docks").classList.contains("on")).toBe(true);
+  });
+
+  it("offers no button for a refusal that names no opt-out", async () => {
+    await start("#kilmar/kilmar.market");
+    replies.push({ status: 422, body: { error: "data/tweaks/kilmar.json: paint.market: bad" } });
+    swatch("offices").click();
+    await editor.busy;
+    expect(root.querySelector(".errbar").hidden).toBe(false);
+    expect(root.querySelector(".errbar .actions")).toBe(null);
+  });
+
   it("holds the saved versions when the save was written but ui/data wasn't rebuilt (500 with versions)", async () => {
     await start("#kilmar/kilmar.market");
     swatch("offices").click();
