@@ -41,6 +41,7 @@ local function boot(opts)
   package.loaded['station_map.lanes'] = nil
   package.loaded['station_map.work'] = nil
   package.loaded['station_map.manoeuvre'] = nil
+  package.loaded['station_map.clearance'] = nil
   package.loaded['station_map.action'] = nil
   package.loaded['station_map.course'] = nil
   package.loaded['station_map.belt'] = nil
@@ -50,7 +51,7 @@ local function boot(opts)
   _G.require = function(name)
     if name == 'station_map.location' or name == 'station_map.scene'
         or name == 'station_map.charts' or name == 'station_map.lanes' or name == 'station_map.work'
-        or name == 'station_map.manoeuvre'
+        or name == 'station_map.manoeuvre' or name == 'station_map.clearance'
         or name == 'station_map.action' or name == 'station_map.course' or name == 'station_map.belt'
         or name == 'station_map.note' or name == 'station_map.clock' then
       env.requires[#env.requires + 1] = name
@@ -88,7 +89,7 @@ test('wires panel and requires each module once', function()
   local env = boot()
   eq(env.panel_id, 'map')
   eq(env.requires, { 'station_map.location', 'station_map.scene', 'station_map.charts', 'station_map.lanes',
-    'station_map.work', 'station_map.manoeuvre', 'station_map.action', 'station_map.course', 'station_map.belt', 'station_map.note',
+    'station_map.work', 'station_map.manoeuvre', 'station_map.clearance', 'station_map.action', 'station_map.course', 'station_map.belt', 'station_map.note',
     'station_map.clock' })
   eq(type(env.gmcp_handlers['mudstd.room.info']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Room']), 'function')
@@ -743,6 +744,65 @@ test('disconnect clears a run', function()
   env.posts = {}
   env.world_handlers.disconnect()
   eq(post_named(env, 'manoeuvre').data, { verb = nil })
+end)
+
+-- Waiting on Control's clearance: the nav busy docking or undocking with no end yet.
+
+local AWAITING = { name = 'Mule', docked = true, location = 'tiss', status = 'awaiting clearance at T.I.S.S.' }
+
+test('a call for clearance posts clearance, where her status says, and no manoeuvre', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Status']('Ship.Status', AWAITING)
+  env.posts = {}
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('undock', nil))
+  eq(post_named(env, 'clearance').data, { verb = 'undock', at = 'T.I.S.S.' })
+  eq(post_named(env, 'manoeuvre'), nil)
+end)
+
+test('cleared, the wait ends as the run starts', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Status']('Ship.Status', AWAITING)
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('undock', nil))
+  env.gmcp_handlers['Ship.Status']('Ship.Status', { name = 'Mule', docked = true, location = 'tiss', status = 'undocking from T.I.S.S.' })
+  env.posts = {}
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('undock', 10))
+  eq(post_named(env, 'clearance').data, { verb = nil })
+  eq(post_named(env, 'manoeuvre').data, { verb = 'undock', left = 10, total = 10, at = 'tiss' })
+end)
+
+test('stopping while she waits ends it', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('dock', nil))
+  env.posts = {}
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy(nil, nil))
+  eq(post_named(env, 'clearance').data, { verb = nil })
+end)
+
+test('stepping off her ends the wait', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('dock', nil))
+  env.posts = {}
+  env.gmcp_handlers['Ship.Status']('Ship.Status', nil)
+  eq(post_named(env, 'clearance').data, { verb = nil })
+end)
+
+test('ready replays a wait, and nothing without one', function()
+  local env = boot()
+  env.panel_handlers.ready({})
+  eq(post_named(env, 'clearance'), nil)
+  env.gmcp_handlers['Ship.Status']('Ship.Status', AWAITING)
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('undock', nil))
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(post_named(env, 'clearance').data, { verb = 'undock', at = 'T.I.S.S.' })
+end)
+
+test('disconnect ends a wait', function()
+  local env = boot()
+  env.gmcp_handlers['Ship.Devices']('Ship.Devices', nav_busy('undock', nil))
+  env.posts = {}
+  env.world_handlers.disconnect()
+  eq(post_named(env, 'clearance').data, { verb = nil })
 end)
 
 local REPAIR = { verb = 'repair', label = 'repairing the laser', stage = 2, stages = 3, left = 31, total = 48, queued = 1 }

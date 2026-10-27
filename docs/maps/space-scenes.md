@@ -186,6 +186,10 @@ run off a host out in space, where the picture is the host's either side.
 Off the ship, `Ship.Status` null clears it, since `Ship.Devices` stops coming.
 The panel gets `manoeuvre`: `{ verb, left, total, at }`, or `{ verb = nil }`,
 with `left` counted to the moment it's posted, so `ready` replays what's left.
+Since Empyreal 96249e1 (channels.md decision 39) she first calls Control and
+waits for the answer, the nav busy `dock` or `undock` with `left` null: that's
+no run here, and the cleared frame, with `left`, starts one with its full par.
+The wait is a card in the deck band instead ([action-card.md](action-card.md)).
 
 **What the panel draws.** One number, how far away the station is (0 as
 docked, 1 backed out of the berth), drives it (`awayAt`, `awayLook` in

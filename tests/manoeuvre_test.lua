@@ -173,4 +173,24 @@ test('the thrusters in a belt, or any nav verb but dock and undock, are not a ma
   eq(M.message(m, 105), { verb = nil })
 end)
 
+-- Docking and undocking wait for Control's clearance (Empyreal 96249e1, channels.md decision 39):
+-- the nav is busy with no end till she's cleared, then Ship.Devices comes again with `left`.
+test('waiting for clearance is no run; the cleared frame starts one with its full par', function()
+  local m = M.new()
+  eq(M.ship_devices(m, devices(nav('dock', nil)), 100, at('orrin_station')), false)
+  eq(M.message(m, 100), { verb = nil })
+  eq(M.ship_devices(m, devices(nav('dock', nil)), 103, at('orrin_station')), false)
+  eq(M.ship_devices(m, devices(nav('dock', 20)), 104, at('orrin_station')), true)
+  eq(M.message(m, 104), { verb = 'dock', left = 20, total = 20, at = 'orrin_station' })
+  eq(m.starts, 104)
+end)
+
+test('an undock cleared after a wait runs its full 10 s from the answer', function()
+  local m = M.new()
+  M.ship_devices(m, devices(nav('undock', nil)), 100, at('tiss'))
+  eq(m.verb, nil)
+  eq(M.ship_devices(m, devices(nav('undock', 10)), 102, at('tiss')), true)
+  eq(M.message(m, 102), { verb = 'undock', left = 10, total = 10, at = 'tiss' })
+end)
+
 t.done()

@@ -1,6 +1,6 @@
 -- Empyreal map (T.I.S.S., Orrin Station and Wenna Halt so far): folds GMCP location frames into one small message
 -- and pushes it to the "map" panel, and your ship's frames into the overview's scene, its docking and
--- undocking (timed by Ship.Devices), the system chart, the
+-- undocking (timed by Ship.Devices) and her waiting on Control's clearance for one, the system chart, the
 -- lanes map, the belt map (each switched on and off to fit what she's doing, unless the auto_view setting is
 -- off), the course she has plotted, what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card.
 -- Your note on the ship you're aboard (Ship.List) goes with the location, for the ship plan. The lanes' states as last seen
@@ -16,6 +16,7 @@ local C = require('station_map.charts')
 local N = require('station_map.lanes')
 local W = require('station_map.work')
 local M = require('station_map.manoeuvre')
+local Q = require('station_map.clearance')
 local A = require('station_map.action')
 local K = require('station_map.course')
 local B = require('station_map.belt')
@@ -29,6 +30,7 @@ local chart = C.new()
 local lanes = N.new()
 local work = W.new()
 local manoeuvre = M.new()
+local clearance = Q.new()
 local doing = A.new()
 local course = K.new()
 local belt = B.new()
@@ -101,6 +103,10 @@ end
 
 local function post_manoeuvre()
   panel:post('manoeuvre', M.message(manoeuvre, os.time()))
+end
+
+local function post_clearance()
+  panel:post('clearance', Q.message(clearance))
 end
 
 local function post_charts()
@@ -220,6 +226,7 @@ local function scene_ship(data)
   if S.ship_status(scene, data, os.time()) then post_scene() end
   -- Off her, Ship.Devices isn't sent again (gmcp.ts sendShipGmcp): what she was doing goes too.
   if type(data) ~= 'table' and M.reset(manoeuvre) then post_manoeuvre() end
+  if Q.ship_status(clearance, data) then post_clearance() end
   C.ship_status(chart, data, os.time())
   -- Always: the panel times a trip from the fresh `received`.
   post_chart_ship()
@@ -245,6 +252,7 @@ local function ship_devices(data)
   if W.ship_devices(work, data, os.time()) then post_work() end
   local at = function(verb) return S.manoeuvre_at(scene, verb) end
   if M.ship_devices(manoeuvre, data, os.time(), at) then post_manoeuvre() end
+  if Q.ship_devices(clearance, data) then post_clearance() end
   if B.ship_devices(belt, data, os.time()) then post_belt() end
   save_belts()
   follow_belt()
@@ -320,6 +328,7 @@ world.on('disconnect', function()
   post_location()
   if S.reset(scene) then post_scene() end
   if M.reset(manoeuvre) then post_manoeuvre() end
+  if Q.reset(clearance) then post_clearance() end
   -- The chart stays on: the panel hides it, and its ◎, with no charts.
   local had_contacts = C.contacts(chart) ~= nil
   if C.reset(chart) then
@@ -345,6 +354,7 @@ panel:on_message('ready', function()
   -- The panel starts on the station with none docked at, so only anything else needs replaying.
   if S.scene(scene) ~= 'station' or S.station(scene) then post_scene() end
   if manoeuvre.verb then post_manoeuvre() end -- what's left of it now: the panel starts part-way
+  if clearance.verb then post_clearance() end
   if C.charts(chart) then post_charts() end
   if C.ship(chart) then post_chart_ship() end
   if C.contacts(chart) then post_chart_contacts() end
