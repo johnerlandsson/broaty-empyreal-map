@@ -1,5 +1,6 @@
+// @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
-import { attachPanZoom } from "./svg.js";
+import { attachPanZoom, el, rng, stars } from "./svg.js";
 
 // A stand-in for the band's div: records listeners and style, 100×100 px at the origin.
 function fakeDiv() {
@@ -68,5 +69,36 @@ describe("attachPanZoom", () => {
     expect(down.prevented).toBeUndefined();
     div.fire("pointermove", { buttons: 2, clientX: 20, clientY: 50 });
     expect(vb()).toEqual([0, 0, 100, 100]);
+  });
+});
+
+describe("stars", () => {
+  const field = (n, seed) => {
+    const g = el("g");
+    stars(g, 0, 0, 2400, 1400, n, seed);
+    return [...g.children].map((p) => [p.tagName, p.getAttribute("d"), +p.getAttribute("opacity")]);
+  };
+
+  it("draws the same stars for the same seed, and others for another", () => {
+    expect(field(2000, 31)).toEqual(field(2000, 31));
+    expect(field(2000, 37)).not.toEqual(field(2000, 31));
+  });
+
+  it("draws a field in a path a shade, every star in one of them", () => {
+    const paths = field(2000, 31);
+    expect(paths.length).toBeLessThanOrEqual(16);
+    expect(paths.every(([tag]) => tag === "path")).toBe(true);
+    expect(paths.reduce((n, [, d]) => n + d.split("M").length - 1, 0)).toBe(2000);
+    expect(paths.every(([, , o]) => o > 0.12 && o < 0.72)).toBe(true);
+    expect(field(3, 11).length).toBeLessThanOrEqual(3); // no empty paths
+  });
+
+  it("keeps each star where the seed put it, as circles had it", () => {
+    const r = rng(31);
+    const [cx, cy, rad] = [r() * 2400, r() * 1400, r() * 1.3 + 0.3];
+    const o = r() * 0.6 + 0.12;
+    const [, d, opacity] = field(2000, 31).find(([, d]) => d.startsWith(`M${+(cx - +rad.toFixed(2)).toFixed(2)} ${+cy.toFixed(2)}a${+rad.toFixed(2)} `));
+    expect(d).toBeTruthy();
+    expect(Math.abs(opacity - o)).toBeLessThanOrEqual(0.6 / 32 + 1e-9);
   });
 });

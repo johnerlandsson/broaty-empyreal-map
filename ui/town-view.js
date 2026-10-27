@@ -39,6 +39,7 @@ export class SkyView {
     this.tips = new Map(); // data-tip key -> { title, body }: the hovered thing's name and the game's sentence
     this.tipKey = null; // what's hovered
     this.tipShown = null; // what the tooltip last showed, so a redraw doesn't re-show the same
+    this.starfields = new Map(); // star count -> its starfield, built once: they don't move, so a redraw puts it back
     const div = document.createElement("div");
     div.className = "model";
     Object.assign(div.style, {
@@ -113,12 +114,23 @@ export class SkyView {
     this.refreshTip();
   }
 
+  /** The sky's n stars, the same each time. */
+  starfield(n) {
+    let g = this.starfields.get(n);
+    if (!g) {
+      g = el("g");
+      stars(g, -DOME, HORIZON - DOME, DOME * 2, DOME, n, 11);
+      this.starfields.set(n, g);
+    }
+    return g;
+  }
+
   /** The tint, stars and glow behind the skyline, and the dome and its marks over it. */
   drawSky(sky) {
     const scene = skyScene(sky);
     const inside = el("g", { "clip-path": "url(#sky-clip)" }, this.back);
     if (scene.tint) el("path", { d: dome(), fill: scene.tint }, inside);
-    if (scene.stars !== "none") stars(inside, -DOME, HORIZON - DOME, DOME * 2, DOME, scene.stars === "all" ? 260 : 25, 11);
+    if (scene.stars !== "none") inside.appendChild(this.starfield(scene.stars === "all" ? 260 : 25));
     // Dawn's paling, in the sky behind the ridge, rising from Senara's side of the horizon: the
     // glow on the horizon alone sits on the ridge's face, pale on pale, and doesn't show.
     if (scene.glow?.kind === "dawn") {

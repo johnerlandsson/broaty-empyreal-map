@@ -23,12 +23,27 @@ export function rng(seed) {
   };
 }
 
-/** Scatter n stars over a rectangle. */
+const STAR_SHADES = 16; // opacities a starfield is drawn in, a path each: steps of 0.0375 the eye can't tell
+
+/**
+ * Scatter n stars over a rectangle, as a path per shade, not an element a star: every pan and zoom
+ * repaints them. Each star is a circle of its own radius drawn as two arcs, so they scale with the
+ * plan as circles did; only the opacity is rounded, to the middle of its shade.
+ */
 export function stars(g, x, y, w, h, n, seed) {
   const r = rng(seed);
+  const shades = Array.from({ length: STAR_SHADES }, () => []);
+  const f = (v) => +v.toFixed(2);
   for (let i = 0; i < n; i++) {
-    el("circle", { cx: x + r() * w, cy: y + r() * h, r: r() * 1.3 + 0.3, fill: "#fff", opacity: r() * 0.6 + 0.12 }, g);
+    const cx = x + r() * w;
+    const cy = y + r() * h;
+    const rad = f(r() * 1.3 + 0.3);
+    const shade = Math.floor(r() * STAR_SHADES); // opacity r() * 0.6 + 0.12, rounded
+    shades[shade].push(`M${f(cx - rad)} ${f(cy)}a${rad} ${rad} 0 1 0 ${f(rad * 2)} 0a${rad} ${rad} 0 1 0 ${f(-rad * 2)} 0`);
   }
+  shades.forEach((d, i) => {
+    if (d.length) el("path", { d: d.join(""), fill: "#fff", opacity: +(((i + 0.5) / STAR_SHADES) * 0.6 + 0.12).toFixed(4) }, g);
+  });
 }
 
 /** A soft glow filter, referenced as url(#id). */
