@@ -29,6 +29,9 @@ const PATH = [
 const ROUNDED = [[-1.62, 1.38], [1.62, 1.38], [1.62, 2.62, 0.35], [-1.62, 2.62]];
 const MAST = { type: "mast", side: -0.5, frame: 2.5, height: 1.5 };
 
+/** A hull point dragged free, past snapping, as with Alt held. */
+const FREE = { altKey: true };
+
 const withLook = (data, look) => ({ ...data, look: { ...data.look, ...look } });
 
 let root;
@@ -79,12 +82,12 @@ const handle = (name) => plan().querySelector(`.handles [data-handle="${name}"]`
 const fire = (target, type, x, y, extra = {}) =>
   target.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1, pointerId: 1, ...extra }));
 
-/** Drags from (x, y) on the handle by (dx, dy) client pixels, and lets go. */
-async function drag(node, dx, dy, x = 0, y = 0) {
-  fire(node, "pointerdown", x, y);
-  fire(window, "pointermove", x + dx / 2, y + dy / 2);
-  fire(window, "pointermove", x + dx, y + dy);
-  fire(window, "pointerup", x + dx, y + dy);
+/** Drags from (x, y) on the handle by (dx, dy) client pixels, and lets go; `extra` on each event (Alt held: {altKey: true}). */
+async function drag(node, dx, dy, x = 0, y = 0, extra = {}) {
+  fire(node, "pointerdown", x, y, extra);
+  fire(window, "pointermove", x + dx / 2, y + dy / 2, extra);
+  fire(window, "pointermove", x + dx, y + dy, extra);
+  fire(window, "pointerup", x + dx, y + dy, extra);
   await editor.busy;
 }
 
@@ -210,7 +213,7 @@ describe("hull handles", () => {
 
   it("tries the moved point when point 0 is dragged, keeping the others", async () => {
     await start("#orrin", ownPath);
-    await drag(handle("point-0"), 14, -10);
+    await drag(handle("point-0"), 14, -10, 0, 0, FREE);
     expect(puts).toHaveLength(1);
     expect(puts[0].body.json.hull["3"]).toEqual([[-1.52, 1.48], ...PATH.slice(1)]);
   });
@@ -218,7 +221,7 @@ describe("hull handles", () => {
   it("copies an inherited path into the place's own tweak on its first edit", async () => {
     await start("#kilmar", likePath);
     expect(root.querySelector('.side [data-key="hull.2"]').textContent).toBe("from orrin");
-    await drag(handle("point-0"), 14, -10);
+    await drag(handle("point-0"), 14, -10, 0, 0, FREE);
     expect(puts[0].url).toBe("/api/tweaks/kilmar");
     expect(puts[0].body.json.hull["2"]).toEqual([[-1.52, 1.48], ...PATH.slice(1)]);
     expect(puts[0].body.json.like).toBe("orrin");
@@ -252,7 +255,7 @@ describe("hull handles", () => {
   it("puts the look back and shows the message when the save is refused (422)", async () => {
     await start("#orrin", ownPath);
     replies.push({ status: 422, body: { error: "data/tweaks/orrin.json: hull.3: crosses itself" } });
-    await drag(handle("point-0"), 14, -10);
+    await drag(handle("point-0"), 14, -10, 0, 0, FREE);
     expect(editor.place.data.look.hull["3"]).toEqual(PATH);
     expect(editor.place.views.index.hullPaths["3"][0]).toEqual(PATH[0]);
     const bar = root.querySelector(".errbar");
@@ -262,7 +265,7 @@ describe("hull handles", () => {
 
   it("keeps the dragged look, unsaved, when the trial passes", async () => {
     await start("#orrin", ownPath);
-    await drag(handle("point-0"), 14, -10);
+    await drag(handle("point-0"), 14, -10, 0, 0, FREE);
     expect(editor.place.data.look.hull["3"]).not.toEqual(PATH);
     expect(root.querySelector(".savebar").hidden).toBe(false);
     expect(root.querySelector(".errbar").hidden).toBe(true);
@@ -399,7 +402,7 @@ describe("ship handles", () => {
   it("works the hull path on a plan as on a station", async () => {
     await start("#freighter");
     expect(plan().querySelectorAll('.handles [data-handle^="point-"]')).toHaveLength(freighterJson.hull["1"].length);
-    await drag(handle("point-0"), 14, -10);
+    await drag(handle("point-0"), 14, -10, 0, 0, FREE);
     const [x, y] = freighterJson.hull["1"][0];
     expect(puts[0].body.json.hull["1"][0]).toEqual([near(x + 0.1), near(y + 0.1)]);
   });

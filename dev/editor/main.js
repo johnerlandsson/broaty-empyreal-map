@@ -122,6 +122,7 @@ export function startEditor({
     place: () => place,
     resolved: panel.resolved,
     change: panel.change,
+    pane: deckEl.parentElement,
     preview: (look) => preview(look),
     flush: () => flush(),
     restore: (look) => {

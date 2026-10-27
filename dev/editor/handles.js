@@ -3,13 +3,16 @@
 // the way its span grows (option B of docs/maps/reference/editor-handles-options.png), dragging that
 // side's span (snapped to 0.05 cells, never below 0); the deck's hull path in blue with a square on
 // each point and a ring with its r on a rounded one, as row 3 of
-// docs/maps/reference/hull-path-options.png (a point drags, snapped to 0.01; a double-click on an
-// edge adds one there; a picked point goes on Delete); and a diamond on each cradle's root, which
+// docs/maps/reference/hull-path-options.png (a point drags, snapped by snap.js, free to 0.01 with
+// Alt held, a dashed magenta tie to each point it lines up with and its x, y beside it, as option B
+// of editor-guides-options.png; a double-click on an edge adds one there, snapped the same; a
+// picked point goes on Delete); and a diamond on each cradle's root, which
 // drags along its side, and on each mast, which drags in side and frame (snapped to 0.05). On a
 // ship plan, a diamond on each bell (at the tail) and boom (at the nose), which drag along their
 // side, and a circle on each greeble on the top deck, which drags in side and frame.
 // Footprints only on rooms that aren't passages or blisters (nor drawn by hand, as an outline),
-// the hull only on a deck inside it.
+// the hull only on a deck inside it. Under and round them, the grid and the decks above and below
+// (guides.js), whose points a hull point lines up with.
 // A drag patches the open place's look as it goes, for the page to redraw, and makes its change on
 // release through the panel (kept unsaved once a trial build passes); a change refused puts back
 // the look the last build gave. A hull path or
@@ -19,12 +22,17 @@
 import { noseAt, pathOf, tailAt } from "../../ui/lib/footprint.js";
 import { pathD } from "../../ui/lib/decks.js";
 import { el } from "../../ui/lib/svg.js";
+import { createGuides } from "./guides.js";
 import { addHullPoint, moveFixture, moveGreeble, moveHullPoint, removeHullPoint, setFootprint, setHull } from "./ops.js";
+import { snapPoint } from "./snap.js";
 
 const EDIT = "#5aa9ff";
 const SPAN = "#e8b04a"; // a room's side, unlike the hull's points
 const DARK = "#04060c";
+const TIE = "#ff5fd2"; // a dragged point's tie to what it lines up with
 const SQUARE = 9; // a handle's size, in plan units
+/** How far a hull point reaches to snap, in screen pixels. */
+const REACH_PX = 6;
 /** Each footprint side's way out, in cells: x to starboard, y fore. */
 const OUT = { fore: [0, 1], aft: [0, -1], port: [-1, 0], starboard: [1, 0] };
 
@@ -52,22 +60,37 @@ export function ownGreebles(t, inherited) {
 /**
  * Starts the handles. Nothing is drawn until draw().
  * @param {{place: () => object | null, resolved: (placeId: string, keyPath: string[]) => {value: unknown},
-      change: (name: string, edit: (t: object) => object) => Promise<{ok: boolean}>,
+ *   change: (name: string, edit: (t: object) => object) => Promise<{ok: boolean}>,
  *   preview: (look: object) => void, flush: () => void, restore: (look?: object) => void,
  *   run: (p: Promise<void>) => void, changed: () => void, editable: () => boolean,
- *   showError: (text: string | null) => void}} deps the page's: `preview` sets the open place's
+ *   showError: (text: string | null) => void, pane: Element}} deps the page's: `preview` sets the open place's
  *   look and redraws it within a frame, `flush` redraws now if one is due, `restore` sets the look
- *   (the last built one, given none) and redraws now; `changed` is called when the picked hull point changes
+ *   (the last built one, given none) and redraws now; `changed` is called when the picked hull point
+ *   changes; `pane` holds the plan, for the guides' card
  * @returns {{draw: () => void, picked: () => number | null, stop: () => void}}
  */
-export function createHandles({ place, resolved, change, preview, flush, restore, run, changed, editable, showError }) {
+export function createHandles({ place, resolved, change, preview, flush, restore, run, changed, editable, showError, pane }) {
   let layer = null; // the overlay drawn last
   let drag = null; // the drag going on
   let pick = null; // {placeId, deck, i}: the hull point picked
+  const guides = createGuides({ pane, changed: () => draw() });
 
   const deckOf = (p) => p.views.index.decks[p.views.deck.level];
   const layoutOf = (p) => p.views.deck.plans[p.views.deck.level]?.layout;
   const cellOf = (p, e) => layoutOf(p).cellAt(...p.views.deck.toPlan(e.clientX, e.clientY));
+
+  /** How far a snap reaches at the plan's zoom, in cells on each axis: a few pixels from where e is. */
+  function reachOf(p, e) {
+    const [x0, y0] = cellOf(p, e);
+    const [x1, y1] = cellOf(p, { clientX: e.clientX + REACH_PX, clientY: e.clientY + REACH_PX });
+    return [Math.abs(x1 - x0), Math.abs(y1 - y0)];
+  }
+
+  /** What a point of the deck's path lines up with: the path's other points, then the decks shown's. */
+  const targetsOf = (p, deck, skip = -1) => [
+    ...(pathOn(p, deck) ?? []).flatMap(([x, y], k) => (k === skip ? [] : [{ at: [x, y], label: `point ${k}` }])),
+    ...guides.targets(p),
+  ];
   const pathOn = (p, deck) => p.data.look?.hull?.[deck];
 
   /** The picked point's index, if it's on the plan's deck of the open place. */
@@ -138,8 +161,13 @@ export function createHandles({ place, resolved, change, preview, flush, restore
       },
     },
     point: {
-      start: (p, d) => ({ from: pathOn(p, d.deck)[d.i] }),
-      value: (d, [dx, dy]) => [snap(d.from[0] + dx, 0.01), snap(d.from[1] + dy, 0.01)],
+      start: (p, d, e) => ({ from: pathOn(p, d.deck)[d.i], targets: targetsOf(p, d.deck, d.i), reach: reachOf(p, e), ties: [] }),
+      value: (d, [dx, dy], e) => {
+        if (!dx && !dy) return [d.from[0], d.from[1]];
+        const { at, ties } = snapPoint([d.from[0] + dx, d.from[1] + dy], { points: d.targets, reach: d.reach, free: !!e?.altKey });
+        d.ties = ties;
+        return at;
+      },
       look: (look, d, [x, y]) => {
         const points = look.hull[d.deck].map((q, k) => (k !== d.i ? q : q.length === 3 ? [x, y, q[2]] : [x, y]));
         return lookWith(look, "hull", { ...look.hull, [d.deck]: points });
@@ -166,7 +194,7 @@ export function createHandles({ place, resolved, change, preview, flush, restore
     e.stopPropagation(); // not a pan, nor a pick
     if (e.button !== 0) return;
     const p = place();
-    drag = { ...spec, ...KINDS[spec.kind].start(p, spec), placeId: p.id, at: cellOf(p, e), before: p.data.look, value: undefined };
+    drag = { ...spec, ...KINDS[spec.kind].start(p, spec, e), placeId: p.id, at: cellOf(p, e), before: p.data.look, value: undefined };
   }
 
   function onMove(e) {
@@ -176,7 +204,7 @@ export function createHandles({ place, resolved, change, preview, flush, restore
     if (p?.id !== drag.placeId) return void (drag = null);
     const [x, y] = cellOf(p, e);
     const kind = KINDS[drag.kind];
-    const value = kind.value(drag, [x - drag.at[0], y - drag.at[1]]);
+    const value = kind.value(drag, [x - drag.at[0], y - drag.at[1]], e);
     const same = JSON.stringify(value) === JSON.stringify(drag.value ?? kind.value(drag, [0, 0]));
     if (same && drag.value === undefined) return; // not moved off where it started
     drag.value = value;
@@ -188,6 +216,7 @@ export function createHandles({ place, resolved, change, preview, flush, restore
     const d = drag;
     drag = null;
     flush();
+    if (d.kind === "point") draw(); // without its ties
     const p = place();
     if (d.value === undefined || p?.id !== d.placeId) return; // a click
     if (JSON.stringify(d.value) === JSON.stringify(KINDS[d.kind].value(d, [0, 0]))) return restore(d.before); // back where it was
@@ -199,7 +228,7 @@ export function createHandles({ place, resolved, change, preview, flush, restore
     e.stopPropagation();
     const p = place();
     const [x, y] = cellOf(p, e);
-    const v = [snap(x, 0.01), snap(y, 0.01)];
+    const v = snapPoint([x, y], { points: targetsOf(p, deck), reach: reachOf(p, e), free: e.altKey }).at;
     const before = p.data.look;
     const points = [...pathOn(p, deck)];
     points.splice(i + 1, 0, v);
@@ -294,6 +323,29 @@ export function createHandles({ place, resolved, change, preview, flush, restore
         if (pick?.placeId !== p.id || pick.deck !== deck || pick.i !== i) setPick({ placeId: p.id, deck, i });
       });
     });
+    drawTies(g, p, deck, toPlan);
+  }
+
+  /**
+   * While a point of this deck's path is dragged: a dashed tie from it to each point it lines up with,
+   * a ring there with what it is, and the point's x, y beside it.
+   */
+  function drawTies(g, p, deck, toPlan) {
+    if (drag?.kind !== "point" || drag.placeId !== p.id || drag.deck !== deck || drag.value === undefined) return;
+    const none = { "pointer-events": "none" };
+    const font = { "font-size": 10, "font-family": "Inter, system-ui, sans-serif", ...none };
+    const [px, py] = toPlan(drag.value);
+    const ties = new Map(drag.ties.map((t) => [t.to.join(","), t])); // one tie to a point it lines up with on both axes
+    for (const { to, label } of ties.values()) {
+      const [tx, ty] = toPlan(to);
+      el("line", { class: "tie", x1: px, y1: py, x2: tx, y2: ty, stroke: TIE, "stroke-width": 1.2, "stroke-dasharray": "4 3", ...none }, g);
+      el("circle", { cx: tx, cy: ty, r: 8, fill: "none", stroke: TIE, "stroke-width": 1.2, ...none }, g);
+      el("text", { class: "tie-label", x: tx + 12, y: ty - 10, fill: TIE, ...font }, g, label);
+    }
+    const readout = el("g", { class: "readout", ...none }, g);
+    const text = drag.value.map((v) => v.toFixed(2)).join(", ");
+    el("rect", { x: px + 12, y: py + 10, width: 8 + text.length * 6.4, height: 20, rx: 4, fill: "#0d121a", stroke: "#2b3646" }, readout);
+    el("text", { x: px + 18, y: py + 24, "font-size": 10.5, fill: "#e3eaf2", "font-family": "DejaVu Sans Mono, monospace" }, readout, text);
   }
 
   /**
@@ -344,10 +396,10 @@ export function createHandles({ place, resolved, change, preview, flush, restore
     layer?.remove();
     layer = null;
     const p = place();
-    if (!p || p.builder !== "decks" || !editable()) return;
-    const plan = p.views.deck.plans[p.views.deck.level];
-    if (!plan?.layout) return;
+    const plan = p?.views.deck.plans[p.views.deck.level];
+    if (!p || p.builder !== "decks" || !editable() || !plan?.layout) return guides.hide();
     const deck = deckOf(p);
+    guides.draw(p, plan);
     layer = el("g", { class: "handles" }, plan.g);
     drawFootprint(layer, p, plan.layout);
     drawHull(layer, p, plan.layout, deck);

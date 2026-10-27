@@ -96,3 +96,14 @@ button.btn { cursor: pointer; }
 .pane.saving > #model { top: 31px; } /* the zoom buttons below the bar */
 .rail .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #e8b04a; margin-left: 6px; vertical-align: 1px; }
 .own.pend, .inh.pend { color: #e8b04a; }
+
+/* the plan's card (guides.js): the grid on or off, and which decks' hulls are shown */
+.plan-card {
+  position: absolute; left: 8px; top: 24px; z-index: 5; display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; background: #0d121acc; border: 1px solid #2b3646; border-radius: 6px; font-size: 11px;
+}
+.plan-card[hidden] { display: none; }
+.plan-card .k { font: 10px "DejaVu Sans Mono", monospace; color: #6f7c8c; text-transform: uppercase; letter-spacing: .5px; }
+.plan-card .seg { font-size: 11px; }
+.plan-card .seg span { padding: 1px 6px; }
+.pane.saving > .plan-card { top: 52px; }
