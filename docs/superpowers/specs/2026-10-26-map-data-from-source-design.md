@@ -53,8 +53,9 @@ works is seeing the map while he changes it. This design keeps that.
 5. **A tweak editor.** A browser page that draws one place with the plugin's
    own 3D overview and plan. John can select a room on either view, recolour
    it, reshape its footprint with drag handles, move fixtures, and set how the
-   overview behaves. Every change is saved into the tweak file and both views
-   redraw.
+   overview behaves. Every change is tried with a build and shown in both
+   views at once; it's written to the tweak file only when John saves (see
+   "Saving" under "The tweak editor", changed 2026-10-27).
 6. **Ships built from cells, and your own ship in the top band.** Ship plans
    come from `content/plans/` and are drawn by the same builders as stations,
    which retires `hulls.js`. Undocked aboard your ship, the top band shows her
@@ -369,12 +370,32 @@ drag handles, as John picked on 2026-10-26:
   overview redraws as you drag.
 - **Inheritance shows:** each value is marked as inherited ("like Orrin") or
   set here, with a reset.
-- **Saving:** every change is written straight to the tweak file and that
-  place is rebuilt. There is no separate compile.
+- **Saving (changed 2026-10-27, from "every change is written straight to
+  the tweak file"):** a change stays unsaved in the page. Each one is checked
+  at once with a trial build of every unsaved file, which writes nothing, and
+  the views are drawn from that trial; a change the trial refuses shows the
+  build's message and is dropped. **Save** writes every unsaved file in one
+  build, all or none; **Discard** drops them. A bar over the map
+  (`docs/maps/reference/editor-save-options.png`, option A) says what's
+  unsaved and in which files, and the rail dots each place with any.
+  Unsaved edits stay across switching places; leaving or reloading the page
+  asks first and doesn't keep them. A hand edit to a file with unsaved edits
+  is never overwritten: the edits are made again on top of the file as it
+  now is and tried again; where they no longer apply, Save waits for a
+  Discard. There is no separate compile.
 - **How it runs (my call):** `npm run edit` starts a small Node server, with
   no framework, that serves the repo, writes `data/tweaks/*.json`, and runs
   the build for one place. Saves are checked against the schema first. A bad
-  value is refused with a message and the file is left alone.
+  value is refused with a message and the file is left alone. The trial
+  builds of unsaved edits go through the same server and its checks.
+- **Editing by (added 2026-10-27, John's picks from
+  `docs/maps/reference/editor-*-options.png`):** a grid under the plan's
+  plate (grid A); the hull of the deck above and below over the plan, with a
+  ring on each point (decks C); a hull point snaps to another point's x or y
+  (its own path's, then those decks'), a cell's edge or the traced hull's
+  margin off one, or a 0.05 grid, and drags free with Alt, tied while dragged
+  to what it lines up with (guides B); a room's span handles are amber arrows,
+  unlike the hull's blue squares (handles B).
 - **Order (my call):** step one is a page that redraws whenever a tweak file
   is saved, so editing the JSON by hand already shows changes live. Selection,
   the panels and dragging come after.
