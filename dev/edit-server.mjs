@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // The tweak editor's server: serves the repo, and lets the editor page read and save the tweak
-// files in data/tweaks. A save is built first into a temp dir with the candidate in a copy of the
-// tweaks; only if that build passes is the file written and ui/data rebuilt. Builds go one at a
-// time, and each, a hand edit's included, is announced over server-sent events. It writes only
-// data/tweaks/*.json and, through the build, ui/data; never data/sync-report.json, never the source.
+// files in data/tweaks. A save is built first into a temp dir with the candidates in a copy of the
+// tweaks; only if that build passes are the files written and ui/data rebuilt. A trial is that
+// build alone: nothing is written, and the last trial's place files are served from its temp dir
+// for the page to preview edits not yet saved. Builds go one at a time, and each, a hand edit's
+// included, is announced over server-sent events. It writes only data/tweaks/*.json and, through
+// the build, ui/data; never data/sync-report.json, never the source.
 // Usage: npm run edit [-- --port N]   (8766 by default)
 
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
@@ -25,7 +27,7 @@ const TYPES = {
   ".txt": "text/plain; charset=utf-8",
 };
 
-/** A tweak file's name in a URL: a plain lower-case name. The palette has its own route. */
+/** A tweak file's name: a plain lower-case name. The palette has its own route for one file. */
 const NAME = /^[a-z0-9_-]+$/;
 
 /** The largest request body taken, in bytes. */
@@ -102,7 +104,7 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-async function readBody(req) {
+async function readJson(req) {
   const chunks = [];
   let size = 0;
   // Read to the end even past the cap, so the client hears the 413 rather than a reset.
@@ -111,16 +113,33 @@ async function readBody(req) {
     if (size <= MAX_BODY) chunks.push(chunk);
   }
   if (size > MAX_BODY) throw new HttpError(413, `the body is over ${MAX_BODY} bytes`);
-  let body;
   try {
-    body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
   } catch {
     throw new HttpError(400, "the body must be JSON");
   }
+}
+
+const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+
+/** One file's {json, version}, checked. */
+function fileOf(body, name = "") {
   const { json, version } = body ?? {};
-  if (json === null || typeof json !== "object" || Array.isArray(json)) throw new HttpError(400, "json must be an object");
-  if (typeof version !== "number") throw new HttpError(400, "version must be a number");
+  if (!isObject(json)) throw new HttpError(400, `${name ? `${name}: ` : ""}json must be an object`);
+  if (typeof version !== "number") throw new HttpError(400, `${name ? `${name}: ` : ""}version must be a number`);
   return { json, version };
+}
+
+/** A body's {files: {name: …}}, each name a tweak file's (the palette's "palette"), each entry checked by `entry`. */
+function filesOf(body, entry) {
+  const files = body?.files;
+  if (!isObject(files) || !Object.keys(files).length) throw new HttpError(400, "files must name a tweak file at least");
+  return Object.fromEntries(
+    Object.entries(files).map(([name, value]) => {
+      if (!NAME.test(name)) throw new HttpError(400, `bad tweak name: ${name}`);
+      return [`${name}.json`, entry(value, name)];
+    }),
+  );
 }
 
 /**
@@ -140,6 +159,7 @@ export async function startServer({ root, source, port = 8766, build: runBuild =
   let report = synced;
   let lastVersion = 0;
   const clients = new Set();
+  let trial = null; // the last trial that passed: {n, dir}, its place files in dir/out
 
   // The text of each tweak file as the server last saw it, so the watcher tells a hand edit from
   // the server's own write.
@@ -183,49 +203,112 @@ export async function startServer({ root, source, port = 8766, build: runBuild =
     }
   }
 
-  /** Checks a candidate tweak file with a build into a temp dir, then writes it and rebuilds. */
-  function save(file, { json, version }) {
+  /**
+   * Builds ui/data into a new temp dir from a copy of the tweaks with `texts` (file -> text) over
+   * it: the dir, for the caller to remove, or a 422 with the build's message, the dir removed.
+   */
+  async function candidate(texts) {
+    const temp = mkdtempSync(join(tmpdir(), "edit-server-"));
+    try {
+      cpSync(tweaksDir, join(temp, "tweaks"), { recursive: true });
+      for (const [file, text] of Object.entries(texts)) writeFileSync(join(temp, "tweaks", file), text);
+      await runBuild({
+        source,
+        tweaksDir: join(temp, "tweaks"),
+        tweaksShownAs: "data/tweaks",
+        outDir: join(temp, "out"),
+        reportPath: join(temp, "report.json"),
+      });
+      return temp;
+    } catch (err) {
+      rmSync(temp, { recursive: true, force: true });
+      throw new HttpError(422, err.message.includes("Nothing written") ? err.message : `${err.message}. Nothing written`);
+    }
+  }
+
+  /** Each file whose version on disk isn't the one given, with the disk's: {} where all match. */
+  function stale(files) {
+    const out = {};
+    for (const [file, { version }] of Object.entries(files)) {
+      const now = versionOf(join(tweaksDir, file));
+      if (now !== version) out[file.slice(0, -".json".length)] = now;
+    }
+    return out;
+  }
+
+  /**
+   * Checks candidate tweak files (file -> {json, version}) with one build into a temp dir, then
+   * writes them all and rebuilds; none is written if any is stale or the build refuses them.
+   */
+  function save(files) {
     return enqueue(async () => {
-      const path = join(tweaksDir, file);
-      const current = versionOf(path);
-      if (version !== current) throw new HttpError(409, "changed on disk", { version: current });
-      const text = tweakText(json);
+      const changedOnDisk = () => {
+        const versions = stale(files);
+        if (Object.keys(versions).length) throw new HttpError(409, "changed on disk", { versions });
+      };
+      changedOnDisk();
+      const texts = Object.fromEntries(Object.entries(files).map(([file, { json }]) => [file, tweakText(json)]));
+      rmSync(await candidate(texts), { recursive: true, force: true });
 
-      const temp = mkdtempSync(join(tmpdir(), "edit-server-"));
-      try {
-        cpSync(tweaksDir, join(temp, "tweaks"), { recursive: true });
-        writeFileSync(join(temp, "tweaks", file), text);
-        await runBuild({
-          source,
-          tweaksDir: join(temp, "tweaks"),
-          tweaksShownAs: "data/tweaks",
-          outDir: join(temp, "out"),
-          reportPath: join(temp, "report.json"),
-        });
-      } catch (err) {
-        throw new HttpError(422, err.message.includes("Nothing written") ? err.message : `${err.message}. Nothing written`);
-      } finally {
-        rmSync(temp, { recursive: true, force: true });
+      // A hand edit during the candidate build wins. From this check to the renames nothing awaits.
+      changedOnDisk();
+      for (const [file, text] of Object.entries(texts)) {
+        // Known before written, so the watcher sees no change. Renamed into place, never torn.
+        known.set(file, text);
+        const partial = join(tweaksDir, `.${file}.${process.pid}.tmp`);
+        writeFileSync(partial, text);
+        renameSync(partial, join(tweaksDir, file));
       }
-
-      // A hand edit during the candidate build wins. From this check to the rename nothing awaits.
-      const now = versionOf(path);
-      if (now !== current) throw new HttpError(409, "changed on disk", { version: now });
-      // Known before written, so the watcher sees no change. Renamed into place, never torn.
-      known.set(file, text);
-      const partial = join(tweaksDir, `.${file}.${process.pid}.tmp`);
-      writeFileSync(partial, text);
-      renameSync(partial, path);
+      const versions = Object.fromEntries(Object.keys(files).map((file) => [file.slice(0, -".json".length), versionOf(join(tweaksDir, file))]));
       let changed;
       try {
         changed = await realBuild();
       } catch (err) {
-        // The file is saved; say so, with its version, and the next build fixes the view.
+        // The files are saved; say so, with their versions, and the next build fixes the view.
         announce({ type: "error", error: err.message });
-        throw new HttpError(500, `saved data/tweaks/${file}, but rebuilding ui/data failed: ${err.message}`, { version: versionOf(path) });
+        const names = Object.keys(files).map((f) => `data/tweaks/${f}`).join(", ");
+        throw new HttpError(500, `saved ${names}, but rebuilding ui/data failed: ${err.message}`, { versions });
       }
-      return { ok: true, version: versionOf(path), changed };
+      return { ok: true, versions, changed };
     });
+  }
+
+  /** save() of one file, answered as the one-file routes always were: with its `version`. */
+  async function saveOne(file, body) {
+    const name = file.slice(0, -".json".length);
+    try {
+      const { versions, ...rest } = await save({ [file]: fileOf(body) });
+      return { ...rest, version: versions[name] };
+    } catch (err) {
+      if (err.extra?.versions) err.extra = { version: err.extra.versions[name] };
+      throw err;
+    }
+  }
+
+  /**
+   * Builds the tweaks with candidate files (file -> json) over them, writing nothing. A trial that
+   * passes is kept, the one before it removed, and its place and plan files served under
+   * /api/trial/<n>/; it answers with n and the ids whose files differ from ui/data's.
+   */
+  function runTrial(files) {
+    return enqueue(async () => {
+      const texts = Object.fromEntries(Object.entries(files).map(([file, json]) => [file, tweakText(json)]));
+      const dir = await candidate(texts);
+      if (trial) rmSync(trial.dir, { recursive: true, force: true });
+      trial = { n: buildVersion(), dir };
+      return { ok: true, trial: trial.n, changed: changedIds(snapshot(outDir), snapshot(join(dir, "out"))) };
+    });
+  }
+
+  /** A file of the last trial's: /api/trial/<n>/<id>.js or /api/trial/<n>/plans/<id>.js. */
+  function serveTrial(pathname, res) {
+    const m = /^\/api\/trial\/(\d+)\/((?:plans\/)?[a-z0-9_-]+\.js)$/.exec(pathname);
+    if (!m) throw new HttpError(404, "no such trial file");
+    if (!trial || Number(m[1]) !== trial.n) throw new HttpError(410, "a newer trial replaced this one");
+    const file = join(trial.dir, "out", m[2]);
+    if (!existsSync(file)) throw new HttpError(404, "not in the trial");
+    res.writeHead(200, { "content-type": TYPES[".js"], "cache-control": "no-store" });
+    res.end(readFileSync(file));
   }
 
   // A hand edit: rebuild once the changes settle, if any tweak file differs from what's known.
@@ -295,7 +378,16 @@ export async function startServer({ root, source, port = 8766, build: runBuild =
     const { pathname } = new URL(req.url, "http://localhost");
     if (req.method === "GET" && pathname === "/api/state") return sendJson(res, 200, state());
     if (req.method === "GET" && pathname === "/api/events") return events(req, res);
-    if (req.method === "PUT" && pathname === "/api/palette") return sendJson(res, 200, await save("palette.json", await readBody(req)));
+    if (req.method === "PUT" && pathname === "/api/palette") return sendJson(res, 200, await saveOne("palette.json", await readJson(req)));
+    if (req.method === "PUT" && pathname === "/api/tweaks") return sendJson(res, 200, await save(filesOf(await readJson(req), fileOf)));
+    if (req.method === "POST" && pathname === "/api/trial") {
+      const files = filesOf(await readJson(req), (json, name) => {
+        if (!isObject(json)) throw new HttpError(400, `${name}: must be an object`);
+        return json;
+      });
+      return sendJson(res, 200, await runTrial(files));
+    }
+    if (req.method === "GET" && pathname.startsWith("/api/trial/")) return serveTrial(pathname, res);
     if (pathname.startsWith("/api/tweaks/")) {
       if (req.method !== "PUT") throw new HttpError(405, "PUT only");
       let name;
@@ -305,7 +397,7 @@ export async function startServer({ root, source, port = 8766, build: runBuild =
         throw new HttpError(400, "bad name");
       }
       if (!NAME.test(name) || name === "palette") throw new HttpError(400, `bad tweak name: ${name}`);
-      return sendJson(res, 200, await save(`${name}.json`, await readBody(req)));
+      return sendJson(res, 200, await saveOne(`${name}.json`, await readJson(req)));
     }
     if (pathname.startsWith("/api/")) throw new HttpError(404, "no such API");
     if (req.method !== "GET" && req.method !== "HEAD") throw new HttpError(405, "GET only");
@@ -331,6 +423,7 @@ export async function startServer({ root, source, port = 8766, build: runBuild =
       clearTimeout(timer);
       for (const res of clients) res.end();
       await queue;
+      if (trial) rmSync(trial.dir, { recursive: true, force: true });
       server.closeAllConnections();
       await new Promise((done) => server.close(done));
     },

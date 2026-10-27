@@ -313,6 +313,61 @@ describe("edit server", () => {
     expect(error).not.toContain(tmpdir());
   });
 
+  it("tries tweaks with a build that writes nothing, and serves that trial's place files", async () => {
+    const { read, root, url } = await setup();
+    const { tweaks } = await (await fetch(`${url}/api/state`)).json();
+    const before = { tweaks: readdirSync(join(root, "data/tweaks")).map((f) => read(`data/tweaks/${f}`)), mini: read("ui/data/mini.js") };
+    const trial = (files) => fetch(`${url}/api/trial`, { method: "POST", body: JSON.stringify({ files }) });
+    const res = await trial({ mini: { paint: { hall: "docks" } }, palette: { ...tweaks.palette.json, plum: "#8e4585" } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(body.changed).toEqual(["hull-skiff", "mini", "tub", "wheelie"]);
+    const mini = await fetch(`${url}/api/trial/${body.trial}/mini.js`);
+    expect(mini.headers.get("content-type")).toMatch(/^text\/javascript/);
+    expect(await mini.text()).toContain('"hall": "docks"');
+    expect(await (await fetch(`${url}/api/trial/${body.trial}/plans/tub.js`)).text()).toContain('"plum": "#8e4585"');
+    // nothing on disk changed
+    expect(readdirSync(join(root, "data/tweaks")).map((f) => read(`data/tweaks/${f}`))).toEqual(before.tweaks);
+    expect(read("ui/data/mini.js")).toBe(before.mini);
+
+    // a newer trial replaces it; a refused one keeps the last that passed
+    const next = await (await trial({ mini: { paint: { hall: "industrial" } } })).json();
+    expect((await fetch(`${url}/api/trial/${body.trial}/mini.js`)).status).toBe(410);
+    const bad = await trial({ mini: { footprints: { hall: { span: { starboard: 0.6 } } } } });
+    expect(bad.status).toBe(422);
+    expect((await bad.json()).error).toMatch(/^data\/tweaks\/mini\.json.*overlap.*Nothing written$/s);
+    expect(await (await fetch(`${url}/api/trial/${next.trial}/mini.js`)).text()).toContain('"hall": "industrial"');
+    for (const path of ["mini.json", "..%2Fmini.js", "plans/..%2F..%2Fx.js"]) expect((await fetch(`${url}/api/trial/${next.trial}/${path}`)).status).toBe(404);
+    expect((await trial({ "../x": {} })).status).toBe(400);
+  });
+
+  it("saves several files in one build, or none of them", async () => {
+    const { read, root, url } = await setup();
+    const { tweaks } = await (await fetch(`${url}/api/state`)).json();
+    const save = (files) => fetch(`${url}/api/tweaks`, { method: "PUT", body: JSON.stringify({ files }) });
+    const palette = { ...tweaks.palette.json, plum: "#8e4585" };
+
+    // one stale version: none written
+    const stale = await save({ mini: { json: { paint: { hall: "plum" } }, version: 0 }, palette: { json: palette, version: tweaks.palette.version - 1 } });
+    expect(stale.status).toBe(409);
+    expect((await stale.json()).versions).toEqual({ palette: tweaks.palette.version });
+    expect(existsSync(join(root, "data/tweaks/mini.json"))).toBe(false);
+
+    // refused together (plum isn't in the palette on disk): none written
+    const alone = await save({ mini: { json: { paint: { hall: "plum" } }, version: 0 } });
+    expect(alone.status).toBe(422);
+    expect(existsSync(join(root, "data/tweaks/mini.json"))).toBe(false);
+
+    const res = await save({ mini: { json: { paint: { hall: "plum" } }, version: 0 }, palette: { json: palette, version: tweaks.palette.version } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.versions).toEqual({ mini: statSync(join(root, "data/tweaks/mini.json")).mtimeMs, palette: statSync(join(root, "data/tweaks/palette.json")).mtimeMs });
+    expect(body.changed).toContain("mini");
+    expect(read("data/tweaks/mini.json")).toBe(tweakText({ paint: { hall: "plum" } }));
+    expect(read("ui/data/mini.js")).toContain('"hall": "plum"');
+  });
+
   it("refuses a request for another host, against DNS rebinding", async () => {
     const { url } = await setup();
     const { port } = new URL(url);
