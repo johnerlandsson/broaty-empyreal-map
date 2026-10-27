@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Belt, Starfield, Town, approach, awayAt, awayLook, clouds, heading, litFor, moveCard, rockFaces, makeRock, targets, work, workLines } from "./space.js";
+import { Belt, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, heading, litFor, moveCard, rockFaces, makeRock, targets, work, workLines } from "./space.js";
 import { rng } from "./svg.js";
 
 describe("targets", () => {
@@ -114,9 +114,82 @@ describe("Starfield", () => {
     const len = (speed) => {
       const f = new Starfield(50, rng(1));
       f.step(0.016, speed);
-      return f.segments(360, 220).reduce((a, [x0, y0, x1, y1]) => a + Math.hypot(x1 - x0, y1 - y0), 0);
+      return streaks(f, 360, 220).reduce((a, [x0, y0, x1, y1]) => a + Math.hypot(x1 - x0, y1 - y0), 0);
     };
     expect(len(1)).toBeGreaterThan(len(0.01) * 10);
+  });
+
+  it("moves its stars as it always did, in place", () => {
+    // the old step and segments, which made new stars each frame
+    const f = new Starfield(80, rng(9));
+    const old = { rnd: rng(9) };
+    const spawn = (z) => ({ x: old.rnd() * 2 - 1, y: old.rnd() * 2 - 1, z, pz: z });
+    old.stars = Array.from({ length: 80 }, () => spawn(0.02 + old.rnd() * 0.98));
+    const kept = f.stars.slice();
+    for (let i = 0; i < 400; i++) {
+      f.step(1 / 60, 1);
+      old.stars = old.stars.map((s) => (s.z - 0.45 / 60 <= 0.02 ? spawn(1) : { ...s, pz: s.z, z: s.z - 0.45 / 60 }));
+      streaks(f, 360, 220);
+      old.stars = old.stars.map((s) => {
+        const x = 180 + (s.x / s.z) * 90;
+        const y = 110 + (s.y / s.z) * 90;
+        return x < 0 || x > 360 || y < 0 || y > 220 ? spawn(1) : s;
+      });
+    }
+    expect(f.stars).toEqual(old.stars);
+    f.stars.forEach((s, i) => expect(s).toBe(kept[i]));
+  });
+
+  it("writes its streaks into the same buffer each time", () => {
+    const f = new Starfield(50, rng(1));
+    const buf = f.streaks;
+    f.step(0.016, 1);
+    const n = f.segments(360, 220);
+    expect(n).toBeGreaterThan(0);
+    expect(n).toBeLessThanOrEqual(50);
+    expect(f.streaks).toBe(buf);
+  });
+
+  it("keeps a display frame's streak when stepped less often", () => {
+    const often = new Starfield(50, rng(1));
+    const seldom = new Starfield(50, rng(1));
+    for (let i = 0; i < 6; i++) often.step(1 / 60, 0.01);
+    seldom.step(0.1, 0.01, 1 / 60);
+    seldom.stars.forEach((s, i) => {
+      expect(s.z).toBeCloseTo(often.stars[i].z, 12);
+      expect(s.pz).toBeCloseTo(often.stars[i].pz, 12);
+    });
+  });
+});
+
+/** A Starfield's streaks as [x0, y0, x1, y1, alpha, width]. */
+function streaks(f, w, h) {
+  const n = f.segments(w, h);
+  return Array.from({ length: n }, (_, i) => Array.from(f.streaks.subarray(i * 6, i * 6 + 6)));
+}
+
+describe("frameGap", () => {
+  const idle = work({}, 0);
+  it("draws every frame travelling, and on the station's fade", () => {
+    expect(frameGap(targets("travelling"))).toBe(0);
+    expect(frameGap(targets("station"))).toBe(0);
+  });
+
+  it("draws a few frames a second parked or in high orbit, a few more over a port's blinking beacons", () => {
+    for (const s of ["parked", "orbit"]) {
+      expect(frameGap(targets(s))).toBeGreaterThanOrEqual(1000 / 15);
+      expect(frameGap(targets(s))).toBeLessThanOrEqual(1000 / 10);
+    }
+    expect(frameGap(targets("port"))).toBeLessThan(frameGap(targets("parked")));
+    expect(frameGap(targets("port"))).toBeGreaterThanOrEqual(1000 / 15);
+  });
+
+  it("keeps a belt's drift and sweep smooth, and draws every frame while the laser cuts or she moves", () => {
+    const belt = targets("belt");
+    expect(frameGap(belt, idle)).toBeCloseTo(1000 / 30);
+    expect(frameGap(belt, work({ sensors: { busy: "scan", since: 0, ends: 10 } }, 5))).toBeCloseTo(1000 / 30);
+    expect(frameGap(belt, work({ laser: { busy: "mine", since: 0 } }, 10))).toBe(0);
+    expect(frameGap(belt, work({ nav: { busy: "rcs", since: 0, ends: 20 }, belt: { moved: 4, way: 0 } }, 5))).toBe(0);
   });
 });
 

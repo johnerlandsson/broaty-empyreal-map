@@ -6,12 +6,14 @@
 // or dark as her side faces its star (a dusk between when that's not known); no controls. It fades in over the model (hiding its zoom buttons),
 // eases the stars' speed and cross-fades stars and rocks; the frame loop runs only while
 // something is on screen, and pauses while the panel is hidden or the system chart covers it.
+// Once a scene has settled it draws only as often as what moves in it needs (frameGap), idle on a
+// timer between.
 // Docking and undocking, it turns see-through over the station model, which shrinks into the
 // parked starfield or grows out of it on the game's clock (setManoeuvre, onAway); one stopped
 // early eases back to the scene's own picture.
 
 import { daylit, orbitLit } from "./lib/orbits.js";
-import { Belt, Starfield, Town, approach, awayAt, awayLook, clouds, heading, litFor, rockFaces, targets, work, workLines } from "./lib/space.js";
+import { Belt, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, heading, litFor, rockFaces, targets, work, workLines } from "./lib/space.js";
 import { rng } from "./lib/svg.js";
 
 const BG = "#04060c";
@@ -24,6 +26,7 @@ const DUSK = 1; // per second: day to night on the ground below, and back
 const DRIFT = targets("parked").speed; // the parked stars' drift, theirs as they show through
 const BACK = 1.5; // per second: a dock or an undock stopped early, the station back where it was
 const LOOK = 1000; // ms between asking whether the face below is in daylight
+const STALL = 0.25; // s: the longest step taken at once, after the page stalls
 // the planet's face: [top, upper, bottom] of its gradient, by day and by night
 const DAY = ["#6e5a44", "#8a7052", "#5c4936"];
 const NIGHT = ["#121821", "#0e131b", "#080b11"];
@@ -78,7 +81,11 @@ export class SpaceView {
     this.high = 0; // the planet's face from high orbit shown
     this.speed = 0;
     this.raf = 0;
+    this.timer = 0; // a settled scene waiting out frameGap() before its next frame
     this.last = 0;
+    this.gap = 0; // ms the next frame was put off for, 0 if it wasn't
+    this.beat = 1 / 60; // s, the display's own frame, as the frames that weren't put off saw it
+    this.shown = null; // the work() the belt last drew
     this.covered = false; // the chart is over the band: keep the state, draw nothing
     this.run = null; // a dock or an undock under way, { verb, start, end } in ms
     this.away = 0; // 0 the station as docked, 1 backed out of the berth
@@ -102,7 +109,7 @@ export class SpaceView {
       this.looked = -Infinity;
       if (this.ground === 0 && this.high === 0) this.lit = this.litTarget = this.daylight() ?? this.litTarget; // no fade into a known sky
     }
-    this.wake();
+    this.hurry();
   }
 
   /** The chart's ship, for which side of the planet she's on in high orbit. */
@@ -119,7 +126,7 @@ export class SpaceView {
   /** Time a dock or an undock: `{ verb, start, end }` in local ms, or null when none is under way. */
   setManoeuvre(run) {
     this.run = run;
-    this.wake();
+    this.hurry();
   }
 
   /** The system's charts, an indexCharts() result, for where the port and its star are. */
@@ -158,26 +165,52 @@ export class SpaceView {
     this.g.setTransform(k, 0, 0, k, 0, 0);
     this.w = w;
     this.h = h;
+    if (this.timer) this.hurry(); // resizing cleared it: no waiting out a gap blank
   }
 
   wake() {
-    if (this.raf || document.hidden || this.covered) return;
+    if (this.raf || this.timer || document.hidden || this.covered) return;
     this.last = performance.now();
+    this.raf = requestAnimationFrame((t) => this.frame(t));
+  }
+
+  /** Something's changed: draw at the display's next frame, not after a settled scene's wait. */
+  hurry() {
+    if (!this.timer) return this.wake();
+    clearTimeout(this.timer);
+    this.timer = 0;
     this.raf = requestAnimationFrame((t) => this.frame(t));
   }
 
   pause() {
     if (this.raf) cancelAnimationFrame(this.raf);
+    clearTimeout(this.timer);
     this.raf = 0;
+    this.timer = 0;
+  }
+
+  /** Every ease at the scene's own, no dock or undock under way or easing back, the rocks not easing into or out of her move. */
+  settled(t) {
+    return (
+      !this.through &&
+      this.space === t.space &&
+      this.rocks === t.belt &&
+      this.ground === t.ground &&
+      this.high === t.orbit &&
+      this.speed === t.speed &&
+      this.lit === this.litTarget &&
+      (!t.belt || this.belt.go === 0)
+    );
   }
 
   frame(now) {
-    if (this.covered) {
-      this.raf = 0;
-      return;
-    }
-    const dt = Math.max(0, Math.min(0.05, (now - this.last) / 1000)); // a first frame can predate wake()
+    this.raf = 0;
+    if (this.covered) return;
+    const dt = Math.max(0, Math.min(STALL, (now - this.last) / 1000)); // a first frame can predate wake()
     this.last = now;
+    if (!this.gap && dt > 0) this.beat += (dt - this.beat) * 0.1;
+    // put off, the stars keep a display frame's streak, not one as long as the wait
+    const trail = this.gap ? Math.min(dt, this.beat) : dt;
     const t = this.target;
     this.space = approach(this.space, t.space, dt, FADE);
     this.rocks = approach(this.rocks, t.belt, dt, FADE);
@@ -213,11 +246,22 @@ export class SpaceView {
     } else {
       this.cv.style.opacity = String(this.space);
       this.cv.style.pointerEvents = this.space > 0 ? "auto" : "none";
-      if (this.space > 0 && this.w) this.draw(dt);
+      if (this.space > 0 && this.w) this.draw(dt, trail);
     }
 
     // back on the station with the fade done: nothing to draw until the next scene
-    this.raf = !this.through && this.space === 0 && t.space === 0 ? 0 : requestAnimationFrame((n) => this.frame(n));
+    if (!this.through && this.space === 0 && t.space === 0) return;
+    this.gap = this.settled(t) ? frameGap(t, this.shown) : 0;
+    if (!this.gap) {
+      this.raf = requestAnimationFrame((n) => this.frame(n));
+      return;
+    }
+    // half a display frame early, so the frame asked for then is the one the gap ends on
+    const wait = now + this.gap - performance.now() - (this.beat * 1000) / 2;
+    this.timer = setTimeout(() => {
+      this.timer = 0;
+      this.raf = requestAnimationFrame((n) => this.frame(n));
+    }, Math.max(0, wait));
   }
 
   /** Over the station model at a distance: no backdrop, only the parked stars, as strong as it's far. */
@@ -229,25 +273,27 @@ export class SpaceView {
 
   drawStars(dim) {
     const { g } = this;
+    const n = this.field.segments(this.w, this.h);
+    const s = this.field.streaks;
     g.lineCap = "round";
-    for (const [x0, y0, x1, y1, a, lw] of this.field.segments(this.w, this.h)) {
-      g.strokeStyle = `rgba(${STAR},${a * dim})`;
-      g.lineWidth = lw;
+    for (let i = 0; i < n * 6; i += 6) {
+      g.strokeStyle = `rgba(${STAR},${s[i + 4] * dim})`;
+      g.lineWidth = s[i + 5];
       g.beginPath();
-      g.moveTo(x0, y0);
-      g.lineTo(x1, y1);
+      g.moveTo(s[i], s[i + 1]);
+      g.lineTo(s[i + 2], s[i + 3]);
       g.stroke();
     }
   }
 
-  draw(dt) {
+  draw(dt, trail) {
     const { g, w, h } = this;
     g.globalAlpha = 1;
     g.fillStyle = BG;
     g.fillRect(0, 0, w, h);
 
     if (this.rocks < 1) {
-      this.field.step(dt, this.speed);
+      this.field.step(dt, this.speed, trail);
       this.drawStars((1 - this.rocks) * (1 - 0.5 * Math.max(this.ground, this.high) * this.lit)); // a sunlit face below outshines them
     }
 
@@ -256,7 +302,7 @@ export class SpaceView {
         g.fillStyle = `rgba(${STAR},${a * this.rocks})`;
         g.fillRect(x * w, y * h, 1, 1);
       }
-      const shown = work(this.work, Date.now() / 1000);
+      const shown = (this.shown = work(this.work, Date.now() / 1000));
       // moving, the rocks flow past the other way, once the place has changed to say which way
       const way = shown.moving?.way ?? null;
       this.belt.step(dt, w, h, way === null ? null : heading(way));

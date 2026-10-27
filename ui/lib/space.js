@@ -38,6 +38,20 @@ export function approach(v, target, dt, rate) {
   return Math.abs(next - target) < 1e-3 ? target : next;
 }
 
+/**
+ * Ms between frames once the view has settled on target t (every ease done, no dock or undock
+ * under way), with `shown` the work() at a belt: parked or in high orbit the stars barely drift, so
+ * a few frames a second do; over a port its beacons blink, so a few more; at a belt the rocks drift
+ * past smoothly enough at 30 frames a second, but not while the laser cuts (its flicker) or
+ * she moves (the rocks flow fast). Travelling the stars stream: 0, every frame the display gives.
+ */
+export function frameGap(t, shown = null) {
+  if (t.space === 0 || t.speed > PARKED) return 0;
+  if (t.belt) return shown?.cut || shown?.moving ? 0 : 1000 / 30;
+  if (t.ground) return 1000 / 15;
+  return 1000 / 10;
+}
+
 // --- docking and undocking -------------------------------------------------------------------
 
 const FAR = 12; // backed out of the berth, the station is 1/FAR of its size as docked
@@ -78,36 +92,63 @@ export class Starfield {
   constructor(n, rnd) {
     this.rnd = rnd;
     this.stars = Array.from({ length: n }, () => this.spawn(NEAR + rnd() * (1 - NEAR)));
+    this.streaks = new Float64Array(n * 6); // segments()'s, reused frame to frame
   }
 
-  spawn(z) {
-    return { x: this.rnd() * 2 - 1, y: this.rnd() * 2 - 1, z, pz: z };
+  /** A star at depth z, somewhere new: into `s` when given (a star recycled), else a new one. */
+  spawn(z, s = {}) {
+    s.x = this.rnd() * 2 - 1;
+    s.y = this.rnd() * 2 - 1;
+    s.z = z;
+    s.pz = z;
+    return s;
   }
 
-  step(dt, speed) {
+  /**
+   * Bring the stars dt seconds nearer at `speed`, each streaking back to where it was `trail`
+   * seconds before: the step itself, unless the view draws less often than the display does and
+   * keeps its streaks a display frame long.
+   */
+  step(dt, speed, trail = dt) {
     const dz = speed * RUSH * dt;
     if (dz === 0) return;
-    this.stars.forEach((s, i) => {
+    const back = speed * RUSH * trail;
+    for (const s of this.stars) {
       const z = s.z - dz;
-      this.stars[i] = z <= NEAR ? this.spawn(1) : { ...s, pz: s.z, z };
-    });
+      if (z <= NEAR) {
+        this.spawn(1, s);
+        continue;
+      }
+      s.pz = trail === dt ? s.z : z + back;
+      s.z = z;
+    }
   }
 
-  /** Streaks as [x0, y0, x1, y1, alpha, width] for a w×h view; off-screen stars are respawned. */
+  /**
+   * Streaks for a w×h view into `streaks`, six numbers each (x0, y0, x1, y1, alpha, width), and how
+   * many; off-screen stars are respawned.
+   */
   segments(w, h) {
     const f = w * 0.25;
-    const out = [];
-    this.stars.forEach((s, i) => {
+    const out = this.streaks;
+    let n = 0;
+    for (const s of this.stars) {
       const x1 = w / 2 + (s.x / s.z) * f;
       const y1 = h / 2 + (s.y / s.z) * f;
       if (x1 < 0 || x1 > w || y1 < 0 || y1 > h) {
-        this.stars[i] = this.spawn(1);
-        return;
+        this.spawn(1, s);
+        continue;
       }
       const near = 1 - s.z;
-      out.push([w / 2 + (s.x / s.pz) * f, h / 2 + (s.y / s.pz) * f, x1, y1, Math.min(1, near * 1.4), Math.max(0.6, near * 2)]);
-    });
-    return out;
+      out[n] = w / 2 + (s.x / s.pz) * f;
+      out[n + 1] = h / 2 + (s.y / s.pz) * f;
+      out[n + 2] = x1;
+      out[n + 3] = y1;
+      out[n + 4] = Math.min(1, near * 1.4);
+      out[n + 5] = Math.max(0.6, near * 2);
+      n += 6;
+    }
+    return n / 6;
   }
 }
 
