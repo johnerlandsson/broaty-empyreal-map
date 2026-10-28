@@ -1,0 +1,99 @@
+<!doctype html>
+<!-- The Old Shops in the 3D overview, 2026-10-28: ways to draw the five rooms that go deeper than the
+     inner ring (Sweeper Bay to the Cradle Room, fore of Inner 7:30). Drawn by the real ModelView with
+     only the jut's faces swapped; the Racks lit. Top row whole, then close lit, then close unlit. Serve the repo root
+     over http to open it. A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Old Shops 3D: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:20px; }
+  .row { display:flex; gap:18px; justify-content:center; }
+  figure { margin:0; text-align:center; width:300px; }
+  figcaption { margin-top:6px; color:#e3eaf2; }
+  figcaption small { display:block; color:#7d8a9a; margin:4px auto 0; }
+  .m { width:300px; height:250px; border-radius:8px; overflow:hidden; }
+  .m button { display:none; }
+</style></head><body>
+<div class="row" id="top"></div>
+<div class="row" id="bottom" style="margin-top:14px"></div>
+<div class="row" id="unlit" style="margin-top:14px"></div>
+<script type="module">
+import tiss from "../../../ui/data/tiss.js";
+import { tissRooms } from "../../../ui/lib/look.js";
+import { indexStation, keyOf, locate } from "../../../ui/lib/locate.js";
+import { buildModel } from "../../../ui/lib/model.js";
+import { P3, RR, RT, RWZ, SLICE } from "../../../ui/lib/geometry.js";
+import { ModelView } from "../../../ui/model-view.js";
+
+const index = indexStation(tissRooms(tiss));
+const base = buildModel(index);
+const Z = 2, X = 15, H = 7.5, SPAN = 1.5;
+const R0 = RR[Z] - RT[Z], R1 = RR[Z] + RT[Z], W = RWZ[Z], SL = (SLICE[1] - SLICE[0]) * W;
+const IND = index.corridors[Z].find((c) => c.x === X).paint;
+const jut = (f) => /^r2:15:-?\d+$/.test(f.key ?? "") && Math.abs(+f.key.split(":")[2]) > 2;
+const rest = base.filter((f) => !jut(f));
+const face = (pts, kind, key, tint = IND, edges = null) => ({ pts, kind, key, tint, edges: edges ?? pts.map(() => true), turns: true });
+
+// a box in ring terms: radius r0..r1, hours h0..h1, axial z0..z1; `cap` adds its fore end
+function cell(key, r0, r1, h0, h1, z0, z1, cap, base = false) {
+  const out = [
+    face([P3(r1, h0, z0), P3(r1, h1, z0), P3(r1, h1, z1), P3(r1, h0, z1)], "outer", key),
+    face([P3(r0, h0, z1), P3(r0, h1, z1), P3(r0, h1, z0), P3(r0, h0, z0)], "inner", key),
+    face([P3(r0, h0, z0), P3(r1, h0, z0), P3(r1, h0, z1), P3(r0, h0, z1)], "outer", key),
+    face([P3(r1, h1, z0), P3(r0, h1, z0), P3(r0, h1, z1), P3(r1, h1, z1)], "outer", key),
+  ];
+  if (cap) out.push(face([P3(r0, h0, z1), P3(r1, h0, z1), P3(r1, h1, z1), P3(r0, h1, z1)], "fore", key));
+  return out;
+}
+
+const OPTIONS = [
+  ["Now", "A cell a room, 70% of the segment wide, a slice deep each.", () => base],
+  ["A · The ring grows a wing", "The segment's full width and thickness carried on fore, a slice a room, its end tinted like the ring's face: one solid wing.", () => [
+    ...rest,
+    ...[3, 4, 5, 6, 7].flatMap((y) => cell(`r2:15:${y}`, R0, R1, H - SPAN / 2, H + SPAN / 2, W + (y - 3) * SL, W + (y - 2) * SL, y === 7)),
+  ]],
+  ["B · A squat module", "The five rooms packed into one short block on the ring's face, two slices deep, a thin band a room: it reads as a module, and the light still steps out.", () => [
+    ...rest,
+    ...[3, 4, 5, 6, 7].flatMap((y) => cell(`r2:15:${y}`, R0 + 2, R1 + 4, H - SPAN * 0.42, H + SPAN * 0.42, W + ((y - 3) * 2 * SL) / 5, W + ((y - 2) * 2 * SL) / 5, y === 7)),
+  ]],
+  ["C · A tube", "A round pier, an eight-sided tube out of the ring's face, a ring of it a room, its end capped: a gallery reaching fore.", () => {
+    const out = [...rest];
+    const N = 8, rad = RT[Z] * 0.95;
+    const centre = P3(RR[Z], H, 0);
+    // tube axis along z through the ring's mid-radius at 7:30; its cross-section a regular octagon
+    const ux = [Math.sin((H / 12) * 2 * Math.PI), Math.cos((H / 12) * 2 * Math.PI)]; // outward
+    const vx = [ux[1], -ux[0]]; // along the ring
+    const pt = (i, z) => {
+      const a = (i / N) * 2 * Math.PI + Math.PI / N;
+      return [centre[0] + rad * (Math.cos(a) * ux[0] + Math.sin(a) * vx[0]), centre[1] + rad * (Math.cos(a) * ux[1] + Math.sin(a) * vx[1]), z];
+    };
+    for (const y of [3, 4, 5, 6, 7]) {
+      const z0 = W + (y - 3) * SL, z1 = W + (y - 2) * SL, key = `r2:15:${y}`;
+      for (let i = 0; i < N; i++) out.push(face([pt(i, z0), pt(i + 1, z0), pt(i + 1, z1), pt(i, z1)], "outer", key));
+      if (y === 7) out.push(face(Array.from({ length: N }, (_, i) => pt(N - i, z1)), "fore", key));
+    }
+    return out;
+  }],
+];
+
+const where = locate(index, { roomId: "tiss.racks" }, null);
+for (const [title, note, faces] of OPTIONS) {
+  for (const [row, close, dark] of [["top", false, false], ["bottom", true, false], ["unlit", true, true]]) {
+    const fig = document.getElementById(row).appendChild(document.createElement("figure"));
+    const div = fig.appendChild(Object.assign(document.createElement("div"), { className: "m" }));
+    const view = new ModelView(div, index, { faces: faces(), view: tiss.look?.view });
+    view.set(where);
+    if (close) {
+      const b = view.shapes.getBBox();
+      const w = 190, h = w * 250 / 300;
+      view.setView([b.x + b.width / 2 - w / 2, b.y + b.height / 2 - h / 2, w, h]);
+    }
+    if (dark) {
+      view.shapes.replaceChildren();
+      view.draw = () => {}; // keep it unlit
+      fig.appendChild(Object.assign(document.createElement("figcaption"), { innerHTML: `${title}<small>${note}</small>` }));
+    }
+  }
+}
+document.body.dataset.ready = "1";
+</script>
+</body></html>
