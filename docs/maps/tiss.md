@@ -35,7 +35,7 @@ id.
   either side and a stepped Blister at the tip; Freight Transfer a box aft of
   the hub. Bay 1 and Bay 2 are boxes carrying on starboard from the Berths'.
   A stop whose rooms go deeper than the two slices a side juts out of the
-  ring's face, a slice's depth a room and narrower than the segment, as the
+  ring's face as a wing the segment's full width, a slice's depth a room, as the
   plan's hull juts: the Old Shops, fore of Inner 7:30.
 - The wheel turns to bring your hour to the front. The spine, Bearing, dock
   rooms and Blister hold still, as on the real station. In the docks the

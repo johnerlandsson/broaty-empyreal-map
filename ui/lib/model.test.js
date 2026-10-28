@@ -84,6 +84,17 @@ describe("buildModel", () => {
     }
   });
 
+  it("draws the Old Shops' cells the ring segment's full width, a wing carrying the ring on fore", () => {
+    const xy = (key) => {
+      const pts = faces.filter((f) => f.key === key).flatMap((f) => f.pts);
+      const xs = pts.map((p) => p[0]);
+      const ys = pts.map((p) => p[1]);
+      return [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    };
+    const ring = xy("r2:15:2");
+    xy("r2:15:7").forEach((v, i) => expect(v).toBeCloseTo(ring[i]));
+  });
+
   it("every keyOf a station room has faces", () => {
     const keys = new Set(faces.map((f) => f.key));
     for (const room of station.rooms) {

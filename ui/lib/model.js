@@ -51,8 +51,8 @@ export function buildModel(index) {
       }
     }
     // A stop whose rooms go deeper than the ring's two slices a side (T.I.S.S.'s Old Shops, seven
-    // deep fore of Inner 7:30) juts out of the ring's face, a slice's depth a room, narrower than the
-    // segment, as the plan's hull juts round them.
+    // deep fore of Inner 7:30) carries the ring on past its face, a wing the segment's full width and
+    // thickness, a slice's depth a room, as the plan's hull juts round them.
     const deep = new Map();
     for (const room of index.byId.values()) {
       if (room.z !== z || Math.abs(room.y) <= 2 || !Number.isFinite(room.x)) continue;
@@ -62,8 +62,8 @@ export function buildModel(index) {
     const depth = (SLICE[1] - SLICE[0]) * w;
     for (const [k, far] of deep) {
       const [x, sg] = k.split(":").map(Number);
-      const h0 = x / 2 - span * 0.35;
-      const h1 = x / 2 + span * 0.35;
+      const h0 = x / 2 - span / 2;
+      const h1 = x / 2 + span / 2;
       const tint = index.corridors[z].find((c) => c.x === x)?.paint ?? null;
       for (let y = 3; y <= far; y++) {
         const key = `r${z}:${x}:${sg * y}`;
