@@ -1,5 +1,5 @@
 {
-  "commit": "92b4d4d",
+  "commit": "ba5c412",
   "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
@@ -14,7 +14,14 @@
   },
   "unplaced": [],
   "orphans": [],
-  "droppedFlags": [],
+  "droppedFlags": [
+    {
+      "name": "storage",
+      "places": [
+        "tiss"
+      ]
+    }
+  ],
   "unknownFields": [],
   "knownDroppedFlags": [
     "barber",
@@ -27,6 +34,7 @@
     "market",
     "outfitter",
     "start",
+    "storage",
     "terminal",
     "workshops"
   ],
