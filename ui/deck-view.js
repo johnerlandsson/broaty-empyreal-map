@@ -8,10 +8,13 @@ import {
   BEARING,
   CH,
   HULLY,
+  JUT_PAD,
+  hullWall,
   MAX_W,
   MIN_W,
   HUB_R,
   NODE,
+  RH,
   SN,
   SX,
   docksLayout,
@@ -35,6 +38,13 @@ const BASE_W = 600;
 const BASE_H = 520;
 
 let instances = 0;
+
+/** Where a ring's view centres for a room at y: halfway to it, so the corridor stays in sight, but
+ *  never so far from the room that it falls off a short view (the Old Shops are seven deep). */
+function ringFocusY(y, vh) {
+  const slack = Math.max(0, vh / 2 - RH / 2 - JUT_PAD - 12); // room for the jut's wall above it
+  return Math.min(y + slack, Math.max(y - slack, y * 0.5));
+}
 
 const hourLabel = (h) => `${Math.floor(h) || 12}:${h % 1 ? "30" : "00"}`;
 
@@ -114,21 +124,37 @@ function buildRingPlan(svg, index, z, pick) {
   const g = el("g", { display: "none" }, svg);
   for (const off of [-L, 0, L]) {
     const s = el("g", { transform: `translate(${off} 0)` }, g);
-    // hull plate, seams and lit portholes along the fore and aft hull walls
+    // hull plate, seams and lit portholes along the fore and aft hull walls, the walls jutting out
+    // round a stop whose rooms go deeper than the hull (T.I.S.S.'s Old Shops)
     el("rect", { x: -NODE / 2, y: -HULLY, width: L, height: 2 * HULLY, fill: PLATE }, s);
+    for (const j of layout.juts) {
+      const y = j.side < 0 ? -j.reach : HULLY - 2;
+      el("rect", { x: j.cx - j.w / 2, y, width: j.w, height: j.reach - HULLY + 2, rx: 10, fill: PLATE }, s);
+    }
     for (let i = 0; i < stops.length; i++) {
       el("line", { x1: i * NODE - NODE / 2, y1: -HULLY, x2: i * NODE - NODE / 2, y2: HULLY, stroke: "#202a36", "stroke-width": 1 }, s);
     }
-    [-HULLY, HULLY].forEach((y) =>
-      el("line", { x1: -NODE / 2, y1: y, x2: L - NODE / 2, y2: y, stroke: EDGE, "stroke-width": 3 }, s),
+    [-1, 1].forEach((sg) =>
+      el("path", { d: hullWall(layout, sg), fill: "none", stroke: EDGE, "stroke-width": 3, "stroke-linejoin": "round", "data-hull": sg < 0 ? "fore" : "aft" }, s),
     );
+    const jutAt = (x, sg) => layout.juts.find((j) => j.side === sg && [-L, 0, L].some((off) => Math.abs(x - j.cx - off) < j.w / 2));
     const r = rng(z * 31 + 5);
     for (let i = 0; i < stops.length * 8; i++) {
       if (r() < 0.4) continue;
       const x = -NODE / 2 + (i * NODE) / 8 + 9;
-      [-1, 1].forEach((sg) =>
-        el("circle", { cx: x, cy: sg * (HULLY - 7), r: 1.6, fill: "#ffd98a", opacity: 0.25 + r() * 0.6 }, s),
-      );
+      [-1, 1].forEach((sg) => {
+        const opacity = 0.25 + r() * 0.6; // drawn for each side either way, so the pattern elsewhere holds
+        if (!jutAt(x, sg)) el("circle", { cx: x, cy: sg * (HULLY - 7), r: 1.6, fill: "#ffd98a", opacity }, s);
+      });
+    }
+    // a jut's portholes, down its sides
+    for (const j of layout.juts) {
+      for (let d = HULLY + 12; d < j.reach - 12; d += 19) {
+        for (const x of [j.cx - j.w / 2 + 7, j.cx + j.w / 2 - 7]) {
+          if (r() < 0.4) continue;
+          el("circle", { cx: x, cy: j.side * d, r: 1.6, fill: "#ffd98a", opacity: 0.25 + r() * 0.6 }, s);
+        }
+      }
     }
     // corridor band with a district-colour underline
     el("rect", { x: -NODE / 2, y: -CH, width: L, height: 2 * CH, fill: CORR }, s);
@@ -285,7 +311,7 @@ export class DeckView {
       }
       const [fx, fy] = this.focus ?? this.plans[this.level].home;
       const h = BASE_W * this.aspect;
-      this.setView([fx - BASE_W / 2, (this.plans[this.level].ring ? fy * 0.5 : fy) - h / 2, BASE_W, h]);
+      this.setView([fx - BASE_W / 2, (this.plans[this.level].ring ? ringFocusY(fy, h) : fy) - h / 2, BASE_W, h]);
     });
     if (opts.pick) attachPick(div, (id) => this.picked?.(id));
     if (typeof ResizeObserver !== "undefined") {
@@ -407,7 +433,7 @@ export class DeckView {
       px += Math.round((cx - px) / plan.length) * plan.length;
     }
     this.focus = [px, py];
-    const vyFocus = plan.ring ? py * 0.5 : py;
+    const vyFocus = plan.ring ? ringFocusY(py, vh) : py;
     const m = plan.margin ?? 0.35; // how far off centre the highlight may sit before the view follows
     // a plan that frames where you are (a town's district) re-frames when you're out of sight
     if (plan.frame && (Math.abs(px - cx) > vw / 2 || Math.abs(vyFocus - cy) > vh / 2)) {

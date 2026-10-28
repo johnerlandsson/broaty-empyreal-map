@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import tiss from "../data/tiss.js";
-import { NODE, docksLayout, fitWidth, highlightShape, ringLayout, shapeKey } from "./deck-layout.js";
+import { HULLY, NODE, RH, docksLayout, fitWidth, highlightShape, ringLayout, shapeKey } from "./deck-layout.js";
 import { tissRooms } from "./look.js";
 import { indexStation } from "./locate.js";
 
@@ -55,6 +55,24 @@ describe("ringLayout", () => {
       expect(l.rooms.length).toBeGreaterThan(0);
       for (const r of l.rooms) expect(cxs.has(r.cx)).toBe(true);
     }
+  });
+});
+
+describe("the hull's juts", () => {
+  it("juts the fore wall out round the Old Shops, at the Scrapyard's stop, past the Cradle Room", () => {
+    const inner = ringLayout(index, 2);
+    const yard = box(inner, "tiss.scrapyard");
+    const cradle = box(inner, "tiss.cradle-room");
+    expect(inner.juts).toHaveLength(1);
+    const [jut] = inner.juts;
+    expect(jut.cx).toBe(yard.cx);
+    expect(jut.side).toBe(-1);
+    expect(jut.reach).toBeGreaterThan(-(cradle.cy - RH / 2));
+  });
+
+  it("leaves a ring whose rooms fit inside the hull without any", () => {
+    expect(rim.juts).toEqual([]);
+    for (const b of rim.rooms) expect(Math.abs(b.cy) + RH / 2).toBeLessThan(HULLY);
   });
 });
 

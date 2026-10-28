@@ -78,3 +78,24 @@ describe("the pulse", () => {
     for (const n of next) expect(n.getAttribute("opacity")).toBe("1");
   });
 });
+
+describe("a deep room on a ring", () => {
+  it("keeps the Cradle Room, seven rooms fore, inside a wide, short band's view", () => {
+    const place = buildPlace(tiss, "wheel", document.createElement("div"), document.createElement("div"));
+    place.deck.aspect = 0.45; // the band as the panel has it, much wider than tall
+    place.deck.cur = [0, 0, 600, 270];
+    place.deck.set(place.locate(place.index, { roomId: "tiss.cradle-room" }));
+    const [, vy, , vh] = place.deck.cur;
+    const b = place.deck.plans[2].layout.rooms.find((r) => r.room.id === "tiss.cradle-room");
+    expect(b.cy - b.h / 2).toBeGreaterThanOrEqual(vy);
+    expect(b.cy + b.h / 2).toBeLessThanOrEqual(vy + vh);
+  });
+
+  it("draws the inner ring's fore wall round the Old Shops", () => {
+    const place = buildPlace(tiss, "wheel", document.createElement("div"), document.createElement("div"));
+    const top = Math.min(...[...place.deck.plans[2].g.querySelectorAll("path[data-hull]")].flatMap((p) =>
+      [...p.getAttribute("d").matchAll(/-?\d+(\.\d+)?/g)].map((m) => Number(m[0]))));
+    const b = place.deck.plans[2].layout.rooms.find((r) => r.room.id === "tiss.cradle-room");
+    expect(top).toBeLessThan(b.cy - b.h / 2);
+  });
+});

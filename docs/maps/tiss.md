@@ -49,6 +49,11 @@ Four plans, one per level:
 - **Rim, Mid, Inner:** the ring unrolled, the corridor left to right with
   spinward right, fore rooms above and aft below, two-deep rooms stacked
   beyond. Hull walls with lit portholes run along the fore and aft edges.
+  Where a stop's rooms go deeper than the wall, it juts out round them, its
+  outer corners rounded, and back: the Old Shops, seven deep fore of Inner
+  7:30 (`reference/old-shops-options.png`, option A). Standing in one, the
+  view moves no further than it must to keep the room and the jut's wall in
+  sight.
   Each corridor stop is labelled with its hour; lobbies have the lift symbol
   and the ladderway hatch beside it. The plan wraps, so 12:00 follows 11:00.
 - **Docks:** the spine up the page, fore up, port rooms left and starboard

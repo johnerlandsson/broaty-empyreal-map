@@ -10,6 +10,8 @@ export const RW = 116; // room box width
 export const RH = 58; // room box height
 export const GAP = 9; // gap between room boxes
 export const HULLY = 175; // hull wall distance from the corridor centre line
+export const JUT_PAD = 22; // a jut's wall stands this far outside the rooms it takes in
+const JUT_R = 10; // the radius of a jut's outer corners
 
 // Docks: the spine runs up the page (fore up), port rooms left, starboard right.
 export const SN = 120; // spacing along the spine
@@ -64,7 +66,66 @@ export function ringLayout(index, z) {
       door: { x: cx - 8, y: Math.min(from, near), w: 16, h: Math.abs(near - from) },
     });
   }
-  return { z, length: corridor.length * NODE, stops, rooms };
+  return { z, length: corridor.length * NODE, stops, rooms, juts: juts(rooms) };
+}
+
+/**
+ * Where a ring's hull juts out: a stop whose rooms reach nearer the wall than its pad, fore or
+ * aft (T.I.S.S.'s Old Shops, seven deep off Inner 7:30), as {cx, side, reach, w}: side -1 fore
+ * (up), 1 aft; reach the wall's distance from the corridor; w its width, the box and a pad each side.
+ */
+function juts(rooms) {
+  const out = new Map();
+  for (const b of rooms) {
+    const side = Math.sign(b.cy);
+    const reach = Math.abs(b.cy) + b.h / 2 + JUT_PAD;
+    if (reach <= HULLY) continue;
+    const key = `${b.cx}:${side}`;
+    if ((out.get(key)?.reach ?? 0) < reach) out.set(key, { cx: b.cx, side, reach, w: RW + 2 * JUT_PAD });
+  }
+  return [...out.values()].sort((a, b) => a.side - b.side || a.cx - b.cx);
+}
+
+/**
+ * One lap's hull wall on one side, x from -NODE/2 to length - NODE/2, as an SVG path: along the
+ * wall at HULLY, out round each jut (its outer corners rounded) and back. Juts of the laps either
+ * side count, so a jut at the seam carries on across it. Juts that meet merge, the wall at the
+ * deeper's reach where they overlap.
+ */
+export function hullWall(layout, side) {
+  const { length: L } = layout;
+  const x0 = -NODE / 2;
+  const x1 = L - NODE / 2;
+  const mine = layout.juts
+    .filter((j) => j.side === side)
+    .flatMap((j) => [-L, 0, L].map((off) => ({ a: j.cx + off - j.w / 2, b: j.cx + off + j.w / 2, reach: j.reach })))
+    .filter((j) => j.b > x0 && j.a < x1);
+  // the wall's distance at each stretch between breakpoints, as runs of one depth
+  const xs = [...new Set([x0, x1, ...mine.flatMap((j) => [j.a, j.b])])].filter((x) => x >= x0 && x <= x1).sort((a, b) => a - b);
+  const runs = [];
+  for (let i = 0; i < xs.length - 1; i++) {
+    const mid = (xs[i] + xs[i + 1]) / 2;
+    const d = Math.max(HULLY, ...mine.filter((j) => j.a <= mid && mid <= j.b).map((j) => j.reach));
+    if (runs.length && runs[runs.length - 1].d === d) runs[runs.length - 1].b = xs[i + 1];
+    else runs.push({ a: xs[i], b: xs[i + 1], d });
+  }
+  const y = (d) => +(side * d).toFixed(2);
+  // a corner rounds where the wall turns outward round it (a jut's outer corners), never where it turns in
+  let d = `M${x0},${y(runs[0].d)}`;
+  runs.forEach((run, i) => {
+    const prev = runs[i - 1]?.d ?? run.d;
+    const next = runs[i + 1]?.d ?? run.d;
+    const r = Math.min(JUT_R, (run.b - run.a) / 2);
+    const inR = prev < run.d ? Math.min(r, run.d - prev) : 0;
+    const outR = next < run.d ? Math.min(r, run.d - next) : 0;
+    if (prev !== run.d) {
+      d += `V${y(run.d - inR * Math.sign(run.d - prev))}`;
+      if (inR) d += `Q${run.a},${y(run.d)} ${run.a + inR},${y(run.d)}`;
+    }
+    d += `H${run.b - outR}`;
+    if (outR) d += `Q${run.b},${y(run.d)} ${run.b},${y(run.d - outR)}`;
+  });
+  return d;
 }
 
 /** Docks plan: spine up the page, Hub at the bottom, Freight Transfer below it. */
