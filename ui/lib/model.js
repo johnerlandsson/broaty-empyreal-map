@@ -50,6 +50,35 @@ export function buildModel(index) {
         if (s === 0) add([P3(R1, h0, z0), P3(R0, h0, z0), P3(R0, h1, z0), P3(R1, h1, z0)], "aft", key, tint, null, true);
       }
     }
+    // A stop whose rooms go deeper than the ring's two slices a side (T.I.S.S.'s Old Shops, seven
+    // deep fore of Inner 7:30) juts out of the ring's face, a slice's depth a room, narrower than the
+    // segment, as the plan's hull juts round them.
+    const deep = new Map();
+    for (const room of index.byId.values()) {
+      if (room.z !== z || Math.abs(room.y) <= 2 || !Number.isFinite(room.x)) continue;
+      const k = `${room.x}:${Math.sign(room.y)}`;
+      deep.set(k, Math.max(deep.get(k) ?? 0, Math.abs(room.y)));
+    }
+    const depth = (SLICE[1] - SLICE[0]) * w;
+    for (const [k, far] of deep) {
+      const [x, sg] = k.split(":").map(Number);
+      const h0 = x / 2 - span * 0.35;
+      const h1 = x / 2 + span * 0.35;
+      const tint = index.corridors[z].find((c) => c.x === x)?.paint ?? null;
+      for (let y = 3; y <= far; y++) {
+        const key = `r${z}:${x}:${sg * y}`;
+        const za = sg * (w + (y - 3) * depth);
+        const zb = sg * (w + (y - 2) * depth);
+        const [z0, z1] = sg > 0 ? [za, zb] : [zb, za];
+        const end = y === far;
+        add([P3(R1, h0, z0), P3(R1, h1, z0), P3(R1, h1, z1), P3(R1, h0, z1)], "outer", key, tint, null, true);
+        add([P3(R0, h0, z1), P3(R0, h1, z1), P3(R0, h1, z0), P3(R0, h0, z0)], "inner", key, tint, null, true);
+        add([P3(R0, h0, z0), P3(R1, h0, z0), P3(R1, h0, z1), P3(R0, h0, z1)], "outer", key, tint, null, true);
+        add([P3(R1, h1, z0), P3(R0, h1, z0), P3(R0, h1, z1), P3(R1, h1, z1)], "outer", key, tint, null, true);
+        if (end && sg > 0) add([P3(R0, h0, z1), P3(R1, h0, z1), P3(R1, h1, z1), P3(R0, h1, z1)], "fore", key, tint, null, true);
+        if (end && sg < 0) add([P3(R1, h0, z0), P3(R0, h0, z0), P3(R0, h1, z0), P3(R1, h1, z0)], "aft", key, tint, null, true);
+      }
+    }
   }
 
   // A box centred on c with half-sizes hx/hy/hz, optionally rolled about the axis by `rot` hours.

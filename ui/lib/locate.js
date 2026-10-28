@@ -120,7 +120,7 @@ export function keyOf(where) {
   if (where.kind !== "room") return null;
   if (where.level === 3) return where.id;
   if (where.id.includes("ladderway")) return `spoke:${(where.x - 1) / 2}:${where.level}`;
-  return `r${where.level}:${where.x}:${clamp(where.y, -2, 2)}`;
+  return `r${where.level}:${where.x}:${where.y}`; // past ±2, a cell of its own jutting from the ring (model.js)
 }
 
 export function infoLine(where, msg, index) {

@@ -3,6 +3,7 @@ import tiss from "../data/tiss.js";
 import { tissRooms } from "./look.js";
 import { indexStation, keyOf, locate } from "./locate.js";
 import { buildModel } from "./model.js";
+import { RWZ } from "./geometry.js";
 
 const station = tissRooms(tiss);
 const index = indexStation(station);
@@ -68,6 +69,19 @@ describe("buildModel", () => {
     expect(meanX).toBeGreaterThan(0);
     const pts9 = faces.filter((f) => f.key === "spoke:9:0").flatMap((f) => f.pts);
     expect(pts9.reduce((s, p) => s + p[0], 0) / pts9.length).toBeLessThan(0);
+  });
+
+  it("lights each of the Old Shops in its own cell, jutting fore of Inner 7:30 past the ring's face", () => {
+    const shops = ["tiss.sweeper-bay", "tiss.racks", "tiss.cutting-floor", "tiss.old-dock", "tiss.cradle-room"];
+    const keys = shops.map((id) => keyOf(locate(index, { roomId: id }, null)));
+    expect(new Set(keys).size).toBe(shops.length);
+    let prev = RWZ[2];
+    for (const key of keys) {
+      const zs = faces.filter((f) => f.key === key).flatMap((f) => f.pts.map((p) => p[2]));
+      expect(zs.length, key).toBeGreaterThan(0);
+      expect(Math.min(...zs)).toBeCloseTo(prev); // each starts where the one before it ends
+      prev = Math.max(...zs);
+    }
   });
 
   it("every keyOf a station room has faces", () => {

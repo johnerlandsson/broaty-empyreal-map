@@ -34,12 +34,15 @@ id.
   prism with the Bearing as a collar; the spine square sections with box rooms
   either side and a stepped Blister at the tip; Freight Transfer a box aft of
   the hub. Bay 1 and Bay 2 are boxes carrying on starboard from the Berths'.
+  A stop whose rooms go deeper than the two slices a side juts out of the
+  ring's face, a slice's depth a room and narrower than the segment, as the
+  plan's hull juts: the Old Shops, fore of Inner 7:30.
 - The wheel turns to bring your hour to the front. The spine, Bearing, dock
   rooms and Blister hold still, as on the real station. In the docks the
   wheel keeps its last turn.
 - Ring names (RIM, MID, INNER) and DOCKS are labelled at fixed screen
   positions: the only model with labels.
-- Lit: a ring slice for a corridor stop or side room, the spoke leg for a
+- Lit: a ring slice for a corridor stop or side room (or its cell in a jut), the spoke leg for a
   lift or ladderway, the section or box for a dock room.
 
 ## Bottom band: the deck plans
