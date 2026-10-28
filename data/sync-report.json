@@ -1,34 +1,103 @@
 {
-  "commit": "ba5c412",
+  "commit": "f53a2f4",
   "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
   "rooms": {
-    "added": [],
+    "added": [
+      {
+        "place": "tiss",
+        "id": "tiss.cradle-room"
+      },
+      {
+        "place": "tiss",
+        "id": "tiss.cutting-floor"
+      },
+      {
+        "place": "tiss",
+        "id": "tiss.feed-gallery"
+      },
+      {
+        "place": "tiss",
+        "id": "tiss.old-dock"
+      },
+      {
+        "place": "tiss",
+        "id": "tiss.racks"
+      },
+      {
+        "place": "tiss",
+        "id": "tiss.security"
+      },
+      {
+        "place": "tiss",
+        "id": "tiss.sweeper-bay"
+      }
+    ],
     "removed": [],
     "renamed": []
   },
   "exits": {
-    "added": [],
+    "added": [
+      {
+        "place": "tiss",
+        "room": "tiss.mid-1030",
+        "dir": "north",
+        "to": "tiss.security"
+      },
+      {
+        "place": "tiss",
+        "room": "tiss.scrapyard",
+        "dir": "north",
+        "to": "tiss.feed-gallery"
+      }
+    ],
     "removed": []
   },
   "unplaced": [],
   "orphans": [],
   "droppedFlags": [
     {
-      "name": "storage",
+      "name": "clinic",
+      "places": [
+        "tiss"
+      ]
+    },
+    {
+      "name": "damps",
+      "places": [
+        "tiss"
+      ]
+    },
+    {
+      "name": "unkept",
       "places": [
         "tiss"
       ]
     }
   ],
-  "unknownFields": [],
+  "unknownFields": [
+    {
+      "name": "cover",
+      "places": [
+        "tiss"
+      ]
+    },
+    {
+      "name": "noFirearms",
+      "places": [
+        "tiss"
+      ]
+    }
+  ],
   "knownDroppedFlags": [
     "barber",
     "broker",
     "bunkhouse",
     "charger",
     "charts",
+    "clinic",
+    "damps",
     "droid_dock",
     "freight",
     "market",
@@ -36,6 +105,7 @@
     "start",
     "storage",
     "terminal",
+    "unkept",
     "workshops"
   ],
   "knownUnknownFields": [
@@ -43,6 +113,8 @@
     "car.floor",
     "car.load",
     "car.perStop",
-    "car.stops.*.press"
+    "car.stops.*.press",
+    "cover",
+    "noFirearms"
   ]
 }
