@@ -1,0 +1,126 @@
+<!doctype html>
+<!-- The Old Shops, 2026-10-28: three ways to draw a fore column deeper than the ring's hull on T.I.S.S.'s
+     Inner plan. The game (f53a2f4) chains them straight fore of the Scrapyard, Inner 7:30, y 1 to 7;
+     the plan's hull wall is 175 from the corridor, room for two. The Racks lit.
+     A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Old Shops: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; display:flex; gap:22px; justify-content:center; padding:20px; }
+  figure { margin:0; text-align:center; }
+  figcaption { margin-top:6px; color:#e3eaf2; }
+  figcaption small { display:block; color:#7d8a9a; max-width:330px; margin:4px auto 0; }
+  svg { width:340px; height:560px; background:#0b0f16; border-radius:8px; }
+  text { font-family: Inter, system-ui, sans-serif; text-anchor:middle; dominant-baseline:middle; }
+</style></head><body>
+<script>
+const PLATE = "#18202b", CORR = "#262f3b", PASSAGE = "#56657a", HL = "#ffb347", DIM = "#7d8a9a", EDGE = "#3b4a5c";
+const IND = "#d0703c";
+const NODE = 150, CH = 15, RW = 116, RH = 58, GAP = 9, HULLY = 175;
+const boxCy = (y) => -(CH + GAP + (y - 1) * (RH + GAP) + RH / 2);
+const ns = "http://www.w3.org/2000/svg";
+const el = (t, a, p) => { const e = document.createElementNS(ns, t); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e; };
+const label = (p, x, y, s, size, extra = {}) => { const t = el("text", { x, y, "font-size": size, fill: "#e3eaf2", ...extra }, p); t.textContent = s; };
+const box = (p, name, cx, cy, lit, col = IND) => {
+  el("rect", { x: cx - RW / 2, y: cy - RH / 2, width: RW, height: RH, rx: 5, fill: lit ? HL : col, "fill-opacity": lit ? 0.3 : 0.22,
+    stroke: lit ? HL : col, "stroke-opacity": lit ? 1 : 0.85, "stroke-width": lit ? 3 : 1.6 }, p);
+  const words = name.split(" "), half = Math.ceil(words.length / 2);
+  const lines = name.length > 14 && words.length > 1 ? [words.slice(0, half).join(" "), words.slice(half).join(" ")] : [name];
+  lines.forEach((t, i) => label(p, cx, cy + (i - (lines.length - 1) / 2) * 14, t, 12));
+};
+const SHOPS = ["Scrapyard", "The Feed Gallery", "Sweeper Bay", "The Racks", "The Cutting Floor", "The Old Dock", "The Cradle Room"];
+const X = 150; // 7:30, with 6:00 at 0 and 9:00 at 300
+const TOP = boxCy(7) - RH / 2 - 40;
+
+function portholes(g, x0, x1, y, seed) {
+  let s = seed;
+  for (let x = x0 + 9; x < x1; x += NODE / 8) {
+    s = (s * 9301 + 49297) % 233280;
+    if (s / 233280 < 0.4) continue;
+    el("circle", { cx: x, cy: y, r: 1.6, fill: "#ffd98a", opacity: 0.3 + (s % 50) / 80 }, g);
+  }
+}
+
+// the ring from 6:00 to 9:00 and its stops; `hull(g)` draws the plate and walls, `shops(g)` the column
+function plan(title, note, hull, shops) {
+  const fig = document.body.appendChild(document.createElement("figure"));
+  const svg = el("svg", { viewBox: `-75 ${TOP - 10} 450 ${HULLY + 30 - TOP + 10}` }, fig);
+  fig.appendChild(Object.assign(document.createElement("figcaption"), { innerHTML: title + "<small>" + note + "</small>" }));
+  const g = el("g", {}, svg);
+  hull(g);
+  el("rect", { x: -75, y: -CH, width: 450, height: 2 * CH, fill: CORR }, g);
+  for (const cx of [0, 150, 300]) el("rect", { x: cx - NODE / 2 + 2, y: CH - 3, width: NODE - 4, height: 3, fill: IND, opacity: 0.8 }, g);
+  // Power Substation fore of 6:00
+  el("rect", { x: -8, y: boxCy(1) + RH / 2, width: 16, height: -boxCy(1) - RH / 2 - CH, fill: PASSAGE }, g);
+  box(g, "Power Substation", 0, boxCy(1), false);
+  shops(g);
+  for (const [cx, h, lobby] of [[0, "6:00", true], [150, "7:30", false], [300, "9:00", true]]) {
+    if (lobby) {
+      el("circle", { cx, cy: 0, r: 12, fill: "#0e131a", stroke: "#cfd8e3", "stroke-width": 2 }, g);
+      label(g, cx, 1, "⇅", 13, { fill: "#cfd8e3" });
+    } else el("circle", { cx, cy: 0, r: 4, fill: "#aab8c8" }, g);
+    label(g, cx - 44, 1, h, 10, { fill: DIM });
+  }
+}
+
+// the column, straight fore as the exits go
+function column(g, from = 0) {
+  SHOPS.forEach((n, i) => {
+    const y = i + 1, cy = boxCy(y);
+    const near = cy + RH / 2, far = y === 1 ? -CH : cy + RH / 2 + GAP;
+    if (i >= from) el("rect", { x: X - 8, y: near, width: 16, height: far - near, fill: PASSAGE }, g);
+    box(g, n, X, cy, n === "The Racks");
+  });
+}
+
+function ringHull(g, gapAt) {
+  el("rect", { x: -75, y: -HULLY, width: 450, height: 2 * HULLY, fill: PLATE }, g);
+  for (const x of [-75, 75, 225, 375]) el("line", { x1: x, y1: -HULLY, x2: x, y2: HULLY, stroke: "#202a36" }, g);
+  el("line", { x1: -75, y1: HULLY, x2: 375, y2: HULLY, stroke: EDGE, "stroke-width": 3 }, g);
+  portholes(g, -75, 375, HULLY - 7, 3);
+  if (gapAt) {
+    el("line", { x1: -75, y1: -HULLY, x2: gapAt[0], y2: -HULLY, stroke: EDGE, "stroke-width": 3 }, g);
+    el("line", { x1: gapAt[1], y1: -HULLY, x2: 375, y2: -HULLY, stroke: EDGE, "stroke-width": 3 }, g);
+    portholes(g, -75, gapAt[0], -HULLY + 7, 7);
+    portholes(g, gapAt[1], 375, -HULLY + 7, 11);
+  } else {
+    el("line", { x1: -75, y1: -HULLY, x2: 375, y2: -HULLY, stroke: EDGE, "stroke-width": 3 }, g);
+    portholes(g, -75, 375, -HULLY + 7, 7);
+  }
+}
+
+// A: the ring's hull juts fore round the column, one wall, as if the ring grew a wing there.
+plan("A · The hull juts out", "The ring's fore wall steps out round any stop whose rooms go deeper than it, and back. One plate, one wall with portholes: the column is part of the ring, as the coordinates say.", (g) => {
+  const x0 = X - RW / 2 - 22, x1 = X + RW / 2 + 22, top = boxCy(7) - RH / 2 - 22;
+  ringHull(g, [x0, x1]);
+  el("rect", { x: x0, y: top, width: x1 - x0, height: -HULLY - top + 2, fill: PLATE }, g);
+  el("path", { d: `M${x0},${-HULLY} V${top + 10} Q${x0},${top} ${x0 + 10},${top} H${x1 - 10} Q${x1},${top} ${x1},${top + 10} V${-HULLY}`, fill: "none", stroke: EDGE, "stroke-width": 3 }, g);
+  for (let y = top + 20; y < -HULLY - 10; y += 19) {
+    el("circle", { cx: x0 + 7, cy: y, r: 1.6, fill: "#ffd98a", opacity: 0.5 }, g);
+    el("circle", { cx: x1 - 7, cy: y, r: 1.6, fill: "#ffd98a", opacity: 0.5 }, g);
+  }
+}, (g) => column(g));
+
+// B: the whole inner ring is as deep as its deepest room.
+plan("B · A deeper ring", "The Inner plan's fore wall moves out to fit the Old Shops, all the way round. Simple and regular, but the inner ring gets a wide empty band fore at every other hour.", (g) => {
+  const top = boxCy(7) - RH / 2 - 22;
+  el("rect", { x: -75, y: top, width: 450, height: HULLY - top, fill: PLATE }, g);
+  for (const x of [-75, 75, 225, 375]) el("line", { x1: x, y1: top, x2: x, y2: HULLY, stroke: "#202a36" }, g);
+  for (const y of [top, HULLY]) el("line", { x1: -75, y1: y, x2: 375, y2: y, stroke: EDGE, "stroke-width": 3 }, g);
+  portholes(g, -75, 375, top + 7, 7);
+  portholes(g, -75, 375, HULLY - 7, 3);
+}, (g) => column(g));
+
+// C: the ring keeps its hull; past the Scrapyard's hatch the Old Shops are a sealed annexe of their own.
+plan("C · An annexe past the hatch", "The ring keeps its wall. The Old Shops hang off it on a darker plate of their own, a seam and a hatch where the Feed Gallery meets the Scrapyard: old, sealed, apart.", (g) => {
+  const x0 = X - RW / 2 - 16, x1 = X + RW / 2 + 16, top = boxCy(7) - RH / 2 - 18, base = boxCy(1) - RH / 2 - GAP / 2;
+  ringHull(g, [x0, x1]);
+  el("rect", { x: x0, y: top, width: x1 - x0, height: base - top, rx: 14, fill: "#10151c", stroke: "#3a4656", "stroke-width": 2, "stroke-dasharray": "7 5" }, g);
+}, (g) => {
+  column(g);
+  // the hatch: a bar across the passage between the Scrapyard and the Feed Gallery
+  const y = (boxCy(1) - RH / 2 + boxCy(2) + RH / 2) / 2;
+  el("rect", { x: X - 15, y: y - 2.5, width: 30, height: 5, rx: 1.5, fill: "#cfd8e3" }, g);
+  label(g, X + 40, y, "hatch", 9, { fill: DIM });
+});
+</script>
+</body></html>
