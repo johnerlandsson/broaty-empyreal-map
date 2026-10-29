@@ -116,6 +116,7 @@ export function roomBox(parent, room, cx, cy, col, w, h, d, pick, named = true) 
 const BIN = "M-5,-3.6h10M-1.6,-3.6v-1.6h3.2v1.6M-4,-3.6L-3.2,5.4H3.2L4,-3.6M-1.2,-1.6v5M1.2,-1.6v5";
 export const BIN_INSET = 11; // the mark's centre from a room's corner
 const BIN_ON_STOP = 47; // and from a corridor stop's centre, spinward of its lift and hatch
+const BIN_STACK = 6; // two at one stop: each this far fore or aft of the corridor's centre line
 
 /** Whether a room has a refuse bin (its flag `bin`), which its words already tell you. */
 export const hasBin = (room) => !!room?.flags?.includes("bin");
@@ -141,10 +142,12 @@ function buildRingPlan(svg, index, z, pick) {
   const layout = ringLayout(index, z);
   const { length: L, stops } = layout;
   const g = el("g", { display: "none" }, svg);
-  // the stops with a bin on the corridor: the stop's own, or its ladderway's (Inner's are the
-  // cleaners' docks), a ladderway at x = hour * 2 + 1 as highlightShape has it
-  const binHours = new Set(stops.filter((st) => hasBin(index.byId.get(st.id))).map((st) => st.hour));
-  for (const r of index.byId.values()) if (r.z === z && String(r.id).includes("ladderway") && hasBin(r)) binHours.add(((r.x - 1) / 2) % 12);
+  // the bins on the corridor, by stop: the stop's own and its ladderway's (a cleaners' dock: Rim 12
+  // and 6, Mid 9, Inner 3), a ladderway at x = hour * 2 + 1 as highlightShape has it
+  const binsAt = new Map();
+  const addBin = (hour) => binsAt.set(hour, (binsAt.get(hour) ?? 0) + 1);
+  for (const st of stops) if (hasBin(index.byId.get(st.id))) addBin(st.hour);
+  for (const r of index.byId.values()) if (r.z === z && String(r.id).includes("ladderway") && hasBin(r)) addBin(((r.x - 1) / 2) % 12);
   for (const off of [-L, 0, L]) {
     const s = el("g", { transform: `translate(${off} 0)` }, g);
     // hull plate, seams and lit portholes along the fore and aft hull walls, the walls jutting out
@@ -205,7 +208,10 @@ function buildRingPlan(svg, index, z, pick) {
         el("circle", { cx: st.cx, cy: 0, r: 4, fill: "#aab8c8", stroke: "#aab8c8", "stroke-width": 1.5, "pointer-events": "none" }, s);
       }
       label(s, st.cx - 44, 1, hourLabel(st.hour), 10, { fill: DIM });
-      if (binHours.has(st.hour)) binMark(s, st.cx + (lobby ? BIN_ON_STOP : BIN_INSET + 5), 0);
+      // two bins at one stop (Rim 12:00: the Concourse's and the dock's) stacked, fore and aft of
+      // the centre line (reference/rim-bins-options.png, option C)
+      const bins = binsAt.get(st.hour) ?? 0;
+      for (let i = 0; i < bins; i++) binMark(s, st.cx + (lobby ? BIN_ON_STOP : BIN_INSET + 5), bins > 1 ? (i ? 1 : -1) * BIN_STACK : 0);
     }
   }
   const hl = el("g", { "pointer-events": "none" }, g);

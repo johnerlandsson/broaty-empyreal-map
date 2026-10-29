@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 // Refuse bins on the plans (reference/plan-bins-options.png, option B): a mark in each room the
 // game flags `bin`, its far corner spinward on a ring, fore starboard on a ship; on the corridor
-// beside a stop's hatch for a corridor stop or its ladderway (Inner's, the cleaners' docks).
+// beside a stop's hatch for a corridor stop or its ladderway (the cleaners' docks: Rim 12 and 6,
+// Mid 9, Inner 3), two at one stop stacked fore and aft (reference/rim-bins-options.png, option C).
 
 import { describe, expect, it } from "vitest";
 import courier from "./data/plans/hull-courier.js";
@@ -40,11 +41,12 @@ describe("bins on T.I.S.S.'s rings", () => {
     expect(near("tiss.laundry")).toEqual([laundry.cx + laundry.w / 2 - 11, laundry.cy + laundry.h / 2 - 11]);
   });
 
-  it("puts the Concourse's and the Inner ladderways' on the corridor, spinward of the hatch", () => {
-    const onCorridor = (plan) => lap(plan.g).map(at).filter(([, y]) => y === 0);
+  it("puts the Concourse's and the docks' on the corridor, spinward of the hatch, the two at Rim 12:00 stacked", () => {
+    const onCorridor = (plan) => lap(plan.g).map(at).filter(([, y]) => Math.abs(y) < 15).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
     const cx = (plan, hour) => plan.layout.stops.find((s) => s.hour === hour).cx;
-    expect(onCorridor(rim)).toEqual([[cx(rim, 0) + 47, 0]]);
-    expect(onCorridor(inner).sort((a, b) => a[0] - b[0])).toEqual([0, 3, 6, 9].map((h) => [cx(inner, h) + 47, 0]).sort((a, b) => a[0] - b[0]));
+    expect(onCorridor(rim)).toEqual([[cx(rim, 0) + 47, -6], [cx(rim, 0) + 47, 6], [cx(rim, 6) + 47, 0]]);
+    expect(onCorridor(mid)).toEqual([[cx(mid, 9) + 47, 0]]);
+    expect(onCorridor(inner)).toEqual([[cx(inner, 3) + 47, 0]]);
   });
 });
 

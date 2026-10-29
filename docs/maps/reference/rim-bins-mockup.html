@@ -1,0 +1,92 @@
+<!doctype html>
+<!-- Two bins at one Rim stop, 2026-10-29: since Empyreal fe70a72 (droids.md §10.3) the cleaners keep
+     one ring each, and Ladderway 12, Rim (a dock, drawn as the 12:00 hatch) has a bin as the Main
+     Concourse, the 12:00 stop, does. Three ways to show both. Real plans from ui/ with the synced data
+     (empyreal 8192949); only the 12:00 Rim marks are redrawn for each option. The last row is today's
+     code, unchanged, at the other docks: Rim 6:00, Mid 9:00, Inner 3:00. Each frame is the panel's
+     bottom band at its default size, 380 x 300. Serve the repo root over http to open it. A throwaway:
+     take its look, not its code. Picked: C (2026-10-29). -->
+<html><head><meta charset="utf-8"><title>Rim bins: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:14px 18px; width:max-content; }
+  h2 { color:#e3eaf2; font-size:15px; margin:14px 0 2px; }
+  h2 small { color:#7d8a9a; font-weight:400; font-size:12px; margin-left:8px; }
+  .row { display:flex; gap:10px; margin:6px 0 2px; }
+  figure { margin:0; text-align:center; }
+  figcaption { font:11px "DejaVu Sans Mono", monospace; margin-top:3px; }
+  .f { position:relative; width:380px; height:300px; background:#04060c; border-radius:6px; overflow:hidden; outline:1px solid #18202b; }
+  .f .m { position:absolute; inset:0; }
+  .f .m button { display:none; }
+  .zoom { position:absolute; left:8px; top:6px; font:10px "DejaVu Sans Mono", monospace; color:#7d8a9a; }
+</style></head><body>
+<div id="out"></div>
+<script type="module">
+import { DeckView, binMark } from "../../../ui/deck-view.js";
+import { indexStation, locate } from "../../../ui/lib/locate.js";
+import { tissRooms } from "../../../ui/lib/look.js";
+import { data } from "../../../ui/data/places.js";
+
+// where each option puts the Concourse's and the ladderway's bins, from the 12:00 stop's centre
+const OPTIONS = [
+  { key: "A", title: "A · Each beside its own", sub: "the ladderway's spinward of its hatch, where a dock's bin is at 6:00, 9:00 and 3:00; the Concourse's on the other side of the lift, between it and the hour",
+    at: [[-23, 0], [47, 0]] },
+  { key: "B", title: "B · Side by side", sub: "two cans spinward of the hatch, where one would be, the second a can's width further on",
+    at: [[47, 0], [59, 0]] },
+  { key: "C", title: "C · Stacked", sub: "two cans where one would be, one fore of the corridor's centre line and one aft",
+    at: [[47, -6], [47, 6]] },
+];
+
+const W = 380, H = 300, ASPECT = H / W;
+const tiss = data.tiss;
+const index = indexStation(tissRooms(tiss));
+
+function frame(row, cap, make, note) {
+  const fig = row.appendChild(document.createElement("figure"));
+  const f = fig.appendChild(document.createElement("div"));
+  f.className = "f";
+  const m = f.appendChild(document.createElement("div"));
+  m.className = "m";
+  if (note) f.appendChild(Object.assign(document.createElement("div"), { className: "zoom", textContent: note }));
+  fig.appendChild(Object.assign(document.createElement("figcaption"), { textContent: cap }));
+  return make(m);
+}
+
+function ring(m, level, roomId, hour, width, opt) {
+  const deck = new DeckView(m, index, undefined, { pick: true });
+  deck.set(locate(index, { roomId }));
+  const plan = deck.plans[level];
+  const stop = plan.layout.stops.find((s) => s.hour === hour);
+  deck.setView([stop.cx - width / 2, -width * ASPECT / 2, width, width * ASPECT]);
+  if (opt) {
+    const c0 = plan.layout.stops.find((s) => s.hour === 0).cx;
+    for (const mark of plan.g.querySelectorAll("[data-bin]")) {
+      if (mark.getAttribute("transform").startsWith(`translate(${c0 + 47} 0)`)) {
+        const lap = mark.parentNode;
+        mark.remove();
+        for (const [dx, dy] of opt.at) binMark(lap, c0 + dx, dy);
+      }
+    }
+  }
+  plan.g.appendChild(plan.hl);
+}
+
+const out = document.getElementById("out");
+for (const opt of OPTIONS) {
+  const h = out.appendChild(document.createElement("h2"));
+  h.innerHTML = `${opt.title}<small>${opt.sub}</small>`;
+  const row = out.appendChild(document.createElement("div"));
+  row.className = "row";
+  frame(row, "Rim 12:00, in the Concourse", (m) => ring(m, 0, "tiss.concourse", 0, 600, opt), "600 wide: home");
+  frame(row, "Rim 12:00, zoomed in", (m) => ring(m, 0, "tiss.concourse", 0, 220, opt), "220 wide");
+  frame(row, "Rim, zoomed right out", (m) => ring(m, 0, "tiss.concourse", 0, 1600, opt), "1600 wide: furthest out");
+}
+const h = out.appendChild(document.createElement("h2"));
+h.innerHTML = `The other docks, as today's code draws them<small>Ladderway 6, Rim; Ladderway 9, Mid; Ladderway 3, Inner</small>`;
+const row = out.appendChild(document.createElement("div"));
+row.className = "row";
+frame(row, "Rim 6:00", (m) => ring(m, 0, "tiss.ladderway-6-rim", 6, 600), "600 wide");
+frame(row, "Mid 9:00", (m) => ring(m, 1, "tiss.ladderway-9-mid", 9, 600), "600 wide");
+frame(row, "Inner 3:00", (m) => ring(m, 2, "tiss.ladderway-3-inner", 3, 600), "600 wide");
+document.body.dataset.ready = "1";
+</script>
+</body></html>
