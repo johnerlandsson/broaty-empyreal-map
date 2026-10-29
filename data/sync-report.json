@@ -1,97 +1,32 @@
 {
-  "commit": "f53a2f4",
+  "commit": "5cf17b2",
   "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
   "rooms": {
-    "added": [
-      {
-        "place": "tiss",
-        "id": "tiss.cradle-room"
-      },
-      {
-        "place": "tiss",
-        "id": "tiss.cutting-floor"
-      },
-      {
-        "place": "tiss",
-        "id": "tiss.feed-gallery"
-      },
-      {
-        "place": "tiss",
-        "id": "tiss.old-dock"
-      },
-      {
-        "place": "tiss",
-        "id": "tiss.racks"
-      },
-      {
-        "place": "tiss",
-        "id": "tiss.security"
-      },
-      {
-        "place": "tiss",
-        "id": "tiss.sweeper-bay"
-      }
-    ],
+    "added": [],
     "removed": [],
     "renamed": []
   },
   "exits": {
-    "added": [
-      {
-        "place": "tiss",
-        "room": "tiss.mid-1030",
-        "dir": "north",
-        "to": "tiss.security"
-      },
-      {
-        "place": "tiss",
-        "room": "tiss.scrapyard",
-        "dir": "north",
-        "to": "tiss.feed-gallery"
-      }
-    ],
+    "added": [],
     "removed": []
   },
   "unplaced": [],
   "orphans": [],
   "droppedFlags": [
     {
-      "name": "clinic",
+      "name": "bin",
       "places": [
-        "tiss"
-      ]
-    },
-    {
-      "name": "damps",
-      "places": [
-        "tiss"
-      ]
-    },
-    {
-      "name": "unkept",
-      "places": [
+        "freighter",
         "tiss"
       ]
     }
   ],
-  "unknownFields": [
-    {
-      "name": "cover",
-      "places": [
-        "tiss"
-      ]
-    },
-    {
-      "name": "noFirearms",
-      "places": [
-        "tiss"
-      ]
-    }
-  ],
+  "unknownFields": [],
   "knownDroppedFlags": [
     "barber",
+    "bin",
     "broker",
     "bunkhouse",
     "charger",
