@@ -89,6 +89,7 @@ export default {
     ],
     "footprints": {
       "cockpit": {
+        "corners": "cut",
         "outline": [
           [
             -0.8,
