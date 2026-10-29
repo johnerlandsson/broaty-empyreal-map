@@ -120,6 +120,7 @@ export function tissRooms(data) {
     closedReason: r.closed ?? null,
     walked: true,
     paint: paint[r.id] ?? null,
+    flags: r.flags ?? [],
   }));
   rooms.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return { wrap: 24, rooms };

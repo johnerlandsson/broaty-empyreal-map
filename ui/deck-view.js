@@ -112,6 +112,25 @@ export function roomBox(parent, room, cx, cy, col, w, h, d, pick, named = true) 
   return g;
 }
 
+// a refuse bin: a lidded can, its handle and two ribs, 10 x 12 before the mark's scale, centred on 0,0
+const BIN = "M-5,-3.6h10M-1.6,-3.6v-1.6h3.2v1.6M-4,-3.6L-3.2,5.4H3.2L4,-3.6M-1.2,-1.6v5M1.2,-1.6v5";
+export const BIN_INSET = 11; // the mark's centre from a room's corner
+const BIN_ON_STOP = 47; // and from a corridor stop's centre, spinward of its lift and hatch
+
+/** Whether a room has a refuse bin (its flag `bin`), which its words already tell you. */
+export const hasBin = (room) => !!room?.flags?.includes("bin");
+
+/** A refuse bin's mark centred on x, y: the can's outline in Dim, zooming with the plan
+ *  (reference/plan-bins-options.png, option B). */
+export function binMark(parent, x, y) {
+  const s = 0.85;
+  return el(
+    "path",
+    { d: BIN, transform: `translate(${x} ${y}) scale(${s})`, fill: "none", stroke: DIM, "stroke-width": 1.2 / s, "stroke-linecap": "round", "stroke-linejoin": "round", "pointer-events": "none", "data-bin": "" },
+    parent,
+  );
+}
+
 /** Transparent hit area so a corridor stretch or spine segment can show a tooltip. */
 function hitArea(parent, x, y, w, h, room, pick) {
   const r = el("rect", { x, y, width: w, height: h, fill: "transparent" }, parent);
@@ -122,6 +141,10 @@ function buildRingPlan(svg, index, z, pick) {
   const layout = ringLayout(index, z);
   const { length: L, stops } = layout;
   const g = el("g", { display: "none" }, svg);
+  // the stops with a bin on the corridor: the stop's own, or its ladderway's (Inner's are the
+  // cleaners' docks), a ladderway at x = hour * 2 + 1 as highlightShape has it
+  const binHours = new Set(stops.filter((st) => hasBin(index.byId.get(st.id))).map((st) => st.hour));
+  for (const r of index.byId.values()) if (r.z === z && String(r.id).includes("ladderway") && hasBin(r)) binHours.add(((r.x - 1) / 2) % 12);
   for (const off of [-L, 0, L]) {
     const s = el("g", { transform: `translate(${off} 0)` }, g);
     // hull plate, seams and lit portholes along the fore and aft hull walls, the walls jutting out
@@ -165,12 +188,15 @@ function buildRingPlan(svg, index, z, pick) {
     for (const b of layout.rooms) {
       el("rect", { x: b.door.x, y: b.door.y, width: b.door.w, height: b.door.h, fill: PASSAGE }, s);
       roomBox(s, b.room, b.cx, b.cy, b.room.paint, b.w, b.h, undefined, pick);
+      // a bin in the room's far corner, spinward
+      if (hasBin(b.room)) binMark(s, b.cx + b.w / 2 - BIN_INSET, b.cy < 0 ? b.cy - b.h / 2 + BIN_INSET : b.cy + b.h / 2 - BIN_INSET);
     }
     // stops: plain nodes, or a lift lobby with a ladder hatch beside it
     for (const st of stops) {
       const room = index.byId.get(st.id);
       hitArea(s, st.cx - NODE / 2, -CH, NODE, 2 * CH, room, pick);
-      if (SPOKE_HOURS.includes(st.hour) || st.lobby) {
+      const lobby = SPOKE_HOURS.includes(st.hour) || st.lobby;
+      if (lobby) {
         el("circle", { cx: st.cx, cy: 0, r: 12, fill: "#0e131a", stroke: "#cfd8e3", "stroke-width": 2, "pointer-events": "none" }, s);
         label(s, st.cx, 1, "⇅", 13, { fill: "#cfd8e3" });
         el("rect", { x: st.cx + 20, y: -7, width: 14, height: 14, rx: 2, fill: "none", stroke: LADDER, "stroke-width": 1.4, "pointer-events": "none" }, s);
@@ -179,6 +205,7 @@ function buildRingPlan(svg, index, z, pick) {
         el("circle", { cx: st.cx, cy: 0, r: 4, fill: "#aab8c8", stroke: "#aab8c8", "stroke-width": 1.5, "pointer-events": "none" }, s);
       }
       label(s, st.cx - 44, 1, hourLabel(st.hour), 10, { fill: DIM });
+      if (binHours.has(st.hour)) binMark(s, st.cx + (lobby ? BIN_ON_STOP : BIN_INSET + 5), 0);
     }
   }
   const hl = el("g", { "pointer-events": "none" }, g);

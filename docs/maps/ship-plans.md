@@ -172,6 +172,12 @@ The decks builder draws the plan, with a few things only a ship has
     big, `at` an offset from the room's cell, and a `grid` of them with a
     `gap` between. A core has `ribs` across it. Props are on the plan only,
     not on the model.
+- **Bins:** a room flagged `bin` has the refuse bin's mark (style guide
+  §8.1) in its fore starboard corner: the freighter's Passage, and the
+  cockpit of a hull with `bin: true` in `hulls.yaml` (the skiff's and the
+  courier's; the build flags her generated cockpit). Where her cockpit's
+  shape cuts or rounds that corner, the mark sits at the nearest spot inside
+  it clear of her name and props. The tug has none.
 - **Names:** each room's short name, fitted to its box clear of its props;
   where a name has to go over them it gets a halo. Under the hull, the ship's
   name and class, and your note.

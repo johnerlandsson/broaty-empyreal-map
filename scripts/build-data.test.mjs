@@ -550,6 +550,18 @@ describe("build, ship plans", () => {
     expect(s.look.paint).toEqual({ cockpit: "docks" });
   });
 
+  it("flags a planless hull's cockpit bin when her hull has bin: true, as the game's cockpitPlan does", async () => {
+    const opts = setup();
+    editHulls(opts.source, (hulls) => {
+      hulls.find((h) => h.id === "skiff").bin = true;
+    });
+    await build(opts);
+    const s = await load(join(opts.outDir, "plans/hull-skiff.js"));
+    expect(s.rooms[0].flags).toEqual(["airlock", "bin"]);
+    // the hull index stays her id, name, class and plan
+    expect(readFileSync(join(opts.outDir, "ships.js"), "utf8")).not.toContain('"bin"');
+  });
+
   it("writes ships.js with every ship hull (not stations) and a static import of every plan", async () => {
     const opts = setup();
     editHulls(opts.source, (hulls) => hulls.push({ id: "wheel", name: "wheel station", class: "station", price: 1 }));

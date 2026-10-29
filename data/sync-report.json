@@ -14,19 +14,10 @@
   },
   "unplaced": [],
   "orphans": [],
-  "droppedFlags": [
-    {
-      "name": "bin",
-      "places": [
-        "freighter",
-        "tiss"
-      ]
-    }
-  ],
+  "droppedFlags": [],
   "unknownFields": [],
   "knownDroppedFlags": [
     "barber",
-    "bin",
     "broker",
     "bunkhouse",
     "charger",

@@ -6,11 +6,11 @@
 // plate, and the props in her rooms over them. Layout maths lives in lib/decks.js.
 
 import { DISTRICT_COLOURS as DC } from "./lib/geometry.js";
-import { PLAN, decksLayout, decksShape, fitLabel, pathD } from "./lib/decks.js";
+import { PLAN, decksLayout, decksShape, fitLabel, pathD, textWidth } from "./lib/decks.js";
 import { noseAt, propBoxes, tailAt, wallAt } from "./lib/footprint.js";
 import { boxPath } from "./lib/solid.js";
 import { el } from "./lib/svg.js";
-import { DIM, PASSAGE, PLATE, TXT, hover, label, roomBox } from "./deck-view.js";
+import { BIN_INSET, DIM, PASSAGE, PLATE, TXT, binMark, hasBin, hover, label, roomBox } from "./deck-view.js";
 
 const GLASS = DC.docks;
 const EDGE = "#3b4a5c";
@@ -67,8 +67,10 @@ function buildDeckPlan(svg, index, deck, level, pick, ship) {
       if (!c.room.exits?.up && !c.room.exits?.down) el("circle", { cx: x, cy: y, r: 4, fill: STOP, ...none }, g);
     } else if (c.kind === "room") {
       const box = roomBox(g, c.room, c.cx, c.cy, c.room.tint ?? DC.industrial, c.w, c.h, c.shaped ? pathD(c.points) : undefined, pick, !ship.plan);
-      if (ship.plan) shipName(box, c, fixtures.propsIn(c.room));
+      const props = ship.plan ? fixtures.propsIn(c.room) : [];
+      const name = ship.plan ? shipName(box, c, props) : [];
       if (c.room.flags?.includes("berth")) airlocks(g, c);
+      if (hasBin(c.room)) binMark(g, ...binCorner(c, [...name, ...props]));
     } else {
       blister(g, c, pick);
     }
@@ -99,6 +101,38 @@ function buildDeckPlan(svg, index, deck, level, pick, ship) {
   // a ship plan's aft-most drawn point, hull or bell, for what goes under her (ship-deck.js)
   if (ship.plan && fp) plan.aft = Math.max(fp.y + fp.h, fixtures.aft);
   return plan;
+}
+
+const BIN_HALF = [5, 6]; // the bin mark's half width and height, with a little room round it
+
+/** Whether x, y is inside the polygon `points`. */
+function inside(points, x, y) {
+  let in_ = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const [[xi, yi], [xj, yj]] = [points[i], points[j]];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) in_ = !in_;
+  }
+  return in_;
+}
+
+/** Where a room's bin goes: in its fore starboard corner, or its fore port one where a hatch up or
+ *  down has that (decksLayout's hatches). Where its shape cuts or rounds that corner
+ *  (a skiff's cockpit, a courier's), the nearest spot to it inside the shape and clear of `avoid`
+ *  (its name's lines and props, as {x0, y0, x1, y1}). */
+function binCorner(c, avoid = []) {
+  const hatch = !!(c.room.exits?.up || c.room.exits?.down);
+  const corner = [hatch ? c.cx - c.w / 2 + BIN_INSET : c.cx + c.w / 2 - BIN_INSET, c.cy - c.h / 2 + BIN_INSET];
+  if (!c.shaped || hatch) return corner;
+  const [hw, hh] = BIN_HALF;
+  const fits = (x, y) =>
+    [[-hw, -hh], [hw, -hh], [-hw, hh], [hw, hh]].every(([dx, dy]) => inside(c.points, x + dx, y + dy)) &&
+    !avoid.some((b) => x + hw > b.x0 && x - hw < b.x1 && y + hh > b.y0 && y - hh < b.y1);
+  // spots stepping in from the corner, nearest first
+  const spots = [];
+  for (let dx = 0; dx <= c.w - 2 * BIN_INSET; dx += 1) for (let dy = 0; dy <= c.h - 2 * BIN_INSET; dy += 1) spots.push([dx, dy]);
+  spots.sort((a, b) => a[0] + a[1] - (b[0] + b[1]) || a[1] - b[1]);
+  const at = spots.map(([dx, dy]) => [corner[0] - dx, corner[1] + dy]).find(([x, y]) => fits(x, y));
+  return at ?? corner;
 }
 
 /** Airlock hatches on every wall of the berth that no exit goes through, each with a status light. */
@@ -183,13 +217,19 @@ function shipFixtures(index, layout, { id, fixtures }) {
   };
 }
 
-/** A ship room's name, fitted to its box clear of its props (fitLabel), a halo where it must go over them. */
+/** A ship room's name, fitted to its box clear of its props (fitLabel), a halo where it must go over them.
+ *  Returns its lines' boxes. */
 function shipName(g, c, props) {
   const box = { x0: c.cx - c.w / 2, y0: c.cy - c.h / 2, x1: c.cx + c.w / 2, y1: c.cy + c.h / 2 };
   const name = c.room.name && c.room.name !== "?" ? c.room.name : "?";
   const fit = fitLabel(name, box, props);
   const halo = fit.halo ? { stroke: PLATE, "stroke-width": 3, "stroke-linejoin": "round", "paint-order": "stroke" } : {};
   for (const l of fit.lines) label(g, l.x, l.y, l.text, +fit.size.toFixed(1), { opacity: c.room.closed ? 0.6 : 1, ...halo });
+  // where the lines are, as boxes, for what else goes in the room (its bin)
+  return fit.lines.map((l) => {
+    const w = textWidth(l.text, fit.size) / 2;
+    return { x0: l.x - w, x1: l.x + w, y0: l.y - fit.size * 0.6, y1: l.y + fit.size * 0.6 };
+  });
 }
 
 /** A drive bell out of the hull's aft end at its side: a throat flaring to its mouth, and the mouth's rim. */

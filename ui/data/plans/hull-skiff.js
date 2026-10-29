@@ -31,7 +31,8 @@ export default {
       "exits": {},
       "gravity": 0,
       "flags": [
-        "airlock"
+        "airlock",
+        "bin"
       ],
       "canopy": true
     }

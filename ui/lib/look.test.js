@@ -99,7 +99,7 @@ describe("tissRooms", () => {
       { id: "w.rim-1200", name: "Rim 12:00", address: "Rim 12:00", at: { x: 0, y: 0, z: 0 }, terrain: "lobby", gravity: 0.9, district: "plaza",
         exits: { north: "w.shop", east: "w.rim-0100", in: { to: "w.ladder", via: "hatch" } } },
       { id: "w.shop", name: "Shop", address: "Rim 12:00 fore", at: { x: 0, y: 1, z: 0 }, terrain: "room", gravity: 0.9, district: "plaza",
-        exits: { south: "w.rim-1200" }, closed: "Shut for stocktaking." },
+        exits: { south: "w.rim-1200" }, closed: "Shut for stocktaking.", flags: ["listed", "bin"] },
       { id: "w.bearing", name: "The Bearing", address: "Hub bearing", at: { x: 0, y: 1, z: 3 }, terrain: "room", gravity: 0, district: "hub",
         exits: { out: "w.hub", up: "w.a", down: "w.b", west: "w.c" } },
       { id: "w.lift-12", name: "Lift 12", address: "Lift 12", terrain: "corridor", gravity: 0.9 },
@@ -107,15 +107,15 @@ describe("tissRooms", () => {
     look: { paint: { "rim-1200": "plaza", shop: "plaza", bearing: "hub", "lift-12": "plaza" }, palette: { plaza: "#d9a441", hub: "#cfe3ff" } },
   };
 
-  it("gives today's station shape: place, region, exits as N S E W U D IN OUT, closed, paint", () => {
+  it("gives today's station shape: place, region, exits as N S E W U D IN OUT, closed, paint, flags", () => {
     const { wrap, rooms } = tissRooms(mini);
     expect(wrap).toBe(24);
     const byId = Object.fromEntries(rooms.map((r) => [r.id, r]));
     expect(byId["w.rim-1200"]).toStrictEqual({
       id: "w.rim-1200", name: "Rim 12:00", x: 0, y: 0, z: 0, region: "plaza", terrain: "lobby", address: "Rim 12:00", gravity: 0.9,
-      exits: { N: "w.shop", E: "w.rim-0100", IN: "w.ladder" }, closed: false, closedReason: null, walked: true, paint: "#d9a441",
+      exits: { N: "w.shop", E: "w.rim-0100", IN: "w.ladder" }, closed: false, closedReason: null, walked: true, paint: "#d9a441", flags: [],
     });
-    expect(byId["w.shop"]).toMatchObject({ address: "Rim 12:00, fore", closed: true, closedReason: "Shut for stocktaking." });
+    expect(byId["w.shop"]).toMatchObject({ address: "Rim 12:00, fore", closed: true, closedReason: "Shut for stocktaking.", flags: ["listed", "bin"] });
     expect(byId["w.bearing"]).toMatchObject({ address: "Hub, bearing", exits: { OUT: "w.hub", U: "w.a", D: "w.b", W: "w.c" }, paint: "#cfe3ff" });
   });
 

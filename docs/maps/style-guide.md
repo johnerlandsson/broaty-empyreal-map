@@ -247,6 +247,13 @@ follow these rules.
   on Fixture fill: `⇅` in a circle for a lift, a hatch with rungs for a
   ladderway, a spiral for a stair, chevrons for a ramp, and for a weightless
   hatchway a round hatch with a ring in Ladder and a small "up" or "down".
+- **A refuse bin** (the room flag `bin`, which the room's words already tell
+  you) is a lidded can's outline in Dim, about 9 by 10, with no tile, in the
+  room's far corner: spinward and away from the corridor on a ring, fore
+  starboard on a decks or ship plan. A corridor stop's, or its ladderway's, is
+  on the corridor just spinward of the hatch. It zooms with the plan
+  (`reference/plan-bins-options.png`, option B; `binMark()` in
+  `ui/deck-view.js`).
 - **Up and down** to a room on another level of the same plan is a dashed dim
   line with a small "up".
 

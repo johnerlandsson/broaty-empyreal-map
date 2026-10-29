@@ -66,6 +66,11 @@ Four plans, one per level:
   beyond the one before it, so Bay 1 and Bay 2 run on in a row to starboard
   of the Berths, and the plate widens to take them
   (`reference/tiss-bays-mockup.html`, option A).
+- A room with a refuse bin (flag `bin`: the busy public rooms) has the bin's
+  mark in its far corner, spinward (style guide §8.1). The Main Concourse's,
+  a corridor stop's, is on the corridor spinward of its hatch, and so are the
+  four Inner ladderways', the cleaners' docks, which the plan draws as their
+  hatches. The Docks plan has none.
 - Lit: a room box, a corridor stretch or the ladderway hatch. Riding a lift,
   the band shows the car instead, with its line of floors (cars.md); the
   model still lights your spoke.

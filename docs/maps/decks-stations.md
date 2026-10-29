@@ -150,6 +150,9 @@ left, and the frames are labelled down the port side.
   both, as Caradon's Shift Hall, has "down" in the corner below "up".
 - **A blister** is a round glass room with its dome's rings drawn in. The
   deck above it shows its outline, dashed in Glass, under the hatch down.
+- **Bins:** a room flagged `bin` has the refuse bin's mark (style guide
+  §8.1) in its top-right corner, or top-left where its hatch is. No decks
+  station has one yet.
 - **The Berths** have airlock hatches with status lights on every wall that
   no exit goes through.
 

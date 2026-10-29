@@ -220,12 +220,12 @@ function hullLines(id, rooms, look, tweaks) {
 
 /**
  * The plan a ship hull without one gets: `hull-<id>`, on decks, one room at Deck 1, frame 1, her
- * cockpit as the game's cockpitPlan (loader.ts) has it, its kept fields only. Its gravity is the
- * plan's, which build() gives.
+ * cockpit as the game's cockpitPlan (loader.ts) has it, its kept fields only, flagged `bin` when her
+ * hull has `bin: true`. Its gravity is the plan's, which build() gives.
  */
 function oneRoomPlan(hull) {
   const id = `hull-${hull.id}`;
-  const cockpit = { id: `${id}.cockpit`, name: "Cockpit of the {name}", address: "Deck 1, frame 1", exits: {}, flags: ["airlock"], canopy: true };
+  const cockpit = { id: `${id}.cockpit`, name: "Cockpit of the {name}", address: "Deck 1, frame 1", exits: {}, flags: ["airlock", ...(hull.bin === true ? ["bin"] : [])], canopy: true };
   return { file: "content/game/hulls.yaml", area: { id, name: hull.name, layout: { kind: "decks" } }, raw: [cockpit], hulls: [hull.id], synthesised: true };
 }
 
@@ -395,7 +395,7 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   files.set(join(outDir, "places.js"), indexText(src.commit, places));
   planIds.sort();
   const hulls = Object.fromEntries(
-    [...ships].sort((a, b) => (a.id < b.id ? -1 : 1)).map((h) => [h.id, { ...h, plan: h.plan ?? `hull-${h.id}` }]),
+    [...ships].sort((a, b) => (a.id < b.id ? -1 : 1)).map(({ bin, ...h }) => [h.id, { ...h, plan: h.plan ?? `hull-${h.id}` }]), // her bin is on her cockpit's flags
   );
   files.set(join(outDir, "ships.js"), shipsText(src.commit, hulls, planIds));
   sortReport(report);

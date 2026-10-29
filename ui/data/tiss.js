@@ -136,7 +136,8 @@ export default {
       },
       "gravity": 0.3,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "industrial"
     },
@@ -193,7 +194,8 @@ export default {
       },
       "gravity": 0.3,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "industrial"
     },
@@ -251,7 +253,8 @@ export default {
       },
       "gravity": 0.3,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "industrial"
     },
@@ -306,7 +309,8 @@ export default {
       },
       "gravity": 0.3,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "industrial"
     },
@@ -589,7 +593,8 @@ export default {
       },
       "gravity": 0.9,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "concourse"
     },
@@ -608,7 +613,8 @@ export default {
       },
       "gravity": 0.9,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "concourse"
     },
@@ -628,7 +634,8 @@ export default {
       },
       "gravity": 0.9,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "concourse"
     },
@@ -703,7 +710,8 @@ export default {
       },
       "gravity": 0.9,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "concourse"
     },
@@ -742,7 +750,8 @@ export default {
       },
       "gravity": 0.9,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "concourse"
     },
@@ -801,7 +810,8 @@ export default {
       },
       "gravity": 0.9,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "residential"
     },
@@ -843,7 +853,8 @@ export default {
       },
       "gravity": 0.9,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "residential"
     },
@@ -900,7 +911,8 @@ export default {
       },
       "gravity": 0.9,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "residential"
     },
@@ -919,7 +931,8 @@ export default {
       },
       "gravity": 0.9,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "residential"
     },
@@ -1309,7 +1322,8 @@ export default {
       },
       "gravity": 0.6,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "offices"
     },
@@ -1406,7 +1420,8 @@ export default {
       },
       "gravity": 0.6,
       "flags": [
-        "listed"
+        "listed",
+        "bin"
       ],
       "district": "midring"
     },
@@ -1722,6 +1737,9 @@ export default {
         }
       },
       "gravity": 0.3,
+      "flags": [
+        "bin"
+      ],
       "district": "ladderways"
     },
     {
@@ -1795,6 +1813,9 @@ export default {
         }
       },
       "gravity": 0.3,
+      "flags": [
+        "bin"
+      ],
       "district": "ladderways"
     },
     {
@@ -1868,6 +1889,9 @@ export default {
         }
       },
       "gravity": 0.3,
+      "flags": [
+        "bin"
+      ],
       "district": "ladderways"
     },
     {
@@ -1941,6 +1965,9 @@ export default {
         }
       },
       "gravity": 0.3,
+      "flags": [
+        "bin"
+      ],
       "district": "ladderways"
     },
     {

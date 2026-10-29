@@ -49,7 +49,10 @@ export default {
         "west": "freighter.airlock",
         "east": "freighter.collar"
       },
-      "gravity": 0
+      "gravity": 0,
+      "flags": [
+        "bin"
+      ]
     },
     {
       "id": "freighter.airlock",
