@@ -312,8 +312,8 @@ Unchanged: it says where you are aboard.
 - Amber marks something that isn't a model highlight: her route, a belt
   she's searching for, and the course she has plotted, which is her route
   before she flies it.
-- **The course card is chrome over the chart**, as the action card is over a
-  plan (style guide §3, action-card.md): the same size at any zoom, rimmed in
+- **The course card is chrome over the chart**, as the corner cards are over a
+  plan (style guide §3, corner-cards.md): the same size at any zoom, rimmed in
   its amber, ignoring the pointer. It has no bar and no seconds, since
   nothing's counting down; its age ticks with the chart's own redraws. It
   pushes the scale bar down rather than covering it.

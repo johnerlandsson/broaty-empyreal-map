@@ -166,8 +166,8 @@ and a key in a card in the top-left corner
   - not charted: not drawn either, and counted in the key (the ring is
     drawn whatever: it's the public topology). A new character's are all
     not charted.
-- **The key**, a card in the top-left corner styled as the action card is
-  (action-card.md) but with a Tone rim (`.lanes-card` in `map.css`).
+- **The key**, a card in the top-left corner styled as the corner cards are
+  (corner-cards.md) but with a Tone rim (`.lanes-card` in `map.css`).
   Folded, the default, it's one line, "From Senara · 4 open · 15 closed",
   or "From Maelor · 2 open · 1 closed · 16 not charted" (a count of none is
   left out, but for open: a new character's is "From Senara · 0 open · 19

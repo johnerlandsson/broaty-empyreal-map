@@ -15,7 +15,7 @@
 //             orbit over Tamsin, which also emits charts and chart-ship putting her on that side, or on no
 //             side known); the bar's menu switches it
 //   ?hull=H   aboard a ship, send hull H (skiff, courier, freighter or tug: ui/data/ships.js) as the server will;
-//             the bar's menu switches it. With no ?step (and no manoeuvre, clearance, action or sky) it opens aboard the
+//             the bar's menu switches it. With no ?step (and no manoeuvre, clearance or sky) it opens aboard the
 //             Magpie with that hull, in her room ?room=K (cockpit when absent; the hold, the engine...), so
 //             with ?scene (belt, port-day...) your own ship stands in front of the scene in the top band
 //   ?chart=C  open the system chart on scenario C (parked-gannet, under-way-orrin, searching-cinders, at-point,
@@ -48,14 +48,8 @@
 //             the Lua side posts: undock-tiss (3 s, then the undock), dock-orrin-queued (10 s behind
 //             other ships' calls, then the dock) or land-zennor (1 s, the automated voice, over Zennor;
 //             the overview draws no landing); ?stop=N stops it N s into the wait; the bar's menu switches it
-//   ?action=A play what you're doing, as the Lua side posts Char.Action (climbing on T.I.S.S., repair aboard the skiff in
-//             three stages, or dragging a crate on Orrin): it runs to its end, a move landing you in the next room;
-//             the bar's menu switches it
 //   ?sky=S    stand in Zennor's Square under sky S (night, dusk, dawn, low, overhead or tiss-overhead): the game's
 //             own charts from dev/sky-cases.json, shifted so a recorded moment of that sky is now; the bar's menu switches it
-//   ?clock=HH:MM  station time: the clock message as src/station_map/clock.lua posts Empyreal.Clock, a
-//             Wednesday's midnight set so it's HH:MM now (14:32 unless you say); ?clock=none sends none,
-//             as before the game's first, so the tab stays hidden
 
 import { data } from "../ui/data/places.js";
 import ships from "../ui/data/ships.js";
@@ -798,58 +792,6 @@ function emitBelt(name) {
 }
 beltMenu.addEventListener("change", () => emitBelt(beltMenu.value));
 
-// --- what you're doing: the action messages src/station_map/action.lua posts, played to their end -------
-
-const actionMenu = document.getElementById("action");
-const ACTIONS = {
-  // up the ladder at Mid 3:00 to the Inner Ring, a move
-  "climbing-tiss": {
-    at: room("tiss.mid-0300").msg, scene: { scene: "station", station: "tiss" },
-    verb: "move", label: "climbing", stages: [10], lands: room("tiss.inner-0300").msg,
-  },
-  // the mining laser aboard the Mule: finding the fault, fitting the parts (twice as long) and testing it, with a scan typed ahead
-  "repair-skiff": {
-    at: { roomId: "ship.12.cockpit", name: "Cockpit of the Mule", area: "ship.12", areaName: "Mule", hull: "skiff", hullName: "prospecting skiff" },
-    scene: { scene: "station", station: "tiss" },
-    verb: "repair", label: "repairing the mining laser", stages: [8, 16, 8], queued: 1,
-  },
-  // the crated stove from Orrin's Freight Office out to the deck, a move
-  "drag-orrin": {
-    at: room("orrin.freight").msg, scene: { scene: "station", station: "orrin_station" },
-    verb: "move", label: "dragging the crated stove", stages: [20], lands: room("orrin.deck-3-frame-2").msg,
-  },
-};
-let actionTimers = [];
-
-function emitAction(name) {
-  actionTimers.forEach(clearTimeout);
-  actionTimers = [];
-  const a = ACTIONS[name];
-  if (!a) {
-    fp.emit("action", {});
-    return;
-  }
-  fp.emit("scene", a.scene);
-  emitLocation(a.at);
-  status.textContent = `${a.label} (${name})`;
-  const total = a.stages.reduce((x, y) => x + y, 0);
-  const start = Math.floor(Date.now() / 1000);
-  const ends = start + total;
-  let t = 0;
-  a.stages.forEach((secs, i) => {
-    const msg = { action: { verb: a.verb, label: a.label, stage: i + 1, stages: a.stages.length, ends, total, queued: a.queued ?? 0 } };
-    actionTimers.push(setTimeout(() => fp.emit("action", msg), t * 1000));
-    t += secs;
-  });
-  actionTimers.push(
-    setTimeout(() => {
-      if (a.lands) emitLocation(a.lands);
-      fp.emit("action", {});
-    }, total * 1000),
-  );
-}
-actionMenu.addEventListener("change", () => emitAction(actionMenu.value));
-
 // --- Zennor's sky: the game's recorded charts, shifted so a moment of the named sky is now ---------
 
 const skyMenu = document.getElementById("sky");
@@ -939,18 +881,8 @@ function emitMove(name) {
 }
 moveMenu.addEventListener("change", () => emitMove(moveMenu.value));
 
-/** Empyreal.Clock as the Lua side posts it, Tamsin's day long, with it HH:MM on a Wednesday now. */
-function emitClock(hhmm) {
-  if (hhmm === "none") return;
-  const [h, m] = (/^\d\d?:\d\d$/.test(hhmm ?? "") ? hhmm : "14:32").split(":").map(Number);
-  const dayMs = 15247058.823529412;
-  const midnight = Math.round(Date.now() - ((h * 60 + m + 0.5) / 1440) * dayMs);
-  fp.emit("clock", { clock: { weekday: "wednesday", day: 40, midnight, dayMs } });
-}
-
 function start() {
   fp.emit("settings", { turn_model: !q.has("still") });
-  emitClock(q.get("clock"));
   if (q.has("scene")) {
     sceneMenu.value = q.get("scene");
     emitScene(q.get("scene"));
@@ -987,11 +919,6 @@ function start() {
   if (q.has("clearance")) {
     clearanceMenu.value = q.get("clearance");
     emitClearance(clearanceMenu.value);
-  }
-  if (q.has("action")) {
-    actionMenu.value = q.get("action");
-    emitAction(actionMenu.value);
-    return;
   }
   if (q.has("sky")) {
     skyMenu.value = q.get("sky");

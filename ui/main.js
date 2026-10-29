@@ -10,15 +10,14 @@
 // last location, the docked station, and the level each plan last showed (a lift between floors
 // keeps the plan where it was). The system chart (◎), the lanes map (⋈) or the belt map can cover the
 // top band, one at a time; while one does, the space scene doesn't draw. Docking and undocking, the station
-// model shows through the space scene, drawing near or falling away on the game's clock. What you're
-// doing (Char.Action) is a card in the deck band's corner, over whichever plan shows, and so is her waiting
-// on Control's clearance for a dock or an undock; the overview is left as it is. Station time (Empyreal time, from the game's clock) is a tab on the rule between the
-// bands, once the game has sent it.
+// model shows through the space scene, drawing near or falling away on the game's clock. Her waiting
+// on Control's clearance for a dock or an undock is a card in the deck band's corner, over whichever plan
+// shows; the overview is left as it is.
 // Until the game says where you are, both bands show an unknown location (unknown-view.js), and no
 // station is built till one is picked.
 
-import { ActionCard } from "./action-card.js";
-import { clearanceCard } from "./lib/action.js";
+import { CornerCard } from "./corner-card.js";
+import { clearanceCard } from "./lib/clearance.js";
 import { BeltView } from "./belt-view.js";
 import { carPlans, nameCar, updateCar } from "./car-deck.js";
 import { ChartView } from "./chart-view.js";
@@ -32,7 +31,6 @@ import { moveCard } from "./lib/space.js";
 import { noPlanLine, pickStation, stationOfDock } from "./lib/stations.js";
 import { SpaceView } from "./space-view.js";
 import { buildPlace, buildShip } from "./place-views.js";
-import { StationClock } from "./station-clock.js";
 import { UnknownView } from "./unknown-view.js";
 
 const modelEl = document.getElementById("model");
@@ -44,8 +42,6 @@ const deckEl = document.getElementById("deck");
 const BUILDERS = new Set(["decks", "drum", "town", "wheel"]);
 const BUILD = Object.fromEntries(places.filter((p) => BUILDERS.has(p.builder) && data[p.id]).map((p) => [p.id, () => ({ ...buildPlace(data[p.id], p.builder, modelEl, deckEl), lastLevel: null })]));
 const stations = {}; // station key -> its views, once built
-// A town on the ground -> its port's id in the charts, for the sun on the station-time tab.
-const PORTS = Object.fromEntries(places.filter((p) => p.builder === "town").map((p) => [p.id, p.docks[0]]));
 let turning = true; // the turn_model setting, for stations built after it came
 
 /** The station key's views, built on first use; undefined for one there's no plan of. */
@@ -69,11 +65,9 @@ shipModels.style.display = "none";
 space.cv.after(shipModels);
 space.onAway = (away) => stations[current]?.model.setAway?.(away);
 let unknown = new UnknownView(modelEl, deckEl); // both bands until the game says where you are
-const doing = new ActionCard(deckEl);
-const moving = new ActionCard(deckEl, moveCard); // her thrusters, or closing on a rock, under yours
-const waiting = new ActionCard(deckEl, clearanceCard); // waiting on Control to dock or undock, under that
+const moving = new CornerCard(deckEl, moveCard); // her thrusters, or closing on a rock
+const waiting = new CornerCard(deckEl, clearanceCard); // waiting on Control to dock or undock, under that
 const info = document.getElementById("info");
-const clock = new StationClock(document.querySelector("main.station")); // station time, on the rule between the bands
 const panel = window.panel;
 
 // switching one of the chart, the lanes map and the belt map on switches the others off; the Lua side does too
@@ -220,14 +214,8 @@ function carView(kind) {
   return cars[kind];
 }
 
-/** On a port's ground (its rooms, not a ship docked there), the tab says where the sun is. */
-function runClock() {
-  clock.setPort(chart.index, PORTS[pickStation(last, null, null)] ?? null);
-}
-
 function render() {
   show(pickStation(last, docked ?? approaching, current));
-  runClock();
   if (unknown && (current !== undefined || last)) {
     unknown.remove(); // placed, or a location came that places you on no station: it never shows again
     unknown = null;
@@ -308,7 +296,6 @@ panel.on("charts", (msg) => {
   space.setCharts(chart.index);
   stations.zennor?.model.setCharts(chart.index);
   belt.setCharts(chart.index);
-  runClock();
   runChart();
 });
 
@@ -357,8 +344,6 @@ panel.on("belt-view", (msg) => {
   runChart();
 });
 
-panel.on("action", (msg) => doing.set(msg));
-panel.on("clock", (msg) => clock.set(msg));
 panel.on("course", (msg) => {
   chart.setCourse(msg);
   belt.setCourse(msg);

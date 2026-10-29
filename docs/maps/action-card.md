@@ -1,6 +1,14 @@
 # What you're doing
 
-*Status: built. Last updated 2026-10-27.*
+*Status: removed 2026-10-29.*
+
+> **Removed.** Mallard shows what you're doing, from `Char.Action`, in its own
+> Vitals panel (Mallard 0.9.2–0.9.3, Empyreal 11d7b90, moved there from this
+> card), so the plugin no longer draws it or asks for `Char.Action`. The
+> ship's move and the clearance card stay, stacked in the same corner:
+> [corner-cards.md](corner-cards.md). The rest of this page records the
+> action card as it was built; `action.lua`, `action-card.js` and
+> `lib/action.js` are gone (the card itself is `ui/corner-card.js` now).
 
 ## What it is and when it shows
 

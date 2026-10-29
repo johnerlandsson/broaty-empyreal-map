@@ -27,8 +27,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | Lanes map | top | the ⋈ toggle is on | [lanes.md](lanes.md) |
 | Belt map | top | its toggle is on, at a belt | [belt.md](belt.md) |
 | Unknown location | top, bottom | the panel has loaded and the game hasn't said where you are yet | §10 |
-| What you're doing (a card, not a map) | bottom, top-left corner | you're doing something that takes time | [action-card.md](action-card.md) |
-| Station time (a tab, not a map) | on the rule between the bands, right | once the game sends the clock | [station-clock.md](station-clock.md) |
+| Corner cards (cards, not a map) | bottom, top-left corner | her move in a belt, or her wait on Control's clearance | [corner-cards.md](corner-cards.md) |
 
 ## 2. Principles
 
@@ -59,15 +58,12 @@ Two bands, split about 42 / 58 by a 1 px rule (`#2b3646`):
 - **Bottom, the detail:** the floor you're standing on, or the ship you're in.
 - **The info line**, bottom left over the detail band, says where you are in
   words (§9).
-- **The action card**, top left over the detail band, says what you're doing
-  while it takes time, with the seconds left and a draining bar
-  ([action-card.md](action-card.md)). It's chrome, the same size at any zoom,
-  and it's hidden when you're doing nothing.
-- **Station time**, a tab on the rule between the bands at the right, says
-  the weekday and Empyreal time, from the game's `Empyreal.Clock`: `Wed 13:52`,
-  and on a port where the sun is, `Wed 17:26 · dusk`
-  ([station-clock.md](station-clock.md)). It shows once the game has sent the
-  clock, and turns with each Empyreal minute on its own.
+- **The corner cards**, top left over the detail band, say what her ship is
+  doing that takes time, her move in a belt or her wait on Control's
+  clearance, with the seconds left and a draining bar when there are any
+  ([corner-cards.md](corner-cards.md)). They're chrome, the same size at any
+  zoom, and hidden when there's nothing to say. What you're doing and the
+  Empyreal time are Mallard's own Vitals panel's, not the map's.
 
 Each band has zoom buttons (**+**, **−**, **⌂**) top right, wheel zoom and
 drag pan. **⌂** puts the view back where the map starts it.
@@ -528,8 +524,8 @@ A schematic of the galaxy's systems and lanes (see lanes.md), behind the
   .75 under an hour old, .5 under a day, .3 older. Each is bowed toward
   the centre. Closed ones aren't drawn; the key counts them. Nothing
   predicts a branch opening.
-- **The key:** a card in the top-left corner, as the action card
-  ([action-card.md](action-card.md)) but rimmed in the darkest Tone: folded to "From Senara · 4 open ·
+- **The key:** a card in the top-left corner, as the corner cards
+  ([corner-cards.md](corner-cards.md)) but rimmed in the darkest Tone: folded to "From Senara · 4 open ·
   15 closed" and a ▸, with each branch seen elsewhere's age written on it
   in Glass 8; unfolded, the lanes listed, scrolling if it must.
 - **You are here:** the amber ring of the highlight (§6) round your system.

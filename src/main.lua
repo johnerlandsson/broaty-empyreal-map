@@ -2,7 +2,7 @@
 -- and pushes it to the "map" panel, and your ship's frames into the overview's scene, its docking and
 -- undocking (timed by Ship.Devices) and her waiting on Control's clearance for one, the system chart, the
 -- lanes map, the belt map (each switched on and off to fit what she's doing, unless the auto_view setting is
--- off), the course she has plotted, what her sensors and laser are doing, and what you're doing (Char.Action) into the plan's card.
+-- off), the course she has plotted, and what her sensors and laser are doing.
 -- Your note on the ship you're aboard (Ship.List) goes with the location, for the ship plan. The lanes' states as last seen
 -- (each character's, by Char.Status's name), and each belt's log (her track and sweeps in it), are kept in Mallard's storage, so they
 -- outlive a restart. All state lives here; the panel is a
@@ -17,11 +17,9 @@ local N = require('station_map.lanes')
 local W = require('station_map.work')
 local M = require('station_map.manoeuvre')
 local Q = require('station_map.clearance')
-local A = require('station_map.action')
 local K = require('station_map.course')
 local B = require('station_map.belt')
 local F = require('station_map.note')
-local T = require('station_map.clock')
 
 local panel = mud.panel('map')
 local state = L.new()
@@ -31,11 +29,9 @@ local lanes = N.new()
 local work = W.new()
 local manoeuvre = M.new()
 local clearance = Q.new()
-local doing = A.new()
 local course = K.new()
 local belt = B.new()
 local notes = F.new()
-local clock = T.new()
 
 -- storage is per plugin and world, but charts are per character, so the lanes' sightings are kept under
 -- `lanes:<name>`, loaded when Char.Status names her. `lanes` alone is the old record, before charts were per
@@ -145,16 +141,8 @@ local function post_work()
   panel:post('work', W.message(work))
 end
 
-local function post_action()
-  panel:post('action', A.message(doing))
-end
-
 local function post_course()
   panel:post('course', K.message(course))
-end
-
-local function post_clock()
-  panel:post('clock', T.message(clock))
 end
 
 local function post_settings()
@@ -293,20 +281,12 @@ local function on_gmcp(package, data)
     char_status(data)
     return
   end
-  if name == 'char.action' then
-    if A.char_action(doing, data, os.time()) then post_action() end
-    return
-  end
   if name == 'ship.list' then
     ship_list(data)
     return
   end
   if name == 'ship.course' then
     if K.ship_course(course, data) then post_course() end
-    return
-  end
-  if name == 'empyreal.clock' then
-    if T.empyreal_clock(clock, data) then post_clock() end
     return
   end
   local both = scene_reducers[name]
@@ -318,7 +298,7 @@ local function on_gmcp(package, data)
 end
 
 -- Subscribe with the names Mallard advertises (original casing).
-for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Ship.Course', 'Ship.List', 'Space.Contacts', 'Char.Status', 'Char.Action', 'Empyreal.Clock' }) do
+for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Ship.Course', 'Ship.List', 'Space.Contacts', 'Char.Status' }) do
   gmcp.on(prefix, on_gmcp)
 end
 
@@ -339,11 +319,9 @@ world.on('disconnect', function()
   if N.reset(lanes, os.time()) then post_lanes() end
   save_lanes()
   if W.reset(work) then post_work() end
-  if A.reset(doing) then post_action() end
   if K.reset(course) then post_course() end
   if B.reset(belt) then post_belt() end
   save_belts()
-  if T.reset(clock) then post_clock() end -- the tab hides till the next login's
   doing_now = nil -- the views stay as they are; the first status after it fits them
   moving_now = nil
 end)
@@ -364,9 +342,7 @@ panel:on_message('ready', function()
   if B.message(belt).id then post_belt() end
   if B.on(belt) then post_belt_on() end
   if next(W.message(work)) then post_work() end
-  if A.message(doing).action then post_action() end
   if K.message(course).course then post_course() end
-  if T.message(clock).clock then post_clock() end
 end)
 
 panel:on_message('chart', function(data)

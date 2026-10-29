@@ -189,7 +189,7 @@ with `left` counted to the moment it's posted, so `ready` replays what's left.
 Since Empyreal 96249e1 (channels.md decision 39) she first calls Control and
 waits for the answer, the nav busy `dock` or `undock` with `left` null: that's
 no run here, and the cleared frame, with `left`, starts one with its full par.
-The wait is a card in the deck band instead ([action-card.md](action-card.md)).
+The wait is a card in the deck band instead ([corner-cards.md](corner-cards.md)).
 
 **What the panel draws.** One number, how far away the station is (0 as
 docked, 1 backed out of the berth), drives it (`awayAt`, `awayLook` in
@@ -283,7 +283,7 @@ fades with them:
   ever. Closing on a rock, there's no beam: it comes on once she's beside it.
   Nothing else marks it: no wakes, no thruster glow (option A of
   `docs/maps/reference/belt-motion-mockup.html`). The move's seconds go in the
-  deck band's corner card ([action-card.md](action-card.md)), not here.
+  deck band's corner card ([corner-cards.md](corner-cards.md)), not here.
 - **The countdown** is in the bottom-right corner, Dim, 10: `cutting` over
   `sweeping · 6 s` or `assaying · 8 s`, with the seconds dropped when there
   are none left (the game is about to say it's done). Mining has no seconds:

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 // The clearance card (main.js): while she waits on Control's answer to a dock or an undock, a card
-// in the deck band's corner says so and where, under the cards for what you're doing and her move;
+// in the deck band's corner says so and where, under the card for her move;
 // it goes as the run starts, as she stops, or on a disconnect (each a clearance { verb: null }).
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -29,13 +29,13 @@ afterEach(() => {
   delete window.panel;
 });
 
-const cards = () => [...document.querySelectorAll("#deck > .action-cards > .action-card")];
+const cards = () => [...document.querySelectorAll("#deck > .corner-cards > .corner-card")];
 const shown = () => cards().filter((c) => !c.hidden);
 const SKIFF = { roomId: "ship.42.cockpit", name: "Cockpit", area: "ship.42", areaName: "Mule", hull: "skiff", hullName: "prospecting skiff", shipRoom: "cockpit" };
 
 describe("the clearance card", () => {
-  it("is a third card in the deck band's corner, hidden till she waits", () => {
-    expect(cards()).toHaveLength(3);
+  it("is a second card in the deck band's corner, hidden till she waits", () => {
+    expect(cards()).toHaveLength(2);
     expect(shown()).toHaveLength(0);
   });
 
@@ -43,7 +43,7 @@ describe("the clearance card", () => {
     emit("scene", { scene: "station", station: "tiss" });
     emit("location", SKIFF);
     emit("clearance", { verb: "undock", at: "T.I.S.S." });
-    const card = cards()[2];
+    const card = cards()[1];
     expect(shown()).toEqual([card]);
     expect(card.querySelector(".label").textContent).toBe("awaiting clearance · T.I.S.S.");
     expect(card.querySelector(".secs").textContent).toBe("");
@@ -60,11 +60,5 @@ describe("the clearance card", () => {
     emit("manoeuvre", { verb: "dock", left: 20, total: 20, at: "orrin_station" });
     emit("clearance", { verb: null });
     expect(shown()).toHaveLength(0);
-  });
-
-  it("stacks under what you're doing", () => {
-    emit("action", { action: { verb: "repair", label: "repairing the laser", stage: 1, stages: 1, queued: 0 } });
-    emit("clearance", { verb: "dock", at: "Zennor" });
-    expect(shown().map((c) => c.querySelector(".label").textContent)).toEqual(["repairing the laser", "awaiting clearance · Zennor"]);
   });
 });

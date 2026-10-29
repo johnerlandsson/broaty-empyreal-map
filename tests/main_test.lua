@@ -42,18 +42,16 @@ local function boot(opts)
   package.loaded['station_map.work'] = nil
   package.loaded['station_map.manoeuvre'] = nil
   package.loaded['station_map.clearance'] = nil
-  package.loaded['station_map.action'] = nil
   package.loaded['station_map.course'] = nil
   package.loaded['station_map.belt'] = nil
   package.loaded['station_map.note'] = nil
-  package.loaded['station_map.clock'] = nil
   local real_require = require
   _G.require = function(name)
     if name == 'station_map.location' or name == 'station_map.scene'
         or name == 'station_map.charts' or name == 'station_map.lanes' or name == 'station_map.work'
         or name == 'station_map.manoeuvre' or name == 'station_map.clearance'
-        or name == 'station_map.action' or name == 'station_map.course' or name == 'station_map.belt'
-        or name == 'station_map.note' or name == 'station_map.clock' then
+        or name == 'station_map.course' or name == 'station_map.belt'
+        or name == 'station_map.note' then
       env.requires[#env.requires + 1] = name
       package.loaded[name] = nil
     end
@@ -89,8 +87,7 @@ test('wires panel and requires each module once', function()
   local env = boot()
   eq(env.panel_id, 'map')
   eq(env.requires, { 'station_map.location', 'station_map.scene', 'station_map.charts', 'station_map.lanes',
-    'station_map.work', 'station_map.manoeuvre', 'station_map.clearance', 'station_map.action', 'station_map.course', 'station_map.belt', 'station_map.note',
-    'station_map.clock' })
+    'station_map.work', 'station_map.manoeuvre', 'station_map.clearance', 'station_map.course', 'station_map.belt', 'station_map.note' })
   eq(type(env.gmcp_handlers['mudstd.room.info']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Room']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Vehicle']), 'function')
@@ -99,10 +96,10 @@ test('wires panel and requires each module once', function()
   eq(type(env.gmcp_handlers['Space.Charts']), 'function')
   eq(type(env.gmcp_handlers['Char.Status']), 'function')
   eq(type(env.gmcp_handlers['Space.Contacts']), 'function')
-  eq(type(env.gmcp_handlers['Char.Action']), 'function')
+  eq(env.gmcp_handlers['Char.Action'], nil)
   eq(type(env.gmcp_handlers['Ship.Course']), 'function')
   eq(type(env.gmcp_handlers['Ship.List']), 'function')
-  eq(type(env.gmcp_handlers['Empyreal.Clock']), 'function')
+  eq(env.gmcp_handlers['Empyreal.Clock'], nil) -- both shown in Mallard's own Vitals panel now
   eq(type(env.world_handlers.disconnect), 'function')
   eq(type(env.panel_handlers.ready), 'function')
   eq(type(env.settings_handlers.change), 'function')
@@ -805,58 +802,6 @@ test('disconnect ends a wait', function()
   eq(post_named(env, 'clearance').data, { verb = nil })
 end)
 
-local REPAIR = { verb = 'repair', label = 'repairing the laser', stage = 2, stages = 3, left = 31, total = 48, queued = 1 }
-
-test('Char.Action posts what you are doing, its end from the clock', function()
-  local real = os.time
-  os.time = function() return 1000 end
-  local env = boot()
-  env.gmcp_handlers['Char.Action']('Char.Action', REPAIR)
-  os.time = real
-  eq(names(env), { 'action' })
-  eq(env.posts[1].data, { action = {
-    verb = 'repair', label = 'repairing the laser', stage = 2, stages = 3, ends = 1031, total = 48, queued = 1,
-  } })
-end)
-
-test('Char.Action null posts doing nothing, and only once', function()
-  local env = boot()
-  local h = env.gmcp_handlers['Char.Action']
-  h('Char.Action', REPAIR)
-  env.posts = {}
-  h('Char.Action', nil)
-  h('Char.Action', nil)
-  eq(names(env), { 'action' })
-  eq(env.posts[1].data, {})
-end)
-
-test('a Char.Action sub-package reaches no reducer', function()
-  local env = boot()
-  env.gmcp_handlers['Char.Action']('Char.Action.Extra', REPAIR)
-  eq(#env.posts, 0)
-end)
-
-test('ready replays what you are doing, and not doing nothing', function()
-  local env = boot()
-  env.panel_handlers.ready({})
-  eq(names(env), { 'settings' })
-  env.gmcp_handlers['Char.Action']('Char.Action', REPAIR)
-  env.posts = {}
-  env.panel_handlers.ready({})
-  eq(names(env), { 'settings', 'action' })
-  eq(env.posts[2].data.action.label, 'repairing the laser')
-end)
-
-test('disconnect posts doing nothing, if something was under way', function()
-  local env = boot()
-  env.world_handlers.disconnect()
-  eq(post_named(env, 'action'), nil)
-  env.gmcp_handlers['Char.Action']('Char.Action', REPAIR)
-  env.posts = {}
-  env.world_handlers.disconnect()
-  eq(post_named(env, 'action').data, {})
-end)
-
 local COURSE = { to = 'cinders', name = 'The Cinders', km = 2000, seconds = 231, fuel = 6.4, ragged = false, at = 1792828800000 }
 
 test('Ship.Course posts the course she has plotted, and null posts none, once', function()
@@ -1125,46 +1070,6 @@ test('ready replays the note with the location, and disconnect forgets it', func
   env.world_handlers.disconnect()
   env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', MULE_COCKPIT)
   eq(env.posts[#env.posts].data.note, nil)
-end)
-
-local CLOCK = { weekday = 'wednesday', day = 40, midnight = 1792828800000, dayMs = 15247058.823529412 }
-
-test('Empyreal.Clock posts the clock, once, and only by its exact name', function()
-  local env = boot()
-  local h = env.gmcp_handlers['Empyreal.Clock']
-  h('Empyreal.Clock', CLOCK)
-  eq(names(env), { 'clock' })
-  eq(env.posts[1].data, { clock = CLOCK })
-  env.posts = {}
-  h('Empyreal.Clock', CLOCK) -- refreshed every few seconds, sent when changed; a resend changes nothing
-  h('Empyreal.Clock.Something', CLOCK)
-  eq(names(env), {})
-  h('empyreal.clock', { weekday = 'thursday', day = 41, midnight = CLOCK.midnight + CLOCK.dayMs, dayMs = CLOCK.dayMs })
-  eq(names(env), { 'clock' })
-  eq(env.posts[1].data.clock.weekday, 'thursday')
-end)
-
-test('ready replays the clock once one has come, and nothing before', function()
-  local env = boot()
-  env.panel_handlers.ready({})
-  eq(post_named(env, 'clock'), nil)
-  env.gmcp_handlers['Empyreal.Clock']('Empyreal.Clock', CLOCK)
-  env.posts = {}
-  env.panel_handlers.ready({})
-  eq(post_named(env, 'clock').data, { clock = CLOCK })
-end)
-
-test('disconnect posts no clock, so the tab hides, and ready then replays none', function()
-  local env = boot()
-  env.world_handlers.disconnect()
-  eq(post_named(env, 'clock'), nil) -- none to clear
-  env.gmcp_handlers['Empyreal.Clock']('Empyreal.Clock', CLOCK)
-  env.posts = {}
-  env.world_handlers.disconnect()
-  eq(post_named(env, 'clock').data, {})
-  env.posts = {}
-  env.panel_handlers.ready({})
-  eq(post_named(env, 'clock'), nil)
 end)
 
 t.done()

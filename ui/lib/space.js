@@ -364,7 +364,7 @@ export function heading(way) {
 }
 
 /**
- * The ship's move for the deck band's corner card, as actionCard() gives a card, at `now` in ms:
+ * The ship's move for the deck band's corner card (corner-card.js), at `now` in ms:
  * the thrusters under way, which way and the seconds left, or closing on a rock with no seconds
  * (the game gives none), with `recheck` the ms until she may have stopped; null while she's still.
  */

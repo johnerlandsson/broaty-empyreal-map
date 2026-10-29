@@ -252,17 +252,6 @@ Anywhere else off the station
 plans, the deck plan dims, nothing is lit, and the line shows the room
 you're in.
 
-**What you're doing.** While you're doing something that takes time, a card
-in the top-left corner of the plan says what, in the game's words, with the
-seconds left and a bar that drains to its end: `climbing`, `dragging the
-crated stove`, `eating spacer's stew`, or `repairing the laser` with `stage
-2 of 3` under it. It also says how many commands you've typed ahead
-(`1 waiting`). A move, such as climbing a ladder, hauling an overloaded
-pack, dragging a crate or pushing a trolley, lands you in the next room
-when it ends, and the plan follows you there. The game doesn't say which
-way a move goes, so the map doesn't guess. When nothing's under way the
-card is hidden.
-
 Both parts zoom with the scroll wheel or the **+** and **−** buttons and pan
 by dragging. **⌂** resets the view.
 
@@ -335,8 +324,7 @@ opens on the belt with the ship at that work. `?move=rcs-out` (or `closing-cut`,
 moving in the belt, the thrusters out from the core, closing on a rock then cutting it, or a move
 halted partway. `?manoeuvre=undock-tiss` (or `dock-orrin`) runs an
 undock from T.I.S.S. or a dock at Orrin Station on the game's clock, `&left=N` opening it N seconds
-from the end and `&stop=N` stopping it N seconds in. `?action=climbing-tiss` (or `repair-skiff`,
-`drag-orrin`) plays an action to its end, from the bar's menu too. `?debug` shows how often the model
+from the end and `&stop=N` stopping it N seconds in. `?debug` shows how often the model
 turned and redrew.
 
 **Tweak editor.** `npm run edit` serves a page on `localhost:8766` for the

@@ -1,6 +1,12 @@
 # Station time
 
-*Status: built. Last updated 2026-10-26.*
+*Status: removed 2026-10-29.*
+
+> **Removed.** Mallard shows the Empyreal weekday and time in its own Vitals
+> panel (Mallard 0.9.1, Empyreal 549316e), so the plugin no longer draws the
+> tab or asks for `Empyreal.Clock`. Mallard shows only the weekday and time,
+> so Zennor's sun phase (`· dusk`) went with the tab. The rest of this page
+> records the tab as it was built; its files are gone.
 
 ## What it is and when it shows
 

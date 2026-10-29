@@ -65,31 +65,10 @@ body {
 }
 #info:empty { display: none; }
 
-/* Station time (ui/station-clock.js): a tab on the rule between the bands, at the right, the panel's
- * rather than either map's. Its centre is the rule's: the grid's 42fr of the height less the rule. */
-.station-clock {
-  position: absolute;
-  right: 10px;
-  top: calc((100% - 1px) * .42);
-  transform: translateY(-50%);
-  z-index: 4;
-  padding: 2px 8px;
-  border-radius: 9px;
-  background: #0e131a;
-  border: 1px solid #2b3646;
-  font: 400 10px Inter, system-ui, sans-serif;
-  font-variant-numeric: tabular-nums;
-  color: #9aa7b7;
-  white-space: nowrap;
-  pointer-events: none;
-}
-/* The time itself, brighter than the weekday and the sun beside it. */
-.station-clock b { font-weight: 600; color: #e3eaf2; }
-
-/* What you're doing (ui/action-card.js): cards stacked in the deck band's top-left corner, clear of
- * the zoom buttons, yours over the ship's move. Dark like the plan under them, whatever the theme,
+/* The corner cards (ui/corner-card.js): stacked in the deck band's top-left corner, clear of the zoom
+ * buttons, the ship's move over her wait on Control's clearance. Dark like the plan under them, whatever the theme,
  * with the plan's amber for the bar. */
-.action-cards {
+.corner-cards {
   position: absolute;
   left: 8px;
   top: 8px;
@@ -101,7 +80,7 @@ body {
   gap: 6px;
   pointer-events: none;
 }
-.action-card {
+.corner-card {
   min-width: 150px;
   max-width: 100%;
   box-sizing: border-box;
@@ -114,13 +93,13 @@ body {
   color: #e3eaf2;
   pointer-events: none;
 }
-.action-card[hidden], .action-card [hidden] { display: none; }
-.action-card .row { display: flex; gap: 8px; align-items: baseline; white-space: nowrap; }
-.action-card .label { overflow: hidden; text-overflow: ellipsis; }
-.action-card .secs { margin-left: auto; font-weight: 400; font-size: 11px; color: #9aa7b7; }
-.action-card .detail { margin-top: 1px; font-weight: 400; font-size: 10px; color: #9aa7b7; }
-.action-card .bar { height: 3px; margin-top: 5px; border-radius: 2px; background: #2b3646; overflow: hidden; }
-.action-card .bar i { display: block; height: 100%; border-radius: 2px; background: #ffb347; }
+.corner-card[hidden], .corner-card [hidden] { display: none; }
+.corner-card .row { display: flex; gap: 8px; align-items: baseline; white-space: nowrap; }
+.corner-card .label { overflow: hidden; text-overflow: ellipsis; }
+.corner-card .secs { margin-left: auto; font-weight: 400; font-size: 11px; color: #9aa7b7; }
+.corner-card .detail { margin-top: 1px; font-weight: 400; font-size: 10px; color: #9aa7b7; }
+.corner-card .bar { height: 3px; margin-top: 5px; border-radius: 2px; background: #2b3646; overflow: hidden; }
+.corner-card .bar i { display: block; height: 100%; border-radius: 2px; background: #ffb347; }
 
 /* The course she has plotted (ui/chart-view.js): a card in the chart's top-left corner while she's at
  * rest, rimmed in amber as the action card is, with no bar: nothing's counting down. */
