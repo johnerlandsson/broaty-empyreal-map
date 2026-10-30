@@ -151,9 +151,25 @@ export class SpaceView {
 
   /** While covered (the system chart is on) nothing draws and the loop stops; uncovering wakes it. */
   setCovered(covered) {
+    const was = this.covered;
     this.covered = !!covered;
-    if (this.covered) this.pause();
-    else this.wake();
+    if (this.covered) return this.pause();
+    if (was) this.settle();
+    this.wake();
+  }
+
+  /** Every ease where it would have got to while covered: no fade replayed over the station model. */
+  settle() {
+    const t = this.target;
+    this.space = t.space;
+    this.rocks = t.belt;
+    this.ground = t.ground;
+    this.high = t.orbit;
+    this.speed = t.speed;
+    if (this.through && !this.run) {
+      this.through = false;
+      this.onAway?.(0);
+    }
   }
 
   resize() {

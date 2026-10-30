@@ -220,7 +220,9 @@ models' three Tones and Model edge, so they look of a piece with the
 stations. Stars ease up to speed and down again; stars cross-fade to rocks.
 No controls and no highlight; the model's zoom buttons hide under it. The
 system chart (the ◎ button, see [orrery.md](orrery.md)) can cover it; the scene
-keeps its state and its loop stops until the chart is turned off.
+keeps its state and its loop stops until the chart is turned off, when it's
+already at what it's become: a scene that changed under the chart or the lanes
+map doesn't fade in again over the station model.
 
 Over a port, the planet's limb is a wide arc across the band, its top a little
 above halfway down, with the still stars above it (dimmed by half by day: a

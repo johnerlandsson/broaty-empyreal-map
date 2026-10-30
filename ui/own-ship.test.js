@@ -156,6 +156,21 @@ describe("your own ship in the top band", () => {
     expect(shipShown()).toBe(true);
   });
 
+  it("shows the scene whole, not the station behind it, when a map comes off a band it changed under", () => {
+    emit("charts", senaraCharts());
+    emit("lanes", { system: "senara", visible: [], seen: {} });
+    emit("location", FREIGHTER);
+    emit("scene", { scene: "station", station: "tiss" });
+    emit("lanes-view", { on: true });
+    // out of the berth and through a lane under the map, which drops as she comes out of it
+    emit("scene", { scene: "travelling" });
+    emit("scene", { scene: "parked" });
+    runFrames(1000);
+    emit("lanes-view", { on: false });
+    runFrames(1016);
+    expect(document.querySelector("#model canvas").style.opacity).toBe("1");
+  });
+
   it("stays shown through an undock while the station model behind falls away", () => {
     emit("location", { ...FREIGHTER, hull: "skiff", hullName: "prospecting skiff", roomId: "ship.42.cockpit" });
     emit("scene", { scene: "station", station: "tiss" });
