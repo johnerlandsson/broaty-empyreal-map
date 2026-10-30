@@ -1,5 +1,5 @@
 {
-  "commit": "8192949",
+  "commit": "a149fff",
   "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
@@ -15,7 +15,21 @@
   "unplaced": [],
   "orphans": [],
   "droppedFlags": [],
-  "unknownFields": [],
+  "unknownFields": [
+    {
+      "name": "clear",
+      "places": [
+        "freighter",
+        "tug"
+      ]
+    },
+    {
+      "name": "exits.*.clear",
+      "places": [
+        "tiss"
+      ]
+    }
+  ],
   "knownDroppedFlags": [
     "barber",
     "broker",
@@ -40,7 +54,9 @@
     "car.load",
     "car.perStop",
     "car.stops.*.press",
+    "clear",
     "cover",
+    "exits.*.clear",
     "noFirearms"
   ]
 }
