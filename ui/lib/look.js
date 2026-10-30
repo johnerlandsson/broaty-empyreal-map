@@ -95,6 +95,12 @@ const WAY = { north: "N", south: "S", east: "E", west: "W", up: "U", down: "D", 
  *  "Rim 12:00 fore" -> "Rim 12:00, fore", "Hub bearing" -> "Hub, bearing". */
 const shown = (address) => (typeof address === "string" ? address.replace(/^((?:rim|mid|inner) \d{1,2}:\d{2}|spine \d+|hub) ([a-z]+)$/i, "$1, $2") : address);
 
+/** The hatch out of a room that says how wide it is, as `hatch: {to, clear}`, for tissRooms' room. */
+function hatchOf(room) {
+  const hatch = Object.values(room.exits ?? {}).find((e) => e?.clear);
+  return hatch ? { hatch: { to: hatch.to, clear: hatch.clear } } : {};
+}
+
 /**
  * T.I.S.S. as indexStation takes it: each room placed on the wheel (x in half hours, wrapping at
  * 24; y fore or aft; z the level), its district as `region`, its exits by N S E W U D IN OUT (the
@@ -121,6 +127,7 @@ export function tissRooms(data) {
     walked: true,
     paint: paint[r.id] ?? null,
     flags: r.flags ?? [],
+    ...hatchOf(r),
   }));
   rooms.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   return { wrap: 24, rooms };

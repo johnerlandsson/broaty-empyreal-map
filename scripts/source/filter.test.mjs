@@ -40,13 +40,17 @@ describe("keepRoom", () => {
     expect(dropped.fields).toEqual(["car.perStop", "car.dwell", "car.stops.*.press"]);
   });
 
-  it("keeps of an exit only where it goes, the way through and its seconds", () => {
+  it("keeps of an exit only where it goes, the way through, its seconds and its clearance", () => {
     const { room, dropped } = keepRoom({
       id: "a.b",
-      exits: { north: "a.c", up: { to: "a.d", via: "steps", seconds: 12, hidden: true }, down: { to: "a.e", hidden: true } },
+      exits: { north: "a.c", up: { to: "a.d", via: "steps", seconds: 12, hidden: true }, down: { to: "a.e", via: "hatch", clear: 70, hidden: true } },
     });
-    expect(room.exits).toStrictEqual({ north: "a.c", up: { to: "a.d", via: "steps", seconds: 12 }, down: { to: "a.e" } });
+    expect(room.exits).toStrictEqual({ north: "a.c", up: { to: "a.d", via: "steps", seconds: 12 }, down: { to: "a.e", via: "hatch", clear: 70 } });
     expect(dropped.fields).toEqual(["exits.*.hidden"]);
+  });
+
+  it("keeps a plan airlock room's clearance", () => {
+    expect(keepRoom({ id: "a.lock", flags: ["airlock"], clear: 130 }).room.clear).toBe(130);
   });
 
   it("drops a flags list that empties out", () => {
@@ -54,7 +58,7 @@ describe("keepRoom", () => {
   });
 
   it("exports the allow-lists", () => {
-    expect(ROOM_FIELDS).toEqual(["id", "name", "address", "exits", "closed", "gravity", "flags", "district", "canopy", "car"]);
+    expect(ROOM_FIELDS).toEqual(["id", "name", "address", "exits", "closed", "gravity", "flags", "district", "canopy", "car", "clear"]);
     expect(FLAGS).toEqual(["berth", "airlock", "outdoors", "listed", "bin"]);
   });
 });
@@ -108,10 +112,10 @@ describe("keepHull", () => {
   });
 
   it("names every other field by its dotted path, down to the leaves", () => {
-    const raw = { id: "skiff", price: 15000, airlock: { clear: 70 }, devices: { nav: { name: "Navigation", stats: { range: 5 } } } };
+    const raw = { id: "skiff", price: 15000, fuel: { tank: 70 }, devices: { nav: { name: "Navigation", stats: { range: 5 } } } };
     const { hull, dropped } = keepHull(raw);
     expect(hull).toEqual({ id: "skiff" });
-    expect(dropped.fields).toEqual(["hull.price", "hull.airlock.clear", "hull.devices.nav.name", "hull.devices.nav.stats.range"]);
+    expect(dropped.fields).toEqual(["hull.price", "hull.fuel.tank", "hull.devices.nav.name", "hull.devices.nav.stats.range"]);
   });
 
   it("names a list of values once, and the fields of a list of objects under *", () => {

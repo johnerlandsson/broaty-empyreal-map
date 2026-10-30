@@ -69,7 +69,8 @@ export default {
       "gravity": 0,
       "flags": [
         "airlock"
-      ]
+      ],
+      "clear": 130
     },
     {
       "id": "freighter.collar",

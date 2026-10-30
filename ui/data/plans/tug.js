@@ -35,7 +35,8 @@ export default {
       "flags": [
         "airlock"
       ],
-      "canopy": true
+      "canopy": true,
+      "clear": 70
     },
     {
       "id": "tug.collar",

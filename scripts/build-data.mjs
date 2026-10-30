@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Build the map's place data from the Empyreal source and the tweak files: ui/data/<area>.js for
 // each area with a builder, ui/data/places.js, ui/data/plans/<plan>.js for each ship plan (and a
-// one-room plan for each hull without one), ui/data/ships.js, and the sync report. Reads the
-// source, never writes it.
+// one-room plan for each hull without one), ui/data/ships.js, ui/data/frames.js, and the sync
+// report. Reads the source, never writes it.
 // Usage: node scripts/build-data.mjs [--source DIR] [--tweaks DIR] [--out DIR] [--report PATH]
 
 import { execFileSync } from "node:child_process";
@@ -25,7 +25,7 @@ const ROOM_KEYS = ["id", "name", "address", "at", "terrain", ...ROOM_FIELDS.slic
 /** The look's keys, in order (resolveLook's, then the palette). */
 const LOOK_KEYS = ["paint", "fixtures", "footprints", "hull", "profile", "surface", "greebles", "view", "drum", "town", "wheel", "palette"];
 /** What a checkout must have; loadSource reads each. */
-const SOURCE_PATHS = ["content/areas", "content/plans", "content/game/hulls.yaml", "content/game/world.yaml"];
+const SOURCE_PATHS = ["content/areas", "content/plans", "content/game/hulls.yaml", "content/game/world.yaml", "content/game/frames.yaml"];
 
 function ordered(obj, keys) {
   const out = {};
@@ -144,7 +144,7 @@ function shipsText(commit, hulls, planIds) {
 }
 
 /** The out dir's index files, which are generated but no place's. */
-const INDEXES = ["places.js", "ships.js"];
+const INDEXES = ["places.js", "ships.js", "frames.js"];
 
 /** The ids of the generated place files (stamped; hand-made files aren't) among the names, each read by `read`. */
 function generatedIds(outDir, names, read) {
@@ -221,11 +221,12 @@ function hullLines(id, rooms, look, tweaks) {
 /**
  * The plan a ship hull without one gets: `hull-<id>`, on decks, one room at Deck 1, frame 1, her
  * cockpit as the game's cockpitPlan (loader.ts) has it, its kept fields only, flagged `bin` when her
- * hull has `bin: true`. Its gravity is the plan's, which build() gives.
+ * hull has `bin: true`, with her hull's `airlock.clear` as its `clear`. Its gravity is the plan's,
+ * which build() gives.
  */
 function oneRoomPlan(hull) {
   const id = `hull-${hull.id}`;
-  const cockpit = { id: `${id}.cockpit`, name: "Cockpit of the {name}", address: "Deck 1, frame 1", exits: {}, flags: ["airlock", ...(hull.bin === true ? ["bin"] : [])], canopy: true };
+  const cockpit = { id: `${id}.cockpit`, name: "Cockpit of the {name}", address: "Deck 1, frame 1", exits: {}, flags: ["airlock", ...(hull.bin === true ? ["bin"] : [])], canopy: true, clear: hull.airlock?.clear };
   return { file: "content/game/hulls.yaml", area: { id, name: hull.name, layout: { kind: "decks" } }, raw: [cockpit], hulls: [hull.id], synthesised: true };
 }
 
@@ -398,9 +399,10 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   files.set(join(outDir, "places.js"), indexText(src.commit, places));
   planIds.sort();
   const hulls = Object.fromEntries(
-    [...ships].sort((a, b) => (a.id < b.id ? -1 : 1)).map(({ bin, ...h }) => [h.id, { ...h, plan: h.plan ?? `hull-${h.id}` }]), // her bin is on her cockpit's flags
+    [...ships].sort((a, b) => (a.id < b.id ? -1 : 1)).map(({ bin, airlock, ...h }) => [h.id, { ...h, plan: h.plan ?? `hull-${h.id}` }]), // her bin and clearance are on her cockpit
   );
   files.set(join(outDir, "ships.js"), shipsText(src.commit, hulls, planIds));
+  files.set(join(outDir, "frames.js"), moduleText(src.commit, { heavyWidth: src.heavyWidth }));
   sortReport(report);
   files.set(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 

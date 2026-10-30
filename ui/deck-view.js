@@ -23,6 +23,7 @@ import {
   shapeKey,
   ringLayout,
 } from "./lib/deck-layout.js";
+import { heavyFits, heavyRow } from "./lib/heavy.js";
 import { attachPanZoom, attachPick, el, glowFilter, pulse, rng, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
@@ -67,16 +68,21 @@ export function label(parent, x, y, s, size, attrs) {
   );
 }
 
-/** Show a tooltip while the pointer is over node; with pick (the tweak editor's), mark it as the
- *  room's for picking. */
-export function hover(node, room, pick) {
+/** Show a tooltip while the pointer is over node, with `rows` under the room's own; with pick (the
+ *  tweak editor's), mark it as the room's for picking. A ship's airlock room says if a heavy droid
+ *  fits. */
+export function hover(node, room, pick, rows = []) {
   if (!room) return;
   if (pick && room.id) node.setAttribute("data-room", room.id);
   node.addEventListener("mouseenter", () => {
     window.panel?.tooltip?.show(node.getBoundingClientRect(), {
       title: room.name,
       body: room.address && room.address.toLowerCase() !== String(room.name).toLowerCase() ? room.address : "",
-      rows: room.closed ? [{ label: "Closed", value: room.closedReason, valueColor: "muted" }] : [],
+      rows: [
+        ...(room.closed ? [{ label: "Closed", value: room.closedReason, valueColor: "muted" }] : []),
+        ...(Number.isFinite(room.clear) ? [heavyRow("her airlock", room.clear)] : []),
+        ...rows,
+      ],
     });
   });
   node.addEventListener("mouseleave", () => window.panel?.tooltip?.hide?.());
@@ -133,9 +139,9 @@ export function binMark(parent, x, y) {
 }
 
 /** Transparent hit area so a corridor stretch or spine segment can show a tooltip. */
-function hitArea(parent, x, y, w, h, room, pick) {
+function hitArea(parent, x, y, w, h, room, pick, rows) {
   const r = el("rect", { x, y, width: w, height: h, fill: "transparent" }, parent);
-  hover(r, room, pick);
+  hover(r, room, pick, rows);
 }
 
 function buildRingPlan(svg, index, z, pick) {
@@ -204,6 +210,12 @@ function buildRingPlan(svg, index, z, pick) {
         label(s, st.cx, 1, "⇅", 13, { fill: "#cfd8e3" });
         el("rect", { x: st.cx + 20, y: -7, width: 14, height: 14, rx: 2, fill: "none", stroke: LADDER, "stroke-width": 1.4, "pointer-events": "none" }, s);
         el("path", { d: `M${st.cx + 23},-3h8M${st.cx + 23},0h8M${st.cx + 23},3h8`, stroke: LADDER, "stroke-width": 1, "pointer-events": "none" }, s);
+        // a hatch too narrow for a heavy droid closes in between two jambs, and has its own tooltip
+        // (reference/heavy-droid-options.png, option C)
+        if (room?.hatch) {
+          if (!heavyFits(room.hatch.clear)) el("path", { "data-jambs": "", d: `M${st.cx + 22.2},-7v14M${st.cx + 31.8},-7v14`, stroke: LADDER, "stroke-width": 3, "pointer-events": "none" }, s);
+          hitArea(s, st.cx + 20, -7, 14, 14, index.byId.get(room.hatch.to), pick, [heavyRow("its hatch", room.hatch.clear)]);
+        }
       } else {
         el("circle", { cx: st.cx, cy: 0, r: 4, fill: "#aab8c8", stroke: "#aab8c8", "stroke-width": 1.5, "pointer-events": "none" }, s);
       }

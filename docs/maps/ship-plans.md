@@ -178,6 +178,14 @@ The decks builder draws the plan, with a few things only a ship has
   courier's; the build flags her generated cockpit). Where her cockpit's
   shape cuts or rounds that corner, the mark sits at the nearest spot inside
   it clear of her name and props. The tug has none.
+- **Airlock hatch:** the room with her `clear` (the freighter's Airlock, or
+  the cockpit of the skiff, the courier or the tug) has a hatch on her port
+  wall with a short passage in to it, long where a heavy droid fits, short
+  where it doesn't (style guide §8.1), and a `Heavy droid` row in its tooltip.
+  The game places only the freighter's, "to port"; the others are put to port
+  to match. A hull with no plan takes it from her `airlock.clear` in
+  `hulls.yaml`. Plan only, not on the model. A freighter's collar says nothing:
+  what fits there is whichever ship is docked.
 - **Names:** each room's short name, fitted to its box clear of its props;
   where a name has to go over them it gets a halo. Under the hull, the ship's
   name and class, and your note.

@@ -34,7 +34,8 @@ export default {
         "airlock",
         "bin"
       ],
-      "canopy": true
+      "canopy": true,
+      "clear": 70
     }
   ],
   "look": {

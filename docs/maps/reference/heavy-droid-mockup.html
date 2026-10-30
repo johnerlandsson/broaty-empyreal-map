@@ -1,0 +1,119 @@
+<!doctype html>
+<!-- Where a heavy droid can't pass, 2026-10-30: three quiet ways to show it (Empyreal hauling.md §3,
+     help droids). Real plans from ui/: T.I.S.S.'s Rim at 12:00 with its ladderway hatch, the freighter,
+     a skiff and the tug. Only what help says: a heavy droid fits no ladderway hatch and, of the ships,
+     only a freighter's airlock. No widths. The ship plans draw no airlock hatch today, so the hatch
+     marks here are new; only the freighter's wall comes from the game (airlock to port), a skiff's and
+     a tug's are placed to port to match. The tooltip is a stand-in for Mallard's. Each frame is the
+     panel's bottom band at its default size, 380 x 300. Serve the repo root over http to open it. A
+     throwaway: take its look, not its code. Picked: C (2026-10-30). -->
+<html><head><meta charset="utf-8"><title>Heavy droid: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:14px 18px; width:max-content; }
+  h2 { color:#e3eaf2; font-size:15px; margin:14px 0 2px; }
+  h2 small { color:#7d8a9a; font-weight:400; font-size:12px; margin-left:8px; }
+  .row { display:flex; gap:10px; margin:6px 0 2px; }
+  figure { margin:0; text-align:center; }
+  figcaption { font:11px "DejaVu Sans Mono", monospace; margin-top:3px; }
+  .f { position:relative; width:380px; height:300px; background:#04060c; border-radius:6px; overflow:hidden; outline:1px solid #18202b; }
+  .f .m { position:absolute; inset:0; }
+  .f .m button { display:none; }
+  .tip { position:absolute; right:8px; bottom:8px; background:#141a23; border:1px solid #2a3442; border-radius:5px; padding:6px 9px; color:#e3eaf2; font-size:12px; text-align:left; box-shadow:0 2px 8px #0008; }
+  .tip b { font-weight:600; display:block; }
+  .tip i { font-style:normal; color:#7d8a9a; font-size:11px; display:block; }
+  .tip div { display:flex; justify-content:space-between; gap:18px; margin-top:4px; font-size:11px; color:#7d8a9a; }
+  .tip div span { color:#cfd8e3; }
+</style></head><body>
+<div id="out"></div>
+<script type="module">
+import { DeckView } from "../../../ui/deck-view.js";
+import { el } from "../../../ui/lib/svg.js";
+import { indexStation, locate } from "../../../ui/lib/locate.js";
+import { indexDecks, locateDecks } from "../../../ui/lib/decks.js";
+import { tissRooms } from "../../../ui/lib/look.js";
+import { decksPlans } from "../../../ui/decks-deck.js";
+import { captionShip, updateShip } from "../../../ui/ship-deck.js";
+import { data } from "../../../ui/data/places.js";
+import { plans as shipPlans } from "../../../ui/data/ships.js";
+
+const FIX = "#0e131a", GLASS = "#cfe3ff", LADDER = "#9fb0c3";
+const W = 380, H = 300, ASPECT = H / W;
+const none = { "pointer-events": "none" };
+const SHIP_W = 420;
+
+// the two lengths along the wall: a plain hatch, and a freighter's, about twice it. Not to the game's scale.
+const hatchMark = (p, x, y, long) => el("rect", { x: x - 4, y: y - long / 2, width: 8, height: long, rx: 2, fill: FIX, stroke: GLASS, "stroke-width": 1.2, ...none }, p);
+const PASSAGE = "#56657a";
+// the hull's port wall at height y: walking out from the room's wall until off the plate
+function hullWall(plate, x, y) {
+  const pt = plate.ownerSVGElement.createSVGPoint();
+  pt.y = y;
+  for (let at = x; at > x - 200; at -= 0.5) { pt.x = at; if (!plate.isPointInFill(pt)) return at; }
+  return x;
+}
+// the ladderway glyph's jambs, pinching its opening in from either side
+const pinch = (p, cx) => el("path", { d: `M${cx + 22.2},-7v14M${cx + 31.8},-7v14`, stroke: LADDER, "stroke-width": 3, fill: "none", ...none }, p);
+
+const OPTIONS = [
+  { key: "A", title: "A · Tooltip only", sub: "nothing new on the plan. Each ladderway hatch gets its own hover area, and a ship's airlock says so in her room's tooltip." },
+  { key: "B", title: "B · Tooltip, and the airlock hatch drawn", sub: "as A, and a ship's airlock hatch appears on her wall, in the berth hatches' glass with a short passage to the room: the freighter's about twice as long as the others.", hatch: true },
+  { key: "C", title: "C · B, and a narrow ladderway glyph", sub: "as B, and each ladderway hatch glyph narrows between two heavy jambs. All twelve look alike, so it reads as a tight hatch rather than picking any out.", hatch: true, pinch: true },
+];
+
+function frame(row, cap, tip, make) {
+  const fig = row.appendChild(document.createElement("figure"));
+  const f = fig.appendChild(document.createElement("div"));
+  f.className = "f";
+  const m = f.appendChild(document.createElement("div"));
+  m.className = "m";
+  fig.appendChild(Object.assign(document.createElement("figcaption"), { textContent: cap }));
+  make(m);
+  const t = f.appendChild(document.createElement("div"));
+  t.className = "tip";
+  t.innerHTML = `<b>${tip.title}</b>${tip.body ? `<i>${tip.body}</i>` : ""}<div>Heavy droid <span>${tip.value}</span></div>`;
+}
+
+function ring(m, opt, level, roomId, hour, width) {
+  const index = indexStation(tissRooms(data.tiss));
+  const deck = new DeckView(m, index, undefined, { pick: true });
+  deck.set(locate(index, { roomId }));
+  const plan = deck.plans[level];
+  const stop = plan.layout.stops.find((s) => s.hour === hour);
+  deck.setView([stop.cx + 27 - width / 2, (-width * ASPECT) / 2 + 40, width, width * ASPECT]);
+  if (opt.pinch) for (const st of plan.layout.stops) if (st.lobby) for (const off of plan.offsets) pinch(el("g", { transform: `translate(${off} 0)`, ...none }, plan.g), st.cx);
+}
+
+function ship(m, opt, planId, name, hullName, roomId, wall, long) {
+  const raw = shipPlans[planId];
+  const plan = { ...raw, rooms: raw.rooms.map((r) => ({ ...r, name: r.name.replaceAll("{name}", name) })) };
+  const index = indexDecks(plan);
+  const deck = new DeckView(m, index, decksPlans(plan), { pick: true });
+  captionShip(deck);
+  deck.set(locateDecks(index, { roomId }));
+  updateShip(deck, { areaName: name, hullName });
+  const p = deck.plans[deck.level];
+  const bb = p.g.querySelector(`g[data-room="${wall}"]`).firstChild.getBBox();
+  const y = bb.y + bb.height / 2;
+  const hull = hullWall(p.g.querySelector('path[stroke-width="3"]'), bb.x, y);
+  // every ship at one scale, her airlock's wall in the frame, the tooltip clear of it
+  deck.setView([bb.x - 130, y - 130, SHIP_W, SHIP_W * ASPECT]);
+  if (opt.hatch) {
+    el("rect", { x: hull, y: y - 5, width: bb.x - hull, height: 10, fill: PASSAGE, ...none }, p.g);
+    hatchMark(p.g, hull, y, long);
+  }
+}
+
+const out = document.getElementById("out");
+for (const opt of OPTIONS) {
+  const h = out.appendChild(document.createElement("h2"));
+  h.innerHTML = `${opt.title}<small>${opt.sub}</small>`;
+  const row = out.appendChild(document.createElement("div"));
+  row.className = "row";
+  frame(row, "Rim 12:00, zoomed in: hovering the ladderway hatch", { title: "Ladderway 12, Rim", body: "Rim 12:00 ladderway", value: "too wide for its hatch" }, (m) => ring(m, opt, 0, "tiss.concourse", 0, 300));
+  frame(row, "freighter: hovering her Airlock", { title: "Airlock", body: "Deck 1, frame 3, port 1", value: "fits her airlock" }, (m) => ship(m, opt, "freighter", "Old Faithful", "medium freighter", "freighter.passage", "freighter.airlock", 34));
+  frame(row, "skiff: hovering her cockpit", { title: "Cockpit of the Mule", body: "Deck 1, frame 1", value: "too wide for her airlock" }, (m) => ship(m, opt, "hull-skiff", "Mule", "prospecting skiff", "hull-skiff.cockpit", "hull-skiff.cockpit", 16));
+  frame(row, "tug: hovering her cockpit", { title: "Cockpit of the Duchess", body: "Deck 1, frame 2", value: "too wide for her airlock" }, (m) => ship(m, opt, "tug", "Duchess", "tug", "tug.cockpit", "tug.cockpit", 16));
+}
+document.body.dataset.ready = "1";
+</script>
+</body></html>

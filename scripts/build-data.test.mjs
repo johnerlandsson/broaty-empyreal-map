@@ -152,11 +152,11 @@ describe("build", () => {
     await build(opts);
     const path = join(opts.source, "content/game/hulls.yaml");
     const doc = parse(readFileSync(path, "utf8"));
-    doc.hulls[0].airlock = { clear: 70 };
+    doc.hulls[0].fuel = { tank: 70 };
     writeFileSync(path, stringify(doc));
     const { report } = await build(opts);
-    expect(report.unknownFields).toEqual([{ name: "hull.airlock.clear", places: ["skiff"] }]);
-    expect(report.knownUnknownFields).toEqual(["hull.airlock.clear", "hull.price", "hull.slots"]);
+    expect(report.unknownFields).toEqual([{ name: "hull.fuel.tank", places: ["skiff"] }]);
+    expect(report.knownUnknownFields).toEqual(["hull.fuel.tank", "hull.price", "hull.slots"]);
     expect((await loadIndex(join(opts.outDir, "ships.js"))).hulls.skiff).toEqual({ id: "skiff", name: "prospecting skiff", plan: "hull-skiff" });
     expect((await build(opts)).report.unknownFields).toEqual([]);
   });
@@ -332,7 +332,7 @@ describe("build", () => {
   it("leaves no temp files behind", async () => {
     const opts = setup();
     await build(opts);
-    expect(readdirSync(opts.outDir).sort()).toEqual(["mini.js", "places.js", "plans", "ships.js", "wheelie.js"]);
+    expect(readdirSync(opts.outDir).sort()).toEqual(["frames.js", "mini.js", "places.js", "plans", "ships.js", "wheelie.js"]);
     expect(readdirSync(join(opts.outDir, "plans")).sort()).toEqual(["hull-skiff.js", "tub.js"]);
     expect(readdirSync(dirname(opts.reportPath)).filter((f) => f !== "out")).toEqual(["report.json"]);
   });
@@ -568,6 +568,7 @@ describe("build, ship plans", () => {
         gravity: 0.25,
         flags: ["airlock"],
         canopy: true,
+        clear: 70,
       },
     ]);
     expect(s.look.paint).toEqual({ cockpit: "docks" });
@@ -583,6 +584,22 @@ describe("build, ship plans", () => {
     expect(s.rooms[0].flags).toEqual(["airlock", "bin"]);
     // the hull index stays her id, name, class and plan
     expect(readFileSync(join(opts.outDir, "ships.js"), "utf8")).not.toContain('"bin"');
+    expect(readFileSync(join(opts.outDir, "ships.js"), "utf8")).not.toContain('"airlock"');
+  });
+
+  it("writes the heavy frame's width from frames.yaml to frames.js", async () => {
+    const opts = setup();
+    await build(opts);
+    expect((await load(join(opts.outDir, "frames.js")))).toEqual({ heavyWidth: 110 });
+  });
+
+  it("keeps a hatch exit's clear", async () => {
+    const opts = setup();
+    const path = join(opts.source, "content/areas/mini.yaml");
+    writeFileSync(path, readFileSync(path, "utf8").replace("via: hatch, seconds: 4", "via: hatch, seconds: 4, clear: 70"));
+    await build(opts);
+    const mini = await load(join(opts.outDir, "mini.js"));
+    expect(mini.rooms.find((r) => r.exits?.down?.via === "hatch").exits.down.clear).toBe(70);
   });
 
   it("writes ships.js with every ship hull (not stations) and a static import of every plan", async () => {

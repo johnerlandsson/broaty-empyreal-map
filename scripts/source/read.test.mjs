@@ -17,7 +17,7 @@ describe("loadSource", () => {
     expect(src.plans[0].area.id).toBe("tub");
     expect(src.plans[0].rooms).toHaveLength(1);
     expect(src.hulls).toEqual([
-      { id: "skiff", name: "prospecting skiff", price: 15000, slots: 2 },
+      { id: "skiff", name: "prospecting skiff", airlock: { clear: 70 }, price: 15000, slots: 2 },
       { id: "tub", name: "tub", class: "medium", plan: "tub", price: 1 },
     ]);
     expect(src.world).toEqual([
@@ -25,6 +25,14 @@ describe("loadSource", () => {
       { id: "wheelie", name: "Wheelie Station", berth: "wheelie.rim-12" },
     ]);
     expect(src.shipGravity).toBe(0.25);
+    expect(src.heavyWidth).toBe(110);
+  });
+
+  it("throws naming frames.yaml when it has no heavy frame's width", () => {
+    const dir = mkdtempSync(join(tmpdir(), "frames-"));
+    cpSync(fixtures, dir, { recursive: true });
+    writeFileSync(join(dir, "content/game/frames.yaml"), "frames:\n  - id: small_frame\n");
+    expect(() => loadSource(dir)).toThrow(/frames\.yaml.*heavy/);
   });
 
   it("gives ships no gravity when world.yaml has no shipGravity, as the game does", () => {

@@ -9,6 +9,7 @@ import { DISTRICT_COLOURS as DC } from "./lib/geometry.js";
 import { PLAN, decksLayout, decksShape, fitLabel, pathD, textWidth } from "./lib/decks.js";
 import { noseAt, propBoxes, tailAt, wallAt } from "./lib/footprint.js";
 import { boxPath } from "./lib/solid.js";
+import { heavyFits } from "./lib/heavy.js";
 import { el } from "./lib/svg.js";
 import { BIN_INSET, DIM, PASSAGE, PLATE, TXT, binMark, hasBin, hover, label, roomBox } from "./deck-view.js";
 
@@ -24,6 +25,8 @@ const HULL_LINE = "#9fb0c3";
 const CHEVRON = "#e8b04a";
 const WALL = { starboard: [1, 0], port: [-1, 0], fore: [0, 1], aft: [0, -1] };
 const none = { "pointer-events": "none" };
+const HATCH_WIDE = 34; // an airlock hatch's length along her wall, a heavy droid fitting or not:
+const HATCH_NARROW = 16; // two sizes, not to scale, so the plan says no more than help does
 
 /**
  * @param {{id: string, kind?: string, look?: {fixtures?: object[]}}} [data] the generated file, for
@@ -57,6 +60,7 @@ function buildDeckPlan(svg, index, deck, level, pick, ship) {
   for (const c of cells) if (c.kind === "blister") el("circle", { cx: c.cx, cy: c.cy, r: c.r + 14, fill: PLATE, stroke: EDGE, "stroke-width": 2 }, g);
 
   for (const l of links) el("rect", { x: l.x, y: l.y, width: l.w, height: l.h, fill: PASSAGE }, g);
+  fixtures.airlock(g);
 
   for (const c of cells) {
     if (c.kind === "passage") {
@@ -184,6 +188,19 @@ function shipFixtures(index, layout, { id, fixtures }) {
   const group = (g, i) => el("g", { "data-fixture": i, ...none }, g);
   return {
     aft: -Infinity, // the plan y of the aft-most bell mouth outside() drew, if any
+    /** Her airlock's hatch on her port wall, a short passage in to its room: a freighter's, built
+     *  for a heavy droid, long, a smaller ship's short (reference/heavy-droid-options.png, option C). */
+    airlock(g) {
+      for (const c of layout.cells) {
+        if (c.kind !== "room" || !Number.isFinite(c.room.clear)) continue;
+        const hit = wallAt(path, c.room.cell, "port");
+        if (!hit) continue;
+        const [x] = P(hit);
+        const long = heavyFits(c.room.clear) ? HATCH_WIDE : HATCH_NARROW;
+        el("rect", { x, y: c.cy - 5, width: c.cx - c.w / 2 - x, height: 10, fill: PASSAGE, ...none }, g);
+        el("rect", { "data-airlock": "", x: x - 4, y: c.cy - long / 2, width: 8, height: long, rx: 2, fill: FIXTURE, stroke: GLASS, "stroke-width": 1.2, ...none }, g);
+      }
+    },
     outside(g) {
       fixtures.forEach((f, i) => {
         if ((f.type === "bell" || f.type === "boom") && f.deck === deck) {

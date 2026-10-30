@@ -65,6 +65,10 @@ with no plan. `ui/data/ships.js` indexes them: each hull's `id`, `name`,
 `shipGravity` in `world.yaml`. The build stops, naming both, when two plans
 or a plan and a place share an id, or when a hull names a plan that
 `content/plans/` doesn't have. See [ship-plans.md](ship-plans.md).
+`ui/data/frames.js` has the heavy frame's width, from `frames.yaml`, which the
+plans compare with an opening's `clear`: on a hatch exit, a plan's airlock
+room, or a planless hull's `airlock.clear`, which the build puts on her
+cockpit.
 
 When the game gives a planless hull a plan of its own, the report lists
 `hull-<id>` under `removedPlaces` (kind `plan`) and the new plan under
@@ -101,8 +105,8 @@ Each list is empty when there is nothing to say.
   time a name appears only. A field inside a car, an exit, a layout or a
   district is named by its dotted path, such as `car.perStop` or
   `exits.*.hidden`. A hull's field, on any hull in `hulls.yaml` other than
-  the `id`, `name`, `class`, `plan` and `bin` the map reads, is named the same
-  way under `hull.`, down to its leaves (`hull.airlock.clear`,
+  the `id`, `name`, `class`, `plan`, `bin` and `airlock` the map reads, is named the same
+  way under `hull.`, down to its leaves (`hull.devices.cargo.name`,
   `hull.devices.nav.points`), with the hull ids as its places. Nothing is
   wrong. Decide if the map should use it. `knownDroppedFlags` and
   `knownUnknownFields` remember every name seen, so it is not reported twice.

@@ -1,6 +1,7 @@
 hulls:
   - id: skiff
     name: prospecting skiff
+    airlock: { clear: 70 }
     price: 15000
     slots: 2
   - id: tub

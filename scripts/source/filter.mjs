@@ -1,8 +1,8 @@
 // Pure filters over the raw Empyreal YAML: keep only what the map may show.
 
-export const ROOM_FIELDS = ["id", "name", "address", "exits", "closed", "gravity", "flags", "district", "canopy", "car"];
+export const ROOM_FIELDS = ["id", "name", "address", "exits", "closed", "gravity", "flags", "district", "canopy", "car", "clear"];
 export const FLAGS = ["berth", "airlock", "outdoors", "listed", "bin"];
-export const HULL_FIELDS = ["id", "name", "class", "plan", "bin"];
+export const HULL_FIELDS = ["id", "name", "class", "plan", "bin", "airlock"];
 
 /**
  * An object's keys among `keys`, in its own order; each other key goes in `dropped` by its dotted
@@ -44,7 +44,7 @@ export function keepArea(area) {
 /**
  * @param {object} raw  one room as the source writes it
  * @returns {{room: object, dropped: {fields: string[], flags: string[]}}}  an exit keeps where it
- *   goes, the way through and its seconds; a car its kind and its stops' rooms; any other key of
+ *   goes, the way through, its seconds and its clearance; a car its kind and its stops' rooms; any other key of
  *   theirs is dropped by dotted name ("exits.*.hidden", "car.perStop")
  */
 export function keepRoom(raw) {
@@ -59,7 +59,7 @@ export function keepRoom(raw) {
       if (flags.length) room.flags = flags;
     } else if (key === "exits") {
       room.exits = Object.fromEntries(
-        Object.entries(value).map(([dir, exit]) => [dir, typeof exit === "string" ? exit : only(exit, ["to", "via", "seconds"], "exits.*", dropped.fields)]),
+        Object.entries(value).map(([dir, exit]) => [dir, typeof exit === "string" ? exit : only(exit, ["to", "via", "seconds", "clear"], "exits.*", dropped.fields)]),
       );
     } else if (key === "car") {
       const car = only(value, ["kind", "stops"], "car", dropped.fields);
@@ -87,7 +87,7 @@ function leaves(path, value) {
 /**
  * @param {object} raw  one hull as the source writes it
  * @returns {{hull: object, dropped: {fields: string[], flags: string[]}}}  the HULL_FIELDS, in that
- *   order; every other field is dropped by dotted name ("hull.airlock.clear")
+ *   order; every other field is dropped by dotted name ("hull.devices.cargo.name")
  */
 export function keepHull(raw) {
   const hull = {};

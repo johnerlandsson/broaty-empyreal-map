@@ -254,6 +254,14 @@ follow these rules.
   on the corridor just spinward of the hatch. It zooms with the plan
   (`reference/plan-bins-options.png`, option B; `binMark()` in
   `ui/deck-view.js`).
+- **Where a heavy droid can't pass** is a detail, not a layer
+  (`reference/heavy-droid-options.png`, option C). A ladderway's hatch too
+  narrow for one closes in between two heavy Ladder jambs, on all twelve of
+  T.I.S.S.'s alike. A ship's airlock hatch sits on her port wall, in the berth
+  hatches' Glass on Fixture fill, a short Passage bar in to its room: 34 long
+  where a heavy droid fits (a freighter's), 16 where it doesn't. Those are two
+  sizes, not a scale. Only what help droids says shows: whether it fits, never
+  a width.
 - **Up and down** to a room on another level of the same plan is a dashed dim
   line with a small "up".
 
@@ -272,7 +280,10 @@ follow these rules.
 
 - **Hover** a room or a corridor stop for a Mallard tooltip
   (`panel.tooltip`): its name, its address when that's different, and for a
-  closed room, why it's closed.
+  closed room, why it's closed. A ship's airlock room adds a `Heavy droid` row,
+  `fits her airlock` or `too wide for her airlock`. On a ring, a ladderway's
+  hatch has its own hover area, over the stop's, with the ladderway's name and
+  `Heavy droid: too wide for its hatch`.
 - **Following you:** the plan switches to your level and re-centres only when
   the highlight leaves the middle of the view (35% from centre by default; a
   plan may set its own `margin`).

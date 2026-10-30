@@ -115,7 +115,8 @@ export default {
         "south": "tiss.vaults",
         "in": {
           "to": "tiss.ladderway-12-inner",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         }
       },
       "gravity": 0.3,
@@ -232,7 +233,8 @@ export default {
         "south": "tiss.heavystores",
         "in": {
           "to": "tiss.ladderway-3-inner",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         }
       },
       "gravity": 0.3,
@@ -369,7 +371,8 @@ export default {
         "north": "tiss.substation",
         "in": {
           "to": "tiss.ladderway-6-inner",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         }
       },
       "gravity": 0.3,
@@ -548,7 +551,8 @@ export default {
         "west": "tiss.inner-0730",
         "in": {
           "to": "tiss.ladderway-9-inner",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         }
       },
       "gravity": 0.3,
@@ -588,7 +592,8 @@ export default {
         "south": "tiss.cantina",
         "in": {
           "to": "tiss.ladderway-12-rim",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         }
       },
       "gravity": 0.9,
@@ -832,7 +837,8 @@ export default {
         "south": "tiss.blocks",
         "in": {
           "to": "tiss.ladderway-3-rim",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         }
       },
       "gravity": 0.9,
@@ -1007,7 +1013,8 @@ export default {
         "south": "tiss.feed",
         "in": {
           "to": "tiss.ladderway-6-rim",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         }
       },
       "gravity": 0.9,
@@ -1145,7 +1152,8 @@ export default {
         "south": "tiss.quietroom",
         "in": {
           "to": "tiss.ladderway-9-rim",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         }
       },
       "gravity": 0.9,
@@ -1301,7 +1309,8 @@ export default {
         "south": "tiss.services",
         "in": {
           "to": "tiss.ladderway-12-mid",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         }
       },
       "gravity": 0.6,
@@ -1399,7 +1408,8 @@ export default {
         "north": "tiss.gym",
         "in": {
           "to": "tiss.ladderway-3-mid",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         }
       },
       "gravity": 0.6,
@@ -1479,7 +1489,8 @@ export default {
         "north": "tiss.airplant",
         "in": {
           "to": "tiss.ladderway-6-mid",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         }
       },
       "gravity": 0.6,
@@ -1557,7 +1568,8 @@ export default {
         "north": "tiss.lounge",
         "in": {
           "to": "tiss.ladderway-9-mid",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         }
       },
       "gravity": 0.6,
@@ -1679,7 +1691,8 @@ export default {
       "exits": {
         "out": {
           "to": "tiss.concourse",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         },
         "up": {
           "to": "tiss.ladderway-12-mid",
@@ -1705,7 +1718,8 @@ export default {
       "exits": {
         "out": {
           "to": "tiss.mid-1200",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         },
         "up": {
           "to": "tiss.ladderway-12-inner",
@@ -1732,7 +1746,8 @@ export default {
       "exits": {
         "out": {
           "to": "tiss.inner-1200",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         },
         "down": {
           "to": "tiss.ladderway-12-mid",
@@ -1755,7 +1770,8 @@ export default {
       "exits": {
         "out": {
           "to": "tiss.rim-0300",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         },
         "up": {
           "to": "tiss.ladderway-3-mid",
@@ -1778,7 +1794,8 @@ export default {
       "exits": {
         "out": {
           "to": "tiss.mid-0300",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         },
         "up": {
           "to": "tiss.ladderway-3-inner",
@@ -1805,7 +1822,8 @@ export default {
       "exits": {
         "out": {
           "to": "tiss.inner-0300",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         },
         "down": {
           "to": "tiss.ladderway-3-mid",
@@ -1831,7 +1849,8 @@ export default {
       "exits": {
         "out": {
           "to": "tiss.landing",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         },
         "up": {
           "to": "tiss.ladderway-6-mid",
@@ -1857,7 +1876,8 @@ export default {
       "exits": {
         "out": {
           "to": "tiss.mid-0600",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         },
         "up": {
           "to": "tiss.ladderway-6-inner",
@@ -1884,7 +1904,8 @@ export default {
       "exits": {
         "out": {
           "to": "tiss.inner-0600",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         },
         "down": {
           "to": "tiss.ladderway-6-mid",
@@ -1907,7 +1928,8 @@ export default {
       "exits": {
         "out": {
           "to": "tiss.rim-0900",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         },
         "up": {
           "to": "tiss.ladderway-9-mid",
@@ -1930,7 +1952,8 @@ export default {
       "exits": {
         "out": {
           "to": "tiss.mid-0900",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         },
         "up": {
           "to": "tiss.ladderway-9-inner",
@@ -1960,7 +1983,8 @@ export default {
       "exits": {
         "out": {
           "to": "tiss.inner-0900",
-          "via": "hatch"
+          "via": "hatch",
+          "clear": 70
         },
         "down": {
           "to": "tiss.ladderway-9-mid",
