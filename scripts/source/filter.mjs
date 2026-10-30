@@ -2,6 +2,7 @@
 
 export const ROOM_FIELDS = ["id", "name", "address", "exits", "closed", "gravity", "flags", "district", "canopy", "car"];
 export const FLAGS = ["berth", "airlock", "outdoors", "listed", "bin"];
+export const HULL_FIELDS = ["id", "name", "class", "plan", "bin"];
 
 /**
  * An object's keys among `keys`, in its own order; each other key goes in `dropped` by its dotted
@@ -70,4 +71,27 @@ export function keepRoom(raw) {
   }
   dropped.fields = [...new Set(dropped.fields)];
   return { room, dropped };
+}
+
+/** A value's dotted names down to its leaves; a list of values is one leaf, a list of objects is `.*`. */
+function leaves(path, value) {
+  const isObject = (v) => typeof v === "object" && v !== null;
+  if (Array.isArray(value)) {
+    const objects = value.filter((v) => isObject(v) && !Array.isArray(v));
+    return objects.length ? objects.flatMap((v) => leaves(`${path}.*`, v)) : [path];
+  }
+  if (!isObject(value) || !Object.keys(value).length) return [path];
+  return Object.entries(value).flatMap(([key, v]) => leaves(`${path}.${key}`, v));
+}
+
+/**
+ * @param {object} raw  one hull as the source writes it
+ * @returns {{hull: object, dropped: {fields: string[], flags: string[]}}}  the HULL_FIELDS, in that
+ *   order; every other field is dropped by dotted name ("hull.airlock.clear")
+ */
+export function keepHull(raw) {
+  const hull = {};
+  for (const key of HULL_FIELDS) if (raw[key] !== undefined) hull[key] = raw[key];
+  const fields = Object.entries(raw).filter(([key]) => !HULL_FIELDS.includes(key)).flatMap(([key, value]) => leaves(`hull.${key}`, value));
+  return { hull, dropped: { fields: [...new Set(fields)], flags: [] } };
 }

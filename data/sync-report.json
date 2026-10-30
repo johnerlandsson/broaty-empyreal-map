@@ -17,16 +17,319 @@
   "droppedFlags": [],
   "unknownFields": [
     {
-      "name": "clear",
+      "name": "hull.airlock.clear",
       "places": [
+        "courier",
+        "skiff"
+      ]
+    },
+    {
+      "name": "hull.bus",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.desc",
+      "places": [
+        "courier",
+        "freighter",
+        "outpost",
+        "port",
+        "skiff",
+        "tug",
+        "wheel"
+      ]
+    },
+    {
+      "name": "hull.devices.cargo.name",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.devices.cargo.points",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.devices.cargo.stats.holdMass",
+      "places": [
+        "courier",
         "freighter",
         "tug"
       ]
     },
     {
-      "name": "exits.*.clear",
+      "name": "hull.devices.cargo.stats.holdVolume",
       "places": [
-        "tiss"
+        "courier",
+        "freighter",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.devices.comms.name",
+      "places": [
+        "courier",
+        "freighter",
+        "outpost",
+        "port",
+        "skiff",
+        "tug",
+        "wheel"
+      ]
+    },
+    {
+      "name": "hull.devices.comms.points",
+      "places": [
+        "courier",
+        "freighter",
+        "outpost",
+        "port",
+        "skiff",
+        "tug",
+        "wheel"
+      ]
+    },
+    {
+      "name": "hull.devices.laser.name",
+      "places": [
+        "skiff"
+      ]
+    },
+    {
+      "name": "hull.devices.laser.points",
+      "places": [
+        "skiff"
+      ]
+    },
+    {
+      "name": "hull.devices.life.name",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.devices.life.points",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.devices.nav.name",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.devices.nav.points",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.devices.power.name",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.devices.power.points",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.devices.propulsion.name",
+      "places": [
+        "courier",
+        "freighter",
+        "outpost",
+        "skiff",
+        "tug",
+        "wheel"
+      ]
+    },
+    {
+      "name": "hull.devices.propulsion.points",
+      "places": [
+        "courier",
+        "freighter",
+        "outpost",
+        "skiff",
+        "tug",
+        "wheel"
+      ]
+    },
+    {
+      "name": "hull.devices.propulsion.stats.burn",
+      "places": [
+        "courier",
+        "freighter",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.devices.propulsion.stats.speed",
+      "places": [
+        "courier",
+        "freighter",
+        "outpost",
+        "tug",
+        "wheel"
+      ]
+    },
+    {
+      "name": "hull.devices.propulsion.stats.tank",
+      "places": [
+        "courier",
+        "freighter",
+        "outpost",
+        "tug",
+        "wheel"
+      ]
+    },
+    {
+      "name": "hull.devices.sensors.name",
+      "places": [
+        "courier",
+        "freighter",
+        "outpost",
+        "port",
+        "skiff",
+        "tug",
+        "wheel"
+      ]
+    },
+    {
+      "name": "hull.devices.sensors.points",
+      "places": [
+        "courier",
+        "freighter",
+        "outpost",
+        "port",
+        "skiff",
+        "tug",
+        "wheel"
+      ]
+    },
+    {
+      "name": "hull.devices.sensors.stats.range",
+      "places": [
+        "outpost",
+        "port",
+        "wheel"
+      ]
+    },
+    {
+      "name": "hull.exterior",
+      "places": [
+        "courier",
+        "freighter",
+        "outpost",
+        "port",
+        "skiff",
+        "tug",
+        "wheel"
+      ]
+    },
+    {
+      "name": "hull.hull",
+      "places": [
+        "courier",
+        "freighter",
+        "outpost",
+        "port",
+        "skiff",
+        "tug",
+        "wheel"
+      ]
+    },
+    {
+      "name": "hull.laneRated",
+      "places": [
+        "courier",
+        "freighter"
+      ]
+    },
+    {
+      "name": "hull.leasePerWeek",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.names",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.price",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.signature",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.slots",
+      "places": [
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
+      ]
+    },
+    {
+      "name": "hull.sold",
+      "places": [
+        "tug"
       ]
     }
   ],
@@ -57,6 +360,40 @@
     "clear",
     "cover",
     "exits.*.clear",
+    "hull.airlock.clear",
+    "hull.bus",
+    "hull.desc",
+    "hull.devices.cargo.name",
+    "hull.devices.cargo.points",
+    "hull.devices.cargo.stats.holdMass",
+    "hull.devices.cargo.stats.holdVolume",
+    "hull.devices.comms.name",
+    "hull.devices.comms.points",
+    "hull.devices.laser.name",
+    "hull.devices.laser.points",
+    "hull.devices.life.name",
+    "hull.devices.life.points",
+    "hull.devices.nav.name",
+    "hull.devices.nav.points",
+    "hull.devices.power.name",
+    "hull.devices.power.points",
+    "hull.devices.propulsion.name",
+    "hull.devices.propulsion.points",
+    "hull.devices.propulsion.stats.burn",
+    "hull.devices.propulsion.stats.speed",
+    "hull.devices.propulsion.stats.tank",
+    "hull.devices.sensors.name",
+    "hull.devices.sensors.points",
+    "hull.devices.sensors.stats.range",
+    "hull.exterior",
+    "hull.hull",
+    "hull.laneRated",
+    "hull.leasePerWeek",
+    "hull.names",
+    "hull.price",
+    "hull.signature",
+    "hull.slots",
+    "hull.sold",
     "noFirearms"
   ]
 }

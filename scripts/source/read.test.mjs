@@ -17,8 +17,8 @@ describe("loadSource", () => {
     expect(src.plans[0].area.id).toBe("tub");
     expect(src.plans[0].rooms).toHaveLength(1);
     expect(src.hulls).toEqual([
-      { id: "skiff", name: "prospecting skiff" },
-      { id: "tub", name: "tub", class: "medium", plan: "tub" },
+      { id: "skiff", name: "prospecting skiff", price: 15000, slots: 2 },
+      { id: "tub", name: "tub", class: "medium", plan: "tub", price: 1 },
     ]);
     expect(src.world).toEqual([
       { id: "mini", name: "Mini Outpost", berth: "mini.dock" },

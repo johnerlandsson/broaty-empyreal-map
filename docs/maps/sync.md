@@ -100,9 +100,12 @@ Each list is empty when there is nothing to say.
   drops on purpose, listed by name with the places they occur in, the first
   time a name appears only. A field inside a car, an exit, a layout or a
   district is named by its dotted path, such as `car.perStop` or
-  `exits.*.hidden`. Nothing is wrong. Decide if the map should use
-  it. `knownDroppedFlags` and `knownUnknownFields` remember every name seen,
-  so it is not reported twice.
+  `exits.*.hidden`. A hull's field, on any hull in `hulls.yaml` other than
+  the `id`, `name`, `class`, `plan` and `bin` the map reads, is named the same
+  way under `hull.`, down to its leaves (`hull.airlock.clear`,
+  `hull.devices.nav.points`), with the hull ids as its places. Nothing is
+  wrong. Decide if the map should use it. `knownDroppedFlags` and
+  `knownUnknownFields` remember every name seen, so it is not reported twice.
 
 `commit` is the source commit the build read. Use it in the commit message.
 

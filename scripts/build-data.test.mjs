@@ -135,7 +135,30 @@ describe("build", () => {
       { name: "shop", places: ["mini"] },
     ]);
     expect(report.knownDroppedFlags).toEqual(["charger", "shop"]);
-    expect(report.unknownFields).toEqual([]);
+    expect(report.unknownFields.filter((f) => !f.name.startsWith("hull."))).toEqual([]);
+  });
+
+  it("names each hull field the map doesn't read on a fresh build, with the hulls that have it", async () => {
+    const { report } = await build(setup());
+    expect(report.unknownFields).toEqual([
+      { name: "hull.price", places: ["skiff", "tub"] },
+      { name: "hull.slots", places: ["skiff"] },
+    ]);
+    expect(report.knownUnknownFields).toEqual(["hull.price", "hull.slots"]);
+  });
+
+  it("names a hull field new to the source once, and leaves it out of the ships index", async () => {
+    const opts = setup();
+    await build(opts);
+    const path = join(opts.source, "content/game/hulls.yaml");
+    const doc = parse(readFileSync(path, "utf8"));
+    doc.hulls[0].airlock = { clear: 70 };
+    writeFileSync(path, stringify(doc));
+    const { report } = await build(opts);
+    expect(report.unknownFields).toEqual([{ name: "hull.airlock.clear", places: ["skiff"] }]);
+    expect(report.knownUnknownFields).toEqual(["hull.airlock.clear", "hull.price", "hull.slots"]);
+    expect((await loadIndex(join(opts.outDir, "ships.js"))).hulls.skiff).toEqual({ id: "skiff", name: "prospecting skiff", plan: "hull-skiff" });
+    expect((await build(opts)).report.unknownFields).toEqual([]);
   });
 
   it("names a flag new to the source even on a room already on the map, and a new field", async () => {

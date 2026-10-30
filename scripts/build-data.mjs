@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { keepArea, keepRoom, ROOM_FIELDS } from "./source/filter.mjs";
+import { keepArea, keepHull, keepRoom, ROOM_FIELDS } from "./source/filter.mjs";
 import { hullClashes, overlaps } from "./source/footprints.mjs";
 import { placeRooms } from "./source/place.mjs";
 import { loadSource } from "./source/read.mjs";
@@ -336,7 +336,7 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   const clashes = []; // every hull and footprint clash, so one build lists them all
 
   // Every plan, the source's and one for each ship hull without one, with the hulls built to it.
-  const ships = src.hulls.filter((h) => h.class !== "station");
+  const ships = src.hulls.map((h) => keepHull(h).hull).filter((h) => h.class !== "station");
   const plans = [
     ...src.plans.map(({ file, area, rooms }) => ({ file: `content/plans/${file}`, area, raw: rooms, hulls: [] })),
     ...ships.filter((h) => h.plan === undefined).map(oneRoomPlan),
@@ -346,11 +346,14 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   for (const hull of ships) if (hull.plan !== undefined) planOf.get(hull.plan).hulls.push(hull.id);
 
   // Dropped flags and fields are named by name, the first build their name appears anywhere in the
-  // source; a nested field by its dotted name ("car.perStop").
-  const dropped = [...src.areas, ...src.plans].flatMap(({ area, rooms }) => [
-    { place: area.id, dropped: { ...keepArea(area).dropped, flags: [] } },
-    ...rooms.map((raw) => ({ place: area.id, dropped: keepRoom(raw).dropped })),
-  ]);
+  // source; a nested field by its dotted name ("car.perStop"). A hull's place is its id.
+  const dropped = [
+    ...[...src.areas, ...src.plans].flatMap(({ area, rooms }) => [
+      { place: area.id, dropped: { ...keepArea(area).dropped, flags: [] } },
+      ...rooms.map((raw) => ({ place: area.id, dropped: keepRoom(raw).dropped })),
+    ]),
+    ...src.hulls.map((raw) => ({ place: raw.id, dropped: keepHull(raw).dropped })),
+  ];
   Object.assign(report, droppedOf(dropped, previous));
 
   const ctx = { commit: src.commit, tweaks, report, files, clashes };

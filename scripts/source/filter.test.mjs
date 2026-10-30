@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FLAGS, ROOM_FIELDS, keepArea, keepRoom } from "./filter.mjs";
+import { FLAGS, ROOM_FIELDS, keepArea, keepHull, keepRoom } from "./filter.mjs";
 
 describe("keepRoom", () => {
   it("keeps the allowed fields and flags and reports the rest", () => {
@@ -97,5 +97,29 @@ describe("keepArea", () => {
     });
     expect(area.districts).toStrictEqual([{ id: "d", name: "D", entrance: "t.r" }]);
     expect(dropped.fields).toEqual(["layout.tilt", "layout.rings.*.colour", "layout.spine.lit", "layout.hub.spin", "districts.*.music"]);
+  });
+});
+
+describe("keepHull", () => {
+  it("keeps the map's fields, in their fixed order", () => {
+    const { hull, dropped } = keepHull({ plan: "tub", bin: true, class: "medium", name: "tub", id: "tub" });
+    expect(Object.entries(hull)).toEqual([["id", "tub"], ["name", "tub"], ["class", "medium"], ["plan", "tub"], ["bin", true]]);
+    expect(dropped).toEqual({ fields: [], flags: [] });
+  });
+
+  it("names every other field by its dotted path, down to the leaves", () => {
+    const raw = { id: "skiff", price: 15000, airlock: { clear: 70 }, devices: { nav: { name: "Navigation", stats: { range: 5 } } } };
+    const { hull, dropped } = keepHull(raw);
+    expect(hull).toEqual({ id: "skiff" });
+    expect(dropped.fields).toEqual(["hull.price", "hull.airlock.clear", "hull.devices.nav.name", "hull.devices.nav.stats.range"]);
+  });
+
+  it("names a list of values once, and the fields of a list of objects under *", () => {
+    const { dropped } = keepHull({ id: "s", names: ["Mule", "Dusty"], crew: [{ role: "pilot" }, { role: "mate", pay: 5 }] });
+    expect(dropped.fields).toEqual(["hull.names", "hull.crew.*.role", "hull.crew.*.pay"]);
+  });
+
+  it("names an empty object or an empty value by itself", () => {
+    expect(keepHull({ id: "s", devices: {}, note: null }).dropped.fields).toEqual(["hull.devices", "hull.note"]);
   });
 });
