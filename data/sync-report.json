@@ -1,22 +1,53 @@
 {
-  "commit": "a149fff",
+  "commit": "dc73ba7",
   "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
   "rooms": {
-    "added": [],
+    "added": [
+      {
+        "place": "tiss",
+        "id": "tiss.bank"
+      },
+      {
+        "place": "zennor",
+        "id": "zennor.bank"
+      }
+    ],
     "removed": [],
     "renamed": []
   },
   "exits": {
-    "added": [],
+    "added": [
+      {
+        "place": "tiss",
+        "room": "tiss.market",
+        "dir": "north",
+        "to": "tiss.bank"
+      },
+      {
+        "place": "zennor",
+        "room": "zennor.exchange-square",
+        "dir": "northwest",
+        "to": "zennor.bank"
+      }
+    ],
     "removed": []
   },
   "unplaced": [],
   "orphans": [],
-  "droppedFlags": [],
+  "droppedFlags": [
+    {
+      "name": "bank",
+      "places": [
+        "tiss",
+        "zennor"
+      ]
+    }
+  ],
   "unknownFields": [],
   "knownDroppedFlags": [
+    "bank",
     "barber",
     "broker",
     "bunkhouse",
