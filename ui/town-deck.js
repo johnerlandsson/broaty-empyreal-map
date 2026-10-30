@@ -4,13 +4,13 @@
 // and the open rooms (street, square, path) as packed earth with a dashed edge, named in Dim. The
 // tram is a line in Glass through its stops; the landing field sits in its blast walls, the
 // terraces step down each held up by a dry stone wall, and the overlook is up the ridge path's
-// switchbacks. Zoomed out, the rooms' names fade and the districts' stay readable. Layout maths
-// lives in lib/town.js.
+// switchbacks. A room with a refuse bin has the mark in its south-east corner. Zoomed out, the
+// rooms' names fade and the districts' stay readable. Layout maths lives in lib/town.js.
 
 import { DISTRICT_COLOURS as DC } from "./lib/geometry.js";
 import { MAX_W, RIVER, townFrame, townLayout, townShape } from "./lib/town.js";
 import { el } from "./lib/svg.js";
-import { DIM, PLATE, hover, label, roomBox } from "./deck-view.js";
+import { BIN_INSET, DIM, PLATE, binMark, hasBin, hover, label, roomBox } from "./deck-view.js";
 
 // style guide §4.2, Towns
 const GROUND = "#110e0b";
@@ -122,6 +122,8 @@ function buildTownPlan(svg, index, spec, pick) {
     else if (b.kind === "overlook") overlook(g, b);
     else if (b.kind === "square") label(g, b.cx, b.cy - 8, b.room.name, 12);
     else if (b.kind === "garden") garden(g, b);
+    // a bin in the room's south-east corner, the one no door, name or wellhead of Zennor's has
+    if (hasBin(b.room)) binMark(g, b.cx + b.w / 2 - BIN_INSET, b.cy + b.h / 2 - BIN_INSET);
     if (b.kind !== "building") hit(g, townShape(layout, { kind: "room", id: b.room.id }), b.room, pick);
   }
 

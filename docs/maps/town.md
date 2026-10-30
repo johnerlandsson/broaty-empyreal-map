@@ -1,6 +1,6 @@
 # Towns
 
-*Status: built for Zennor, the city. Last updated 2026-10-25.*
+*Status: built for Zennor, the city. Last updated 2026-10-30.*
 
 ## What it is and when it shows
 
@@ -8,14 +8,14 @@ A place on a planet's surface, laid out by its compass exits (`layout: none`
 in its area file, station.md §2.6 in `~/dev/empyreal/docs`): no addresses
 or coords, and on a planet the compass means the compass. Zennor is the only
 one, Tamsin's capital below T.I.S.S., rewritten from a town of fourteen rooms
-into a city of 45 (empyreal 94cb413 and 09ea111, `docs/planetside.md` §5,
+into a city of 46 and a tram car, 47 in the data (empyreal 94cb413 and 09ea111, `docs/planetside.md` §5,
 §7 and §12). A town shows while you're in one of its rooms or your ship is
 landed there: while landed, Ship.Status `location` is the port's id,
 `zennor`, as a docked ship's is its station's.
 
 | Town | Gravity | Rooms |
 |---|---|---|
-| Zennor | 1 g | 45 in seven districts, climbing the east side of the Carn's valley, so uphill is east: the Downs at the top (the Landing Field, the Field Office, the Port Office, the Port Road, Downs Station, the Head of the Steps); the Steps down the scarp to the Old Town (the Field Gate, Fore Street, the Square, the Tinner's Arms, Tinners' Hall, Pellow's, Uptown Station, the Ridge Path and the Overlook); the Market Quarter below it (Conduit Square, the Corn Exchange, the Pannier Market, Chandlers' Row, the Salt Pan, Market Hill, Market Station); the Courts west of that; the Rows stepping down to Riverside on the river; and the Terraces downriver to the south. The tram runs four stops, Riverside, Market, Uptown and Downs |
+| Zennor | 1 g | 46 in seven districts, and the tram car, which makes 47 in the data, climbing the east side of the Carn's valley, so uphill is east: the Downs at the top (the Landing Field, the Field Office, the Port Office, the Port Road, Downs Station, the Head of the Steps); the Steps down the scarp to the Old Town (the Field Gate, Fore Street, the Square, the Tinner's Arms, Tinners' Hall, Pellow's, Uptown Station, the Ridge Path and the Overlook); the Market Quarter below it (Conduit Square, the Corn Exchange, the Pannier Market, Chandlers' Row, the Salt Pan, Market Hill, Market Station); the Courts west of that; the Rows stepping down to Riverside on the river; and the Terraces downriver to the south. The tram runs four stops, Riverside, Market, Uptown and Downs |
 
 ## Where its data comes from
 
@@ -229,6 +229,15 @@ seen from above, not a deck: Ground instead of stars and a Plate.
 - **Up** from the Ridge Path is switchbacks in Stone, then the plan's dashed
   "up" line east to the Overlook: a bare round top with its bench, its back
   to the wind.
+- **Refuse bins** (the room flag `bin`: the Square, Conduit Square, the Pannier
+  Market and Market Station) are the plans' bin mark in Dim, in the room's
+  south-east corner, 11 in from each edge, on a square's Earth as in a
+  building's box. Every room uses that corner because it's the one all four
+  have free: Conduit Square's door lands on Market Station's north-east corner,
+  its diagonal doors take both its own west ones, and a square's name sits
+  high in it with its wellhead low in the middle. On Market Station the mark is
+  inside the stop's Glass edge. It zooms with the plan and doesn't fade with
+  the names.
 - **Names**: rooms with boxes are named inside them. A street's name, in Dim,
   goes east of it if no way leaves that way, else west, else under it, else
   over it, else just over its way out east; never on the river or across the
@@ -236,7 +245,7 @@ seen from above, not a deck: Ground instead of stars and a Plate.
 
 ### Framing and zoom
 
-All 45 rooms fit the 380 px panel only at about a fifth of their size, where
+All 46 rooms fit the 380 px panel only at about a fifth of their size, where
 a room's 12-unit name is under 3 px. So ⌂ frames your district (its rooms and
 its name, padded), not the city; aboard your landed ship, or anywhere off
 the plan, the Downs. When you walk out of sight of the view, it re-frames
@@ -253,9 +262,10 @@ scale each time the view changes, and asks the plan's `frame(where)` for
 
 ## Rooms, compartments and the highlight
 
-All 45 rooms are rooms. The washes, the river, the scarp, the Steps, the
+All 46 rooms are rooms. The washes, the river, the scarp, the Steps, the
 tram line, the gate's arch, the pads and blast walls, footings, terrace
-walls, wellheads, switchbacks and the bench are compartments: never lit. The
+walls, wellheads, bins, switchbacks and the bench are compartments: never
+lit. The
 river, the Steps and the tram line have tooltips.
 
 Lit: a building's or the field's box, a square or the garden, a terrace, the
