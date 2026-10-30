@@ -1,0 +1,271 @@
+<!doctype html>
+<!-- A long hull's overview, 2026-10-30: four ways to draw it, each turning as T.I.S.S.'s wheel does.
+     Inspiration only, nothing like it is in the game. Same camera frame as ui/lib/geometry.js (X to
+     3 o'clock, Y to 12, Z fore, yaw then pitch), same turn (your hour comes to the camera's front). Follows
+     long-hull-mockup.html's option A. Stands alone, so it opens from disk. A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Long hull overview: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:18px 22px; width:2010px; box-sizing:border-box; }
+  h1 { font-size:15px; font-weight:500; color:#e3eaf2; margin:0 0 3px; }
+  .sub { margin:0 0 12px; }
+  .opt { display:flex; gap:10px; margin-bottom:12px; align-items:stretch; }
+  .cap { width:196px; flex:none; padding-top:18px; line-height:1.42; font-size:12.5px; }
+  .cap b { display:block; color:#e3eaf2; font-weight:500; font-size:13.5px; margin-bottom:5px; }
+  .fr { width:434px; flex:none; }
+  .fr span { display:block; height:17px; font-size:11.5px; color:#7d8a9a; text-align:center; }
+  .fr svg { display:block; border:1px solid #2b3646; border-radius:6px; }
+</style></head><body>
+<h1>A long hull's overview: four ideas, each shown turning</h1>
+<p class="sub">Inspiration only. Read each row left to right: you walk round the ship and the hull rolls the short way to bring your hour to the camera, as T.I.S.S.'s wheel does. Only the roll moves; the camera and frame stay put.</p>
+<div id="sheet"></div>
+<script>
+const NS = "http://www.w3.org/2000/svg";
+const el = (t, a, p, s) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (s != null) e.textContent = s; p?.appendChild(e); return e; };
+const rng = (s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+const hex = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+const mix = (a, b, t) => { const [x, y] = [hex(a), hex(b)]; return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join(""); };
+
+const [HL, TXT, DIM, PLATE, EDGE, CORR, LADDER, PASSAGE, BG] = ["#ffb347", "#e3eaf2", "#7d8a9a", "#18202b", "#3b4a5c", "#262f3b", "#9fb0c3", "#56657a", "#04060c"];
+const D = { concourse: "#d9a441", residential: "#5b8def", hydroponics: "#4caf7a", commons: "#a57be0", offices: "#3fb6b2", midring: "#8796a8", industrial: "#d0703c" };
+
+// ---- the ship: one deck, COLS half-hours round by ROWS frames fore to aft, the same data in every drawing
+const COLS = 24, ROWS = 35, NOTCH = 10; // NOTCH: how many frames the slanted mouth takes off at 6:00
+const LONG = new Set([0, 6, 12, 18]), RINGS = new Set([5, 11, 17, 23, 29]);
+const foreRow = (c) => (NOTCH * (1 - Math.cos((2 * Math.PI * c) / COLS))) / 2;
+const WARDS = [
+  ["concourse", "offices", "concourse", "commons"],
+  ["concourse", "commons", "offices", "concourse"],
+  ["residential", "commons", "residential", "hydroponics"],
+  ["residential", "hydroponics", "residential", "commons"],
+  ["hydroponics", "residential", "midring", "residential"],
+  ["industrial", "midring", "industrial", "industrial"],
+];
+const NAMES = {
+  concourse: ["Long Market", "Chandler", "Noodle Bar", "Pawn Window", "Tea Room", "Tailor", "Money Changer", "The Bent Spoon", "Barber", "Notice Wall", "Parts Counter", "Cook Shop"],
+  offices: ["Purser", "Ship's Office", "Records", "Customs Desk", "Pilots' Hall", "Watch Post", "Muster Room", "Assay Office"],
+  commons: ["Day Room", "School", "Clinic", "Gym", "Chapel", "Spin-Ball Court", "Bathhouse", "Library", "Card Room"],
+  residential: ["Family Flats", "Washrooms", "Laundry", "Crew Mess", "Bunkhouse", "Quarters"],
+  hydroponics: ["Bean Racks", "Algae Tanks", "Seed Store", "Water Plant", "Orchard", "Compost", "Mushroom Beds"],
+  midring: ["Stores", "Linen Store", "Lamp Room", "Air Plant", "Spares"],
+  industrial: ["Fabricator", "Pipe Shop", "Cable Loft", "Pump Room", "Smelter", "Valve Gallery", "Spares", "Boiler Flat"],
+};
+const FILL = { concourse: ["Stall", "Shop"], offices: ["Office"], commons: ["Clubroom", "Classroom"], residential: ["Flats", "Bunks"], hydroponics: ["Racks", "Tanks"], midring: ["Stores"], industrial: ["Workshop", "Stores"] };
+const serial = {};
+const owner = Array.from({ length: COLS }, () => Array(ROWS).fill(null));
+const rooms = [], doors = new Map();
+const cellInHull = (c, r) => r + 0.5 > foreRow(c + 0.5) - 0.3;
+for (let j = 0; j < 6; j++) for (let i = 0; i < 4; i++) {
+  const r = rng(j * 97 + i * 13 + 5), dist = WARDS[j][i], c0 = 6 * i + 1, r0 = 6 * j;
+  const names = [...NAMES[dist]].sort(() => r() - 0.5); let n = 0, uses = {};
+  const name = () => { const b = names[n++]; if (b) return b; const k = FILL[dist][Math.floor(r() * FILL[dist].length)]; serial[k] = (serial[k] ?? 0) + 1; return `${k} ${serial[k]}`; };
+  for (let y = r0; y < r0 + 5; y++) for (let x = c0; x < c0 + 5; x++) {
+    if (owner[x][y] || !cellInHull(x, y)) continue;
+    const p = r(); let [w, h] = p < 0.13 ? [2, 2] : p < 0.3 ? [2, 1] : p < 0.45 ? [1, 2] : [1, 1];
+    const free = (a, b) => a < c0 + 5 && b < r0 + 5 && !owner[a][b] && cellInHull(a, b);
+    if (w === 2 && !free(x + 1, y)) w = 1;
+    if (h === 2 && (!free(x, y + 1) || (w === 2 && !free(x + 1, y + 1)))) h = 1;
+    const room = { id: rooms.length, c: x, r: y, w, h, dist, name: name() };
+    rooms.push(room);
+    for (let a = x; a < x + w; a++) for (let b = y; b < y + h; b++) owner[a][b] = room;
+  }
+}
+const isStreet = (c, r) => (LONG.has(c) || RINGS.has(r)) && r >= 0 && r < ROWS && cellInHull(c, r);
+const wrap = (c) => (c + COLS) % COLS;
+const edgeKey = (c, r, dir) => `${wrap(c)},${r},${dir}`; // dir 0: right edge of the cell, 1: its bottom edge
+const addDoor = (a, b) => doors.set(a[0] === b[0] ? edgeKey(a[0], Math.min(a[1], b[1]), 1) : edgeKey(wrap(b[0] - a[0]) === 1 ? a[0] : b[0], a[1], 0), true);
+const near = (room) => {
+  const out = [];
+  for (let a = room.c; a < room.c + room.w; a++) { out.push([[a, room.r], [a, room.r - 1]]); out.push([[a, room.r + room.h - 1], [a, room.r + room.h]]); }
+  for (let b = room.r; b < room.r + room.h; b++) { out.push([[room.c, b], [room.c - 1, b]]); out.push([[room.c + room.w - 1, b], [room.c + room.w, b]]); }
+  return out;
+};
+{ // every room a door: to a street if it has one, else to a neighbour already joined
+  const r = rng(7), joined = new Set();
+  for (const room of rooms) {
+    const s = near(room).filter(([, o]) => isStreet(wrap(o[0]), o[1]));
+    if (s.length) { const [a, b] = s[Math.floor(r() * s.length)]; addDoor(a, b); joined.add(room.id); }
+  }
+  for (let pass = 0; pass < 6; pass++) for (const room of rooms) {
+    if (joined.has(room.id)) continue;
+    const s = near(room).filter(([, o]) => { const t = owner[wrap(o[0])]?.[o[1]]; return t && joined.has(t.id); });
+    if (s.length) { const [a, b] = s[Math.floor(r() * s.length)]; addDoor(a, b); joined.add(room.id); }
+  }
+  for (const room of rooms) if (r() < 0.22) {
+    const s = near(room).filter(([, o]) => { const t = owner[wrap(o[0])]?.[o[1]]; return t && t !== room; });
+    if (s.length) { const [a, b] = s[Math.floor(r() * s.length)]; addDoor(a, b); }
+  }
+}
+const hourLabel = (c) => `${Math.floor(c / 2) || 12}:${c % 2 ? "30" : "00"}`;
+const roomAt = (c, r) => owner[c][r];
+
+
+// ---- the model, in T.I.S.S.'s frame: X to 3 o'clock, Y to 12, Z fore
+let uid = 0;
+const LIGHT = (() => { const v = [-0.5, 0.75, 0.45], n = Math.hypot(...v); return v.map((x) => x / n); })();
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const sub = (a, b) => a.map((v, i) => v - b[i]), cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const unit = (v) => { const n = Math.hypot(...v) || 1; return v.map((x) => x / n); };
+const TONES = ["#3a4556", "#58667b", "#7e8da3"], EDGE_M = "#0d1218";
+const smooth = (l) => (l < 0.33 ? mix("#2a3341", "#3a4556", Math.max(0, l) / 0.33) : l < 0.66 ? mix("#3a4556", "#58667b", (l - 0.33) / 0.33) : mix("#58667b", "#7e8da3", Math.min(1, (l - 0.66) / 0.34)));
+const stepped = (l) => TONES[l > 0.66 ? 2 : l > 0.33 ? 1 : 0];
+const distAt = (c, r) => WARDS[Math.min(5, Math.floor(Math.max(0, r) / 6))][Math.floor(c / 6) % 4];
+const poly = (p, pts, attrs) => el("polygon", { points: pts.map((q) => q.map((v) => +v.toFixed(1)).join(",")).join(" "), ...attrs }, p);
+const sectors = [[1, 0.905], [0.885, 0.805], [0.785, 0.71]]; // the three decks' bands in the mouth's lip, as T.I.S.S.'s rings
+
+function hull(svg, o) {
+  const { yaw, pitch, phi, scale, cx, cy, len: LEN, tail, faces: FACES, you } = o;
+  const LIVE = LEN * (1 - tail), START = LEN * tail;
+  const [Y, X] = [(yaw * Math.PI) / 180, (pitch * Math.PI) / 180], [cyw, syw, cp, sp] = [Math.cos(Y), Math.sin(Y), Math.cos(X), Math.sin(X)];
+  const V = [-syw * cp, sp, cyw * cp]; // towards the camera
+  const proj = ([x, y, z]) => { const x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw; return [cx + scale * x1, cy - scale * (y * cp - z1 * sp)]; };
+  const depth = (p) => dot(p, V);
+  const W = (s, c, r) => { const t = 2 * Math.PI * (c / COLS + phi / 12); return [r * Math.sin(t), r * Math.cos(t), s - LEN * 0.6]; };
+  const sOfRow = (r) => LEN - (r / ROWS) * LIVE;
+  const mouthS = (c) => LEN - (LIVE * (NOTCH / ROWS) * (1 - Math.cos((2 * Math.PI * c) / COLS))) / 2;
+  const radius = (s) => 0.06 + 0.94 * Math.pow(Math.sin((Math.min(1, s / LEN) * Math.PI) / 2), o.plated ? 0.5 : 0.72);
+  const glowId = `g${uid++}`;
+  el("feGaussianBlur", { stdDeviation: 3.5 }, el("filter", { id: glowId, x: "-80%", y: "-80%", width: "260%", height: "260%" }, el("defs", {}, svg)));
+  const scr = (q) => q.map(proj);
+  const outer = [], inner = [], lip = [], lines = [];
+  const normal = (q, c) => { let n = unit(cross(sub(q[1], q[0]), sub(q[3], q[0]))); const m = q.reduce((a, p) => a.map((v, i) => v + p[i] / 4), [0, 0, 0]); const out = [m[0], m[1], 0]; return dot(n, out) * c < 0 ? n.map((v) => -v) : n; };
+  // the hollow, seen through the mouth
+  const rows = []; for (let r = 0; r <= ROWS; r += 1) rows.push(sOfRow(ROWS - r));
+  for (let i = 0; i < FACES; i++) {
+    const [c0, c1] = [(i / FACES) * COLS, ((i + 1) / FACES) * COLS];
+    for (let k = 0; k + 1 < rows.length; k++) {
+      const [s0, s1] = [rows[k], rows[k + 1]];
+      if (s0 >= Math.max(mouthS(c0), mouthS(c1))) continue;
+      const q = [W(s0, c0, 0.7), W(Math.min(s1, mouthS(c0)), c0, 0.7), W(Math.min(s1, mouthS(c1)), c1, 0.7), W(s0, c1, 0.7)], n = normal(q, -1);
+      if (dot(n, V) > 0) inner.push({ q, fill: mix(mix(smooth(dot(n, LIGHT)), PLATE, 0.35), BG, Math.min(1, (LEN - s0) / 3.4) * 0.8), z: depth(q[0]) });
+    }
+  }
+  inner.sort((a, b) => a.z - b.z).forEach((f) => poly(svg, scr(f.q), { fill: f.fill, stroke: f.fill, "stroke-width": 1.3 }));
+  const rb = rng(9);
+  for (let i = 0; i < 80; i++) {
+    const c = rb() * COLS, s = LEN - 0.2 - rb() * 2.4, q = W(s, c, 0.7), n = W(s, c, 0.6);
+    if (s < mouthS(c) - 0.1 && dot(sub(n, q), V) > 0) { const [x, y] = proj(q); el("circle", { cx: x, cy: y, r: 0.9, fill: "#ffd98a", opacity: 0.3 + 0.5 * rb() }, svg); }
+  }
+  // the mouth's lip
+  const LIPS = o.plated ? 12 : 96;
+  for (let i = 0; i < LIPS; i++) {
+    const [c0, c1] = [(i / LIPS) * COLS, ((i + 1) / LIPS) * COLS], [e0, e1] = [mouthS(c0), mouthS(c1)];
+    const n = unit(cross(sub(W(e1, c1, 1), W(e0, c0, 1)), sub(W(e0, c0, 0.7), W(e0, c0, 1))));
+    const f = dot(n, V) > 0 ? n : n.map((v) => -v), shade = o.plated ? stepped(dot(f, LIGHT)) : smooth(0.35 + 0.6 * Math.max(0, dot(f, LIGHT)));
+    if (o.decks) {
+      const col = D[distAt(Math.floor(c0), foreRow(c0) + 1)];
+      for (const [a, b] of sectors) poly(svg, scr([W(e0, c0, a), W(e1, c1, a), W(e1, c1, b), W(e0, c0, b)]), { fill: mix(shade, col, o.plated ? 0.7 : 0.55), stroke: mix(shade, col, 0.6), "stroke-width": 0.5 });
+      poly(svg, scr([W(e0, c0, 1), W(e1, c1, 1), W(e1, c1, 0.7), W(e0, c0, 0.7)]), { fill: EDGE_M, "fill-opacity": 0 });
+    } else poly(svg, scr([W(e0, c0, 1), W(e1, c1, 1), W(e1, c1, 0.7), W(e0, c0, 0.7)]), { fill: mix(shade, "#a4b2c4", 0.35), stroke: mix(shade, "#a4b2c4", 0.35), "stroke-width": 0.7 });
+  }
+  if (o.decks) for (const [a, b] of sectors) for (const r of [a, b]) {
+    const pts = Array.from({ length: LIPS + 1 }, (_, i) => proj(W(mouthS((i / LIPS) * COLS), (i / LIPS) * COLS, r)));
+    el("polyline", { points: pts.map((p) => p.join(",")).join(" "), fill: "none", stroke: EDGE_M, "stroke-width": 0.9 }, svg);
+  }
+  if (o.plated) {
+    // plated: wards as collars, each proud of the one fore of it, so its fore face takes the tint
+    const bands = [0, 6, 12, 18, 24, 30, 35], F = 12;
+    const bandR = (s, inset) => radius(s) * (1 - inset);
+    for (let i = 0; i < F; i++) {
+      const [c0, c1] = [(i / F) * COLS, ((i + 1) / F) * COLS], hr = Math.floor(c0);
+      const tailQ = [];
+      for (let s = 0.06; s < START; s += 0.5) {
+        const s1 = Math.min(START, s + 0.5), q = [W(s, c0, radius(s)), W(s1, c0, radius(s1)), W(s1, c1, radius(s1)), W(s, c1, radius(s))], n = normal(q, 1);
+        if (dot(n, V) > 0) outer.push({ q, fill: stepped(dot(n, LIGHT)), z: depth(q[0]), edge: true });
+      }
+      for (let b = 0; b + 1 < bands.length; b++) {
+        const [r0, r1] = [bands[b], bands[b + 1]], [s0, s1] = [sOfRow(r1), sOfRow(r0)];
+        const f0 = Math.min(s1, mouthS(c0)), f1 = Math.min(s1, mouthS(c1));
+        if (f0 <= s0 && f1 <= s0) continue;
+        const R0 = (s) => bandR(s, 0.085), R1 = (s) => bandR(s, 0);
+        const q = [W(s0, c0, R0(s0)), W(Math.max(f0, s0), c0, R1(f0)), W(Math.max(f1, s0), c1, R1(f1)), W(s0, c1, R0(s0))], n = normal(q, 1);
+        const col = D[distAt(hr, r0)];
+        if (hr % 3 === 0 && false) continue;
+        if (dot(n, V) > 0) outer.push({ q, fill: mix(stepped(dot(n, LIGHT)), col, 0.25), z: depth(q[0]), edge: true });
+        // the step down to the ward aft of this one
+        const a = [W(s0, c0, R0(s0)), W(s0, c1, R0(s0)), W(s0, c1, R1(s0)), W(s0, c0, R1(s0))];
+        const near = dot([...W(s0, (c0 + c1) / 2, 1).slice(0, 2), 0], V) > -0.05;
+        if (bands[b + 2] != null && near && s0 < Math.min(mouthS(c0), mouthS(c1))) { const m = [W(s0, c0, R1(s0) * 0.0 + bandR(s0, 0)), W(s0, c1, bandR(s0, 0)), W(s0, c1, bandR(s0, 0.085)), W(s0, c0, bandR(s0, 0.085))]; const na = [0, 0, 1]; if (dot(na, V) > 0) outer.push({ q: m, fill: mix(stepped(dot(na, LIGHT)), D[distAt(hr, r1)], 0.7), z: depth(m[0]) + 0.01, edge: true }); }
+      }
+    }
+  } else {
+    const steps = []; for (let s = 0.02; s < START; s += 0.11) steps.push(s); steps.push(START); for (let r = 1; r <= ROWS; r++) steps.push(sOfRow(ROWS - r));
+    for (let i = 0; i < FACES; i++) {
+      const [c0, c1] = [(i / FACES) * COLS, ((i + 1) / FACES) * COLS], c = Math.floor(c0);
+      for (let k = 0; k + 1 < steps.length; k++) {
+        const [s0, s1] = [steps[k], steps[k + 1]];
+        if (s0 >= Math.max(mouthS(c0), mouthS(c1))) continue;
+        const [t0, t1] = [Math.min(s1, mouthS(c0)), Math.min(s1, mouthS(c1))];
+        const q = [W(s0, c0, radius(s0)), W(t0, c0, radius(t0)), W(t1, c1, radius(t1)), W(s0, c1, radius(s0))], n = normal(q, 1);
+        if (dot(n, V) <= 0) continue;
+        const rowF = ((LEN - (s0 + s1) / 2) / LIVE) * ROWS, live = s0 >= START - 1e-6;
+        const street = live && ([...RINGS].some((r) => Math.floor(rowF) === r) || LONG.has(c));
+        let fill = smooth(dot(n, LIGHT));
+        if (live) fill = mix(fill, D[distAt(c, Math.floor(rowF))], 0.17);
+        if (street) fill = mix(fill, EDGE_M, 0.2);
+        if (i % 6 < 3) fill = mix(fill, EDGE_M, 0.04);
+        outer.push({ q, fill, z: depth(q[0]) });
+      }
+    }
+  }
+  outer.sort((a, b) => a.z - b.z).forEach((f) => {
+    poly(svg, scr(f.q), { fill: f.fill, stroke: f.edge ? EDGE_M : f.fill, "stroke-width": f.edge ? 1 : 1.3 });
+  });
+  // the tail's grooves
+  const ring = (s, r, attrs) => {
+    let run = []; const flush = () => { if (run.length > 1) el("polyline", { points: run.join(" "), fill: "none", ...attrs }, svg); run = []; };
+    for (let i = 0; i <= 96; i++) { const c = (i / 96) * COLS, q = W(s, c, r), m = [q[0], q[1], 0]; if (dot(m, V) > 0 && s <= mouthS(c)) run.push(proj(q).map((v) => v.toFixed(1)).join(",")); else flush(); }
+    flush();
+  };
+  if (!o.plated) for (const s of [0.34, 0.42, 0.5, 1.1, 1.18]) ring(s, radius(s), { stroke: EDGE_M, "stroke-width": 1.9 });
+  // a panel lifted off your ward: the plan's own rooms under it
+  if (o.window && you) {
+    const i = Math.floor(you.c / 6), j = Math.floor(you.r / 6), c0 = 6 * i, r0 = 6 * j;
+    const under = 0.965;
+    for (let c = c0 + 1; c < c0 + 6; c++) for (let r = r0; r < r0 + 5; r++) {
+      const room = owner[c][r], [s0, s1] = [sOfRow(r + 1), sOfRow(r)];
+      const q = [W(s0, c, under * radius(s0)), W(s1, c, under * radius(s1)), W(s1, c + 1, under * radius(s1)), W(s0, c + 1, under * radius(s0))], n = normal(q, 1);
+      const fill = room ? mix(smooth(dot(n, LIGHT)), D[room.dist], 0.62) : EDGE_M;
+      poly(svg, scr(q), { fill, stroke: fill, "stroke-width": 0.5 });
+      const line = (a, b) => { const [p, t] = [proj(a), proj(b)]; el("line", { x1: p[0], y1: p[1], x2: t[0], y2: t[1], stroke: EDGE_M, "stroke-width": 1 }, svg); };
+      if (c > c0 + 1 && owner[c - 1][r] !== room) line(q[0], q[1]);
+      if (r > r0 && owner[c][r - 1] !== room) line(q[1], q[2]);
+    }
+    const a = [c0 + 1, r0], b = [c0 + 6, r0 + 5], rim = [];
+    for (let t = 0; t <= 12; t++) rim.push(W(sOfRow(a[1]), a[0] + ((b[0] - a[0]) * t) / 12, radius(sOfRow(a[1]))));
+    for (let t = 0; t <= 12; t++) rim.push(W(sOfRow(b[1]), b[0] - ((b[0] - a[0]) * t) / 12, radius(sOfRow(b[1]))));
+    poly(svg, rim.map(proj), { fill: "none", stroke: "#a4b2c4", "stroke-width": 1.4, "stroke-linejoin": "round" });
+  }
+  // you
+  if (you) {
+    const rr = (s) => (o.window ? 0.965 : 1) * radius(s), [s0, s1] = [sOfRow(you.r + you.h), sOfRow(you.r)], [a, b] = [you.c, you.c + you.w];
+    const q = [[s0, a], [s1, a], [s1, b], [s0, b]].map(([s, c]) => proj(W(s, c, rr(s))));
+    poly(svg, q, { fill: "none", stroke: HL, "stroke-width": 7, opacity: 0.7, filter: `url(#${glowId})` });
+    poly(svg, q, { fill: HL, "fill-opacity": 0.65, stroke: "#fff3df", "stroke-width": 1.1 });
+  }
+}
+function stars(p, n, seed) { const r = rng(seed); for (let i = 0; i < n; i++) el("circle", { cx: r() * 640, cy: r() * 380, r: r() * 1.3 + 0.3, fill: "#fff", opacity: r() * 0.6 + 0.12 }, p); }
+
+const front = ({ yaw, pitch }) => { const [Y, X] = [(yaw * Math.PI) / 180, (pitch * Math.PI) / 180]; return (Math.atan2(-Math.sin(Y) * Math.cos(X), Math.sin(X)) / (2 * Math.PI)) * 12; };
+const HOURS = [12, 3, 6, 9];
+function row(title, text, opts) {
+  const d = document.createElement("div"); d.className = "opt";
+  d.innerHTML = `<div class="cap"><b>${title}</b>${text}</div>`;
+  document.getElementById("sheet").appendChild(d);
+  for (const h of HOURS) {
+    const c = (h % 12) * 2 + 3, you = roomAt(c, 15) ?? roomAt(c + 1, 15), fr = document.createElement("div"); fr.className = "fr";
+    fr.innerHTML = `<span>you at ${h}:30</span>`; d.appendChild(fr);
+    const svg = el("svg", { width: 434, height: 258, viewBox: "0 0 640 380" }, fr);
+    el("rect", { width: 640, height: 380, fill: BG }, svg); stars(svg, 110, 3);
+    hull(svg, { ...opts, you, phi: front(opts) - (you.c + you.w / 2) / 2 });
+  }
+}
+row("1 · Side-on", "A's hull as it stands, lying across the band. It rolls on its long axis. The mouth comes round with it, so you look into it near 6:00 and see only its back near 12:00.",
+  { yaw: 64, pitch: 22, len: 8.8, tail: 0.26, faces: 96, scale: 70, cx: 356, cy: 196 });
+row("2 · Mouth first", "T.I.S.S.'s own camera, unchanged. The mouth faces you and the hull runs away up the band, the three decks showing as rings in its lip. The closest match to how the wheel turns. The hull is shorter here, to fit the band, and the mouth is nearly edge-on at some hours.",
+  { yaw: 16, pitch: 38, len: 5.4, tail: 0.26, faces: 64, scale: 78, cx: 346, cy: 192, decks: true });
+row("3 · Plated", "A three-quarter view drawn T.I.S.S.'s way: flat faces in the three tones, real edges, and each ward a collar with its colour on the step. Twelve sides, as chunky as the wheel. Less like the film, more like the rest of the panel.",
+  { yaw: 46, pitch: 30, len: 6.8, tail: 0.26, faces: 12, scale: 76, cx: 334, cy: 186, plated: true, decks: true });
+row("4 · A window on your ward", "As 1, with the plating lifted off the ward you're in, showing its rooms laid out as on the plan. The window travels with you, so the overview points straight at what the plan shows.",
+  { yaw: 64, pitch: 22, len: 8.8, tail: 0.26, faces: 96, scale: 70, cx: 356, cy: 196, window: true });
+document.title = "ok";
+</script></body></html>
