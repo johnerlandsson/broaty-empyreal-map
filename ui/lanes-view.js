@@ -2,7 +2,8 @@
 // left of the chart's ◎ (docs/maps/lanes.md). The Shallows a ring of trunks in ring order, the Mid a
 // disc inside it with its deep stars nearest the centre, as public as help lanes and help mid make
 // them; nothing is placed where the stars are. Drawn on it: the lanes of your system open now, and
-// branches you've seen open elsewhere, fading as the sighting ages; a key at the right says the rest.
+// branches you've seen open elsewhere, fading as the sighting ages; each star's relay arcs say its
+// contact with the Bank, as far as you know it; a key at the right says the rest.
 // Zooms and pans like the chart, the names staying their size as the stars spread. Marks and colours
 // are the style guide's §13.5.
 
@@ -10,6 +11,8 @@ import {
   SYSTEMS,
   agoText,
   cleanLanes,
+  contactOf,
+  contactWords,
   lane,
   laneFix,
   laneName,
@@ -64,6 +67,14 @@ const fade = (ms) => (ms < 3600_000 ? 0.75 : ms < 86400_000 ? 0.5 : 0.3);
 
 /** A lane's look open: a trunk the ring's, a branch solid Glass, a Mid branch dashed Glass. */
 const openLine = (l) => ({ stroke: GLASS, "stroke-width": 1.8, "stroke-dasharray": l.class === "mid" ? "6 2.5" : "none" });
+
+/** A star's relay arcs: Glass in contact, sparse dots cut off, dashed not known. */
+const contactLine = (c, s) =>
+  c.state === "in"
+    ? { stroke: GLASS, "stroke-width": s.band === "shallows" ? 1.1 : 1.8 }
+    : c.state === "out"
+      ? { stroke: NAME, "stroke-width": 1.5, "stroke-linecap": "round", "stroke-dasharray": "0.1 3.4" }
+      : { stroke: DIM, "stroke-width": 1, "stroke-dasharray": "2 2" };
 
 export class LanesView {
   /**
@@ -255,6 +266,7 @@ export class LanesView {
     const here = lanes.system;
     const { open, closed, uncharted } = openHere(lanes);
     const elsewhere = seenOpenElsewhere(lanes, t);
+    const contact = contactOf(lanes, t);
 
     const marks = document.createDocumentFragment();
     const lit = document.createDocumentFragment();
@@ -324,16 +336,24 @@ export class LanesView {
       );
     }
 
-    // the stars: a dot, relays as a pair of arcs either side, a Glass diamond over a settled one, its name outward
+    // the stars: a dot, relays as a pair of arcs either side saying its contact, a Glass diamond over a
+    // settled one, its name outward; beside a star whose contact can change, how old it is, or ? not known
     const reach = new Set(open.map((l) => l.between.find((id) => id !== here)));
     for (const s of SYSTEMS) {
       const [x, y] = at[s.id];
       const r = s.band === "shallows" ? 4 : 3.2;
       if (s.id === here && !tr) el("circle", { cx: x, cy: y, r: r + 4.5, fill: "none", stroke: HL, "stroke-width": 2 }, lit);
       if (s.relay) {
-        const rr = r + 3.5;
+        const rr = r + (s.id === here && !tr ? 7.5 : 3.5); // outside her ring
         for (const sx of [-1, 1]) {
-          el("path", { d: `M${x + sx * rr * 0.7},${y - rr * 0.7} A${rr},${rr} 0 0 ${sx > 0 ? 1 : 0} ${x + sx * rr * 0.7},${y + rr * 0.7}`, fill: "none", stroke: TONES[2], "stroke-width": 0.9 }, marks);
+          el("path", { d: `M${x + sx * rr * 0.7},${y - rr * 0.7} A${rr},${rr} 0 0 ${sx > 0 ? 1 : 0} ${x + sx * rr * 0.7},${y + rr * 0.7}`, fill: "none", ...contactLine(contact[s.id], s) }, marks);
+        }
+        const c = contact[s.id];
+        if (!c.fixed && !c.now) {
+          const [fx, fy] = s.deep ? [x, y + 14] : [x - Math.cos(LAYOUT.P[s.id].a) * 14, y - Math.sin(LAYOUT.P[s.id].a) * 14];
+          const field = c.state === "unknown" ? "?" : agoText(t - c.at * 1000).split(" ")[0];
+          el("rect", { x: fx - field.length * 2.6 - 3, y: fy - 6, width: field.length * 5.2 + 6, height: 11, rx: 3, fill: BG, opacity: 0.85 }, ages);
+          text(ages, fx, fy + 3, field, { "text-anchor": "middle", "font-size": 8, fill: c.state === "in" ? GLASS : c.state === "out" ? DIM : NAME });
         }
       }
       el("circle", { cx: x, cy: y, r, fill: STAR, opacity: s.band === "shallows" ? 0.95 : 0.8 }, marks);
@@ -353,20 +373,20 @@ export class LanesView {
     }
 
     marks.appendChild(ages); // over the stars, so a name never hides one
-    this.drawCard(t, { tr, fix, here, open, closed, uncharted, elsewhere });
+    this.drawCard(t, { tr, fix, here, open, closed, uncharted, elsewhere, contact });
 
     this.marks.replaceChildren(marks);
     this.lit.replaceChildren(lit);
   }
 
   /** The key's card, its HTML replaced only when it changes, so its scroll and its button stay put. */
-  drawCard(t, { tr, fix, here, open, closed, uncharted, elsewhere }) {
+  drawCard(t, { tr, fix, here, open, closed, uncharted, elsewhere, contact }) {
     const esc = (v) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
     const sw = (cls, opacity = 1) => `<span class="sw ${cls}" style="opacity:${opacity}"></span>`;
     const rows = [];
     if (tr && fix) {
       const left = fix.left === null ? "" : `<span class="secs">${span(fix.left)}</span>`;
-      rows.push(`<div class="row lane"><span class="label">in the ${esc(systemName(tr.to))} lane</span>${left}</div>`);
+      rows.push(`<div class="row lane"><span class="label">in the ${esc(systemName(tr.to))} lane <span class="off">· no contact</span></span>${left}</div>`);
     }
     const fold = `<button type="button" title="${this.unfolded ? "Fold" : "Unfold"}">${this.unfolded ? "▾" : "▸"}</button>`;
     if (here) {
@@ -379,7 +399,15 @@ export class LanesView {
       rows.push(`<div class="row"><span class="label">Lanes</span>${fold}</div>`);
     }
     if (this.unfolded) {
-      const list = [];
+      const list = [`<div class="head first">Contact with Senara</div>`];
+      const mark = { in: "●", out: "×", unknown: "?" };
+      for (const s of SYSTEMS.filter((x) => !contact[x.id].fixed)) {
+        const c = contact[s.id];
+        list.push(`<div class="item"><span class="mk">${mark[c.state]}</span>${esc(s.name)}<span class="cls">${esc(contactWords(c, t))}</span></div>`);
+      }
+      list.push(`<div class="item"><span class="mk">●</span>The Shallows<span class="cls">in contact · always</span></div>`);
+      list.push(`<div class="item"><span class="mk">×</span>No relays<span class="cls">cut off · always</span></div>`);
+      list.push(`<div class="head">From ${esc(here ? systemName(here) : "here")}</div>`);
       for (const l of open) {
         const cls = l.class === "trunk" ? "trunk" : l.class === "mid" ? "mid" : "branch";
         list.push(`<div class="item">${sw(cls)}${esc(systemName(l.between.find((id) => id !== here)))}<span class="cls">${CLASS[l.class]}</span></div>`);

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   BRANCHES, LANES, MID, R, RING, SYSTEMS, agoText, cleanLanes, lane, laneFix, laneName, lanePath, lanesOf, laneState, layout, openHere,
-  seenOpenElsewhere,
+  seenOpenElsewhere, contactOf, contactWords,
 } from "./lanes.js";
 
 const GAME = join(homedir(), "dev/empyreal/content/game");
@@ -129,6 +129,8 @@ describe("cleanLanes", () => {
       transit: { lane: "maelor-senara", from: "senara", to: "maelor", progress: 0.4, eta: 220, received: 100 },
     });
     expect(m).toEqual({
+      contact: {},
+      reach: null,
       system: "senara",
       visible: ["maelor-senara"],
       uncharted: ["dozmary-senara"],
@@ -138,7 +140,7 @@ describe("cleanLanes", () => {
   });
 
   it("takes an empty table sent as an array, junk and nothing", () => {
-    const empty = { system: null, visible: [], uncharted: [], seen: {}, transit: null };
+    const empty = { system: null, visible: [], uncharted: [], seen: {}, contact: {}, reach: null, transit: null };
     expect(cleanLanes({ seen: [], visible: {}, uncharted: {} })).toEqual(empty);
     expect(cleanLanes(null)).toEqual(empty);
     expect(cleanLanes({ transit: { lane: "nowhere", from: "a", to: "b" } }).transit).toBe(null);
@@ -294,5 +296,106 @@ describe("lanePath", () => {
     expect(Math.hypot(p.x, p.y)).toBeGreaterThan(l.discs[1].r);
     const q = at("dozmary-garrow", 0.5);
     expect(Math.hypot(q.x, q.y)).toBeLessThan(1e-9);
+  });
+});
+
+describe("contact with the Bank", () => {
+  const T = 1_000_000_000; // seconds
+  const t = T * 1000;
+  const H = 3600;
+  const msg = (m) => cleanLanes({ system: "senara", ...m });
+  const open = (at) => ({ open: true, at });
+  const shut = (at) => ({ open: false, at });
+  const closedAll = (star, at) =>
+    Object.fromEntries(lanesOf(star).filter((l) => l.between.every((id) => SYSTEMS.find((s) => s.id === id).relay)).map((l) => [l.id, shut(at)]));
+
+  it("has the Shallows always in contact and a star without relays always cut off, with no age", () => {
+    const c = contactOf(msg({}), t);
+    for (const s of RING) expect(c[s.id]).toEqual({ state: "in", at: null, now: false, fixed: true });
+    for (const s of MID.filter((m) => !m.relay)) expect(c[s.id]).toEqual({ state: "out", at: null, now: false, fixed: true });
+  });
+
+  it("doesn't know a relayed Mid star with nothing seen", () => {
+    expect(contactOf(msg({}), t).kilmar).toEqual({ state: "unknown", at: null, now: false, fixed: false });
+  });
+
+  it("works a chain out from what's seen, as old as its oldest lane", () => {
+    const c = contactOf(msg({ visible: ["kilmar-senara"], seen: { "kilmar-senara": open(T), "caradon-kilmar": open(T - 5 * H) } }), t);
+    expect(c.kilmar).toMatchObject({ state: "in", now: true });
+    expect(c.caradon).toMatchObject({ state: "in", at: T - 5 * H, now: false });
+  });
+
+  it("takes the freshest way there", () => {
+    const c = contactOf(msg({ seen: { "garrow-senara": open(T - 9 * H), "garrow-maelor": open(T - H) } }), t);
+    expect(c.garrow.at).toBe(T - H);
+  });
+
+  it("doesn't count a pair joined only to each other, or a lane without relays at both ends", () => {
+    const c = contactOf(msg({ seen: { "garrow-kilmar": open(T), "dozmary-senara": open(T), "dozmary-kilmar": open(T) } }), t);
+    expect(c.kilmar.state).toBe("unknown");
+    expect(c.garrow.state).toBe("unknown");
+  });
+
+  it("is cut off only when every way in is seen closed, as old as the oldest", () => {
+    const seen = { ...closedAll("kilmar", T - H), "caradon-kilmar": shut(T - 2 * H) };
+    expect(contactOf(msg({ seen }), t).kilmar).toMatchObject({ state: "out", at: T - 2 * H });
+    const { "kilmar-senara": _, ...one } = seen;
+    expect(contactOf(msg({ seen: one }), t).kilmar.state).toBe("unknown");
+  });
+
+  it("takes the live reading where you are, over what's worked out", () => {
+    const cut = { system: "kilmar", visible: ["kilmar-senara"], seen: { "kilmar-senara": open(T) }, reach: { ok: false, after: T - 1 } };
+    expect(contactOf(msg(cut), t).kilmar).toEqual({ state: "out", at: T, now: true, fixed: false });
+    expect(contactOf(msg({ ...cut, reach: { ok: true, after: T - 1 } }), t).kilmar).toMatchObject({ state: "in", now: true });
+  });
+
+  it("ignores a live reading till it's settled", () => {
+    expect(contactOf(msg({ system: "kilmar", reach: { ok: false, after: T + 5 } }), t).kilmar.state).toBe("unknown");
+  });
+
+  it("spreads a cut-off reading over the lanes open from it, so the pair is cut off", () => {
+    const m = { system: "kilmar", visible: ["garrow-kilmar"], seen: { "garrow-kilmar": open(T) }, reach: { ok: false, after: T - 1 } };
+    expect(contactOf(msg(m), t).garrow).toMatchObject({ state: "out", now: true });
+    expect(contactOf(msg(m), t).caradon.state).toBe("unknown");
+  });
+
+  it("keeps a reading from when you left, with its age", () => {
+    expect(contactOf(msg({ contact: { caradon: { ok: false, at: T - 3 * H } } }), t).caradon).toMatchObject({ state: "out", at: T - 3 * H });
+    expect(contactOf(msg({ contact: { caradon: { ok: true, at: T - 3 * H } } }), t).caradon).toMatchObject({ state: "in", at: T - 3 * H });
+  });
+
+  it("goes by the newest of what it has", () => {
+    const m = { contact: { kilmar: { ok: false, at: T - 3 * H } }, seen: { "kilmar-senara": open(T - H) } };
+    expect(contactOf(msg(m), t).kilmar).toMatchObject({ state: "in", at: T - H });
+  });
+
+  it("says not known when what it has disagrees and is as new", () => {
+    const m = { contact: { kilmar: { ok: false, at: T - H } }, seen: { "kilmar-senara": open(T - H) } };
+    expect(contactOf(msg(m), t).kilmar.state).toBe("unknown");
+  });
+
+  it("gives no reading to a star's stored ok where it never had relays or always has contact", () => {
+    const c = contactOf(msg({ contact: { dozmary: { ok: true, at: T }, maelor: { ok: false, at: T } } }), t);
+    expect(c.dozmary.state).toBe("out");
+    expect(c.maelor).toMatchObject({ state: "in", fixed: true });
+  });
+
+  it("doesn't change a star's state for its age alone", () => {
+    const m = msg({ seen: { "kilmar-senara": open(T - 90 * 86400) } });
+    expect(contactOf(m, t).kilmar.state).toBe("in");
+  });
+
+  it("drops odd contact from the message", () => {
+    const m = cleanLanes({ contact: { kilmar: { ok: 1, at: 2 }, nope: { ok: true, at: 2 }, garrow: { ok: true, at: 3 } }, reach: { ok: "x" } });
+    expect(m.contact).toEqual({ garrow: { ok: true, at: 3 } });
+    expect(m.reach).toBe(null);
+  });
+
+  it("words it as the key does", () => {
+    const words = (m) => contactWords(m, t);
+    expect(words({ state: "in", at: null, now: false, fixed: true })).toBe("in contact · always");
+    expect(words({ state: "out", at: T, now: true, fixed: false })).toBe("cut off · now");
+    expect(words({ state: "in", at: T - 3 * H, now: false, fixed: false })).toBe("in contact · seen 3h 0m ago");
+    expect(words({ state: "unknown", at: null, now: false, fixed: false })).toBe("not known");
   });
 });

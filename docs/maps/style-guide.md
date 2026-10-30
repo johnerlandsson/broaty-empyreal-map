@@ -535,7 +535,9 @@ A schematic of the galaxy's systems and lanes (see lanes.md), behind the
   the stars are. Names outward, 10 for the Shallows and 8.5 for the Mid,
   the deep ones in italics: yours in Text, those an open lane reaches
   `#c3ccd8`, the rest Dim at .75. A Glass diamond over a settled star; two
-  short arcs either side of one with relays, in the lightest Tone.
+  short arcs either side of one with relays, saying its contact: solid
+  Glass in contact, round `#c3ccd8` dots cut off, dashed `2 2` Dim not known;
+  beside one whose contact can change, its age on a dark tab, or `?`.
 - **Trunks:** the ring itself, 2 px in the lightest Tone.
 - **Branches:** only your system's open now, solid Glass 1.8 px (a Mid
   branch dashed `6 2.5`), and those seen open elsewhere, dotted `2 3`, at

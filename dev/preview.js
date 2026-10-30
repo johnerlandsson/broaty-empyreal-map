@@ -26,7 +26,7 @@
 //   ?course=K open the system chart with a plotted course (cinders-tiss, ragged-orrin, contact, from-orbit or
 //             under-way, where the trip line has taken over), emitting course too; the bar's menu
 //             switches it
-//   ?lanes=L  open the lanes map on scenario L (senara, in-trunk, in-mid, dozmary, petroc, new or partly), emitting lanes and
+//   ?lanes=L  open the lanes map on scenario L (senara, in-trunk, in-mid, dozmary, petroc, cutoff, new or partly), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it. &zoom=F opens it zoomed by F, &unfold with
 //             its key's card unfolded
 //   ?belt=B   open the belt map on scenario B (arriving, rcs-rim, sweeps, skiff, freighter-seen, docked-pair, compass or worked),
@@ -628,6 +628,14 @@ function emitLanes(name) {
       visit(seen, "garrow", ["senara", "dozmary", "kilmar"], now - 3600);
       return { system: "dozmary", visible: lanesHere("dozmary"), seen: visit(seen, "dozmary", ["garrow"], now) };
     },
+    // at Kilmar, cut off, with the Garrow branch open: the pair is cut off; Caradon read in contact 2 days ago
+    cutoff: () => ({
+      system: "kilmar",
+      visible: lanesHere("kilmar"),
+      seen: visit({}, "kilmar", ["garrow", "dozmary"], now),
+      contact: { caradon: { ok: true, at: now - 2 * 86400 } },
+      reach: { ok: false, after: now - 1 },
+    }),
     // at Morvah Deep, with only its trunks open and nothing seen before
     petroc: () => ({ system: "petroc", visible: lanesHere("petroc"), seen: visit({}, "petroc", [], now) }),
     // a new character at T.I.S.S.: no lane mouth on her charts yet, so every lane not charted

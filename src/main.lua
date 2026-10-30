@@ -249,11 +249,18 @@ end
 -- Who's playing: another character's name swaps in her sightings, the one before's stored.
 local function char_status(data)
   local who = N.who_of(data)
-  if not who or who == N.who(lanes) then return end
-  local was, record = N.become(lanes, who, stored_lanes(who), os.time())
-  store_lanes(was, record)
-  save_lanes()
-  post_lanes()
+  local changed = false
+  if who and who ~= N.who(lanes) then
+    local was, record = N.become(lanes, who, stored_lanes(who), os.time())
+    store_lanes(was, record)
+    changed = true
+  end
+  -- Whether her account can be reached here, once the status above is hers.
+  if N.char_status(lanes, data, os.time()) then changed = true end
+  if changed then
+    save_lanes()
+    post_lanes()
+  end
 end
 
 -- The sweep goes to the chart, and to the belt map, which notes where she was as it came.

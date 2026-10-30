@@ -388,6 +388,23 @@ local function login(env, name)
   env.gmcp_handlers['Char.Status']('Char.Status', { name = name, credits = 0, location = 'tiss.berth', ship = nil, aboard = false })
 end
 
+test('Char.Status posts lanes when accountReachable changes, and keeps it for her system', function()
+  local env = boot()
+  local real = os.time
+  os.time = function() return 100 end
+  env.gmcp_handlers['Char.Status']('Char.Status', { name = 'Ann', accountReachable = false })
+  env.posts = {}
+  env.gmcp_handlers['Space.Charts']('Space.Charts', { system = 'kilmar', places = {} })
+  eq(post_named(env, 'lanes').data.reach, { ok = false, after = 110 })
+  env.posts = {}
+  env.gmcp_handlers['Char.Status']('Char.Status', { name = 'Ann', accountReachable = false })
+  eq(post_named(env, 'lanes'), nil) -- the same again
+  os.time = function() return 200 end
+  env.gmcp_handlers['Space.Charts']('Space.Charts', { system = 'senara', places = {} })
+  eq(env.stored['lanes:ann'].contact.kilmar, { ok = false, at = 200 })
+  os.time = real
+end)
+
 test('Space.Charts posts lanes and stores the sightings under her name', function()
   local real = os.time
   os.time = function() return 500 end

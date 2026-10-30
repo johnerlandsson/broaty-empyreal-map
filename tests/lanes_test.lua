@@ -40,7 +40,7 @@ end
 
 test('a fresh state knows nothing and is off', function()
   local s = N.new()
-  eq(N.message(s), { system = nil, visible = {}, uncharted = {}, seen = {}, transit = nil })
+  eq(N.message(s), { system = nil, visible = {}, uncharted = {}, seen = {}, contact = {}, transit = nil })
   eq(N.who(s), nil)
   eq(N.on(s), false)
 end)
@@ -279,6 +279,89 @@ test('saved is the sightings and the mouths seen listed, to store', function()
   local back = N.new()
   N.load(back, saved)
   eq(N.saved(back), saved)
+end)
+
+-- Kilmar's charts: no mouths listed, enough to say where she is.
+local function kilmar() return { system = 'kilmar', places = {} } end
+
+local function in_lane(to, from, at)
+  return { status = 'in the ' .. to .. ' lane 40%', destination = 'mouth:' .. to .. ':' .. from, progress = 0.4, eta = 100 }
+end
+
+test('a reading says nothing of a system until she has been there a while', function()
+  local s = N.new()
+  N.space_charts(s, kilmar(), 100)
+  eq(N.char_status(s, { accountReachable = false }, 100), true)
+  eq(N.message(s).reach, { ok = false, after = 110 })
+  eq(N.char_status(s, { accountReachable = false }, 101), false) -- the same again changes nothing
+  N.space_charts(s, senara(), 105) -- left in time: nothing kept of Kilmar
+  eq(N.message(s).contact, {})
+end)
+
+test('leaving a system keeps its reading, with when', function()
+  local s = N.new()
+  N.space_charts(s, kilmar(), 100)
+  N.char_status(s, { accountReachable = false }, 100)
+  N.space_charts(s, senara(), 500)
+  eq(N.message(s).contact.kilmar, { ok = false, at = 500 })
+end)
+
+test('a lane is nowhere: its reading is never a star\'s', function()
+  local s = N.new()
+  N.space_charts(s, senara(), 100)
+  N.char_status(s, { accountReachable = true }, 100)
+  N.ship_status(s, in_lane('kilmar', 'senara'), 500)
+  eq(N.message(s).contact.senara, { ok = true, at = 500 })
+  N.space_charts(s, kilmar(), 501) -- the game has moved her there already
+  N.char_status(s, { accountReachable = false }, 503)
+  eq(N.message(s).reach, nil)
+  N.space_charts(s, kilmar(), 700)
+  eq(N.message(s).contact.kilmar, nil)
+end)
+
+test('coming out of a lane waits for the status to catch up', function()
+  local s = N.new()
+  N.space_charts(s, senara(), 100)
+  N.ship_status(s, in_lane('kilmar', 'senara'), 200)
+  N.space_charts(s, kilmar(), 201)
+  N.char_status(s, { accountReachable = false }, 203)
+  N.ship_status(s, { location = 'mouth:kilmar:senara' }, 700)
+  eq(N.message(s).reach, { ok = false, after = 710 })
+  N.char_status(s, { accountReachable = true }, 704) -- the lane's false, now put right
+  N.space_charts(s, kilmar(), 705)
+  eq(N.message(s).contact.kilmar, nil)
+  N.space_charts(s, senara(), 900)
+  eq(N.message(s).contact.kilmar, { ok = true, at = 900 })
+end)
+
+test('a stray status field leaves the reading alone', function()
+  local s = N.new()
+  eq(N.char_status(s, { name = 'Ann' }, 1), false)
+  eq(N.char_status(s, 'x', 1), false)
+  eq(s.reach, nil)
+end)
+
+test('a disconnect keeps the reading it can vouch for, and forgets the flag', function()
+  local s = N.new()
+  N.space_charts(s, kilmar(), 100)
+  N.char_status(s, { accountReachable = true }, 100)
+  N.reset(s, 300)
+  eq(N.message(s).contact.kilmar, { ok = true, at = 300 })
+  eq(N.message(s).reach, nil)
+end)
+
+test('readings are the character\'s, stored and loaded with her sightings', function()
+  local s = N.new()
+  N.become(s, 'ann', nil, 0)
+  N.space_charts(s, kilmar(), 100)
+  N.char_status(s, { accountReachable = false }, 100)
+  local was, record = N.become(s, 'bea', nil, 300)
+  eq(was, 'ann')
+  eq(record.contact.kilmar, { ok = false, at = 300 })
+  eq(N.message(s).contact, {})
+  eq(N.message(s).reach, nil)
+  N.load(s, { seen = {}, contact = { garrow = { ok = true, at = 5 }, nowhere = { ok = true, at = 5 }, kilmar = { ok = 'x', at = 5 } } })
+  eq(N.message(s).contact, { garrow = { ok = true, at = 5 } })
 end)
 
 test('who_of is Char.Status\'s name, lowercased', function()

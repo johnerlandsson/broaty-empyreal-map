@@ -1,12 +1,13 @@
 # The lanes map
 
-*Status: built. Last updated 2026-10-24.*
+*Status: built. Last updated 2026-10-30.*
 
 ## What it is and when it shows
 
 A schematic of the galaxy's twenty systems and the lanes between them, drawn
 over the top band: where you are, the lanes open from there now, the lane
-she's in while she's in one, and the branches you've seen open elsewhere. It answers "which way round?" before a
+she's in while she's in one, the branches you've seen open elsewhere, and which
+systems you can bank from, as far as you know. It answers "which way round?" before a
 `plot`. It doesn't replace one: it has no times or fuel.
 
 It shows while the **⋈** button is on. The button sits left of the chart's
@@ -131,6 +132,42 @@ she goes in, the game moves her to the far system (`frame`), so its
 Space.Charts comes while she's still in the lane, and the far system's mouths
 are "now".
 
+**Contact** says where your account can be reached (`help money`, `help
+lanes`, `bank.ts` `reachableFrom`). "In contact" is what the maintainer calls
+relayed, and the galactic email to come will go by it too, so nothing here is
+named for the bank. The maintainer OK'd showing it (2026-10-30). A star is in
+contact while open lanes with relays at both ends join it to Senara's system
+(`HOME`); a cut-off pair joined only to each other doesn't count, and nobody
+has it in a lane. Each star is one of three, worked out by `contactOf` in
+`ui/lib/lanes.js`:
+
+- **Fixed, with no age:** the trunks join every Shallows star to Senara for
+  good, and a star with no relays is never in contact. Both are public. It
+  goes by the relay flags and the trunks, not the band, so a Core star needs
+  only its `relay`.
+- **In contact or cut off,** by the newest of what you know: a chain of lanes
+  seen open (as old as its oldest lane, by the freshest way there), a reading
+  (below), there or over lanes seen open from there, or every lane into it
+  from a relayed star seen closed (as old as the oldest of those: rare, 14
+  lanes for a Mid star). A lane in `visible` counts as seen now.
+- **Not known:** nothing to go on, or two things as new that disagree.
+
+Age alone never changes a state: any limit would say how long a lane stays
+open. Nothing predicts an opening or a closing.
+
+**The reading** is `Char.Status`'s `accountReachable` (`reach`). It's false
+in a lane, as her system is already the far one, and it comes only when it
+changes, refreshed every few seconds, so the flag held as she arrives may be
+the one before's. So it's only a star's once she's been in that system, out of
+a lane, for 10 seconds (`settled`, sent as `reach.after`, so the panel's
+once-a-second redraw takes it up with no timer here). Then it goes over
+anything worked out, for that star. On leaving, on the next `Char.Status` or
+Space.Charts, and at a disconnect it's kept as that star's `{ ok, at }` in
+`contact`, in the character's `lanes:<name>` record beside `seen` and
+`charted`. A passenger with no `Ship.Status` isn't known to be in a lane, so
+a false reading there would be kept against the system; a Shallows star's
+never shows, being fixed.
+
 ## Top band
 
 The ring, with the Mid inside it, across the band left of the zoom buttons,
@@ -149,8 +186,15 @@ and a key in a card in the top-left corner
   Mid, the deep two in italics. Yours is in Text, those an open lane from
   here reaches are `#c3ccd8`, the rest Dim at .75.
 - **Stations:** a Glass diamond over a settled star. **Relays:** two short
-  arcs either side of a star with them, in the lightest Tone: every Shallows
-  star, and Kilmar, Garrow and Caradon.
+  arcs either side of a star with them: every Shallows star, and Kilmar,
+  Garrow and Caradon.
+- **Contact** is what the arcs look like: solid Glass in contact (1.1 round
+  the ring, 1.8 in the Mid), round dots in `#c3ccd8` cut off, dashed `2 2` in
+  Dim not known. No arcs is no relays, so cut off, as it always was. Your own
+  star's sit outside your amber ring. Beside a star whose contact can change,
+  on the inward side (under the deep two), one field on the dark tab: its age
+  ("3h", Glass 8 in contact, Dim cut off), `?` not known, or nothing when it's
+  true now. The balance isn't repeated: Mallard's Vitals panel has it.
 - **Branches**, each a curve bowed toward the centre, so one between
   neighbours isn't taken for the ring:
   - open from your system now: solid Glass, 1.8 px, a Mid branch dashed
@@ -177,7 +221,10 @@ and a key in a card in the top-left corner
   goes to and its class (trunk, branch, Mid branch), then "Not charted ·
   scan lanes", each star in Dim with its class and no line, then "Seen open
   elsewhere", each with its line, its name ("Petroc–Maelor") and "2h 10m
-  ago". A list taller than
+  ago". Above them, "Contact with Senara": each star whose contact can change
+  with its state in words ("in contact · seen 3h 0m ago", "cut off · now",
+  "not known"), then the Shallows and the stars with no relays, "always".
+  A list taller than
   the band scrolls. It folds back with ▾, and stays as you left it while the
   panel's open. The key was first a 150 px column at the right, which
   took too much of a narrow panel; the options it was picked
@@ -186,7 +233,8 @@ and a key in a card in the top-left corner
   pulsing (§6). Not drawn while she's in a lane.
 - **In a lane:** the lane is lit amber, solid at .3 behind her, dashed `4 4`
   at .7 ahead. Her amber chevron sits at her progress, pointing the way she's
-  going. The card's top line says "in the Maelor lane" in amber, naming
+  going. The card's top line says "in the Maelor lane · no contact", amber
+  but for the last words in Dim, naming
   the far star as the game does, with the time left at its right. Her system is the far one
   already (the game moves her there as she goes in), so the key's lanes are
   its.
@@ -214,26 +262,30 @@ Unchanged: it's the bottom band's.
 
 - `ui/lib/lanes.js`: the topology, the message's cleaning, your system's
   open, closed and not charted lanes (`openHere`), the branches seen open elsewhere
-  (`seenOpenElsewhere`), the layout in units (`layout`), a lane's curve
+  (`seenOpenElsewhere`), each star's contact (`contactOf`, `contactWords`), the layout in units (`layout`), a lane's curve
   (`lanePath`), and her place in a lane (`laneFix`). Pure, tested in
   `lanes.test.js` along with the check against the game's content.
 - `ui/lanes-view.js`: the SVG, its zoom and the ⋈ button.
 - `ui/main.js`: the two toggles switching each other off, and the redraw loop
   shared with the chart.
 - `src/station_map/lanes.lua`: the reducer, the stars and trunks, its
-  sightings, the mouths seen listed, whose they are, and the lane she's in;
+  sightings, the mouths seen listed, the readings, whose they are, and the
+  lane she's in;
   `tests/lanes_test.lua`.
 - `src/station_map/charts.lua` carries a mouth's `open` through to the chart.
 - `src/main.lua`: the `lanes` and `lanes-view` messages, `Char.Status`'s
   name, and `storage`.
 - `dev/preview.html?lanes=senara` (also `in-trunk`, `in-mid`, `dozmary`,
-  `petroc`; `new`, a new character with no mouths charted, and `partly`,
+  `petroc`; `cutoff`, at Kilmar cut off with the Garrow branch open; `new`, a new character with no mouths charted, and `partly`,
   Maelor with its trunks and one branch charted) shows it without the game; `&zoom=0.5` opens it zoomed in, and
   `&unfold` with the key's card unfolded.
 - The options it was picked from: `docs/maps/reference/lanes-ring-options.png`
   (A, the ring; B a departures board; C the ring unrolled into a line), and
   `lanes-ring-core-option.png`, A with a Core. The six-system timetable
-  before it was picked from `lanes-mockup.html` (B).
+  before it was picked from `lanes-mockup.html` (B). Contact was picked from
+  `lanes-contact-options.png` (B, the arcs; A a mark by the star, C a line in
+  the key), then `lanes-contact-b-options.png` (1, one field by each star:
+  `lanes-contact-mockup.html?round2`).
 
 ## Where it differs from the style guide
 

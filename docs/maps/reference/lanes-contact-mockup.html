@@ -1,0 +1,230 @@
+<!doctype html>
+<!-- Which systems you can bank from, 2026-10-30: three ways to show contact on the lanes map (help money,
+     help lanes; bank.ts reachableFrom; cupcake OK'd showing it, same day). The real LanesView with made-up
+     sightings, marks added over it. Only Kilmar, Garrow and Caradon ever change: the Shallows are always in
+     contact and the Mid's other five always cut off, so both are public and carry no age. Each frame is 380 x
+     300. Serve the repo root over http to open it. A throwaway: take its look, not its code. Picked: B, 2026-10-30; ?round2 is B with one
+     field by each star, lanes-contact-b-options.png, picked: 1. Built with stronger cut-off dots. -->
+<html><head><meta charset="utf-8"><title>Lanes contact: options</title>
+<link rel="stylesheet" href="../../../ui/map.css">
+<style>
+  html, body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; overflow:visible; height:auto; }
+  body { padding:12px 18px; width:max-content; }
+  h2 { color:#e3eaf2; font-size:15px; margin:14px 0 2px; }
+  h2 small { color:#7d8a9a; font-weight:400; font-size:12px; margin-left:8px; }
+  .row { display:flex; gap:10px; margin:6px 0 2px; }
+  figure { margin:0; text-align:center; }
+  figcaption { font:11px "DejaVu Sans Mono", monospace; margin-top:3px; }
+  .f { text-align:left; position:relative; width:380px; height:300px; background:#04060c; border-radius:6px; overflow:hidden; outline:1px solid #18202b; }
+  .f .lanes > button, .f > button { display:none; }
+  .lanes-card .note { color:#c3ccd8; font-size:10px; line-height:14px; margin-top:2px; white-space:nowrap; }
+  .lanes-card .note b { color:#e3eaf2; font-weight:600; }
+  .lanes-card .inlane { color:#7d8a9a; font-weight:400; font-size:10px; }
+  .lanes-card .mk { flex:0 0 12px; text-align:center; font-size:10px; }
+</style></head><body>
+<div id="out"></div>
+<script type="module">
+import { LanesView } from "../../../ui/lanes-view.js";
+import { SYSTEMS, MID, agoText, lanesOf, layout, lane } from "../../../ui/lib/lanes.js";
+import { el } from "../../../ui/lib/svg.js";
+
+const GLASS = "#cfe3ff", DIM = "#7d8a9a", BG = "#04060c", NAME = "#c3ccd8";
+const TONES = ["#3a4556", "#58667b", "#7e8da3"];
+const FONT = "Inter, system-ui, sans-serif";
+const H = 3600e3, D = 24 * H, now = Date.now(), W = 380, HT = 300;
+const P = layout().P;
+const id = (a, b) => [a, b].sort().join("-");
+const IN = "in", OUT = "out", NK = "unknown";
+
+// a system's charts: its lanes, the ones named open; then older sightings of elsewhere
+function msg(system, open, older = [], transit = null) {
+  const seen = {}, visible = [];
+  for (const l of lanesOf(system)) {
+    visible.push(l.id);
+    seen[l.id] = { open: l.class === "trunk" || open.some((o) => id(system, o) === l.id), at: now / 1000 };
+  }
+  for (const [a, b, ago] of older) seen[id(a, b)] = { open: true, at: (now - ago) / 1000 };
+  return { system, visible, uncharted: [], seen, transit };
+}
+
+const SCENES = {
+  senara: {
+    title: "At T.I.S.S.",
+    lanes: msg("senara", ["kilmar", "petroc"]),
+    contact: { kilmar: [IN, "now"], caradon: [OUT, 3 * H], garrow: [NK] }, // Caradon as you read it when you left, 3h ago
+  },
+  kilmar: {
+    title: "At Kilmar, cut off, its pair doesn't count",
+    lanes: msg("kilmar", ["garrow", "dozmary"], [["caradon", "petroc", 2 * D]]),
+    contact: { kilmar: [OUT, "now"], garrow: [OUT, "now"], caradon: [IN, 2 * D] },
+  },
+  lane: {
+    title: "In the lane to Garrow",
+    lanes: msg("garrow", ["senara"], [["caradon", "maelor", 26 * H]], { lane: "garrow-senara", from: "senara", to: "garrow", progress: 0.4, eta: 200, received: now / 1000 }),
+    contact: { garrow: [IN, "now"], caradon: [IN, 26 * H], kilmar: [NK] },
+  },
+};
+
+const stateOf = (scene, s) => {
+  if (s.band === "shallows") return [IN, null];
+  if (!s.relay) return [OUT, null];
+  return scene.contact[s.id] ?? [NK];
+};
+const age = (a) => (a === "now" ? "now" : a == null ? "" : agoText(a).split(" ")[0]);
+const words = ([st, a]) => {
+  const w = { [IN]: "in contact", [OUT]: "cut off", [NK]: "not known" }[st];
+  return a == null ? w : a === "now" ? `${w} · now` : `${w} · ${agoText(a)} ago`;
+};
+
+// the age, on the map's own dark tab
+function tab(g, x, y, s, fill = GLASS) {
+  if (!s) return;
+  el("rect", { x: x - s.length * 2.5 - 2.5, y: y - 5.5, width: s.length * 5 + 5, height: 10.5, rx: 3, fill: BG, opacity: 0.85 }, g);
+  el("text", { x, y: y + 3, "text-anchor": "middle", "font-size": 8, fill, "font-family": FONT, opacity: 0.85 }, g, s);
+}
+const q = (g, x, y) => el("text", { x, y: y + 3, "text-anchor": "middle", "font-size": 9, "font-weight": 600, fill: NAME, "font-family": FONT }, g, "?");
+
+// inward of the star, away from its name
+const inward = (s, x, y, d) => {
+  const a = P[s.id].a;
+  if (s.deep) return [x, y + d]; // the deep two sit either side of the centre: under them
+  return [x - Math.cos(a) * d, y - Math.sin(a) * d];
+};
+
+// A: a pip inward of each Mid star; the ring is the Shallows', which never change
+function pips(g, s, x, y, [st, a]) {
+  if (s.band === "shallows") return;
+  const [px, py] = inward(s, x, y, 10.5);
+  if (st === IN) el("circle", { cx: px, cy: py, r: 3.2, fill: GLASS }, g);
+  if (st === OUT) {
+    el("circle", { cx: px, cy: py, r: 3.2, fill: BG, stroke: TONES[2], "stroke-width": 1 }, g);
+    el("path", { d: `M${px - 2.3},${py + 2.3} L${px + 2.3},${py - 2.3}`, stroke: TONES[2], "stroke-width": 1 }, g);
+  }
+  if (st === NK) {
+    el("circle", { cx: px, cy: py, r: 4.2, fill: BG, stroke: DIM, "stroke-width": 0.9, "stroke-dasharray": "1.6 1.6" }, g);
+    q(g, px, py);
+  }
+  const [tx, ty] = inward(s, x, y, 22);
+  tab(g, tx, ty, age(a));
+}
+
+// B: the relay arcs say it: lit, gone dark and broken, or dashed with a ?. No arcs, no relays: cut off, as today.
+function arcs(g, s, x, y, [st, a], r, v) {
+  if (!s.relay) return;
+  const rr = r + 3.5;
+  const cover = rr + 1.4;
+  el("circle", { cx: x, cy: y, r: cover, fill: BG }, g);
+  el("circle", { cx: x, cy: y, r, fill: "#fffaf0", opacity: s.band === "shallows" ? 0.95 : 0.8 }, g);
+  for (const sx of [-1, 1]) {
+    const d = `M${x + sx * rr * 0.7},${y - rr * 0.7} A${rr},${rr} 0 0 ${sx > 0 ? 1 : 0} ${x + sx * rr * 0.7},${y + rr * 0.7}`;
+    const look = st === IN ? { stroke: GLASS, "stroke-width": s.band === "shallows" ? 1.1 : 1.8 }
+      : st === OUT ? { stroke: TONES[2], "stroke-width": 1.1, "stroke-dasharray": "1.5 3.5" }
+      : { stroke: DIM, "stroke-width": 1, "stroke-dasharray": "2 2" };
+    el("path", { d, fill: "none", ...look }, g);
+  }
+  if (s.band === "shallows") return;
+  const [tx, ty] = inward(s, x, y, 14);
+  const stale = a !== "now" && a != null;
+  if (v === "B3") { // the symbol alone; the arcs fade with age as a seen branch does, the key has the age
+    if (stale) for (const c of [...g.children].slice(-2)) c.setAttribute("opacity", a < H ? 0.75 : a < D ? 0.5 : 0.3);
+    if (st === NK) q(g, tx, ty);
+    if (st === OUT) cross(g, tx, ty);
+    return;
+  }
+  if (st === NK) return q(g, tx, ty);
+  if (v === "B1") return stale && tab(g, tx, ty, age(a), st === OUT ? DIM : GLASS);
+  // B2: one tag: an age in contact, × with its age cut off, nothing for in contact now
+  if (st === OUT) tab(g, tx, ty, "×" + (stale ? age(a) : ""), NAME);
+  else if (stale) tab(g, tx, ty, age(a));
+}
+const cross = (g, x, y) => el("text", { x, y: y + 3.6, "text-anchor": "middle", "font-size": 11, "font-weight": 600, fill: NAME, "font-family": FONT }, g, "×");
+
+function overlay(view, opt, scene) {
+  const [w] = view.size();
+  const vb = view.vb ?? view.fit();
+  const u = vb[2] / w;
+  const g = el("g", { "pointer-events": "none" }, view.marks);
+  for (const s of SYSTEMS) {
+    const x = (P[s.id].x - vb[0]) / u, y = (P[s.id].y - vb[1]) / u;
+    const r = s.band === "shallows" ? 4 : 3.2;
+    if (opt === "A") pips(g, s, x, y, stateOf(scene, s));
+    if (opt[0] === "B") arcs(g, s, x, y, stateOf(scene, s), r, opt);
+  }
+  const lanerow = view.card.querySelector(".row.lane .label");
+  if (lanerow && !lanerow.querySelector(".inlane")) lanerow.insertAdjacentHTML("beforeend", ` <span class="inlane">· no contact</span>`);
+  if (opt === "C") noteLine(view, scene);
+  if (view.unfolded) contactList(view, scene);
+}
+
+// C: a line under the key's; the changing three only, what's fixed being said once in the list
+function noteLine(view, scene) {
+  const here = scene.lanes.system && !scene.lanes.transit ? SYSTEMS.find((s) => s.id === scene.lanes.system) : null;
+  const hereWord = here ? { [IN]: "in contact", [OUT]: "cut off", [NK]: "not known" }[stateOf(scene, here)[0]] : null;
+  const part = (s) => {
+    const [st, a] = stateOf(scene, s);
+    return `${s.name} ${st === NK ? "?" : st === OUT ? `cut off${a === "now" ? "" : " " + age(a)}` : age(a)}`;
+  };
+  const others = MID.filter((s) => s.relay && s !== here);
+  const note = `<div class="note">${hereWord ? `<b>Here ${hereWord}</b> · ` : ""}${others.map(part).join(" · ")}</div>`;
+  const row = [...view.card.querySelectorAll(".row")].pop();
+  row.insertAdjacentHTML("afterend", note);
+}
+
+function contactList(view, scene) {
+  const list = view.card.querySelector(".list");
+  const rows = MID.filter((s) => s.relay).map((s) => {
+    const st = stateOf(scene, s);
+    const mk = st[0] === IN ? "●" : st[0] === OUT ? "×" : "?";
+    return `<div class="item"><span class="mk">${mk}</span>${s.name}<span class="cls">${words(st)}</span></div>`;
+  });
+  list.insertAdjacentHTML("afterbegin", `<div class="head" style="margin-top:0">Contact with Senara</div>${rows.join("")}<div class="item"><span class="mk">●</span>The Shallows<span class="cls">in contact · always</span></div><div class="item"><span class="mk">×</span>Mid, no relays<span class="cls">cut off · always</span></div>`);
+}
+
+function frame(parent, opt, sceneKey, cap, { zoom = 0, unfold = false } = {}) {
+  const scene = SCENES[sceneKey];
+  const fig = el2("figure", parent);
+  const band = el2("div", fig);
+  band.className = "f";
+  el2("figcaption", fig).textContent = cap;
+  const view = new LanesView(band);
+  view.unfolded = unfold;
+  const draw = view.draw.bind(view);
+  view.draw = (t) => {
+    view.cardHtml = "";
+    draw(now);
+    if (view.shown) overlay(view, opt, scene);
+  };
+  view.setLanes(scene.lanes);
+  view.setOn(true);
+  if (zoom) {
+    view.vb = [-(W / zoom) / 2 + 2, -(HT / zoom) / 2 - 2, W / zoom, HT / zoom];
+    view.touched = true;
+  }
+  view.draw(now);
+}
+function el2(tag, parent) { const e = document.createElement(tag); parent.appendChild(e); return e; }
+
+const OPTIONS = new URLSearchParams(location.search).has("round2") ? [
+  { key: "B1", title: "1 · The age alone", sub: "arcs say the state; the field is its age, Glass in contact, Dim cut off, or ? when not known. Nothing when it's true now.", last: { cap: "zoomed: At T.I.S.S.", zoom: 2.6 } },
+  { key: "B2", title: "2 · One tag", sub: "× and its age run together: \u00d73h cut off, 3h in contact, ? not known. Nothing when in contact now.", last: { cap: "zoomed: At T.I.S.S.", zoom: 2.6 } },
+  { key: "B3", title: "3 · The symbol alone", sub: "× or ?, no times on the map: older arcs fade as a seen branch does, and the key's list has the ages.", last: { cap: "zoomed: At T.I.S.S.", zoom: 2.6 } },
+] : [
+  { key: "A", title: "A · A mark by the star", sub: "a pip inward of each Mid star: filled in contact, slashed cut off, dashed ? not known, its age beside it. The ring has none: it's always in contact.", last: { cap: "zoomed: At T.I.S.S.", zoom: 2.6 } },
+  { key: "B", title: "B · The relay arcs", sub: "the arcs already on the map carry it: Glass in contact, faint dots and × cut off, dashed and ? not known. Glass all round the ring; no arcs is no relays, as today.", last: { cap: "zoomed: At T.I.S.S.", zoom: 2.6 } },
+  { key: "C", title: "C · A line in the key", sub: "the plan stays as it is; a second line under the key's says your system and the changing three. Unfolded, it's the same list all three options would share.", last: { cap: "unfolded: At T.I.S.S.", unfold: true } },
+];
+
+const out = document.getElementById("out");
+for (const o of OPTIONS) {
+  const h = el2("h2", out);
+  h.textContent = o.title;
+  const sm = el2("small", h);
+  sm.textContent = o.sub;
+  const row = el2("div", out);
+  row.className = "row";
+  for (const k of ["senara", "kilmar", "lane"]) frame(row, o.key, k, SCENES[k].title);
+  frame(row, o.key, "senara", o.last.cap, o.last);
+}
+document.body.dataset.done = "1";
+</script>
+</body></html>

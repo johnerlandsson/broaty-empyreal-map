@@ -5,7 +5,7 @@
 // has a branch, class mid if an end is in the Mid. Only the topology: where the stars are and when
 // a branch opens are the game's, not ours. lanes.test.js checks this against galaxy.yaml and
 // system.yaml when ~/dev/empyreal is there. src/station_map/lanes.lua has the same stars.
-// Pure: no DOM.
+// Which systems can reach the Bank, as far as you know, is contactOf. Pure: no DOM.
 
 const shallows = (id, name, stations) => ({ id, name, band: "shallows", relay: true, deep: false, stations });
 const mid = (id, name, stations = [], { relay = false, deep = false } = {}) => ({ id, name, band: "mid", relay, deep, stations });
@@ -64,6 +64,7 @@ export const LANES = (() => {
 export const BRANCHES = LANES.filter((l) => l.class !== "trunk");
 
 const LANE = new Map(LANES.map((l) => [l.id, l]));
+const STAR = new Map(SYSTEMS.map((s) => [s.id, s]));
 
 /** A lane by id, or undefined. */
 export function lane(id) {
@@ -96,6 +97,12 @@ export function cleanLanes(msg) {
       if (s && typeof s.open === "boolean" && num(s.at) !== null) seen[id] = { open: s.open, at: s.at };
     }
   }
+  const contact = {};
+  if (m.contact && typeof m.contact === "object" && !Array.isArray(m.contact)) {
+    for (const [id, c] of Object.entries(m.contact)) {
+      if (STAR.has(id) && c && typeof c.ok === "boolean" && num(c.at) !== null) contact[id] = { ok: c.ok, at: c.at };
+    }
+  }
   const t = m.transit;
   const transit =
     t && typeof t === "object" && LANE.has(t.lane) && typeof t.to === "string" && typeof t.from === "string"
@@ -107,6 +114,8 @@ export function cleanLanes(msg) {
     visible: strings(m.visible),
     uncharted: strings(m.uncharted),
     seen,
+    contact,
+    reach: m.reach && typeof m.reach.ok === "boolean" && num(m.reach.after) !== null ? { ok: m.reach.ok, after: m.reach.after } : null,
     transit,
   };
 }
@@ -174,6 +183,94 @@ export function seenOpenElsewhere(lanes, t) {
     .filter(([id, s]) => s.open && !lanes.visible.includes(id) && LANE.get(id)?.class !== "trunk")
     .map(([id, s]) => ({ lane: LANE.get(id), ago: Math.max(0, t - s.at * 1000) }))
     .sort((a, b) => a.ago - b.ago || a.lane.id.localeCompare(b.lane.id));
+}
+
+/** The star whose system keeps the Bank's books: the Authority's home. */
+export const HOME = "senara";
+
+/** The lanes that can carry contact: relays at both ends (help lanes). */
+const RELAYED = LANES.filter((l) => l.between.every((id) => STAR.get(id).relay));
+
+/** From each seed ({star: at}) along lanes known open: each star's freshest way, as old as its oldest link. */
+function spread(seeds, linkAt) {
+  const best = { ...seeds };
+  for (let again = true; again; ) {
+    again = false;
+    for (const l of RELAYED) {
+      const link = linkAt(l);
+      if (link === null) continue;
+      const [a, b] = l.between;
+      for (const [from, to] of [[a, b], [b, a]]) {
+        const at = Math.min(best[from] ?? -Infinity, link);
+        if (at > (best[to] ?? -Infinity)) {
+          best[to] = at;
+          again = true;
+        }
+      }
+    }
+  }
+  return best;
+}
+
+/**
+ * What you know of each star's contact with the Bank at wall-clock t (ms) (help money, help lanes;
+ * bank.ts reachableFrom): {state: "in", "out" or "unknown", at (seconds, how old it is), now, fixed}.
+ * A star is in contact while open lanes with relays at both ends join it to HOME; the trunks do that
+ * for the Shallows for good, and with no relays a star never is: those are `fixed`, with no age. Any
+ * other goes by the newest of what's known: a chain of lanes seen open, as old as its oldest; a reading
+ * of accountReachable, there and over lanes seen open from there; or every way in seen closed. The
+ * reading where you are, when there's one (`reach`), goes over all of it. Two as new that disagree are
+ * not known. Age alone changes nothing, and nothing here says what's next.
+ */
+export function contactOf(lanes, t) {
+  const secs = t / 1000;
+  const live = lanes.reach && lanes.system && !lanes.transit && secs >= lanes.reach.after ? lanes.reach : null;
+  const when = (l) => (lanes.visible.includes(l.id) ? secs : lanes.seen[l.id]?.at);
+  const linkAt = (l) => (l.class === "trunk" ? Infinity : lanes.seen[l.id]?.open ? when(l) : null);
+  const closed = (l) => l.class !== "trunk" && lanes.seen[l.id]?.open === false;
+
+  const readings = (ok) => {
+    const out = {};
+    for (const [id, c] of Object.entries(lanes.contact)) if (c.ok === ok) out[id] = c.at;
+    if (live?.ok === ok) out[lanes.system] = secs;
+    if (live?.ok === !ok) delete out[lanes.system];
+    return out;
+  };
+  const yes = spread({ ...readings(true), [HOME]: Infinity }, linkAt);
+  const no = spread(readings(false), linkAt);
+
+  // the stars a way to HOME might still reach, over every lane not seen closed
+  const maybe = new Set(Object.keys(spread({ [HOME]: Infinity }, (l) => (closed(l) ? null : Infinity))));
+  const shutOff = {};
+  for (const l of RELAYED) {
+    if (!closed(l)) continue;
+    const at = when(l);
+    for (const id of l.between) if (!maybe.has(id)) shutOff[id] = Math.min(shutOff[id] ?? Infinity, at);
+  }
+
+  const out = {};
+  for (const s of SYSTEMS) {
+    const fixed = (state) => ({ state, at: null, now: false, fixed: true });
+    const said = (state, at) => ({ state, at, now: at >= secs, fixed: false });
+    const y = yes[s.id] ?? -Infinity;
+    const n = Math.max(no[s.id] ?? -Infinity, shutOff[s.id] ?? -Infinity);
+    if (live && s.id === lanes.system) out[s.id] = said(live.ok ? "in" : "out", secs);
+    else if (!s.relay) out[s.id] = fixed("out");
+    else if (y === Infinity) out[s.id] = fixed("in");
+    else if (y === -Infinity && n === -Infinity) out[s.id] = { state: "unknown", at: null, now: false, fixed: false };
+    else if (y > n) out[s.id] = said("in", y);
+    else if (n > y) out[s.id] = said("out", n);
+    else out[s.id] = { state: "unknown", at: null, now: false, fixed: false };
+  }
+  return out;
+}
+
+/** A star's contact in the key's words: "in contact · now", "cut off · seen 3h 0m ago", "not known". */
+export function contactWords(c, t) {
+  if (c.state === "unknown") return "not known";
+  const state = c.state === "in" ? "in contact" : "cut off";
+  if (c.fixed) return `${state} · always`;
+  return c.now ? `${state} · now` : `${state} · seen ${agoText(t - c.at * 1000)} ago`;
 }
 
 /** The radius of the Shallows ring in the layout's units. */
