@@ -250,9 +250,10 @@ follow these rules.
 - **A refuse bin** (the room flag `bin`, which the room's words already tell
   you) is a lidded can's outline in Dim, about 9 by 10, with no tile, in the
   room's far corner: spinward and away from the corridor on a ring, fore
-  starboard on a decks or ship plan. A corridor stop's, or its ladderway's, is
-  on the corridor just spinward of the hatch. It zooms with the plan
-  (`reference/plan-bins-options.png`, option B; `binMark()` in
+  starboard on a decks or ship plan. A corridor stop's is on the corridor;
+  a ladderway's is inside the hatch, widened to hold it. It zooms with the
+  plan (`reference/plan-bins-options.png`, option B;
+  `reference/hatch-bins-options.png`, option B; `binMark()` in
   `ui/deck-view.js`).
 - **Where a heavy droid can't pass** is a detail, not a layer
   (`reference/heavy-droid-options.png`, option C). A ladderway's hatch too

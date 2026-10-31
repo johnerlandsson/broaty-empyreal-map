@@ -5,6 +5,7 @@ import { STEP, ang } from "./geometry.js";
 
 // Rings: the corridor runs left to right (spinward right), fore rooms above, aft below.
 export const NODE = 150; // distance between corridor stops
+export const HATCH = { x: 20, w: 14, dockW: 31, binX: 43 }; // a ladderway's hatch from its stop's centre; widened round a dock's bin
 export const CH = 15; // corridor half-height
 export const RW = 116; // room box width
 export const RH = 58; // room box height
@@ -27,6 +28,9 @@ export const BLISTER_BASE = 36; // the dome's flat edge sits this far above the 
 const Y = (y) => -y * SN || 0; // `|| 0` keeps -0 out
 const isLadderway = (room) => room.terrain === "ladderway" || String(room.id).includes("ladderway");
 
+/** A stop's ladderway hatch's width. */
+export const hatchWidth = (stop) => (stop.dock ? HATCH.dockW : HATCH.w);
+
 /** The y of a ring room box centre: fore (y > 0) is up. */
 function boxCy(y) {
   const d = CH + GAP + (Math.abs(y) - 1) * (RH + GAP) + RH / 2;
@@ -35,18 +39,21 @@ function boxCy(y) {
 
 /**
  * @returns {{z:number, length:number,
- *   stops:{id:string,x:number,cx:number,hour:number,lobby:boolean}[],
+ *   stops:{id:string,x:number,cx:number,hour:number,lobby:boolean,dock:boolean}[],
  *   rooms:{room:object,cx:number,cy:number,w:number,h:number,door:{x:number,y:number,w:number,h:number}}[]}}
  */
 export function ringLayout(index, z) {
   const corridor = index.corridors[z] ?? [];
   const cxOf = (x) => (x / STEP[z]) * NODE;
+  // a ladderway with a bin (a cleaners' dock), at x = hour * 2 + 1 as highlightShape has it
+  const docks = new Set([...index.byId.values()].filter((r) => r.z === z && String(r.id).includes("ladderway") && r.flags?.includes("bin")).map((r) => ((r.x - 1) / 2) % 12));
   const stops = corridor.map((r) => ({
     id: r.id,
     x: r.x,
     cx: cxOf(r.x),
     hour: r.x / 2,
     lobby: r.terrain === "lobby",
+    dock: docks.has(r.x / 2),
   }));
   const rooms = [];
   for (const room of index.byId.values()) {
@@ -183,7 +190,7 @@ function ringShape(layout, where) {
   if (String(where.id).includes("ladderway")) {
     // ladderway x is hour*2+1; the lobby of that hour sits at x-1
     const stop = layout.stops.find((s) => s.lobby && s.x === where.x - 1) ?? lobbyAt((where.x - 1) / 2);
-    return stop ? rect(stop.cx + 27 - 9, -9, 18, 18, 2) : null;
+    return stop ? rect(stop.cx + HATCH.x - 2, -9, hatchWidth(stop) + 4, 18, 2) : null;
   }
   const box = layout.rooms.find((r) => r.room.id === where.id);
   if (box) return rectAround(box);

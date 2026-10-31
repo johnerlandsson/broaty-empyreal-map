@@ -68,13 +68,13 @@ Four plans, one per level:
   (`reference/tiss-bays-mockup.html`, option A).
 - A room with a refuse bin (flag `bin`: the busy public rooms) has the bin's
   mark in its far corner, spinward (style guide §8.1). The Main Concourse's,
-  a corridor stop's, is on the corridor spinward of its hatch, and so are the
-  cleaners' docks', which the plan draws as their hatches. The cleaners keep
-  one ring each (Empyreal fe70a72, droids.md §10.3), so the docks are
-  Ladderway 12, Rim, Ladderway 6, Rim, Ladderway 9, Mid and Ladderway 3,
-  Inner. At Rim 12:00 the Concourse's and the dock's are stacked, the
-  Concourse's fore of the corridor's centre line and the dock's aft
-  (`reference/rim-bins-options.png`, option C). The Docks plan has none.
+  a corridor stop's, is on the corridor antispinward of its lift. The plan
+  draws a ladderway as its hatch, so a cleaners' dock's bin is inside the
+  hatch, widened to hold it: the bin is through the hatch, not at the stop
+  (`reference/hatch-bins-options.png`, option B). The cleaners keep one ring
+  each (Empyreal fe70a72, droids.md §10.3), so the docks are Ladderway 12,
+  Rim, Ladderway 6, Rim, Ladderway 9, Mid and Ladderway 3, Inner. The Docks
+  plan has none.
 - Lit: a room box, a corridor stretch or the ladderway hatch. Riding a lift,
   the band shows the car instead, with its line of floors (cars.md); the
   model still lights your spoke.

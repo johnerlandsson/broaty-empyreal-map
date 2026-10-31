@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 // Refuse bins on the plans (reference/plan-bins-options.png, option B): a mark in each room the
 // game flags `bin`, its far corner spinward on a ring, fore starboard on a ship; on the corridor
-// beside a stop's hatch for a corridor stop or its ladderway (the cleaners' docks: Rim 12 and 6,
-// Mid 9, Inner 3), two at one stop stacked fore and aft (reference/rim-bins-options.png, option C);
+// a corridor stop's on the corridor, a ladderway's (the cleaners' docks: Rim 12 and 6, Mid 9,
+// Inner 3) inside its widened hatch (reference/hatch-bins-options.png, option B);
 // on a town's plan, every room's in its south-east corner.
 
 import { describe, expect, it } from "vitest";
@@ -13,6 +13,7 @@ import tug from "./data/plans/tug.js";
 import orrin from "../tests/fixtures/generated/orrin.js";
 import tiss from "./data/tiss.js";
 import zennor from "./data/zennor.js"; // the fixture is older than the game's bins
+import { highlightShape } from "./lib/deck-layout.js";
 import { textWidth } from "./lib/decks.js";
 import { buildPlace, buildShip } from "./place-views.js";
 
@@ -44,12 +45,28 @@ describe("bins on T.I.S.S.'s rings", () => {
     expect(near("tiss.laundry")).toEqual([laundry.cx + laundry.w / 2 - 11, laundry.cy + laundry.h / 2 - 11]);
   });
 
-  it("puts the Concourse's and the docks' on the corridor, spinward of the hatch, the two at Rim 12:00 stacked", () => {
-    const onCorridor = (plan) => lap(plan.g).map(at).filter(([, y]) => Math.abs(y) < 15).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    const cx = (plan, hour) => plan.layout.stops.find((s) => s.hour === hour).cx;
-    expect(onCorridor(rim)).toEqual([[cx(rim, 0) + 47, -6], [cx(rim, 0) + 47, 6], [cx(rim, 6) + 47, 0]]);
-    expect(onCorridor(mid)).toEqual([[cx(mid, 9) + 47, 0]]);
-    expect(onCorridor(inner)).toEqual([[cx(inner, 3) + 47, 0]]);
+  const onCorridor = (plan) => lap(plan.g).map(at).filter(([, y]) => Math.abs(y) < 15).sort((a, b) => a[0] - b[0]);
+  const cx = (plan, hour) => plan.layout.stops.find((s) => s.hour === hour).cx;
+
+  it("puts the docks' inside their hatches and the Concourse's on the lift's other side", () => {
+    expect(onCorridor(rim)).toEqual([[cx(rim, 0) - 23, 0], [cx(rim, 0) + 43, 0], [cx(rim, 6) + 43, 0]]);
+    expect(onCorridor(mid)).toEqual([[cx(mid, 9) + 43, 0]]);
+    expect(onCorridor(inner)).toEqual([[cx(inner, 3) + 43, 0]]);
+  });
+
+  it("widens a dock's hatch round its bin, and no other hatch", () => {
+    const hatches = (plan) => [...plan.g.querySelector('g[transform="translate(0 0)"]').querySelectorAll('rect[y="-7"][fill="none"]')];
+    const wide = (plan) => hatches(plan).filter((r) => +r.getAttribute("width") === 31).map((r) => +r.getAttribute("x") - 20);
+    expect(wide(rim)).toEqual([cx(rim, 0), cx(rim, 6)]);
+    expect(wide(mid)).toEqual([cx(mid, 9)]);
+    expect(wide(inner)).toEqual([cx(inner, 3)]);
+    expect(hatches(mid).filter((r) => +r.getAttribute("width") === 14)).toHaveLength(3);
+  });
+
+  it("lights a dock's whole hatch, and a plain hatch as before", () => {
+    const lit = (id, x) => highlightShape(mid.layout, { kind: "room", id, level: 1, x, y: 0 });
+    expect(lit("tiss.ladderway-9-mid", 19)).toMatchObject({ x: cx(mid, 9) + 18, width: 35, height: 18 });
+    expect(lit("tiss.ladderway-3-mid", 7)).toMatchObject({ x: cx(mid, 3) + 18, width: 18, height: 18 });
   });
 });
 

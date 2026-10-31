@@ -17,8 +17,10 @@ import {
   RH,
   SN,
   SX,
+  HATCH,
   docksLayout,
   fitWidth,
+  hatchWidth,
   highlightShape,
   shapeKey,
   ringLayout,
@@ -121,8 +123,7 @@ export function roomBox(parent, room, cx, cy, col, w, h, d, pick, named = true) 
 // a refuse bin: a lidded can, its handle and two ribs, 10 x 12 before the mark's scale, centred on 0,0
 const BIN = "M-5,-3.6h10M-1.6,-3.6v-1.6h3.2v1.6M-4,-3.6L-3.2,5.4H3.2L4,-3.6M-1.2,-1.6v5M1.2,-1.6v5";
 export const BIN_INSET = 11; // the mark's centre from a room's corner
-const BIN_ON_STOP = 47; // and from a corridor stop's centre, spinward of its lift and hatch
-const BIN_STACK = 6; // two at one stop: each this far fore or aft of the corridor's centre line
+const BIN_ON_STOP = -23; // and from a lobby's centre, antispinward of its lift
 
 /** Whether a room has a refuse bin (its flag `bin`), which its words already tell you. */
 export const hasBin = (room) => !!room?.flags?.includes("bin");
@@ -148,12 +149,6 @@ function buildRingPlan(svg, index, z, pick) {
   const layout = ringLayout(index, z);
   const { length: L, stops } = layout;
   const g = el("g", { display: "none" }, svg);
-  // the bins on the corridor, by stop: the stop's own and its ladderway's (a cleaners' dock: Rim 12
-  // and 6, Mid 9, Inner 3), a ladderway at x = hour * 2 + 1 as highlightShape has it
-  const binsAt = new Map();
-  const addBin = (hour) => binsAt.set(hour, (binsAt.get(hour) ?? 0) + 1);
-  for (const st of stops) if (hasBin(index.byId.get(st.id))) addBin(st.hour);
-  for (const r of index.byId.values()) if (r.z === z && String(r.id).includes("ladderway") && hasBin(r)) addBin(((r.x - 1) / 2) % 12);
   for (const off of [-L, 0, L]) {
     const s = el("g", { transform: `translate(${off} 0)` }, g);
     // hull plate, seams and lit portholes along the fore and aft hull walls, the walls jutting out
@@ -208,22 +203,22 @@ function buildRingPlan(svg, index, z, pick) {
       if (lobby) {
         el("circle", { cx: st.cx, cy: 0, r: 12, fill: "#0e131a", stroke: "#cfd8e3", "stroke-width": 2, "pointer-events": "none" }, s);
         label(s, st.cx, 1, "⇅", 13, { fill: "#cfd8e3" });
-        el("rect", { x: st.cx + 20, y: -7, width: 14, height: 14, rx: 2, fill: "none", stroke: LADDER, "stroke-width": 1.4, "pointer-events": "none" }, s);
+        el("rect", { x: st.cx + HATCH.x, y: -7, width: hatchWidth(st), height: 14, rx: 2, fill: "none", stroke: LADDER, "stroke-width": 1.4, "pointer-events": "none" }, s);
         el("path", { d: `M${st.cx + 23},-3h8M${st.cx + 23},0h8M${st.cx + 23},3h8`, stroke: LADDER, "stroke-width": 1, "pointer-events": "none" }, s);
         // a hatch too narrow for a heavy droid closes in between two jambs, and has its own tooltip
         // (reference/heavy-droid-options.png, option C)
         if (room?.hatch) {
           if (!heavyFits(room.hatch.clear)) el("path", { "data-jambs": "", d: `M${st.cx + 22.2},-7v14M${st.cx + 31.8},-7v14`, stroke: LADDER, "stroke-width": 3, "pointer-events": "none" }, s);
-          hitArea(s, st.cx + 20, -7, 14, 14, index.byId.get(room.hatch.to), pick, [heavyRow("its hatch", room.hatch.clear)]);
+          hitArea(s, st.cx + HATCH.x, -7, hatchWidth(st), 14, index.byId.get(room.hatch.to), pick, [heavyRow("its hatch", room.hatch.clear)]);
         }
       } else {
         el("circle", { cx: st.cx, cy: 0, r: 4, fill: "#aab8c8", stroke: "#aab8c8", "stroke-width": 1.5, "pointer-events": "none" }, s);
       }
       label(s, st.cx - 44, 1, hourLabel(st.hour), 10, { fill: DIM });
-      // two bins at one stop (Rim 12:00: the Concourse's and the dock's) stacked, fore and aft of
-      // the centre line (reference/rim-bins-options.png, option C)
-      const bins = binsAt.get(st.hour) ?? 0;
-      for (let i = 0; i < bins; i++) binMark(s, st.cx + (lobby ? BIN_ON_STOP : BIN_INSET + 5), bins > 1 ? (i ? 1 : -1) * BIN_STACK : 0);
+      // a stop's bin is on the corridor, a cleaners' dock's (Rim 12 and 6, Mid 9, Inner 3) in its
+      // ladderway, so inside the hatch, widened for it (reference/hatch-bins-options.png, option B)
+      if (hasBin(room)) binMark(s, st.cx + (lobby ? BIN_ON_STOP : BIN_INSET + 5), 0);
+      if (st.dock) binMark(s, st.cx + HATCH.binX, 0);
     }
   }
   const hl = el("g", { "pointer-events": "none" }, g);
