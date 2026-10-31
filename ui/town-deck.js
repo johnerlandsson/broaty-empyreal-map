@@ -10,7 +10,7 @@
 import { DISTRICT_COLOURS as DC } from "./lib/geometry.js";
 import { MAX_W, RIVER, townFrame, townLayout, townShape } from "./lib/town.js";
 import { el } from "./lib/svg.js";
-import { BIN_INSET, DIM, PLATE, binMark, hasBin, hover, label, roomBox } from "./deck-view.js";
+import { BIN_INSET, DIM, JOB_STEP, PLATE, binMark, dropRows, hasBin, hover, jobMarks, label, roomBox } from "./deck-view.js";
 
 // style guide §4.2, Towns
 const GROUND = "#110e0b";
@@ -124,6 +124,8 @@ function buildTownPlan(svg, index, spec, pick) {
     else if (b.kind === "garden") garden(g, b);
     // a bin in the room's south-east corner, the one no door, name or wellhead of Zennor's has
     if (hasBin(b.room)) binMark(g, b.cx + b.w / 2 - BIN_INSET, b.cy + b.h / 2 - BIN_INSET);
+    // and job marks along the south wall from it
+    jobMarks(g, b.room, b.cx + b.w / 2 - BIN_INSET - JOB_STEP, b.cy + b.h / 2 - BIN_INSET, [-JOB_STEP, 0]);
     if (b.kind !== "building") hit(g, townShape(layout, { kind: "room", id: b.room.id }), b.room, pick);
   }
 
@@ -162,6 +164,7 @@ function buildTownPlan(svg, index, spec, pick) {
     margin: 0.35,
     shape: (where) => townShape(layout, where),
     frame: (where) => townFrame(layout, index, where),
+    legend: [...(tram ? ["tram"] : []), ...(spec.wells?.length ? ["well"] : [])],
     onView: (k, view) => {
       // k is screen pixels a plan unit
       const px = 12 * k;
@@ -193,7 +196,7 @@ function hit(g, shape, room, pick) {
       : shape.kind === "path"
         ? el("path", { d: shape.d, ...attrs }, g)
         : el("rect", { x: shape.x, y: shape.y, width: shape.width, height: shape.height, ...attrs }, g);
-  hover(node, room, pick);
+  hover(node, room, pick, dropRows(room));
 }
 
 /** The Steps: a flight of stone treads between their two rooms, named, their seconds on hover. */

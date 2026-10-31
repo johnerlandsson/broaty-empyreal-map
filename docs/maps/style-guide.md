@@ -255,6 +255,19 @@ follow these rules.
   plan (`reference/plan-bins-options.png`, option B;
   `reference/hatch-bins-options.png`, option B; `binMark()` in
   `ui/deck-view.js`).
+- **Odd jobs** are in the bin's line and size, with no tile: a counter's
+  window for the jobs window (flag `jobs`), an arrow going into a tray for a
+  drop point (`drop`), whose name is a tooltip row. They take a free corner
+  of the room, antispinward on a ring, fore port on a decks or ship plan,
+  north-west on a drum, and along the south wall from the bin's corner in a
+  town; a corridor stop's is on the corridor past the hatch. They zoom with
+  the plan (`reference/job-places-options.png`, option A; `jobMarks()` in
+  `ui/deck-view.js`).
+- **The legend**: a `?` under the zoom buttons opens a sheet over the plan,
+  in two columns, naming the symbols the plan on show draws; any click or
+  Escape closes it, as does changing level. A new symbol goes in `SYMBOLS` in
+  `ui/legend.js` (`reference/plan-legend-options.png`, option B). The tweak
+  editor has none.
 - **Where a heavy droid can't pass** is a detail, not a layer
   (`reference/heavy-droid-options.png`, option C). A ladderway's hatch too
   narrow for one closes in between two heavy Ladder jambs, on all twelve of

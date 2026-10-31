@@ -199,6 +199,32 @@ export function attachPick(div, pick) {
 }
 
 /** + (zoom in), - (zoom out) and a reset button; onZoom(f) gets 1/1.5, 1.5 or 0 for reset. */
+/** A button in the zoom buttons' column `z`. */
+export function zoomButton(z, label, title, onClick) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.textContent = label;
+  b.title = title;
+  Object.assign(b.style, {
+    width: "24px",
+    height: "24px",
+    borderRadius: "5px",
+    border: "1px solid var(--fg-muted, #7d8a9a)",
+    background: "var(--bg, #04060c)", // solid fallback; the translucent form below needs color-mix
+    color: "var(--fg, #dfe7f1)",
+    fontSize: "14px",
+    lineHeight: "1",
+    cursor: "pointer",
+    padding: "0",
+  });
+  b.style.background = "color-mix(in srgb, var(--bg, #04060c) 70%, transparent)"; // ignored where unsupported
+  b.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  z.appendChild(b);
+}
+
 export function zoomButtons(container, top, onZoom) {
   const z = document.createElement("div");
   z.className = "zoom";
@@ -207,30 +233,7 @@ export function zoomButtons(container, top, onZoom) {
     ["+", 1 / 1.5, "Zoom in"],
     ["−", 1.5, "Zoom out"],
     ["⌂", 0, "Reset view"],
-  ].forEach(([label, f, title]) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.textContent = label;
-    b.title = title;
-    Object.assign(b.style, {
-      width: "24px",
-      height: "24px",
-      borderRadius: "5px",
-      border: "1px solid var(--fg-muted, #7d8a9a)",
-      background: "var(--bg, #04060c)", // solid fallback; the translucent form below needs color-mix
-      color: "var(--fg, #dfe7f1)",
-      fontSize: "14px",
-      lineHeight: "1",
-      cursor: "pointer",
-      padding: "0",
-    });
-    b.style.background = "color-mix(in srgb, var(--bg, #04060c) 70%, transparent)"; // ignored where unsupported
-    b.addEventListener("click", (e) => {
-      e.stopPropagation();
-      onZoom(f);
-    });
-    z.appendChild(b);
-  });
+  ].forEach(([label, f, title]) => zoomButton(z, label, title, () => onZoom(f)));
   container.appendChild(z);
   return z;
 }

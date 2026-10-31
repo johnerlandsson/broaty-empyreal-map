@@ -104,7 +104,7 @@ function hatchOf(room) {
 /**
  * T.I.S.S. as indexStation takes it: each room placed on the wheel (x in half hours, wrapping at
  * 24; y fore or aft; z the level), its district as `region`, its exits by N S E W U D IN OUT (the
- * way through dropped), whether it's closed and why, and `paint`, its colour. A room with no place
+ * way through dropped), whether it's closed and why, its drop point, and `paint`, its colour. A room with no place
  * (a lift car) isn't drawn on the wheel and is left out. Sorted by id, as the log-built station.js
  * was: the plans and model draw in the rooms' order, and painter's ties fall by it.
  * @returns {{wrap: number, rooms: object[]}}
@@ -127,6 +127,7 @@ export function tissRooms(data) {
     walked: true,
     paint: paint[r.id] ?? null,
     flags: r.flags ?? [],
+    ...(r.drop ? { drop: r.drop } : {}),
     ...hatchOf(r),
   }));
   rooms.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));

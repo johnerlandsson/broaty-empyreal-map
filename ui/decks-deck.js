@@ -11,7 +11,7 @@ import { noseAt, propBoxes, tailAt, wallAt } from "./lib/footprint.js";
 import { boxPath } from "./lib/solid.js";
 import { heavyFits } from "./lib/heavy.js";
 import { el } from "./lib/svg.js";
-import { BIN_INSET, DIM, PASSAGE, PLATE, TXT, binMark, hasBin, hover, label, roomBox } from "./deck-view.js";
+import { BIN_INSET, DIM, JOB_STEP, PASSAGE, PLATE, TXT, binMark, dropRows, hasBin, hover, jobCount, jobMarks, jobMarksCentred, label, nameLines, roomBox } from "./deck-view.js";
 
 const GLASS = DC.docks;
 const EDGE = "#3b4a5c";
@@ -65,16 +65,21 @@ function buildDeckPlan(svg, index, deck, level, pick, ship) {
   for (const c of cells) {
     if (c.kind === "passage") {
       const r = el("rect", { x: c.cx - c.w / 2, y: c.cy - c.h / 2, width: c.w, height: c.h, fill: CORR }, g);
-      hover(r, c.room, pick);
+      hover(r, c.room, pick, dropRows(c.room));
       // a stop, unless a hatch takes the cell's middle
       const [x, y] = layout.centre(c.room.cell);
       if (!c.room.exits?.up && !c.room.exits?.down) el("circle", { cx: x, cy: y, r: 4, fill: STOP, ...none }, g);
+      // job marks along the band, clear of its stop or hatch and the hatch's word
+      if (c.w >= c.h) jobMarks(g, c.room, x + 18, y);
+      else jobMarks(g, c.room, x, y - 18, [0, -JOB_STEP]);
     } else if (c.kind === "room") {
       const box = roomBox(g, c.room, c.cx, c.cy, c.room.tint ?? DC.industrial, c.w, c.h, c.shaped ? pathD(c.points) : undefined, pick, !ship.plan);
       const props = ship.plan ? fixtures.propsIn(c.room) : [];
       const name = ship.plan ? shipName(box, c, props) : [];
       if (c.room.flags?.includes("berth")) airlocks(g, c);
-      if (hasBin(c.room)) binMark(g, ...binCorner(c, [...name, ...props]));
+      const bin = hasBin(c.room) ? binCorner(c, [...name, ...props]) : null;
+      if (bin) binMark(g, ...bin);
+      jobMarks(g, c.room, ...jobCorner(c, [...(ship.plan ? name : nameBoxes(c)), ...props, ...hatchBoxes(hatches, c), ...(bin ? [markBox(bin)] : [])]));
     } else {
       blister(g, c, pick);
     }
@@ -101,11 +106,18 @@ function buildDeckPlan(svg, index, deck, level, pick, ship) {
   const hl = el("g", { "pointer-events": "none" }, g);
   const extent = fp ? { w: fp.w + 2 * 70, h: fp.h + 2 * 44 } : { w: 400, h: 300 };
   const home = fp ? [fp.x + fp.w / 2, fp.y + fp.h / 2] : [0, 0];
-  const plan = { z: level, g, hl, layout, ring: false, length: 0, home, extent, offsets: [0], margin: 0.42, shape: (where) => decksShape(layout, where) };
+  const plan = { z: level, g, hl, layout, ring: false, length: 0, home, extent, offsets: [0], margin: 0.42, shape: (where) => decksShape(layout, where), legend: decksLegend(layout) };
   // a ship plan's aft-most drawn point, hull or bell, for what goes under her (ship-deck.js)
   if (ship.plan && fp) plan.aft = Math.max(fp.y + fp.h, fixtures.aft);
   return plan;
 }
+
+/** What a deck's legend names of what it always draws: its stops, hatches and berths' airlocks. */
+const decksLegend = ({ cells, hatches }) => [
+  ...(cells.some((c) => c.kind === "passage" && !c.room.exits?.up && !c.room.exits?.down) ? ["stop"] : []),
+  ...(hatches.length ? ["hatch"] : []),
+  ...(cells.some((c) => c.room.flags?.includes("berth")) ? ["airlock"] : []),
+];
 
 const BIN_HALF = [5, 6]; // the bin mark's half width and height, with a little room round it
 
@@ -127,15 +139,45 @@ function binCorner(c, avoid = []) {
   const hatch = !!(c.room.exits?.up || c.room.exits?.down);
   const corner = [hatch ? c.cx - c.w / 2 + BIN_INSET : c.cx + c.w / 2 - BIN_INSET, c.cy - c.h / 2 + BIN_INSET];
   if (!c.shaped || hatch) return corner;
+  return clearSpot(c, corner, -1, avoid);
+}
+
+/** Where a room's job marks start, running starboard: in its fore port corner, or the nearest spot
+ *  to it inside its shape where all of them are clear of `avoid`, as binCorner's. */
+function jobCorner(c, avoid) {
+  if (!jobCount(c.room)) return [0, 0];
+  return clearSpot(c, [c.cx - c.w / 2 + BIN_INSET, c.cy - c.h / 2 + BIN_INSET], 1, avoid, (jobCount(c.room) - 1) * JOB_STEP);
+}
+
+/** The bounds of a mark at x, y, and a gap to the next. */
+const markBox = ([x, y]) => ({ x0: x - BIN_HALF[0] - 3, x1: x + BIN_HALF[0] + 3, y0: y - BIN_HALF[1] - 3, y1: y + BIN_HALF[1] + 3 });
+
+/** The boxes of a room's hatches and their words, which go below them. */
+const hatchBoxes = (hatches, c) =>
+  hatches.filter((h) => Math.abs(h.cx - c.cx) <= c.w / 2 && Math.abs(h.cy - c.cy) <= c.h / 2).map((h) => ({ x0: h.cx - 12, x1: h.cx + 12, y0: h.cy - 10, y1: h.cy + 23 }));
+
+/** The boxes of a station room's name, as roomBox sets it. */
+function nameBoxes(c) {
+  const lines = nameLines(c.room);
+  return lines.map((t, i) => {
+    const y = c.cy + (i - (lines.length - 1) / 2) * 14;
+    const w = textWidth(t, 12) / 2;
+    return { x0: c.cx - w, x1: c.cx + w, y0: y - 7, y1: y + 7 };
+  });
+}
+
+/** The nearest spot to `corner`, stepping across the room `sx` (1 starboard, -1 port) and aft, where
+ *  a mark and `span` more to starboard of it stay inside the room's shape, clear of `avoid`. */
+function clearSpot(c, corner, sx, avoid, span = 0) {
   const [hw, hh] = BIN_HALF;
   const fits = (x, y) =>
-    [[-hw, -hh], [hw, -hh], [-hw, hh], [hw, hh]].every(([dx, dy]) => inside(c.points, x + dx, y + dy)) &&
-    !avoid.some((b) => x + hw > b.x0 && x - hw < b.x1 && y + hh > b.y0 && y - hh < b.y1);
+    [[-hw, -hh], [hw + span, -hh], [-hw, hh], [hw + span, hh]].every(([dx, dy]) => inside(c.points, x + dx, y + dy)) &&
+    !avoid.some((b) => x + hw + span > b.x0 && x - hw < b.x1 && y + hh > b.y0 && y - hh < b.y1);
   // spots stepping in from the corner, nearest first
   const spots = [];
   for (let dx = 0; dx <= c.w - 2 * BIN_INSET; dx += 1) for (let dy = 0; dy <= c.h - 2 * BIN_INSET; dy += 1) spots.push([dx, dy]);
   spots.sort((a, b) => a[0] + a[1] - (b[0] + b[1]) || a[1] - b[1]);
-  const at = spots.map(([dx, dy]) => [corner[0] - dx, corner[1] + dy]).find(([x, y]) => fits(x, y));
+  const at = spots.map(([dx, dy]) => [corner[0] + sx * dx, corner[1] + dy]).find(([x, y]) => fits(x, y));
   return at ?? corner;
 }
 
@@ -168,7 +210,8 @@ function blister(g, c, pick) {
     el("circle", { cx: c.cx, cy: c.cy, r: c.r * k, fill: "none", stroke: GLASS, "stroke-opacity": 0.22, "stroke-width": 1 }, gl);
   }
   label(gl, c.cx, c.cy + 10, c.room.name, 12);
-  hover(gl, c.room, pick);
+  hover(gl, c.room, pick, dropRows(c.room));
+  jobMarksCentred(g, c.room, c.cx, c.cy + 26);
 }
 
 // --- a ship's fixtures ---------------------------------------------------------------------------

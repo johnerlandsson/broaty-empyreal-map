@@ -1,0 +1,96 @@
+<!doctype html>
+<!-- A legend for the plans, 2026-10-31: three ways for a button on the deck plan to show what its
+     marks mean. The plans are the real ones from ui/, T.I.S.S.'s Rim at home zoom in the panel's
+     bottom band, 380 x 300 and a wider 620 x 300; the legend is drawn over them. Serve the repo root
+     over http to open it. A throwaway: take its look, not its code. Picked: B (2026-10-31). -->
+<html><head><meta charset="utf-8"><title>Plan legend: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:14px 18px; width:max-content; }
+  h2 { color:#e3eaf2; font-size:15px; margin:14px 0 2px; }
+  h2 small { color:#7d8a9a; font-weight:400; font-size:12px; margin-left:8px; }
+  .row { display:flex; gap:10px; margin:6px 0 2px; }
+  figure { margin:0; text-align:center; }
+  figcaption { font:11px "DejaVu Sans Mono", monospace; margin-top:3px; }
+  .f { position:relative; height:300px; background:#04060c; border-radius:6px; overflow:hidden; outline:1px solid #18202b; }
+  .f .m { position:absolute; inset:0; }
+  .q { position:absolute; right:8px; top:87px; width:24px; height:24px; box-sizing:border-box; border-radius:5px; border:1px solid #7d8a9a; background:#04060cb3; color:#dfe7f1; font-size:14px; line-height:22px; text-align:center; z-index:3; }
+  .q.on { background:#7d8a9a; color:#04060c; }
+  .card { position:absolute; z-index:3; background:#0e131af2; border:1px solid #3b4a5c; border-radius:6px; color:#e3eaf2; font-size:11px; box-sizing:border-box; text-align:left; }
+  .card b { display:block; font-size:10px; letter-spacing:1px; color:#7d8a9a; font-weight:500; margin-bottom:5px; }
+  .i { display:flex; align-items:center; gap:7px; height:20px; white-space:nowrap; }
+  .i svg { width:18px; height:18px; flex:none; }
+  .a { left:8px; top:8px; width:204px; padding:7px 9px; }
+  .b { inset:0; padding:12px 44px 10px 14px; background:#04060cea; border:0; border-radius:0; }
+  .b .cols { display:grid; grid-template-columns:1fr 1fr; column-gap:14px; }
+  .c { left:0; right:0; bottom:0; padding:6px 40px 6px 9px; border-width:1px 0 0; border-radius:0; }
+  .c .wrap { display:flex; flex-wrap:wrap; column-gap:12px; }
+  .c .i { height:19px; gap:4px; }
+  .c .i svg { width:15px; height:15px; }
+</style></head><body>
+<div id="out"></div>
+<script type="module">
+import { DeckView } from "../../../ui/deck-view.js";
+import { indexStation } from "../../../ui/lib/locate.js";
+import { tissRooms } from "../../../ui/lib/look.js";
+import { data } from "../../../ui/data/places.js";
+
+const DIM = "#7d8a9a", LADDER = "#9fb0c3", LIFT = "#cfd8e3";
+const line = (d, stroke = DIM, w = 1.2) => `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+const ICONS = [
+  ["Lift", `<circle r="7.5" fill="#0e131a" stroke="${LIFT}" stroke-width="1.5"/><text y="3.5" text-anchor="middle" font-size="10" fill="${LIFT}">⇅</text>`],
+  ["Ladderway hatch", `<rect x="-4.5" y="-7" width="9" height="14" rx="1.5" fill="none" stroke="${LADDER}" stroke-width="1.3"/>${line("M-2.5,-3h5M-2.5,0h5M-2.5,3h5", LADDER, 1)}`],
+  ["Too narrow for a heavy droid", `<rect x="-4.5" y="-7" width="9" height="14" rx="1.5" fill="none" stroke="${LADDER}" stroke-width="1.3"/>${line("M-3.5,-7v14M3.5,-7v14", LADDER, 2.6)}`],
+  ["Hatch up or down", `<circle r="7" fill="#0e131a" stroke="${LADDER}" stroke-width="1.3"/><circle r="2.8" fill="none" stroke="${LADDER}" stroke-width="1"/>`],
+  ["Corridor stop", `<circle r="3.2" fill="#aab8c8"/>`],
+  ["Closed room", `<rect x="-7.5" y="-6" width="15" height="12" rx="2" fill="none" stroke="${DIM}" stroke-width="1.2" stroke-dasharray="3 2.5"/>`],
+  ["Refuse bin", line("M-5,-3.6h10M-1.6,-3.6v-1.6h3.2v1.6M-4,-3.6L-3.2,5.4H3.2L4,-3.6M-1.2,-1.6v5M1.2,-1.6v5")],
+  ["Jobs window", line("M-6,5.5h12M-5,5.5V-3h10V5.5M-6,-3L-4.4,-5.5H4.4L6,-3M-5,1h10")],
+  ["Drop point", line("M0,-6V1M-3,-1.8L0,1.2L3,-1.8M-6,0.6V5.5H6V0.6")],
+  ["You are here", `<rect x="-7.5" y="-6" width="15" height="12" rx="2" fill="#ffb34755" stroke="#ffb347" stroke-width="1.6"/>`],
+];
+const item = ([t, s]) => `<div class="i"><svg viewBox="-9 -9 18 18">${s}</svg>${t}</div>`;
+const list = ICONS.map(item).join("");
+const half = Math.ceil(ICONS.length / 2);
+
+const OPTIONS = [
+  { title: "A · A card in the corner", sub: "the plan stays live beside it, and you can look from a mark to its line. The same corner-card look as the clearance and action cards. At 380 wide it covers half the plan.",
+    card: () => `<div class="card a">${list}</div>` },
+  { title: "B · A sheet over the whole plan", sub: "dims the plan out and lists everything in two columns; click anywhere to close. The easiest to read, but you can't see the plan while it's open.",
+    card: () => `<div class="card b"><div class="cols"><div>${ICONS.slice(0, half).map(item).join("")}</div><div>${ICONS.slice(half).map(item).join("")}</div></div></div>` },
+  { title: "C · A strip along the bottom", sub: "the smallest: the plan above it stays in view, and it wraps to fit the panel. A little cramped at 380 wide, and the long entries take up room.",
+    card: () => `<div class="card c"><div class="wrap">${list}</div></div>` },
+];
+
+const station = tissRooms(data.tiss);
+function frame(row, w, opt, open) {
+  const fig = row.appendChild(document.createElement("figure"));
+  const f = fig.appendChild(document.createElement("div"));
+  f.className = "f";
+  f.style.width = `${w}px`;
+  const m = f.appendChild(document.createElement("div"));
+  m.className = "m";
+  document.body.appendChild(fig.parentNode); // attached, so the plan measures itself
+  const deck = new DeckView(m, indexStation(station));
+  deck.show(0);
+  deck.fit();
+  const stop = deck.plans[0].layout.stops.find((s) => s.hour === 0);
+  const vw = w * 1.45;
+  deck.setView([stop.cx - vw / 2, 40 - (vw * 300) / w / 2, vw, (vw * 300) / w]);
+  f.insertAdjacentHTML("beforeend", `<div class="q ${open ? "on" : ""}">?</div>${open ? opt.card() : ""}`);
+  fig.appendChild(Object.assign(document.createElement("figcaption"), { textContent: `${w} wide${open ? ", open" : ", closed"}` }));
+}
+
+const out = document.getElementById("out");
+OPTIONS.forEach((opt, i) => {
+  const h = out.appendChild(document.createElement("h2"));
+  h.innerHTML = `${opt.title}<small>${opt.sub}</small>`;
+  const row = out.appendChild(document.createElement("div"));
+  row.className = "row";
+  if (i === 0) frame(row, 380, opt, false);
+  frame(row, 380, opt, true);
+  frame(row, 620, opt, true);
+  out.appendChild(row);
+});
+document.body.dataset.ready = "1";
+</script>
+</body></html>

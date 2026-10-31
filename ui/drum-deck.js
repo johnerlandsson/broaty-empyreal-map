@@ -6,7 +6,7 @@
 import { DISTRICT_COLOURS as DC } from "./lib/geometry.js";
 import { drumLayout, drumShape } from "./lib/drum.js";
 import { el } from "./lib/svg.js";
-import { DIM, PASSAGE, PLATE, hover, label, roomBox } from "./deck-view.js";
+import { BIN_INSET, DIM, PASSAGE, PLATE, dropRows, hover, jobMarks, jobMarksCentred, label, roomBox } from "./deck-view.js";
 
 const GLASS = DC.docks;
 const STEPS = "#cfd8e3";
@@ -54,7 +54,10 @@ function buildDrumPlan(svg, index, spec, pick) {
     }
   }
 
-  for (const b of boxes) roomBox(g, b.room, b.cx, b.cy, spec.tints[b.room.id] ?? DC.industrial, b.w, b.h, undefined, pick);
+  for (const b of boxes) {
+    roomBox(g, b.room, b.cx, b.cy, spec.tints[b.room.id] ?? DC.industrial, b.w, b.h, undefined, pick);
+    jobMarks(g, b.room, b.cx - b.w / 2 + BIN_INSET, b.cy - b.h / 2 + BIN_INSET); // the north-west corner, clear of the hatches and the ways in
+  }
 
   // the airlock hatches down the Berths' outer wall, each with its status light
   const berth = find(`${spec.prefix}.berth`);
@@ -88,13 +91,14 @@ function buildDrumPlan(svg, index, spec, pick) {
   else gallery(gl, axis);
   label(gl, axis.cx, axis.cy - 6, axis.room?.name ?? "", 12);
   label(gl, axis.cx, axis.cy + 10, `${axis.room?.gravity ?? 0.1} g`, 10, { fill: DIM });
-  hover(gl, axis.room, pick);
+  hover(gl, axis.room, pick, dropRows(axis.room));
+  jobMarksCentred(g, axis.room, axis.cx, axis.cy + 26);
 
   label(g, x0 + 14, y0 + 14, "N ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
 
   const hl = el("g", { "pointer-events": "none" }, g);
   const home = [(x0 + x1) / 2, (axis.cy - axis.r - 14 + y1) / 2];
-  return [{ z: 0, g, hl, layout, ring: false, length: 0, home, offsets: [0], margin: 0.42, shape: (where) => drumShape(layout, where) }];
+  return [{ z: 0, g, hl, layout, ring: false, length: 0, home, offsets: [0], margin: 0.42, shape: (where) => drumShape(layout, where), legend: [spec.way === "ramp" ? "ramp" : "stair", ...(berth ? ["airlock"] : [])] }];
 }
 
 /** A spiral stair (`way: "stair"`): a two-turn spiral of radius r about (cx, cy). */

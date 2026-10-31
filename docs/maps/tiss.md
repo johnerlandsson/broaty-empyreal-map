@@ -1,6 +1,6 @@
 # T.I.S.S.
 
-*Status: built. Last updated 2026-10-22.*
+*Status: built. Last updated 2026-10-31.*
 
 The full design, with the reasons behind it, is
 `docs/superpowers/specs/2026-10-21-empyreal-station-map-design.md`. This doc
@@ -75,6 +75,16 @@ Four plans, one per level:
   each (Empyreal fe70a72, droids.md §10.3), so the docks are Ladderway 12,
   Rim, Ladderway 6, Rim, Ladderway 9, Mid and Ladderway 3, Inner. The Docks
   plan has none.
+- The jobs window (flag `jobs`: the Services Counter) has a counter-window
+  mark, and each drop point (`drop`: the Cantina Kitchen's intake, the Grow
+  Bays' supply hatch, the Clinic's stores and the Scrapyard's metal bin) an
+  arrow going into a tray, in the bin's line (style guide §8.1,
+  `reference/job-places-options.png`, option A). They're in the room's far
+  corner, antispinward, as the bin has the spinward one; a second mark goes
+  16 along the wall. Over a drop point, the tooltip's `Drop point` row names
+  it. The window has no row. The plans show nothing of the board, what a job
+  wants, or a room's fittings and faults: the game shows a fault only in the
+  room itself.
 - Lit: a room box, a corridor stretch or the ladderway hatch. Riding a lift,
   the band shows the car instead, with its line of floors (cars.md); the
   model still lights your spoke.

@@ -430,7 +430,10 @@ export default {
       "flags": [
         "listed"
       ],
-      "district": "industrial"
+      "district": "industrial",
+      "drop": {
+        "name": "metal bin"
+      }
     },
     {
       "id": "tiss.feed-gallery",
@@ -681,7 +684,10 @@ export default {
       "flags": [
         "listed"
       ],
-      "district": "concourse"
+      "district": "concourse",
+      "drop": {
+        "name": "intake"
+      }
     },
     {
       "id": "tiss.rim-1100",
@@ -1060,7 +1066,10 @@ export default {
       "flags": [
         "listed"
       ],
-      "district": "hydroponics"
+      "district": "hydroponics",
+      "drop": {
+        "name": "supply hatch"
+      }
     },
     {
       "id": "tiss.feed",
@@ -1153,7 +1162,10 @@ export default {
       "flags": [
         "listed"
       ],
-      "district": "commons"
+      "district": "commons",
+      "drop": {
+        "name": "stores"
+      }
     },
     {
       "id": "tiss.rim-0900",
@@ -1371,7 +1383,8 @@ export default {
       },
       "gravity": 0.6,
       "flags": [
-        "listed"
+        "listed",
+        "jobs"
       ],
       "district": "offices"
     },

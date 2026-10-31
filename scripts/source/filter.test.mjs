@@ -53,13 +53,20 @@ describe("keepRoom", () => {
     expect(keepRoom({ id: "a.lock", flags: ["airlock"], clear: 130 }).room.clear).toBe(130);
   });
 
+  it("keeps the jobs flag, and only a drop point's name", () => {
+    const drop = { name: "intake", keywords: ["hatch"], signs: ["cook"], wants: [{ good: "paste", qty: [8, 16] }] };
+    const { room, dropped } = keepRoom({ id: "a.b", flags: ["listed", "jobs"], drop });
+    expect(room).toEqual({ id: "a.b", flags: ["listed", "jobs"], drop: { name: "intake" } });
+    expect(dropped.fields).toEqual(["drop.keywords", "drop.signs", "drop.wants"]);
+  });
+
   it("drops a flags list that empties out", () => {
     expect(keepRoom({ id: "a.b", flags: ["shop"] }).room).not.toHaveProperty("flags");
   });
 
   it("exports the allow-lists", () => {
-    expect(ROOM_FIELDS).toEqual(["id", "name", "address", "exits", "closed", "gravity", "flags", "district", "canopy", "car", "clear"]);
-    expect(FLAGS).toEqual(["berth", "airlock", "outdoors", "listed", "bin"]);
+    expect(ROOM_FIELDS).toEqual(["id", "name", "address", "exits", "closed", "gravity", "flags", "district", "canopy", "car", "clear", "drop"]);
+    expect(FLAGS).toEqual(["berth", "airlock", "outdoors", "listed", "bin", "jobs"]);
   });
 });
 

@@ -14,29 +14,22 @@
   },
   "unplaced": [],
   "orphans": [],
-  "droppedFlags": [
-    {
-      "name": "jobs",
-      "places": [
-        "tiss"
-      ]
-    }
-  ],
+  "droppedFlags": [],
   "unknownFields": [
     {
-      "name": "drop",
+      "name": "drop.keywords",
       "places": [
         "tiss"
       ]
     },
     {
-      "name": "fittings",
+      "name": "drop.signs",
       "places": [
         "tiss"
       ]
     },
     {
-      "name": "mail",
+      "name": "drop.wants",
       "places": [
         "tiss"
       ]
@@ -53,7 +46,6 @@
     "damps",
     "droid_dock",
     "freight",
-    "jobs",
     "market",
     "outfitter",
     "start",
@@ -69,7 +61,9 @@
     "car.perStop",
     "car.stops.*.press",
     "cover",
-    "drop",
+    "drop.keywords",
+    "drop.signs",
+    "drop.wants",
     "fittings",
     "hull.bus",
     "hull.desc",

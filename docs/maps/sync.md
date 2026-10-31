@@ -113,6 +113,15 @@ Each list is empty when there is nothing to say.
 
 `commit` is the source commit the build read. Use it in the commit message.
 
+The build keeps two things for odd jobs, and only these: the room flag `jobs`
+and a room's `drop` as `{ name }`. Its other keys are dropped by name
+(`drop.keywords`, `drop.signs`, `drop.wants`): a job's goods and the board
+stay out of the map. The plans mark any room that has either, in any place
+(`jobMarks()` in `ui/deck-view.js`, the tiss.md and style-guide notes), and
+`tissRooms()` in `ui/lib/look.js` passes `drop` on, as it lists a room's fields
+by hand. A sync that brings one to a new place needs no code, but look at the
+mark in the preview and re-record that place's golden.
+
 ## Tweak files
 
 The look is in `data/tweaks/<place>.json`, one file per place, with the

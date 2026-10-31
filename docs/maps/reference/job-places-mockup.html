@@ -1,0 +1,112 @@
+<!doctype html>
+<!-- Odd jobs on the plans, 2026-10-31: three ways to mark a room flagged `jobs` (the jobs window) and
+     a room with a `drop` (where the job's goods go) in the bin's family. Real plans from ui/:
+     T.I.S.S.'s Mid 12:00 (Services Counter), Rim 12:00 (Cantina Kitchen), Rim 6:00 to 8:00 (Grow Bays,
+     Clinic), Inner 7:30 (Scrapyard) and the Rim zoomed right out. Each frame is the panel's bottom
+     band at its default size, 380 x 300. Serve the repo root over http to open it. A throwaway:
+     take its look, not its code. Picked: A (2026-10-31). -->
+<html><head><meta charset="utf-8"><title>Job places: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:14px 18px; width:max-content; }
+  h2 { color:#e3eaf2; font-size:15px; margin:14px 0 2px; }
+  h2 small { color:#7d8a9a; font-weight:400; font-size:12px; margin-left:8px; }
+  .row { display:flex; gap:10px; margin:6px 0 2px; }
+  figure { margin:0; text-align:center; }
+  figcaption { font:11px "DejaVu Sans Mono", monospace; margin-top:3px; }
+  .f { position:relative; width:380px; height:300px; background:#04060c; border-radius:6px; overflow:hidden; outline:1px solid #18202b; }
+  .f .m { position:absolute; inset:0; }
+  .f .m button { display:none; }
+  .zoom { position:absolute; left:8px; top:6px; font:10px "DejaVu Sans Mono", monospace; color:#7d8a9a; }
+  .key { display:flex; gap:22px; margin:6px 0 2px; align-items:center; }
+  .key svg { background:#0b0f16; border-radius:6px; }
+  .tip { background:#141b24; border:1px solid #3b4a5c; border-radius:6px; padding:7px 10px; color:#e3eaf2; font-size:12px; min-width:170px; }
+  .tip .b { color:#7d8a9a; font-size:11px; margin-bottom:4px; }
+  .tip .r { display:flex; justify-content:space-between; gap:18px; font-size:11px; }
+  .tip .r span:first-child { color:#7d8a9a; }
+</style></head><body>
+<div id="out"></div>
+<script type="module">
+import { DeckView, DIM, binMark } from "../../../ui/deck-view.js";
+import { el } from "../../../ui/lib/svg.js";
+import { indexStation } from "../../../ui/lib/locate.js";
+import { tissRooms } from "../../../ui/lib/look.js";
+import { data } from "../../../ui/data/places.js";
+
+const JOBS = ["tiss.services"];
+const DROPS = { "tiss.kitchen": "intake", "tiss.growbays": "supply hatch", "tiss.clinic": "stores", "tiss.scrapyard": "metal bin" };
+const INSET = 11, S = 0.85;
+const line = (p, d, x, y) => el("path", { d, transform: `translate(${x} ${y}) scale(${S})`, fill: "none", stroke: DIM, "stroke-width": 1.2 / S, "stroke-linecap": "round", "stroke-linejoin": "round", "pointer-events": "none" }, p);
+
+// each glyph 12 x 12 or so at scale 1, centred on 0,0, as the bin's is
+const WINDOW = "M-6,5.5h12M-5,5.5V-3h10V5.5M-6,-3L-4.4,-5.5H4.4L6,-3M-5,1h10"; // a counter's window under its awning
+const TRAY = "M0,-6V1M-3,-1.8L0,1.2L3,-1.8M-6,0.6V5.5H6V0.6"; // an arrow down into a tray
+const TAG = "M-5.5,-1.2L-1.2,-5.5H5.5V1.2L1.2,5.5H-5.5ZM1.8,-2.4a.6,.6 0 1 0 .01,0"; // a job tag, its string hole
+const TICKET = "M-6,-4H6V-1.4a1.4,1.4 0 0 0 0,2.8V4H-6V1.4a1.4,1.4 0 0 0 0,-2.8ZM-2,-4V-2.6M-2,-.7V.7M-2,2.6V4"; // a numbered ticket
+const CHUTE = "M-6,-5H6M-3.6,-5L-3.6,-1L-6,5.5H6L3.6,-1L3.6,-5M-2.4,0.6L0,3L2.4,0.6"; // a hatch's chute, a chevron going in
+
+const OPTIONS = [
+  { key: "A", title: "A · A window and a tray", sub: "two pictures: the counter's window for jobs, an arrow going down into a tray for a drop", jobs: WINDOW, drop: TRAY },
+  { key: "B", title: "B · One tag for both", sub: "the same job tag on both; the row on hover and the room's name say which it is", jobs: TAG, drop: TAG },
+  { key: "C", title: "C · A ticket and a chute", sub: "two pictures: the numbered ticket from the counter's dispenser for jobs, a chute with a chevron going in for a drop", jobs: TICKET, drop: CHUTE },
+];
+
+const W = 380, H = 300, ASPECT = H / W;
+const station = tissRooms(data.tiss).map((r) => ({ ...r, drop: undefined, flags: r.flags.filter((f) => f !== "jobs") })); // the plans draw their own now
+
+function frame(row, cap, note, make) {
+  const fig = row.appendChild(document.createElement("figure"));
+  const f = fig.appendChild(document.createElement("div"));
+  f.className = "f";
+  const m = f.appendChild(document.createElement("div"));
+  m.className = "m";
+  f.appendChild(Object.assign(document.createElement("div"), { className: "zoom", textContent: note }));
+  fig.appendChild(Object.assign(document.createElement("figcaption"), { textContent: cap }));
+  make(m);
+}
+
+function ring(m, opt, level, roomId, hour, width, y = 0) {
+  const index = indexStation(station);
+  const deck = new DeckView(m, index, undefined, { pick: true });
+  deck.show(level); // unlit: the marks as you see them from anywhere else on the ring
+  const plan = deck.plans[level];
+  const stop = plan.layout.stops.find((s) => s.hour === hour);
+  deck.setView([stop.cx - width / 2, y - (width * ASPECT) / 2, width, width * ASPECT]);
+  for (const b of plan.layout.rooms) {
+    const d = JOBS.includes(b.room.id) ? opt.jobs : DROPS[b.room.id] ? opt.drop : null;
+    if (!d) continue;
+    // the far corner, antispinward: the bin has the spinward one
+    const [x, cy] = [b.cx - b.w / 2 + INSET, b.cy < 0 ? b.cy - b.h / 2 + INSET : b.cy + b.h / 2 - INSET];
+    for (const off of plan.offsets) line(el("g", { transform: `translate(${off} 0)` }, plan.g), d, x, cy);
+  }
+}
+
+const out = document.getElementById("out");
+// the glyphs large, in a box with a bin as they'd share a room, and the hover row
+const key = out.appendChild(document.createElement("div"));
+key.className = "key";
+for (const opt of OPTIONS) {
+  const svg = el("svg", { width: 290, height: 150, viewBox: "-60 -31 120 62" }, key);
+  el("rect", { x: -58, y: -29, width: 116, height: 58, rx: 5, fill: "#c87a3c", "fill-opacity": 0.22, stroke: "#c87a3c", "stroke-opacity": 0.85, "stroke-width": 1.6 }, svg);
+  el("text", { x: 0, y: 5, fill: "#e3eaf2", "font-size": 12, "text-anchor": "middle" }, svg).textContent = `Option ${opt.key}`;
+  line(svg, opt.jobs, -47, -18);
+  line(svg, opt.drop, -31, -18);
+  binMark(svg, 47, -18);
+}
+const tip = key.appendChild(document.createElement("div"));
+tip.className = "tip";
+tip.innerHTML = `Grow Bays<div class="b">Rim 6:00 fore</div><div class="r"><span>Drop point</span><span>supply hatch</span></div>`;
+
+for (const opt of OPTIONS) {
+  const h = out.appendChild(document.createElement("h2"));
+  h.innerHTML = `${opt.title}<small>${opt.sub}</small>`;
+  const row = out.appendChild(document.createElement("div"));
+  row.className = "row";
+  frame(row, "Mid 12:00: Services Counter", "600 wide: home", (m) => ring(m, opt, 1, "tiss.services", 0, 600, 40));
+  frame(row, "Rim 12:00: Cantina Kitchen", "600 wide: home", (m) => ring(m, opt, 0, "tiss.kitchen", 0, 600, 60));
+  frame(row, "Rim 6:00 to 8:00: Grow Bays, Clinic", "600 wide: home", (m) => ring(m, opt, 0, "tiss.clinic", 7, 600, -40));
+  frame(row, "Inner 7:30: Scrapyard", "600 wide: home", (m) => ring(m, opt, 2, "tiss.scrapyard", 7.5, 600, -60));
+  frame(row, "Rim, zoomed right out", "1600 wide: furthest out", (m) => ring(m, opt, 0, "tiss.clinic", 7, 1600));
+}
+document.body.dataset.ready = "1";
+</script>
+</body></html>

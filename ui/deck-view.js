@@ -26,6 +26,8 @@ import {
   ringLayout,
 } from "./lib/deck-layout.js";
 import { heavyFits, heavyRow } from "./lib/heavy.js";
+import { attachLegend } from "./legend.js";
+import { BIN, TRAY, WINDOW } from "./lib/marks.js";
 import { attachPanZoom, attachPick, el, glowFilter, pulse, rng, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
@@ -90,6 +92,14 @@ export function hover(node, room, pick, rows = []) {
   node.addEventListener("mouseleave", () => window.panel?.tooltip?.hide?.());
 }
 
+/** A room's name as its box shows it: one line, or two for a long one of more than one word. */
+export function nameLines(room) {
+  const name = room.name && room.name !== "?" ? room.name : "?";
+  const words = name.split(" ");
+  const half = Math.ceil(words.length / 2);
+  return name.length > 14 && words.length > 1 ? [words.slice(0, half).join(" "), words.slice(half).join(" ")] : [name];
+}
+
 /** A room box tinted by district, labelled; closed rooms are dashed and dimmed. Given `d`, the box
  *  is that path instead (a decks room its footprint reshapes), labelled at cx, cy. With pick, it
  *  carries the room's id for picking. With `named` false its name is left for the caller to place. */
@@ -109,19 +119,13 @@ export function roomBox(parent, room, cx, cy, col, w, h, d, pick, named = true) 
     },
     g,
   );
-  const name = room.name && room.name !== "?" ? room.name : "?";
-  const words = name.split(" ");
-  const half = Math.ceil(words.length / 2);
-  const lines =
-    name.length > 14 && words.length > 1 ? [words.slice(0, half).join(" "), words.slice(half).join(" ")] : [name];
+  const lines = nameLines(room);
   if (named) lines.forEach((t, i) => label(g, cx, cy + (i - (lines.length - 1) / 2) * 14, t, 12, { opacity: open ? 1 : 0.6 }));
   if (!open) label(g, cx, cy + h / 2 - 8, "closed", 9, { fill: DIM });
-  hover(g, room, pick);
+  hover(g, room, pick, dropRows(room));
   return g;
 }
 
-// a refuse bin: a lidded can, its handle and two ribs, 10 x 12 before the mark's scale, centred on 0,0
-const BIN = "M-5,-3.6h10M-1.6,-3.6v-1.6h3.2v1.6M-4,-3.6L-3.2,5.4H3.2L4,-3.6M-1.2,-1.6v5M1.2,-1.6v5";
 export const BIN_INSET = 11; // the mark's centre from a room's corner
 const BIN_ON_STOP = -23; // and from a lobby's centre, antispinward of its lift
 
@@ -131,13 +135,41 @@ export const hasBin = (room) => !!room?.flags?.includes("bin");
 /** A refuse bin's mark centred on x, y: the can's outline in Dim, zooming with the plan
  *  (reference/plan-bins-options.png, option B). */
 export function binMark(parent, x, y) {
+  return lineMark(parent, BIN, x, y, { "data-bin": "" });
+}
+
+function lineMark(parent, d, x, y, attrs) {
   const s = 0.85;
   return el(
     "path",
-    { d: BIN, transform: `translate(${x} ${y}) scale(${s})`, fill: "none", stroke: DIM, "stroke-width": 1.2 / s, "stroke-linecap": "round", "stroke-linejoin": "round", "pointer-events": "none", "data-bin": "" },
+    { d, transform: `translate(${x} ${y}) scale(${s})`, fill: "none", stroke: DIM, "stroke-width": 1.2 / s, "stroke-linecap": "round", "stroke-linejoin": "round", "pointer-events": "none", ...attrs },
     parent,
   );
 }
+
+export const JOB_STEP = 16; // a room's marks apart, a jobs window and a drop point both
+const JOB_INSET_Y = 7.5; // from a box's far wall, nearer than a bin: above a long name's top line
+const JOB_ON_LOBBY = 62; // from a lobby's centre, past its hatch at its widest
+const JOB_ON_STOP = 33; // from a plain stop's centre, past its bin
+
+const jobKinds = (room) => [...(room?.flags?.includes("jobs") ? [["jobs", WINDOW]] : []), ...(room?.drop?.name ? [["drop", TRAY]] : [])];
+
+/** How many marks a room has: its jobs window (flag `jobs`) and its drop point (`drop`). */
+export const jobCount = (room) => jobKinds(room).length;
+
+/** The tooltip row naming a room's drop point, for hover()'s `rows`. */
+export const dropRows = (room) => (room?.drop?.name ? [{ label: "Drop point", value: room.drop.name }] : []);
+
+/** A room's job marks, none for most: the first at x, y, each next `step` on. Returns where the next
+ *  would go. */
+export function jobMarks(parent, room, x, y, [dx, dy] = [JOB_STEP, 0]) {
+  const kinds = jobKinds(room);
+  kinds.forEach(([kind, d], i) => lineMark(parent, d, x + i * dx, y + i * dy, { "data-job": kind }));
+  return [x + kinds.length * dx, y + kinds.length * dy];
+}
+
+/** A room's job marks in a row centred on x, y, for a round room. */
+export const jobMarksCentred = (parent, room, x, y) => jobMarks(parent, room, x - (JOB_STEP * (jobCount(room) - 1)) / 2, y);
 
 /** Transparent hit area so a corridor stretch or spine segment can show a tooltip. */
 function hitArea(parent, x, y, w, h, room, pick, rows) {
@@ -192,13 +224,15 @@ function buildRingPlan(svg, index, z, pick) {
     for (const b of layout.rooms) {
       el("rect", { x: b.door.x, y: b.door.y, width: b.door.w, height: b.door.h, fill: PASSAGE }, s);
       roomBox(s, b.room, b.cx, b.cy, b.room.paint, b.w, b.h, undefined, pick);
-      // a bin in the room's far corner, spinward
-      if (hasBin(b.room)) binMark(s, b.cx + b.w / 2 - BIN_INSET, b.cy < 0 ? b.cy - b.h / 2 + BIN_INSET : b.cy + b.h / 2 - BIN_INSET);
+      // a bin in the room's far corner, spinward, and job marks in the antispinward one
+      const far = (inset) => (b.cy < 0 ? b.cy - b.h / 2 + inset : b.cy + b.h / 2 - inset);
+      if (hasBin(b.room)) binMark(s, b.cx + b.w / 2 - BIN_INSET, far(BIN_INSET));
+      jobMarks(s, b.room, b.cx - b.w / 2 + BIN_INSET, far(JOB_INSET_Y));
     }
     // stops: plain nodes, or a lift lobby with a ladder hatch beside it
     for (const st of stops) {
       const room = index.byId.get(st.id);
-      hitArea(s, st.cx - NODE / 2, -CH, NODE, 2 * CH, room, pick);
+      hitArea(s, st.cx - NODE / 2, -CH, NODE, 2 * CH, room, pick, dropRows(room));
       const lobby = SPOKE_HOURS.includes(st.hour) || st.lobby;
       if (lobby) {
         el("circle", { cx: st.cx, cy: 0, r: 12, fill: "#0e131a", stroke: "#cfd8e3", "stroke-width": 2, "pointer-events": "none" }, s);
@@ -209,7 +243,7 @@ function buildRingPlan(svg, index, z, pick) {
         // (reference/heavy-droid-options.png, option C)
         if (room?.hatch) {
           if (!heavyFits(room.hatch.clear)) el("path", { "data-jambs": "", d: `M${st.cx + 22.2},-7v14M${st.cx + 31.8},-7v14`, stroke: LADDER, "stroke-width": 3, "pointer-events": "none" }, s);
-          hitArea(s, st.cx + HATCH.x, -7, hatchWidth(st), 14, index.byId.get(room.hatch.to), pick, [heavyRow("its hatch", room.hatch.clear)]);
+          hitArea(s, st.cx + HATCH.x, -7, hatchWidth(st), 14, index.byId.get(room.hatch.to), pick, [...dropRows(index.byId.get(room.hatch.to)), heavyRow("its hatch", room.hatch.clear)]);
         }
       } else {
         el("circle", { cx: st.cx, cy: 0, r: 4, fill: "#aab8c8", stroke: "#aab8c8", "stroke-width": 1.5, "pointer-events": "none" }, s);
@@ -219,10 +253,13 @@ function buildRingPlan(svg, index, z, pick) {
       // ladderway, so inside the hatch, widened for it (reference/hatch-bins-options.png, option B)
       if (hasBin(room)) binMark(s, st.cx + (lobby ? BIN_ON_STOP : BIN_INSET + 5), 0);
       if (st.dock) binMark(s, st.cx + HATCH.binX, 0);
+      // a stop's job marks, and then its ladderway's, on the corridor spinward of all that
+      const [next] = jobMarks(s, room, st.cx + (lobby ? JOB_ON_LOBBY : JOB_ON_STOP), 0);
+      if (room?.hatch) jobMarks(s, index.byId.get(room.hatch.to), next, 0);
     }
   }
   const hl = el("g", { "pointer-events": "none" }, g);
-  return { z, g, hl, layout, ring: true, length: L, home: [0, 0], offsets: [-L, 0, L] };
+  return { z, g, hl, layout, ring: true, length: L, home: [0, 0], offsets: [-L, 0, L], legend: ["lift", "ladder", "stop"] };
 }
 
 function buildDocksPlan(svg, index, pick) {
@@ -256,11 +293,16 @@ function buildDocksPlan(svg, index, pick) {
     label(g, x, y + 1, "⇅", 11, { fill: "#cfd8e3" });
     label(g, x * 1.38, hub.cy + (y - hub.cy) * 1.38, `${h || 12}`, 9, { fill: DIM });
   });
-  hover(el("circle", { cx: hub.cx, cy: hub.cy, r: HUB_R - 14, fill: "transparent" }, g), hub.room, pick);
-  hover(el("rect", { x: -BEARING.w / 2, y: bearing.cy - BEARING.h / 2, width: BEARING.w, height: BEARING.h, fill: "transparent" }, g), bearing.room, pick);
+  hover(el("circle", { cx: hub.cx, cy: hub.cy, r: HUB_R - 14, fill: "transparent" }, g), hub.room, pick, dropRows(hub.room));
+  jobMarksCentred(g, hub.room, hub.cx, hub.cy + 28);
+  hover(el("rect", { x: -BEARING.w / 2, y: bearing.cy - BEARING.h / 2, width: BEARING.w, height: BEARING.h, fill: "transparent" }, g), bearing.room, pick, dropRows(bearing.room));
+  jobMarks(g, bearing.room, BEARING.w / 2 + 12, bearing.cy);
 
   // Freight Transfer below the Hub
-  if (transfer.room) roomBox(g, transfer.room, transfer.cx, transfer.cy, transfer.room.paint, transfer.w, transfer.h, undefined, pick);
+  if (transfer.room) {
+    roomBox(g, transfer.room, transfer.cx, transfer.cy, transfer.room.paint, transfer.w, transfer.h, undefined, pick);
+    jobMarks(g, transfer.room, transfer.cx - transfer.w / 2 + BIN_INSET, transfer.cy - transfer.h / 2 + JOB_INSET_Y);
+  }
 
   // side rooms, port left and starboard right
   for (const b of layout.rooms) {
@@ -268,23 +310,26 @@ function buildDocksPlan(svg, index, pick) {
     const inner = b.cx - sg * (b.w / 2);
     el("rect", { x: Math.min(b.from, inner), y: b.cy - 8, width: Math.abs(inner - b.from), height: 16, fill: PASSAGE }, g);
     roomBox(g, b.room, b.cx, b.cy, b.room.paint, b.w, b.h, undefined, pick);
+    jobMarks(g, b.room, b.cx - b.w / 2 + BIN_INSET, b.cy - b.h / 2 + JOB_INSET_Y);
   }
   // spine stops
   for (const s of layout.spine) {
     el("circle", { cx: 0, cy: s.cy, r: 4, fill: "#aab8c8" }, g);
     label(g, 0, s.cy + SN / 2, `Spine ${s.n}`, 9, { fill: DIM, transform: `rotate(-90 0 ${s.cy + SN / 2})` });
-    hitArea(g, -CH, s.cy - s.h / 2, 2 * CH, s.h, s.room, pick);
+    hitArea(g, -CH, s.cy - s.h / 2, 2 * CH, s.h, s.room, pick, dropRows(s.room));
+    jobMarks(g, s.room, 0, s.cy - 14, [0, -JOB_STEP]);
   }
   // Blister dome on top
   const bx = blister.cx;
   const dome = `M${bx - blister.r},${blister.cy} A${blister.r},${blister.r} 0 0 1 ${bx + blister.r},${blister.cy} Z`;
   const dm = el("path", { d: dome, fill: "#cfe3ff", "fill-opacity": 0.18, stroke: "#cfe3ff", "stroke-width": 1.6 }, g);
   label(g, 0, blister.cy - blister.r - 16, blister.room?.name ?? "Observation Blister", 11);
-  hover(dm, blister.room, pick);
+  hover(dm, blister.room, pick, dropRows(blister.room));
+  jobMarksCentred(g, blister.room, bx, blister.cy - blister.r * 0.45);
   label(g, -reach(-1) + 10, topY + 14, "FORE ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
 
   const hl = el("g", { "pointer-events": "none" }, g);
-  return { z: 3, g, hl, layout, ring: false, length: 0, home: [0, hub.cy - 120], offsets: [0] };
+  return { z: 3, g, hl, layout, ring: false, length: 0, home: [0, hub.cy - 120], offsets: [0], legend: ["lift", "stop"] };
 }
 
 /** T.I.S.S.'s plans, one per level: the three rings, then the Docks. */
@@ -339,7 +384,7 @@ export class DeckView {
     this.apply();
 
     this.zoom = attachPanZoom(div, () => this.cur, (v) => this.setView(v), { minW: MIN_W, maxW: () => this.plans[this.level]?.maxW ?? MAX_W });
-    zoomButtons(div, "8px", (f) => {
+    const zoomEl = zoomButtons(div, "8px", (f) => {
       if (f) {
         this.zoom(f);
         return;
@@ -354,6 +399,7 @@ export class DeckView {
       this.setView([fx - BASE_W / 2, (this.plans[this.level].ring ? ringFocusY(fy, h) : fy) - h / 2, BASE_W, h]);
     });
     if (opts.pick) attachPick(div, (id) => this.picked?.(id));
+    else this.legend = attachLegend(div, zoomEl, () => this.plans[this.level]);
     if (typeof ResizeObserver !== "undefined") {
       new ResizeObserver(() => {
         const measured = this.fit();
@@ -412,6 +458,7 @@ export class DeckView {
   show(level) {
     this.plans.forEach((p, i) => p.g.setAttribute("display", i === level ? "" : "none"));
     this.level = level;
+    this.legend?.close(); // it's the last plan's
   }
 
   /** Light shape; inside a unit off it, light it dimly with a door tab on its far edge instead. */

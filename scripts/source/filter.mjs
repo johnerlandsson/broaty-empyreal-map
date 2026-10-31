@@ -1,7 +1,7 @@
 // Pure filters over the raw Empyreal YAML: keep only what the map may show.
 
-export const ROOM_FIELDS = ["id", "name", "address", "exits", "closed", "gravity", "flags", "district", "canopy", "car", "clear"];
-export const FLAGS = ["berth", "airlock", "outdoors", "listed", "bin"];
+export const ROOM_FIELDS = ["id", "name", "address", "exits", "closed", "gravity", "flags", "district", "canopy", "car", "clear", "drop"];
+export const FLAGS = ["berth", "airlock", "outdoors", "listed", "bin", "jobs"];
 export const HULL_FIELDS = ["id", "name", "class", "plan", "bin", "airlock"];
 
 /**
@@ -44,7 +44,8 @@ export function keepArea(area) {
 /**
  * @param {object} raw  one room as the source writes it
  * @returns {{room: object, dropped: {fields: string[], flags: string[]}}}  an exit keeps where it
- *   goes, the way through, its seconds and its clearance; a car its kind and its stops' rooms; any other key of
+ *   goes, the way through, its seconds and its clearance; a car its kind and its stops' rooms; a drop
+ *   point its name; any other key of
  *   theirs is dropped by dotted name ("exits.*.hidden", "car.perStop")
  */
 export function keepRoom(raw) {
@@ -65,6 +66,8 @@ export function keepRoom(raw) {
       const car = only(value, ["kind", "stops"], "car", dropped.fields);
       if (car.stops) car.stops = car.stops.map((stop) => only(stop, ["room"], "car.stops.*", dropped.fields));
       room.car = car;
+    } else if (key === "drop") {
+      room.drop = only(value, ["name"], "drop", dropped.fields);
     } else {
       room[key] = value;
     }
