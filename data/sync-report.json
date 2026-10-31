@@ -1,5 +1,5 @@
 {
-  "commit": "67b393a",
+  "commit": "2c2210d",
   "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
@@ -14,8 +14,34 @@
   },
   "unplaced": [],
   "orphans": [],
-  "droppedFlags": [],
-  "unknownFields": [],
+  "droppedFlags": [
+    {
+      "name": "jobs",
+      "places": [
+        "tiss"
+      ]
+    }
+  ],
+  "unknownFields": [
+    {
+      "name": "drop",
+      "places": [
+        "tiss"
+      ]
+    },
+    {
+      "name": "fittings",
+      "places": [
+        "tiss"
+      ]
+    },
+    {
+      "name": "mail",
+      "places": [
+        "tiss"
+      ]
+    }
+  ],
   "knownDroppedFlags": [
     "bank",
     "barber",
@@ -27,6 +53,7 @@
     "damps",
     "droid_dock",
     "freight",
+    "jobs",
     "market",
     "outfitter",
     "start",
@@ -42,6 +69,8 @@
     "car.perStop",
     "car.stops.*.press",
     "cover",
+    "drop",
+    "fittings",
     "hull.bus",
     "hull.desc",
     "hull.devices.cargo.name",
@@ -75,6 +104,7 @@
     "hull.signature",
     "hull.slots",
     "hull.sold",
+    "mail",
     "noFirearms"
   ]
 }
