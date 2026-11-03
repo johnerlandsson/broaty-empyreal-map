@@ -1,5 +1,5 @@
 {
-  "commit": "2c2210d",
+  "commit": "1738c80",
   "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
@@ -14,27 +14,15 @@
   },
   "unplaced": [],
   "orphans": [],
-  "droppedFlags": [],
-  "unknownFields": [
+  "droppedFlags": [
     {
-      "name": "drop.keywords",
-      "places": [
-        "tiss"
-      ]
-    },
-    {
-      "name": "drop.signs",
-      "places": [
-        "tiss"
-      ]
-    },
-    {
-      "name": "drop.wants",
+      "name": "unlit",
       "places": [
         "tiss"
       ]
     }
   ],
+  "unknownFields": [],
   "knownDroppedFlags": [
     "bank",
     "barber",
@@ -52,6 +40,7 @@
     "storage",
     "terminal",
     "unkept",
+    "unlit",
     "workshops"
   ],
   "knownUnknownFields": [
