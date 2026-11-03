@@ -1,5 +1,5 @@
 {
-  "commit": "1738c80",
+  "commit": "8f9accc",
   "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
@@ -14,15 +14,18 @@
   },
   "unplaced": [],
   "orphans": [],
-  "droppedFlags": [
+  "droppedFlags": [],
+  "unknownFields": [
     {
-      "name": "unlit",
+      "name": "hull.leasePerMonth",
       "places": [
-        "tiss"
+        "courier",
+        "freighter",
+        "skiff",
+        "tug"
       ]
     }
   ],
-  "unknownFields": [],
   "knownDroppedFlags": [
     "bank",
     "barber",
@@ -81,7 +84,7 @@
     "hull.exterior",
     "hull.hull",
     "hull.laneRated",
-    "hull.leasePerWeek",
+    "hull.leasePerMonth",
     "hull.names",
     "hull.price",
     "hull.signature",
