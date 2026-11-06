@@ -1,8 +1,13 @@
 {
-  "commit": "8f9accc",
+  "commit": "6441e99",
   "newPlaces": [],
   "removedPlaces": [],
-  "noBuilder": [],
+  "noBuilder": [
+    {
+      "place": "dolcoath",
+      "file": "content/areas/dolcoath.yaml"
+    }
+  ],
   "rooms": {
     "added": [],
     "removed": [],
@@ -17,12 +22,9 @@
   "droppedFlags": [],
   "unknownFields": [
     {
-      "name": "hull.leasePerMonth",
+      "name": "car.stops.*.name",
       "places": [
-        "courier",
-        "freighter",
-        "skiff",
-        "tug"
+        "dolcoath"
       ]
     }
   ],
@@ -51,6 +53,7 @@
     "car.floor",
     "car.load",
     "car.perStop",
+    "car.stops.*.name",
     "car.stops.*.press",
     "cover",
     "drop.keywords",
