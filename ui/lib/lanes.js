@@ -10,7 +10,7 @@
 const shallows = (id, name, stations) => ({ id, name, band: "shallows", relay: true, deep: false, stations });
 const mid = (id, name, stations = [], { relay = false, deep = false } = {}) => ({ id, name, band: "mid", relay, deep, stations });
 
-/** The Shallows round the ring from Petroc, then the Mid; each with its stations (a port such as Zennor among them). */
+/** The Shallows round the ring from Petroc, then the Mid; each with its stations (ports such as Zennor and Dolcoath among them). */
 export const SYSTEMS = [
   shallows("petroc", "Petroc", [{ id: "morvah_deep", name: "Morvah Deep" }]),
   shallows("keyne", "Keyne", [{ id: "gwithian_reach", name: "Gwithian Reach" }]),
@@ -18,6 +18,7 @@ export const SYSTEMS = [
     { id: "tiss", name: "T.I.S.S." },
     { id: "orrin_station", name: "Orrin Station" },
     { id: "zennor", name: "Zennor" },
+    { id: "dolcoath", name: "Dolcoath" },
   ]),
   shallows("maelor", "Maelor", [{ id: "wenna_halt", name: "Wenna Halt" }]),
   shallows("elowen", "Elowen", [{ id: "carrow_yard", name: "Carrow Yard" }]),

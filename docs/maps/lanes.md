@@ -63,8 +63,8 @@ the trunks, and a branch for every other pair), `content/help/lanes.md` (the
 ring's order, the Mid's names, where the relays are), and
 `content/game/system.yaml` (every `station` and `port` body under each star)
 when `~/dev/empyreal` is there, and is skipped otherwise; and that the Lua
-side has the same stars. Zennor is a port on Tamsin, and it's listed under
-Senara with the stations.
+side has the same stars. Zennor is a port on Tamsin and Dolcoath one on
+Orrin, and they're listed under Senara with the stations.
 
 **Where you are** is `Space.Charts`' `system`.
 
