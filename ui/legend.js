@@ -11,6 +11,7 @@ const LADDER = "#9fb0c3";
 const LIFT = "#cfd8e3";
 const GLASS = "#cfe3ff";
 const STONE = "#8a8272";
+const TIMBER = "#a07a4e";
 
 const line = (d, stroke = DIM, w = 1.2) => `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
 const round = `<circle r="7" fill="#0e131a" stroke="${LADDER}" stroke-width="1.3"/><circle r="2.8" fill="none" stroke="${LADDER}" stroke-width="1"/>`;
@@ -30,6 +31,10 @@ const SYMBOLS = [
   ["stop", "Corridor stop", `<circle r="3.2" fill="#aab8c8"/>`],
   ["tram", "Tram line", line("M-8,4L8,-4", GLASS, 2.4)],
   ["well", "Wellhead", `<circle r="5.5" fill="none" stroke="${STONE}" stroke-width="1.6"/>`],
+  ["shaft", "Cage shaft", `<rect x="-8" y="-7" width="16" height="14" fill="#030303" stroke="${STONE}" stroke-width="1.6"/><rect x="-5" y="-4" width="10" height="8" fill="#0e131a" stroke="${LIFT}" stroke-width="1"/><path d="M-2,-4v8M2,-4v8" stroke="${LIFT}" stroke-width="0.7"/>`],
+  ["rod", "Man engine", `<rect x="-4" y="-8" width="8" height="16" fill="#030303" stroke="${STONE}" stroke-width="1.6"/>${line("M0,-8v16", TIMBER, 2)}${line("M-3,-3h6M-3,3h6", TIMBER, 1)}`],
+  ["flight", "The Great Stair", `<rect x="-3.5" y="-8" width="7" height="16" fill="#332b22"/>${line("M-3.5,-5h7M-3.5,-2h7M-3.5,1h7M-3.5,4h7", STONE, 1)}${line("M-3.5,-8v16M3.5,-8v16", STONE, 1.3)}`],
+  ["hatchway", "A way up or down", `<rect x="-5.5" y="-5.5" width="11" height="11" rx="1" fill="#030303" stroke="${STONE}" stroke-width="1.4"/><circle r="2.2" fill="none" stroke="${DIM}" stroke-width="0.9"/>`],
   ["closed", "Closed room", `<rect x="-7.5" y="-6" width="15" height="12" rx="2" fill="none" stroke="${DIM}" stroke-width="1.2" stroke-dasharray="3 2.5"/>`, (p) => [...p.g.querySelectorAll("text")].some((t) => t.textContent === "closed")],
   ["bin", "Refuse bin", line(BIN), (p) => drew(p, "[data-bin]")],
   ["jobs", "Jobs window", line(WINDOW), (p) => drew(p, '[data-job="jobs"]')],

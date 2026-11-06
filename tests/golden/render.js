@@ -38,9 +38,10 @@ function plain(svg, stars) {
 const ids = (html) => html.replace(/glow-[a-z]+-\d+/g, "glow-0");
 
 /** What the model lights for where you are: a ModelView's lit faces, its cut deck and that cut's
- *  dashed outline; a SkyView's open-sky flag and the district its skyline's framed on. */
+ *  dashed outline; a SkyView's open-sky flag and the district its skyline's framed on; a band of words its own. */
 function modelLight(model) {
   if (model instanceof SkyView) return `outdoors=${model.outdoors} district=${model.district}`;
+  if (typeof model.lights === "function") return model.lights(); // a band of words
   const wire = model.geo.querySelector("path[stroke-dasharray]");
   return ids(`cut=${model.cut} ${model.hot.outerHTML}${wire?.outerHTML ?? ""}`);
 }
@@ -54,7 +55,7 @@ export async function renderPlace(id) {
     deck.home();
     return plain(deck.svg, deck.svg.querySelector(":scope > defs + g")); // stars() follows the glow's defs
   });
-  const sky = model instanceof SkyView; // no backdrop: its stars are drawn only in a sky, and there's none
+  const sky = model instanceof SkyView || !model.backdrop; // no backdrop: a sky's stars are drawn only in a sky, and a band of words has none
   const shown = { model: sky ? model.svg.outerHTML : plain(model.svg, model.backdrop), plans };
 
   // then each room in turn, as main.js's render() places you there: only the lights, kept short

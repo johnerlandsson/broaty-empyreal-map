@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
-// buildPlace: each builder (decks, drum, town, wheel) gives a place's model, plan, index and locate,
+// buildPlace: each builder (decks, drum, levels, town, wheel) gives a place's model, plan, index and locate,
 // the same views the panel and the tweak editor draw.
 
 import { describe, expect, it } from "vitest";
 import caradon from "../tests/fixtures/generated/caradon.js";
+import dolcoath from "../tests/fixtures/generated/dolcoath.js";
 import garrow from "../tests/fixtures/generated/garrow.js";
 import kilmar from "../tests/fixtures/generated/kilmar.js";
 import orrin from "../tests/fixtures/generated/orrin.js";
@@ -19,6 +20,7 @@ const CASES = [
   ["decks", caradon],
   ["decks", garrow],
   ["drum", wenna],
+  ["levels", dolcoath],
   ["town", zennor],
   ["wheel", tiss],
 ];

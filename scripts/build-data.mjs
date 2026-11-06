@@ -14,6 +14,7 @@ import { keepArea, keepHull, keepRoom, ROOM_FIELDS } from "./source/filter.mjs";
 import { hullClashes, overlaps } from "./source/footprints.mjs";
 import { placeRooms } from "./source/place.mjs";
 import { loadSource } from "./source/read.mjs";
+import { levelRooms } from "./source/levels.mjs";
 import { diffRooms, droppedOf, emptyReport, formatReport, sortReport } from "./source/report.mjs";
 import { loadTweaks, originOf, resolveLook, resolveTweak, via } from "./source/tweaks.mjs";
 import { RINGS } from "./source/wheel.mjs";
@@ -23,7 +24,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** A generated room's keys, in order: the kept fields, with `at` and `terrain` after the address. */
 const ROOM_KEYS = ["id", "name", "address", "at", "terrain", ...ROOM_FIELDS.slice(3)];
 /** The look's keys, in order (resolveLook's, then the palette). */
-const LOOK_KEYS = ["paint", "fixtures", "footprints", "hull", "profile", "surface", "greebles", "view", "drum", "town", "wheel", "palette"];
+const LOOK_KEYS = ["paint", "fixtures", "footprints", "hull", "profile", "surface", "greebles", "view", "drum", "town", "levels", "wheel", "palette"];
 /** What a checkout must have; loadSource reads each. */
 const SOURCE_PATHS = ["content/areas", "content/plans", "content/game/hulls.yaml", "content/game/world.yaml", "content/game/frames.yaml"];
 
@@ -33,16 +34,19 @@ function ordered(obj, keys) {
   return out;
 }
 
-/** decks or wheel by the layout, else drum or town by the tweak section present, else none. */
+/** decks or wheel by the layout, else drum, town or levels by the tweak section present, else none. */
 function builderOf(layoutKind, tweak) {
   if (layoutKind === "decks" || layoutKind === "wheel") return layoutKind;
   if (tweak.drum) return "drum";
   if (tweak.town) return "town";
+  if (tweak.levels) return "levels";
   return null;
 }
 
-/** Decks bottom up; a wheel's rings rim first, as at.z counts them (the hub and spine are 3). */
+/** Decks bottom up; a wheel's rings rim first, as at.z counts them (the hub and spine are 3); a
+ *  city of levels' top down, as at.level counts them. */
 function levelsOf(layout, rooms) {
+  if (rooms.some((r) => Number.isInteger(r.at?.level))) return [...new Set(rooms.filter((r) => r.at).map((r) => r.at.level))].sort((a, b) => a - b);
   if (layout.kind === "decks") return [...new Set(rooms.filter((r) => r.at).map((r) => r.at.deck))].sort((a, b) => a - b);
   if (layout.kind === "wheel") {
     const levels = RINGS.flatMap((ring, z) => (layout.rings?.[ring] ? [z] : []));
@@ -269,7 +273,15 @@ async function placeFile({ commit, tweaks, report, files, clashes }, { kind, fil
     return null;
   }
 
-  const { rooms: all, unplaced } = placeRooms(area, raw, tweak.place ?? {});
+  const { rooms: placedAll, unplaced } = placeRooms(area, raw, tweak.place ?? {});
+  // A city of levels puts each room on its level, from its car's stops and its ways up and down;
+  // a room on none is unplaced.
+  let all = placedAll;
+  if (builder === "levels") {
+    const { levels, unplaced: off } = levelRooms(placedAll, tweak.levels.depths);
+    unplaced.push(...off);
+    all = placedAll.filter((r) => r.car || levels.has(r.id)).map((r) => (r.car ? r : { ...r, at: { level: levels.get(r.id) } }));
+  }
   // A drum places only the rooms its tweak's drum.rooms lists; any other is unplaced, as a
   // wheel room the rules can't place is.
   const onDrum = builder === "drum" ? new Set(Object.keys(tweak.drum.rooms ?? {}).map((local) => `${id}.${local}`)) : null;

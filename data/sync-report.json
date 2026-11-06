@@ -1,13 +1,13 @@
 {
   "commit": "6441e99",
-  "newPlaces": [],
-  "removedPlaces": [],
-  "noBuilder": [
+  "newPlaces": [
     {
       "place": "dolcoath",
-      "file": "content/areas/dolcoath.yaml"
+      "builder": "levels"
     }
   ],
+  "removedPlaces": [],
+  "noBuilder": [],
   "rooms": {
     "added": [],
     "removed": [],
@@ -20,14 +20,7 @@
   "unplaced": [],
   "orphans": [],
   "droppedFlags": [],
-  "unknownFields": [
-    {
-      "name": "car.stops.*.name",
-      "places": [
-        "dolcoath"
-      ]
-    }
-  ],
+  "unknownFields": [],
   "knownDroppedFlags": [
     "bank",
     "barber",
@@ -53,7 +46,6 @@
     "car.floor",
     "car.load",
     "car.perStop",
-    "car.stops.*.name",
     "car.stops.*.press",
     "cover",
     "drop.keywords",

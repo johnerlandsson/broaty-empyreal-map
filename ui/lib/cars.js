@@ -1,14 +1,17 @@
-// Cars: the rooms that move, a T.I.S.S. spoke lift and Zennor's tram. Aboard one, the bottom band
+// Cars: the rooms that move, a T.I.S.S. spoke lift, Zennor's tram and Dolcoath's cage. Aboard one, the bottom band
 // shows the car itself, as it shows a one-room ship, with a line of its stops under it: where it
 // is, which way it's going, its doors. What the game sends is the car's kind, its stops bottom to
 // top, the stop it's at or the two it's between, its doors and its heading; never how far along,
 // so between two stops the car is drawn midway. Everything here is the drawing's layout and
 // words; car-deck.js draws it. Pure; no DOM.
 
-/** Each kind's car, in plan units: its size, its name where the game sends none, its words. */
+/** Each kind's car, in plan units: its size, its name where the game sends none, its words, what
+ *  shuts it (a cage's gates), and whether its line of stops stands upright (a cage's shaft). */
 export const CARS = {
-  lift: { w: 130, h: 130, name: "Lift", moving: { hubward: "climbing hubward", rimward: "descending rimward" } },
-  tram: { w: 300, h: 96, name: "The Tram", moving: { uphill: "uphill", downhill: "downhill" } },
+  lift: { w: 130, h: 130, name: "Lift", moving: { hubward: "climbing hubward", rimward: "descending rimward" }, doors: "doors" },
+  tram: { w: 300, h: 96, name: "The Tram", moving: { uphill: "uphill", downhill: "downhill" }, doors: "doors" },
+  // 600 by 300 cm, the game's
+  cage: { w: 160, h: 80, name: "The Cage", moving: { up: "up", down: "down" }, doors: "gates", upright: true },
 };
 
 /** The kind of car a location message's `lift` is: its own, else a lift (as before the tram). */
@@ -20,15 +23,17 @@ const RINGS = ["Rim", "Mid", "Inner", "Hub"];
 
 /**
  * What to call a stop: its room's name on the plan (`full`), and on the line of stops (`short`),
- * a T.I.S.S. floor its ring ("Mid"), a station of the tram without " Station" ("Market"). The
- * game's name for it where the plan has no room.
+ * the name its car gives it ("the Town", a cage's), a T.I.S.S. floor its ring ("Mid"), a station
+ * of the tram without " Station" ("Market"). The game's name for it where the plan has no room.
  * @param {{byId?: Map<string, object>}|null|undefined} index the station's index
  */
 export function stopNames(index) {
   const room = (id) => index?.byId?.get(id) ?? null;
+  const named = (id) => (index?.cars ?? []).map((c) => c.named?.[id]).find(Boolean) ?? null;
   return {
     full: (floor) => room(floor?.id)?.name ?? floor?.name ?? floor?.id ?? "",
     short: (floor) => {
+      if (named(floor?.id)) return named(floor.id);
       const r = room(floor?.id);
       if (r && Number.isInteger(r.z) && (r.terrain === "lobby" || r.terrain === "hub")) return RINGS[r.z] ?? r.name;
       return (r?.name ?? floor?.name ?? floor?.id ?? "").replace(/ Station$/, "");
@@ -66,14 +71,15 @@ export function stopLine(lift, names, width) {
 
 /**
  * What the car's doing, in its own words: "at Market, doors open", "uphill, Market → Uptown",
- * "climbing hubward, Rim → Mid", or "" when the message doesn't say.
+ * "climbing hubward, Rim → Mid", "at the Town, gates open", "down, the Town → the Smelts", or ""
+ * when the message doesn't say.
  */
 export function carDoing(lift, names) {
   const floors = Array.isArray(lift?.floors) ? lift.floors : [];
   const floor = (id) => floors.find((f) => f.id === id) ?? { id };
   const words = CARS[carKind(lift)].moving;
   if (typeof lift?.at === "string" && lift.at !== "") {
-    return `at ${names.short(floor(lift.at))}${lift.doors === "open" ? ", doors open" : ""}`;
+    return `at ${names.short(floor(lift.at))}${lift.doors === "open" ? `, ${CARS[carKind(lift)].doors} open` : ""}`;
   }
   const way = words[lift?.heading] ?? null;
   if (Array.isArray(lift?.between) && lift.between.length === 2) {

@@ -39,7 +39,7 @@ const deckEl = document.getElementById("deck");
 // Each station is built the first time it shows: a model and a plan apiece, each over its own
 // starfield, cost tens of milliseconds and thousands of nodes, and most never show in a session.
 // Every place in the generated index (data/places.js) by its builder.
-const BUILDERS = new Set(["decks", "drum", "town", "wheel"]);
+const BUILDERS = new Set(["decks", "drum", "levels", "town", "wheel"]);
 const BUILD = Object.fromEntries(places.filter((p) => BUILDERS.has(p.builder) && data[p.id]).map((p) => [p.id, () => ({ ...buildPlace(data[p.id], p.builder, modelEl, deckEl), lastLevel: null })]));
 const stations = {}; // station key -> its views, once built
 let turning = true; // the turn_model setting, for stations built after it came

@@ -289,7 +289,8 @@ address, so the district and the town stand where an address would. In the
 - `ui/lib/town.js`: specs, `placeRooms()`, the index, `locateTown()`,
   `townInfo()`, the plan's layout (links, districts, river, scarp, gate,
   tram, labels), `townFrame()` and the highlight shapes.
-- `ui/town-deck.js`: the plan's drawing, and its names by zoom.
+- `ui/town-deck.js`: the plan's drawing, and its names by zoom; `townPlan()`,
+  which Dolcoath's levels are each drawn as too (dolcoath.md).
 - `ui/deck-view.js`: a plan's optional `frame(where)`, `maxW` and `onView()`.
 - `ui/town-view.js`: the band and the sky over the skyline.
 - `ui/lib/skyline.js`: the valley's section (`VALLEY`), the terraces'

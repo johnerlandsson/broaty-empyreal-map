@@ -1,9 +1,11 @@
 // The car you're riding, in the bottom band in place of the station's or the city's plan, as a
-// one-room ship is shown: a T.I.S.S. spoke lift's square car, or Zennor's tram, the long wooden
-// car of its description (its floor stepped in three, slatted benches down both sides, a brake
-// wheel at each end, the brass panel by the doors). The car is its one room, lit. Under it, what
-// it's doing in Dim, and the line of its stops with the car on it, its heading an arrow; its
-// doors are drawn open or shut. Layout and words are lib/cars.js.
+// one-room ship is shown: a T.I.S.S. spoke lift's square car, Zennor's tram, the long wooden car
+// of its description (its floor stepped in three, slatted benches down both sides, a brake wheel
+// at each end, the brass panel by the doors), or Dolcoath's cage, the open box of iron bars of
+// its (checker-plate worn bright down the middle, a rail round it, the brass panel on its post,
+// gates on the shaft side). The car is its one room, lit. Under it, what it's doing in Dim, and
+// the line of its stops with the car on it, its heading an arrow, upright beside the cage as its
+// shaft is; its doors or gates are drawn open or shut. Layout and words are lib/cars.js.
 
 import { CARS, carDoing, stopLine } from "./lib/cars.js";
 import { el } from "./lib/svg.js";
@@ -17,10 +19,11 @@ const BRASS = "#d9a441";
 const HL = "#ffb347";
 const BG = "#04060c";
 const LINE_W = 280; // the line of stops
+const SHAFT_H = 200; // the cage's, upright
 const NONE = { "pointer-events": "none" };
 
 /**
- * @param {"lift"|"tram"} kind
+ * @param {"lift"|"tram"|"cage"} kind
  * @returns {(svg: SVGElement) => object[]} the plans builder DeckView takes: the one plan
  */
 export function carPlans(kind) {
@@ -36,6 +39,7 @@ export function updateCar(view, lift, names) {
 
   const g = plan.line;
   g.replaceChildren();
+  if (plan.upright) return uprightLine(view, plan, lift, names);
   const { stops, car } = stopLine(lift, names, LINE_W);
   if (!stops.length) return;
   const y = plan.lineY;
@@ -50,6 +54,24 @@ export function updateCar(view, lift, names) {
   if (car.dir) el("path", { d: `M${car.dir * 19},-5l${car.dir * 8},5l${-car.dir * 8},5Z`, fill: HL }, m);
 }
 
+/** The cage's line of stops, upright beside it: its top station at the top, names to the right. */
+function uprightLine(view, plan, lift, names) {
+  const g = plan.line;
+  // stopLine lays the stops out bottom to top, left to right; here that's bottom to top, up the page
+  const { stops, car } = stopLine(lift, names, SHAFT_H);
+  if (!stops.length) return;
+  const x = plan.lineX;
+  el("path", { d: `M${x},${-stops[0].x}V${-stops.at(-1).x}`, stroke: DIM, "stroke-width": 2, ...NONE }, g);
+  for (const s of stops) {
+    el("circle", { cx: x, cy: -s.x, r: 5, fill: BG, stroke: DIM, "stroke-width": 2, ...NONE }, g);
+    label(g, x + 13, -s.x, s.name, 10, { fill: DIM, "text-anchor": "start" });
+  }
+  if (!car) return;
+  const m = el("g", { transform: `translate(${x} ${-car.x})`, filter: view.glow, ...NONE }, g);
+  el("rect", { x: -7, y: -11, width: 14, height: 22, rx: 6, fill: HL, "fill-opacity": 0.35, stroke: HL, "stroke-width": 2.5 }, m);
+  if (car.dir) el("path", { d: `M-5,${-car.dir * 15}l5,${-car.dir * 8}l5,${car.dir * 8}Z`, fill: HL }, m);
+}
+
 /** Set the car's name, the game's or the plan's, for updateCar to draw. */
 export function nameCar(view, name) {
   view.plans[0].carName = name;
@@ -62,7 +84,7 @@ function buildCarPlan(svg, kind) {
   const x = -w / 2;
   const y = -h / 2;
 
-  el("rect", { x: x - 6, y: y - 6, width: w + 12, height: h + 12, rx: kind === "tram" ? 14 : 12, fill: BG, stroke: HULL, "stroke-width": 2, ...NONE }, g);
+  el("rect", { x: x - 6, y: y - 6, width: w + 12, height: h + 12, rx: kind === "tram" ? 14 : kind === "cage" ? 3 : 12, fill: BG, stroke: HULL, "stroke-width": 2, ...NONE }, g);
   el("rect", { x, y, width: w, height: h, rx: 10, fill: HL, "fill-opacity": 0.06, stroke: DIM, "stroke-width": 1.4, ...NONE }, g);
   // the doors: a gap in the hull on the platform (south) side, its two leaves meeting across it
   // while they're shut
@@ -72,7 +94,28 @@ function buildCarPlan(svg, kind) {
     doors.push(el("path", { d: `M${cx - half},${y + h + 6}h${half - 1}M${cx + 1},${y + h + 6}h${half - 1}`, stroke: GLASS, "stroke-width": 2, ...NONE }, g));
   };
 
-  if (kind === "tram") {
+  if (kind === "cage") {
+    // the bars all round, the shaft's rock close beyond them
+    let bars = "";
+    for (let bx = x + 4; bx < x + w; bx += 8) bars += `M${bx},${y - 6}v6M${bx},${y + h}v6`;
+    for (let by = y + 4; by < y + h; by += 8) bars += `M${x - 6},${by}h6M${x + w},${by}h6`;
+    el("path", { d: bars, stroke: HULL, "stroke-width": 1.2, ...NONE }, g);
+    // the checker-plate floor, worn bright down the middle, and the rail round it at waist height
+    let plate = "";
+    for (let k = 10; k < w + h; k += 10) plate += `M${x + Math.max(0, k - h)},${y + Math.min(h, k)}L${x + Math.min(w, k)},${y + Math.max(0, k - w)}`;
+    el("path", { d: plate, stroke: DIM, "stroke-opacity": 0.25, "stroke-width": 0.8, ...NONE }, g);
+    el("rect", { x: x + 14, y: -9, width: w - 28, height: 18, rx: 4, fill: HULL, "fill-opacity": 0.08, ...NONE }, g);
+    el("rect", { x: x + 6, y: y + 6, width: w - 12, height: h - 12, rx: 3, fill: "none", stroke: DIM, "stroke-width": 1.4, ...NONE }, g);
+    // the brass panel on its post, a button a station
+    el("rect", { x: x + w - 26, y: y + 10, width: 14, height: 26, rx: 2, fill: FIX, stroke: BRASS, "stroke-width": 1.2, ...NONE }, g);
+    for (let k = 0; k < 6; k++) el("circle", { cx: x + w - 19, cy: y + 14 + k * 3.6, r: 1.2, fill: BRASS, ...NONE }, g);
+    // the gates on the shaft side: a gap in the bars, a lattice across it while they're shut
+    const half = 40;
+    el("rect", { x: -half, y: y + h + 1, width: 2 * half, height: 10, fill: BG, ...NONE }, g);
+    let lattice = "";
+    for (let gx = -half; gx < half; gx += 10) lattice += `M${gx},${y + h + 1}l10,9M${gx + 10},${y + h + 1}l-10,9`;
+    doors.push(el("path", { d: lattice, stroke: GLASS, "stroke-width": 1.4, ...NONE }, g));
+  } else if (kind === "tram") {
     // the floor stepped in three, to sit level on the slope
     for (const i of [1, 2]) el("path", { d: `M${x + (i * w) / 3},${y + 4}V${y + h - 4}`, stroke: DIM, "stroke-width": 1.2, "stroke-dasharray": "3 3", ...NONE }, g);
     // slatted benches down both sides, a run a step
@@ -107,9 +150,15 @@ function buildCarPlan(svg, kind) {
   const caption = label(g, 0, y + h + 26, "", 11, { fill: DIM });
   const line = el("g", NONE, g);
   const lineY = y + h + 66;
+  const lineX = x + w + 48; // the cage's upright line, beside it
 
   const hl = el("g", NONE, g);
-  const room = { x, y, width: w, height: h, rx: 10 };
+  const room = { x, y, width: w, height: h, rx: kind === "cage" ? 3 : 10 };
+  // the cage's line stands beside it, so the car and its words sit left of the middle
+  const upright = !!spec.upright;
+  const frame = upright
+    ? { home: [(x - 6 + lineX + 110) / 2, 0], extent: { w: lineX + 110 - (x - 6), h: SHAFT_H + 40 } }
+    : { home: [0, (y - 6 + lineY + 24) / 2], extent: { w: Math.max(w + 12, LINE_W + 60), h: lineY + 24 - (y - 6) } };
   return {
     z: 0,
     g,
@@ -117,9 +166,8 @@ function buildCarPlan(svg, kind) {
     ring: false,
     length: 0,
     offsets: [0],
-    home: [0, (y - 6 + lineY + 24) / 2],
+    ...frame,
     margin: 0.5,
-    extent: { w: Math.max(w + 12, LINE_W + 60), h: lineY + 24 - (y - 6) },
     shape: () => ({ kind: "rect", ...room }),
     caption,
     name,
@@ -127,5 +175,7 @@ function buildCarPlan(svg, kind) {
     doors,
     line,
     lineY,
+    lineX,
+    upright,
   };
 }

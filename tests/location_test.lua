@@ -144,6 +144,27 @@ test('riding the tram: a car of kind tram, its stops bottom to top', function()
   eq(L.message(f).lift.floors[1].id, 'zennor.tram-riverside')
 end)
 
+test('riding the cage: a car of kind cage, its stations bottom to top, heading up or down', function()
+  local f = L.new()
+  L.room_info(f, { id = 'dolcoath.town-station', name = 'Town Station', area = 'dolcoath' })
+  eq(L.empyreal_room(f, { id = 'dolcoath.cage', gravity = 1.5,
+    vehicle = { kind = 'cage', id = 'dolcoath.cage',
+      floors = { { id = 'dolcoath.workings-station' }, { id = 'dolcoath.smelts-station' }, { id = 'dolcoath.town-station', name = 'Town Station' } },
+      at = 'dolcoath.town-station', doors = 'open' } }), true)
+  local m = L.message(f)
+  eq(m.roomId, nil)
+  eq(m.lift.id, 'dolcoath.cage')
+  eq(m.lift.kind, 'cage')
+  eq(#m.lift.floors, 3)
+  eq(m.lift.doors, 'open')
+  eq(m.gravity, 1.5)
+  eq(L.vehicle(f, { id = 'dolcoath.cage', between = { 'dolcoath.town-station', 'dolcoath.smelts-station' }, doors = 'closed', heading = 'down' }), true)
+  m = L.message(f)
+  eq(m.lift.kind, 'cage')
+  eq(m.lift.heading, 'down')
+  eq(m.lift.between[2], 'dolcoath.smelts-station')
+end)
+
 test('a lift says it is a lift, even without a kind', function()
   local f = L.new()
   L.empyreal_room(f, { id = 'tiss.lift-9', part = 'lift', address = 'Lift 9', vehicle = { at = 'tiss.rim-0900' } })

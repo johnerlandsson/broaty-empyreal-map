@@ -2,6 +2,7 @@
 import place_botallack from "./botallack.js";
 import place_caradon from "./caradon.js";
 import place_carrow from "./carrow.js";
+import place_dolcoath from "./dolcoath.js";
 import place_garrow from "./garrow.js";
 import place_gwithian from "./gwithian.js";
 import place_kilmar from "./kilmar.js";
@@ -40,6 +41,14 @@ export default [
     "builder": "decks",
     "docks": [
       "carrow_yard"
+    ]
+  },
+  {
+    "id": "dolcoath",
+    "prefix": "dolcoath",
+    "builder": "levels",
+    "docks": [
+      "dolcoath"
     ]
   },
   {
@@ -160,6 +169,7 @@ export const data = {
   "botallack": place_botallack,
   "caradon": place_caradon,
   "carrow": place_carrow,
+  "dolcoath": place_dolcoath,
   "garrow": place_garrow,
   "gwithian": place_gwithian,
   "kilmar": place_kilmar,

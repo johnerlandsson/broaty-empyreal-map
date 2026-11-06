@@ -469,7 +469,7 @@ function waysOut(l, id) {
  */
 function districtsOf(index, boxes, links, spec, river, tram) {
   const rooms = new Set(boxes.map((b) => `${b.room.cell.x}:${b.room.cell.y}`));
-  const taken = new Set(rooms);
+  const taken = new Set([...rooms, ...(spec.taken ?? [])]); // and cells the spec keeps, a level's ways off it
   // the cells a long way runs through
   for (const l of links) {
     const [p, q] = [index.byId.get(l.a).cell, index.byId.get(l.b).cell];

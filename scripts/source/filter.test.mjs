@@ -31,12 +31,12 @@ describe("keepRoom", () => {
     expect(dropped).toEqual({ fields: [], flags: [] });
   });
 
-  it("keeps of a car only its kind and its stops' rooms, naming the rest by dotted name", () => {
+  it("keeps of a car only its kind and its stops' rooms and names, naming the rest by dotted name", () => {
     const { room, dropped } = keepRoom({
       id: "a.b",
-      car: { kind: "tram", stops: [{ room: "a.c", press: "c" }, { room: "a.d", press: "d" }], perStop: 15, dwell: 8 },
+      car: { kind: "tram", stops: [{ room: "a.c", press: "c", name: "the Town" }, { room: "a.d", press: "d" }], perStop: 15, dwell: 8 },
     });
-    expect(room.car).toStrictEqual({ kind: "tram", stops: [{ room: "a.c" }, { room: "a.d" }] });
+    expect(room.car).toStrictEqual({ kind: "tram", stops: [{ room: "a.c", name: "the Town" }, { room: "a.d" }] });
     expect(dropped.fields).toEqual(["car.perStop", "car.dwell", "car.stops.*.press"]);
   });
 

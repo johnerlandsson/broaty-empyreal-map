@@ -522,8 +522,9 @@ export class DeckView {
     this.focus = [px, py];
     const vyFocus = plan.ring ? ringFocusY(py, vh) : py;
     const m = plan.margin ?? 0.35; // how far off centre the highlight may sit before the view follows
-    // a plan that frames where you are (a town's district) re-frames when you're out of sight
-    if (plan.frame && (Math.abs(px - cx) > vw / 2 || Math.abs(vyFocus - cy) > vh / 2)) {
+    // a plan that frames where you are (a town's district, a city's level) re-frames when you're
+    // out of sight, or on another of its plans
+    if (plan.frame && (changed || Math.abs(px - cx) > vw / 2 || Math.abs(vyFocus - cy) > vh / 2)) {
       this.setView(this.homeView());
       return;
     }

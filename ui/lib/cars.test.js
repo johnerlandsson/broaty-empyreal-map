@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
 import tissData from "../data/tiss.js";
 import generated from "../../tests/fixtures/generated/zennor.js";
+import deepData from "../../tests/fixtures/generated/dolcoath.js";
 import { CARS, carDoing, carInfo, carKind, carName, stopLine, stopNames } from "./cars.js";
 import { indexStation } from "./locate.js";
-import { tissRooms, townData, townSpec } from "./look.js";
+import { indexLevels } from "./levels.js";
+import { levelsData, levelsSpec, tissRooms, townData, townSpec } from "./look.js";
 import { indexTown } from "./town.js";
 
 const tiss = indexStation(tissRooms(tissData));
 const zennor = townData(generated);
 const city = indexTown(zennor, townSpec(generated));
 const tram = (lift) => ({ gravity: 1, lift: { id: "zennor.tram", kind: "tram", floors: zennor.cars[0].stops.map((id) => ({ id })), ...lift } });
+const deep = indexLevels(levelsData(deepData), levelsSpec(deepData));
+const cage = (lift) => ({ gravity: 1.5, lift: { id: "dolcoath.cage", kind: "cage", floors: deep.cars[0].stops.map((id) => ({ id })), ...lift } });
 const LIFT_FLOORS = ["tiss.rim-0300", "tiss.mid-0300", "tiss.inner-0300", "tiss.hub"].map((id) => ({ id }));
 const lift = (l) => ({ name: "Lift 3", gravity: 0.9, lift: { id: "tiss.lift-3", kind: "lift", floors: LIFT_FLOORS, ...l } });
 
@@ -19,7 +23,7 @@ describe("cars", () => {
     expect(carKind({ kind: "tram" })).toBe("tram");
     expect(carKind({ kind: "balloon" })).toBe("lift");
     expect(carKind(null)).toBe("lift");
-    expect(Object.keys(CARS)).toEqual(["lift", "tram"]);
+    expect(Object.keys(CARS)).toEqual(["lift", "tram", "cage"]);
   });
 
   it("names the car: the game's name, else the plan's, else its kind's", () => {
@@ -69,5 +73,19 @@ describe("cars", () => {
     expect(carInfo(lift({ at: "tiss.hub" }), tiss)).toBe("LIFT 3 · at The Hub");
     expect(carInfo({ name: "Lift 9", lift: { id: "tiss.lift-9" } }, tiss)).toBe("LIFT 9");
     expect(carInfo(null, null)).toBe("LIFT");
+  });
+
+  it("has the cage: its stations by the names it gives them, up and down, gates for doors", () => {
+    expect(carKind(cage({}).lift)).toBe("cage");
+    expect(CARS.cage).toMatchObject({ name: "The Cage", doors: "gates", upright: true });
+    const d = stopNames(deep);
+    expect(deep.cars[0].stops.map((id) => d.short({ id }))).toEqual(["the Workings", "the Smelts", "the Town", "Forty Fathom", "Twenty Fathom", "the Pithead"]);
+    expect(d.full({ id: "dolcoath.town-station" })).toBe("Town Station");
+    expect(carDoing(cage({ at: "dolcoath.town-station", doors: "open" }).lift, d)).toBe("at the Town, gates open");
+    expect(carDoing(cage({ between: ["dolcoath.town-station", "dolcoath.smelts-station"], heading: "down" }).lift, d)).toBe("down, the Town → the Smelts");
+    expect(carDoing(cage({ between: ["dolcoath.forty", "dolcoath.twenty"], heading: "up" }).lift, d)).toBe("up, Forty Fathom → Twenty Fathom");
+    expect(carName(cage({}), deep)).toBe("The Cage");
+    expect(carInfo(cage({ between: ["dolcoath.town-station", "dolcoath.smelts-station"], heading: "down" }), deep)).toBe("THE CAGE · down, the Town → the Smelts");
+    expect(carInfo(cage({ at: "dolcoath.pithead", doors: "open" }), deep)).toBe("THE CAGE · at The Pithead");
   });
 });

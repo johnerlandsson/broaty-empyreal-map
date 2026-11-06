@@ -367,6 +367,30 @@ describe("build", () => {
     expect(n.look.drum).toEqual({ way: "spiral", rooms: { hall } });
   });
 
+  it("builds a none area with a levels tweak as a city of levels, each room on its level and the cage's stops named", async () => {
+    const opts = setup({ ...placed, deep: { levels: { depths: { top: 0, bottom: 40 }, names: { top: "the Pit" } } } });
+    const cage = { id: "deep.cage", name: "The Cage", car: { kind: "cage", stops: [{ room: "deep.bottom", press: "bottom", name: "the Bottom" }, { room: "deep.top", press: "top", name: "the Top" }], perStop: 20 } };
+    const rooms = [
+      cage,
+      { id: "deep.top", name: "Top", exits: { east: "deep.hall" } },
+      { id: "deep.hall", name: "Hall", exits: { west: "deep.top", down: { to: "deep.bottom", via: "man-engine", seconds: 12 } } },
+      { id: "deep.bottom", name: "Bottom", exits: { up: { to: "deep.hall", via: "man-engine", seconds: 16 }, down: "deep.sump" } },
+      { id: "deep.sump", name: "Sump", exits: { up: "deep.bottom" } },
+      { id: "deep.lost", name: "Lost", exits: {} },
+    ];
+    writeFileSync(join(opts.source, "content/areas/deep.yaml"), stringify({ area: { id: "deep", name: "Deep", gravity: 1.5 }, rooms }));
+    const { report } = await build(opts);
+    expect(report.noBuilder).toEqual([]);
+    expect(report.newPlaces).toContainEqual({ place: "deep", builder: "levels" });
+    expect(report.unplaced).toContainEqual({ place: "deep", id: "deep.lost" });
+    expect(report.unknownFields.map((f) => f.name)).not.toContain("car.stops.*.name");
+    const d = await load(join(opts.outDir, "deep.js"));
+    expect(d.levels).toEqual([0, 1, 2]);
+    expect(Object.fromEntries(d.rooms.map((r) => [r.id, r.at?.level ?? null]))).toEqual({ "deep.cage": null, "deep.top": 0, "deep.hall": 0, "deep.bottom": 1, "deep.sump": 2 });
+    expect(d.rooms[0].car).toEqual({ kind: "cage", stops: [{ room: "deep.bottom", name: "the Bottom" }, { room: "deep.top", name: "the Top" }] });
+    expect(d.look.levels).toEqual({ depths: { top: 0, bottom: 40 }, names: { top: "the Pit" } });
+  });
+
   it("writes the view of every place and the footprints of a decks place", async () => {
     const opts = setup({ ...placed, mini: { footprints: { hall: { corners: "cut" } } } });
     await build(opts);

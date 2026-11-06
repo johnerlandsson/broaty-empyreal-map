@@ -2,8 +2,8 @@
 -- Empyreal.Room, Empyreal.Vehicle) into one small location message, with the
 -- room's district (a town's skyline follows it), the ship's hull and which of
 -- her rooms you're in when you're aboard one, the door you came in by when
--- you're in your workshop or bunk, and the car you're riding (a lift or the
--- tram): its kind, its stops and where it is.
+-- you're in your workshop or bunk, and the car you're riding (a lift, the
+-- tram or a cage): its kind, its stops and where it is.
 -- Pure and cheap; never errors on missing or odd-typed fields.
 -- Uses no io/os/debug/coroutine (removed in Mallard's sandbox).
 
@@ -153,8 +153,9 @@ end
 function L.empyreal_room(state, data)
   if type(data) ~= 'table' then return false end
   local vehicle = type(data.vehicle) == 'table' and data.vehicle or nil
-  -- A lift car or the tram is a car; any other vehicle is a plain room.
-  if vehicle and vehicle.kind ~= nil and vehicle.kind ~= 'lift' and vehicle.kind ~= 'tram' then vehicle = nil end
+  -- A lift car, the tram or a mine's cage is a car; any other vehicle is a plain room.
+  local car = { lift = true, tram = true, cage = true }
+  if vehicle and vehicle.kind ~= nil and not car[vehicle.kind] then vehicle = nil end
 
   if data.part == 'lift' or vehicle then
     local id = str(data.id) or (vehicle and str(vehicle.id))

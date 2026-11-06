@@ -9,11 +9,14 @@ import { drumPlans } from "./drum-deck.js";
 import { buildDecksModel, decksCut, decksKey, indexDecks, locateDecks } from "./lib/decks.js";
 import { buildDrumModel, drumHour, drumKey } from "./lib/drum.js";
 import { indexStation, locate } from "./lib/locate.js";
-import { drumRooms, drumSpec, tissRooms, townData, townSpec } from "./lib/look.js";
+import { indexLevels, levelsInfo, locateLevels } from "./lib/levels.js";
+import { drumRooms, drumSpec, levelsData, levelsSpec, tissRooms, townData, townSpec } from "./lib/look.js";
 import { shipKey } from "./lib/ships.js";
 import { indexTown, locateTown, townInfo } from "./lib/town.js";
 import { ModelView } from "./model-view.js";
 import { captionShip, updateShip } from "./ship-deck.js";
+import { levelsPlans } from "./levels-deck.js";
+import { LevelsBand } from "./levels-view.js";
 import { townPlans } from "./town-deck.js";
 import { SkyView } from "./town-view.js";
 
@@ -60,9 +63,17 @@ function town(data, modelEl, deckEl, opts) {
   return { index, model: new SkyView(modelEl, index, "zennor"), deck: new DeckView(deckEl, index, townPlans(spec), opts), locate: locateTown, info: townInfo };
 }
 
-const BUILDERS = { decks, drum, town, wheel };
+/** Dolcoath: a city of levels underground, a plan a level, its rooms placed by their compass exits,
+ *  the ways off each level drawn where they leave; the level you're on in words over it. */
+function levels(data, modelEl, deckEl, opts) {
+  const spec = levelsSpec(data);
+  const index = indexLevels(levelsData(data), spec);
+  return { index, model: new LevelsBand(modelEl, index), deck: new DeckView(deckEl, index, levelsPlans(spec), opts), locate: locateLevels, info: levelsInfo };
+}
 
-/** The place's views: {index, model, deck, locate, info?}. `builder` is one of decks, drum, town and wheel;
+const BUILDERS = { decks, drum, levels, town, wheel };
+
+/** The place's views: {index, model, deck, locate, info?}. `builder` is one of decks, drum, levels, town and wheel;
  *  `opts` goes to the ModelView and the DeckView. `locate(index, msg, lastLevel)` is the place's own. */
 export function buildPlace(data, builder, modelEl, deckEl, opts = {}) {
   if (!BUILDERS[builder]) throw new Error(`no such place builder: ${builder}`);

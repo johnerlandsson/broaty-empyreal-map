@@ -87,7 +87,8 @@ Each list is empty when there is nothing to say.
 - `removedPlaces`: places we had that the source no longer has. Their
   generated files are gone. Delete the tweak file by hand if it is now dead.
 - `noBuilder`: new areas no builder knows how to draw (no layout, not a
-  decks box, drum or town). Nothing was made for them. Tell John.
+  decks box, drum, town or city of levels). Nothing was made for them. Tell
+  John.
 - `rooms.added`, `rooms.removed`: rooms that appeared or went, per place. A
   removed room that comes back under another id, with the same address (else
   the same name), is listed under `renamed` instead.
@@ -161,6 +162,11 @@ The top-level keys:
   `wenna.json`.
 - `town`: a town's furniture. `root`, `uphill`, `ground`, `gate`, `wells`,
   `river` and `scarp`. See `zennor.json`.
+- `levels`: a city of levels underground, its rooms on levels its car and
+  its ways up and down make (dolcoath.md). `ground` (open rooms that aren't
+  a street), `depths` (each level's depth in fathoms) and `names` (a level's
+  name where its car stop's won't do), each keyed by a room on the level.
+  See `dolcoath.json`.
 - `wheel`: reserved for wheel stations. Empty in stage 1.
 
 `scripts/source/tweaks.mjs` lists every allowed key.
@@ -336,4 +342,5 @@ and any `paint` you want, run `npm run build:data` again, and look at the
 preview. Then record its golden render, as in step 4.
 
 If the place is in `noBuilder` instead, nothing was drawn. A drum needs a
-`drum` section and a town a `town` section in its tweak file.
+`drum` section, a town a `town` section and a city of levels a `levels`
+section in its tweak file.

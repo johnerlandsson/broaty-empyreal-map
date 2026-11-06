@@ -8,7 +8,8 @@ further out, Morvah Deep, Gwithian Reach, Carrow Yard and Lanyon High, and
 the six round the Shallows' ring, Kynance Spindle, Marazion Quay, Penwith
 Vats, Botallack Head, Polperro Old Dock and Lamorna Light, and the Mid's
 three, Kilmar Steading, Caradon Works and Garrow Stop. It also maps Zennor,
-the city on the planet Tamsin below T.I.S.S. The panel shows whichever place
+the city on the planet Tamsin below T.I.S.S., and Dolcoath, Orrin's city,
+cut down through the rock under its open pit. The panel shows whichever place
 you're in, or the one your ship is docked or landed at, and charts the star
 system you're in and the lanes across the core. At a station it has no plan
 of, it shows none, and says so, rather than the last one. Until the game
@@ -75,6 +76,9 @@ of the west, passing overhead and setting, and Orrin as a golden star at
 night. Each is drawn where the game puts it on a dome from the western
 horizon to the eastern, and hovering over one shows the game's own sentence
 for it. Indoors you can't see the sky, so the band is the skyline alone.
+
+**Dolcoath** is underground, so for now the top band only says, in words,
+which level you're on and how deep it is: `THE TOWN`, 80 fathoms down.
 
 **Out in your ship.** Once you undock, the station model fades into a view
 looking ahead from your ship: a still starfield while you're parked, the
@@ -214,6 +218,15 @@ one, and stays when she stops, unless you've turned that off. The belt map,
   packed earth. On a street, its stretch of the street lights. ⌂ frames your
   district; zoomed out, the rooms' names fade and the districts' stay
   readable.
+- **Dolcoath:** a plan a level, from the Pit at the surface down through
+  Twenty and Forty Fathom, the Town, the Smelts and the Workings to the
+  Bottom of the Winze at 200 fathoms, switching as you change level. Each
+  level is laid out as its exits go and tinted by district, as Zennor is,
+  and the ways off it are drawn where they leave: the cage's shaft as a
+  black well off each station, naming the levels above and below, the man
+  engine's slot beside it with its seconds, the Great Stair's treads, and a
+  plain way down as a small well. Hover over one for where it goes and how
+  long it takes.
 
 Your place is lit with the same glow as in the model, not marked with a dot:
 a room box, a stretch of corridor or the ladderway hatch. The plan
@@ -226,9 +239,9 @@ The map shows only that door, not where in the row your unit is.
 Hover over a room or a corridor stop to see its name, its address and, for a
 closed room, why it's closed.
 
-Riding a lift or Zennor's tram, the deck plan gives way to the car itself,
-as aboard a one-room ship: the lift's square car or the tram's long wooden
-one, its doors open or shut, and under it a line of its stops with the car
+Riding a lift, Zennor's tram or Dolcoath's cage, the deck plan gives way to
+the car itself, as aboard a one-room ship: the lift's square car, the tram's
+long wooden one or the cage's box of bars, its doors or gates open or shut, and under it a line of its stops with the car
 on it, at its stop or midway between two with an arrow the way it's going.
 
 **Aboard a ship.** The bottom band shows the ship's plan in place of the

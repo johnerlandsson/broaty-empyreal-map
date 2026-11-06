@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { loadTweaks, resolveLook, resolveTweak } from "./tweaks.mjs";
+import { checkTweak, loadTweaks, resolveLook, resolveTweak } from "./tweaks.mjs";
 
 const dir = (name = "") => new URL(`../../tests/fixtures/tweaks/${name}`, import.meta.url).pathname;
 const room = (id, extra = {}) => ({ id: `p.${id}`, name: id, address: "Mid 1:00, fore", ...extra });
@@ -295,6 +295,23 @@ describe("resolveLook orphans", () => {
 
   it("does not report inherited keys for rooms the place lacks", () => {
     expect(resolveLook("mid", [room("gate")], "decks", tweaks).orphans).toEqual([]);
+  });
+});
+
+describe("a levels section", () => {
+  const check = (levels) => () => checkTweak("t.json", { levels }, { docks: "#fff" });
+  it("takes ground, depths and names, each keyed by room", () => {
+    expect(check({ ground: { pithead: "square" }, depths: { pithead: 0, twenty: 20 }, names: { field: "the Pit" } })).not.toThrow();
+  });
+  it("refuses an unknown key, a depth that isn't a number of 0 or more, and an empty name", () => {
+    expect(check({ root: "pithead" })).toThrow(/t\.json: levels\.root/);
+    expect(check({ depths: { twenty: "20" } })).toThrow(/levels\.depths\.twenty must be a depth, 0 or more/);
+    expect(check({ depths: { twenty: -1 } })).toThrow(/levels\.depths\.twenty/);
+    expect(check({ names: { field: "" } })).toThrow(/levels\.names\.field must be a string/);
+  });
+  it("reports a room it names that the place lacks", () => {
+    const t = { palette: { industrial: "#000" }, places: { x: { levels: { depths: { here: 0, gone: 20 }, names: { lost: "Lost" } } } } };
+    expect(resolveLook("x", [room("here")], "none", t).orphans).toEqual(["levels.depths.gone", "levels.names.lost"]);
   });
 });
 

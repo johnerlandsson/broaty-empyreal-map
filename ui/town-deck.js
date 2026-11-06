@@ -10,7 +10,7 @@
 import { DISTRICT_COLOURS as DC } from "./lib/geometry.js";
 import { MAX_W, RIVER, townFrame, townLayout, townShape } from "./lib/town.js";
 import { el } from "./lib/svg.js";
-import { BIN_INSET, DIM, JOB_STEP, PLATE, binMark, dropRows, hasBin, hover, jobMarks, label, roomBox } from "./deck-view.js";
+import { BIN_INSET, DIM, JOB_STEP, PLATE, TXT, binMark, dropRows, hasBin, hover, jobMarks, label, roomBox } from "./deck-view.js";
 
 // style guide §4.2, Towns
 const GROUND = "#110e0b";
@@ -33,11 +33,16 @@ const AWAY = 0.45; // zoomed out past this (screen px a unit), districts are nam
  *   builder DeckView takes: one plan; with pick, every room marked for picking
  */
 export function townPlans(spec) {
-  return (svg, index, opts) => [buildTownPlan(svg, index, spec, opts?.pick)];
+  return (svg, index, opts) => [townPlan(svg, index, spec, opts?.pick)];
 }
 
-function buildTownPlan(svg, index, spec, pick) {
-  const layout = townLayout(index, spec);
+/**
+ * One town plan. A city of levels draws each level as one (levels-deck.js), so `opts` can give
+ * the `layout` (else townLayout's), a `title` after N ▲, `draw(g, layout)` for what it adds over
+ * the rooms, its `frame(where)` and its `legend`, in place of a town's.
+ */
+export function townPlan(svg, index, spec, pick, opts = {}) {
+  const layout = opts.layout ?? townLayout(index, spec);
   const { boxes, links, labels, bounds, districts, river, scarp, gate, tram } = layout;
   const g = el("g", { display: "none" }, svg);
   // the ground covers the stars the view draws under every plan
@@ -111,7 +116,7 @@ function buildTownPlan(svg, index, spec, pick) {
   const stops = new Set(tram?.stops ?? []);
   for (const b of boxes) {
     const r = { x: b.cx - b.w / 2, y: b.cy - b.h / 2, width: b.w, height: b.h };
-    const tint = spec.tints?.[b.room.district] ?? DC.industrial;
+    const tint = spec.roomTints?.[b.room.id] ?? spec.tints?.[b.room.district] ?? DC.industrial;
     if (b.kind === "building") {
       el("rect", { x: r.x - 4, y: r.y - 4, width: b.w + 8, height: b.h + 8, rx: 6, fill: STONE, ...NONE }, g);
       el("rect", { ...r, rx: 5, fill: GROUND, ...NONE }, g);
@@ -128,6 +133,8 @@ function buildTownPlan(svg, index, spec, pick) {
     jobMarks(g, b.room, b.cx + b.w / 2 - BIN_INSET - JOB_STEP, b.cy + b.h / 2 - BIN_INSET, [-JOB_STEP, 0]);
     if (b.kind !== "building") hit(g, townShape(layout, { kind: "room", id: b.room.id }), b.room, pick);
   }
+
+  opts.draw?.(g, layout);
 
   for (const t of labels) {
     t.lines.forEach((s, i) =>
@@ -148,6 +155,7 @@ function buildTownPlan(svg, index, spec, pick) {
     return { near, far };
   });
   const north = label(g, bounds.x0 + 14, bounds.y0 + 14, "N ▲", 10, { fill: DIM, "text-anchor": "start", "letter-spacing": 1 });
+  if (opts.title) el("tspan", { dx: "0.8em", fill: TXT, "font-weight": 600, "letter-spacing": 2 }, north, opts.title);
 
   const hl = el("g", NONE, g);
   return {
@@ -163,8 +171,8 @@ function buildTownPlan(svg, index, spec, pick) {
     offsets: [0],
     margin: 0.35,
     shape: (where) => townShape(layout, where),
-    frame: (where) => townFrame(layout, index, where),
-    legend: [...(tram ? ["tram"] : []), ...(spec.wells?.length ? ["well"] : [])],
+    frame: opts.frame ?? ((where) => townFrame(layout, index, where)),
+    legend: opts.legend ?? [...(tram ? ["tram"] : []), ...(spec.wells?.length ? ["well"] : [])],
     onView: (k, view) => {
       // k is screen pixels a plan unit
       const px = 12 * k;

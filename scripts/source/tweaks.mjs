@@ -286,6 +286,7 @@ export function checkTweak(file, tweak, palette) {
     expectObject(file, name, tweak[name]);
     unknownKeys(file, name, tweak[name], allowed);
   }
+  checkLevels(file, tweak.levels);
   const drum = tweak.drum;
   if (drum?.rooms !== undefined) {
     expectObject(file, "drum.rooms", drum.rooms);
@@ -297,6 +298,21 @@ export function checkTweak(file, tweak, palette) {
   if (drum?.axis !== undefined) {
     expectObject(file, "drum.axis", drum.axis);
     unknownKeys(file, "drum.axis", drum.axis, AXIS_KEYS);
+  }
+}
+
+/** A city of levels' section: each of its parts keyed by room, a depth a number of 0 or more, a
+ *  name or a kind of ground a string. */
+function checkLevels(file, levels) {
+  if (levels === undefined) return;
+  for (const key of ["ground", "depths", "names"]) {
+    if (levels[key] === undefined) continue;
+    expectObject(file, `levels.${key}`, levels[key]);
+    for (const [id, v] of Object.entries(levels[key])) {
+      if (key === "depths" ? !isNumber(v) || v < 0 : typeof v !== "string" || !v) {
+        throw new Error(`${file}: levels.${key}.${id} must be ${key === "depths" ? "a depth, 0 or more" : "a string"}`);
+      }
+    }
   }
 }
 
@@ -426,6 +442,9 @@ function namedRooms(tweak) {
   (town.wells ?? []).forEach((id, i) => named.push([`town.wells[${i}]`, id]));
   for (const id of Object.keys(town.ground ?? {})) named.push([`town.ground.${id}`, id]);
   if (town.river?.bridge !== undefined) named.push(["town.river.bridge", town.river.bridge]);
+  for (const key of ["ground", "depths", "names"]) {
+    for (const id of Object.keys(tweak.levels?.[key] ?? {})) named.push([`levels.${key}.${id}`, id]);
+  }
   return named;
 }
 
@@ -487,7 +506,7 @@ export function resolveLook(placeId, rooms, layoutKind, tweaks, kind = "area") {
   } else if (tweak.view?.cutaway !== undefined && tweak.view.cutaway !== "off") {
     throw new Error(`${file}: view.cutaway ${JSON.stringify(tweak.view.cutaway)} only applies to decks places`);
   }
-  if (layoutKind !== "decks" && layoutKind !== "wheel" && tweak.town && tweak.view?.camera) {
+  if (layoutKind !== "decks" && layoutKind !== "wheel" && (tweak.town || tweak.levels) && tweak.view?.camera) {
     throw new Error(`${file}: view.camera doesn't apply to towns`);
   }
 

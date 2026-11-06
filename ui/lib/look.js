@@ -88,6 +88,36 @@ export function townData(data) {
   };
 }
 
+/**
+ * A city of levels' spec (Dolcoath), from its `levels` look and its paint: its rooms' kinds of open
+ * ground, the levels' depths and names, each keyed by a room on it, all by full id; and a tint a
+ * district, as a town's.
+ * A room painted other than its district (a market) has its own tint in `roomTints`.
+ * @returns {{prefix: string, tints: Record<string, string>, roomTints: Record<string, string>,
+ *   ground: Record<string, string>, depths: Record<string, number>, names: Record<string, string>}}
+ */
+export function levelsSpec(data) {
+  const full = fullId(data);
+  const levels = data.look.levels ?? {};
+  const painted = tints(data);
+  const tint = {};
+  for (const d of data.districts ?? []) {
+    const room = data.rooms.find((r) => r.district === d.id && painted[r.id]);
+    if (room) tint[d.id] = painted[room.id];
+  }
+  const byFull = (obj) => Object.fromEntries(Object.entries(obj ?? {}).map(([local, v]) => [full(local), v]));
+  // a room painted other than its district (the Exchange, a market) keeps its own
+  const roomTints = Object.fromEntries(data.rooms.filter((r) => painted[r.id] && painted[r.id] !== tint[r.district]).map((r) => [r.id, painted[r.id]]));
+  return { prefix: data.id, tints: tint, roomTints, ground: byFull(levels.ground), depths: byFull(levels.depths), names: byFull(levels.names) };
+}
+
+/** A city of levels as indexLevels takes it: townData's, each car's stops with the names it gives them. */
+export function levelsData(data) {
+  const town = townData(data);
+  const named = (r) => Object.fromEntries(r.car.stops.filter((s) => s.name).map((s) => [s.room, s.name]));
+  return { ...town, cars: data.rooms.filter((r) => r.car).map((r, i) => ({ ...town.cars[i], named: named(r) })) };
+}
+
 /** The source's exit words as the station's rooms have them. */
 const WAY = { north: "N", south: "S", east: "E", west: "W", up: "U", down: "D", in: "IN", out: "OUT" };
 

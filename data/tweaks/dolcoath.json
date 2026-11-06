@@ -1,0 +1,30 @@
+{
+  "paint": {
+    "exchange": "concourse"
+  },
+  "paintDistricts": {
+    "pit": "docks",
+    "old-levels": "commons",
+    "town": "residential",
+    "smelts": "industrial",
+    "workings": "midring"
+  },
+  "levels": {
+    "ground": {
+      "pithead": "square",
+      "drops": "square"
+    },
+    "depths": {
+      "pithead": 0,
+      "twenty": 20,
+      "forty": 40,
+      "town-station": 80,
+      "smelts-station": 120,
+      "workings-station": 160,
+      "winze": 200
+    },
+    "names": {
+      "field": "the Pit"
+    }
+  }
+}

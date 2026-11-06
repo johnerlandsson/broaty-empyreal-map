@@ -86,7 +86,7 @@ first. Unsaved changes are not kept after a reload.
 
 - Left, the rail. **From the last sync** lists the places the report names,
   with badges for `new`, rooms changed and orphans. A place with no data to
-  open is greyed. **Stations** lists the decks, drum, town and wheel
+  open is greyed. **Stations** lists the decks, drum, town, levels and wheel
   places. **Ship classes** lists the ship plans by their hull's name (the
   freighter as `medium freighter`), or says `none yet`. Click one to open it.
 - Middle, the map. The overview (the 3D model) is above, the plan below. On

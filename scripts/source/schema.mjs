@@ -2,11 +2,12 @@
 // value comes from down a `like` chain. No Node imports, so the browser's editor can load it too.
 
 /** A tweak file's top keys, in the order a file is written. */
-export const TOP_KEYS = ["like", "paint", "paintDistricts", "footprints", "hull", "profile", "surface", "greebles", "fixtures", "view", "place", "drum", "town", "wheel"];
+export const TOP_KEYS = ["like", "paint", "paintDistricts", "footprints", "hull", "profile", "surface", "greebles", "fixtures", "view", "place", "drum", "town", "levels", "wheel"];
 /** The builder sections: allowed keys of each (stage 1). `wheel` is empty. */
 export const SECTION_KEYS = {
   drum: ["rooms", "axis", "way"],
   town: ["root", "uphill", "ground", "gate", "wells", "river", "scarp"],
+  levels: ["ground", "depths", "names"],
   wheel: [],
 };
 export const DRUM_ROOM_KEYS = ["x", "y", "z", "hour", "band", "terrain"];

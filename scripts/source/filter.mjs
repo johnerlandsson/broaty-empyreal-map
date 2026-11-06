@@ -44,7 +44,7 @@ export function keepArea(area) {
 /**
  * @param {object} raw  one room as the source writes it
  * @returns {{room: object, dropped: {fields: string[], flags: string[]}}}  an exit keeps where it
- *   goes, the way through, its seconds and its clearance; a car its kind and its stops' rooms; a drop
+ *   goes, the way through, its seconds and its clearance; a car its kind and its stops' rooms and names; a drop
  *   point its name; any other key of
  *   theirs is dropped by dotted name ("exits.*.hidden", "car.perStop")
  */
@@ -64,7 +64,7 @@ export function keepRoom(raw) {
       );
     } else if (key === "car") {
       const car = only(value, ["kind", "stops"], "car", dropped.fields);
-      if (car.stops) car.stops = car.stops.map((stop) => only(stop, ["room"], "car.stops.*", dropped.fields));
+      if (car.stops) car.stops = car.stops.map((stop) => only(stop, ["room", "name"], "car.stops.*", dropped.fields));
       room.car = car;
     } else if (key === "drop") {
       room.drop = only(value, ["name"], "drop", dropped.fields);
