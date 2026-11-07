@@ -2,7 +2,8 @@
 // thirteen halts on decks (Morvah Deep, Gwithian Reach, Carrow Yard, Lanyon High, the ring's Kynance
 // Spindle, Marazion Quay, Penwith Vats, Botallack Head, Polperro Old Dock and Lamorna Light, and the
 // Mid's Kilmar Steading, Caradon Works and Garrow Stop) and a walk round each, a stop at a made-up
-// Pendeen Halt, which has no plan, then down to Zennor on Tamsin and a walk round the city (dev/zennor-walk.js), through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
+// Pendeen Halt, which has no plan, then down to Zennor on Tamsin and a walk round the city (dev/zennor-walk.js), then to
+// Dolcoath on Orrin, round the Pit and down the cage to the Town, through the fake panel, using the same `location` and `scene` message shapes the Lua side posts
 // (src/station_map/location.lua, src/station_map/scene.lua).
 //
 //   ?step=N   open on route step N, as a panel re-mounting mid-walk would (only step N is replayed)
@@ -11,7 +12,7 @@
 //   ?debug    count model turns / redraws and deck highlights / re-centres, shown bottom-right
 //   ?still    send settings { turn_model: false }
 //   ?scene=S  open on overview scene S (station, parked, travelling, belt, port-day / port-night over
-//             Zennor, which also emits charts placing it so, or orbit-day / orbit-night / orbit-unknown in high
+//             Zennor or pit-day / pit-night over Dolcoath, which also emit charts placing it so, or orbit-day / orbit-night / orbit-unknown in high
 //             orbit over Tamsin, which also emits charts and chart-ship putting her on that side, or on no
 //             side known); the bar's menu switches it
 //   ?hull=H   aboard a ship, send hull H (skiff, courier, freighter or tug: ui/data/ships.js) as the server will;
@@ -63,7 +64,7 @@ import { lanesOf } from "../ui/lib/lanes.js";
 import { tissRooms, townData } from "../ui/lib/look.js";
 import { ChartView } from "../ui/chart-view.js";
 import { indexCharts, positionOf } from "../ui/lib/orbits.js";
-import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, senaraCharts, senaraContacts } from "./charts-fixture.js";
+import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, pitCharts, senaraCharts, senaraContacts } from "./charts-fixture.js";
 
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
@@ -121,6 +122,25 @@ function tramRide(from, to) {
     steps.push({ label: `The Tram, ${heading}, ${byId.get(p).name} to ${byId.get(q).name}`, msg: msg({ between: [p, q], heading, doors: "closed" }) });
   }
   steps.push({ label: `The Tram at ${byId.get(to).name}`, msg: msg({ at: to, heading, doors: "open" }) });
+  return steps;
+}
+
+/** Ride Dolcoath's cage from station `from` to `to`, as Empyreal.Room and Empyreal.Vehicle fold them:
+ *  its stops bottom to top, the Pithead the top, passing those between. */
+function cageRide(from, to) {
+  const cage = byId.get("dolcoath.cage");
+  const stops = cage.car.stops.map((s) => s.room);
+  const floors = stops.map((id) => ({ id }));
+  const [a, b] = [stops.indexOf(from), stops.indexOf(to)];
+  const dir = Math.sign(b - a);
+  const heading = dir > 0 ? "up" : "down";
+  const msg = (lift) => ({ gravity: 1.5, lift: { id: "dolcoath.cage", kind: "cage", floors, ...lift } });
+  const steps = [{ label: `The Cage at ${byId.get(from).name}`, msg: msg({ at: from, doors: "open" }) }];
+  for (let i = a; i !== b; i += dir) {
+    const [p, q] = [stops[i], stops[i + dir]];
+    steps.push({ label: `The Cage, ${heading}, ${byId.get(p).name} to ${byId.get(q).name}`, msg: msg({ between: [p, q], heading, doors: "closed" }) });
+  }
+  steps.push({ label: `The Cage at ${byId.get(to).name}`, msg: msg({ at: to, heading, doors: "open" }) });
   return steps;
 }
 
@@ -277,6 +297,13 @@ const ROUTE = [
   { label: "Flying to Zennor", msg: COCKPIT, scene: { scene: "travelling" } },
   { label: "Landed at Zennor", msg: COCKPIT, scene: { scene: "station", station: "zennor" } },
   ...ZENNOR_WALK.flatMap((id, i) => (id === TRAM ? tramRide(ZENNOR_WALK[i - 1], ZENNOR_WALK[i + 1]) : [room(id)])),
+  // Dolcoath: landed in the Pit, round its three rooms open to the sky, then down the cage to the Town
+  { label: "Flying to Dolcoath", msg: COCKPIT, scene: { scene: "travelling" } },
+  { label: "Over Dolcoath", msg: COCKPIT, scene: { scene: "port", port: "dolcoath" } },
+  { label: "Landed at Dolcoath", msg: COCKPIT, scene: { scene: "station", station: "dolcoath" } },
+  ...["dolcoath.field", "dolcoath.drops", "dolcoath.field", "dolcoath.pithead"].map(room),
+  ...cageRide("dolcoath.pithead", "dolcoath.town-station"),
+  ...["dolcoath.town-station", "dolcoath.bal-cross"].map(room),
 ];
 window.ROUTE = ROUTE;
 
@@ -380,10 +407,10 @@ function emitScene(name) {
     fp.emit("chart-ship", overTamsin(Date.now(), high));
     return fp.emit("scene", { scene: "orbit", planet: "tamsin" });
   }
-  const side = /^port-(day|night)$/.exec(name)?.[1];
+  const [, over, side] = /^(port|pit)-(day|night)$/.exec(name) ?? [];
   if (!side) return fp.emit("scene", { scene: name });
-  fp.emit("charts", senaraCharts(Date.now(), null, side));
-  fp.emit("scene", { scene: "port", port: "zennor" });
+  fp.emit("charts", over === "pit" ? pitCharts(Date.now(), side) : senaraCharts(Date.now(), null, side));
+  fp.emit("scene", { scene: "port", port: over === "pit" ? "dolcoath" : "zennor" });
 }
 sceneMenu.addEventListener("change", () => emitScene(sceneMenu.value));
 

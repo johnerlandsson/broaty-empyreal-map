@@ -1,6 +1,6 @@
 // The overview's space scenes, as plain data: a starfield seen looking ahead (still when parked,
 // streaming when travelling), low-poly rocks drifting past at a belt, with what the ship's sensors
-// and laser are doing there, over a port the town on its planet's face below, and in high orbit the
+// and laser are doing there, over a port the town on its planet's face below (or Dolcoath's pit), and in high orbit the
 // planet's face, rounder from up there, with cloud on it. No DOM here; the canvas drawing is in space-view.js.
 
 const PARKED = 0.01; // the parked starfield barely drifts
@@ -425,6 +425,74 @@ export class Town {
     this.dust = Array.from({ length: 30 }, () => ({ x: rnd(), y: rnd(), rx: 10 + rnd() * 40, ry: 3 + rnd() * 8, a: rnd() }));
   }
 }
+
+/**
+ * Dolcoath's port from above, as its `pit` hull's exterior has it (content/game/hulls.yaml): "a vast
+ * terraced pit in the frozen ground, its benches stepping down to a floor marked out in pads, a
+ * winding house standing over the shaft at its edge". John's pick E (docs/maps/reference/
+ * dolcoath-overview-options.png, 2026-11-07): an angular, low-poly pit. In the same units as Town's,
+ * the floor's width about its centre (y down, north up the view). `rings` go from the rim in to the
+ * floor's edge, each a polygon of SIDES corners squashed to the view's slant; between each two, a
+ * face, a riser (the bench's wall, `riser` true, toned by which way it faces) or a tread (its top).
+ * `road` is the haul road spiralling down round the benches, `winding` the winding house at the
+ * floor's north edge over the shaft, `drops` the Drops' bed of crushed stone at its south end, and
+ * the beacons at the floor's corners blink as the field's do.
+ */
+export class Pit {
+  static SIDES = 10;
+  static BENCHES = 6;
+  constructor(rnd) {
+    const n = Pit.SIDES;
+    const squash = 0.5; // the pit seen from above at the scene's slant
+    const wobble = Array.from({ length: n }, () => 0.9 + rnd() * 0.18); // a dug pit, not a turned one
+    const ring = (r) =>
+      Array.from({ length: n }, (_, j) => {
+        const a = (j / n) * Math.PI * 2 + 0.2;
+        return [Math.cos(a) * r * wobble[j], Math.sin(a) * r * wobble[j] * squash];
+      });
+    const rim = 1.35;
+    const edge = 0.66; // the floor's edge
+    // each bench a wide tread, then a narrow riser down to the next
+    const bench = (rim - edge) / Pit.BENCHES;
+    const radii = [rim];
+    for (let i = 0; i < Pit.BENCHES; i++) radii.push(rim - i * bench - bench * 0.68, rim - (i + 1) * bench);
+    this.rings = radii.map(ring);
+    this.faces = [];
+    for (let i = 0; i < this.rings.length - 1; i++) {
+      const riser = i % 2 === 1; // a tread at the rim, then its riser down to the next
+      for (let j = 0; j < n; j++) {
+        const k = (j + 1) % n;
+        const pts = [this.rings[i][j], this.rings[i][k], this.rings[i + 1][k], this.rings[i + 1][j]];
+        this.faces.push({ pts, riser, tone: riser ? faceTone(pts) : 1 });
+      }
+    }
+    this.floor = { w: 1, h: 0.36 };
+    this.edge = this.rings[this.rings.length - 1];
+    this.pads = [-1 / 3, 0, 1 / 3];
+    this.road = Array.from({ length: 40 }, (_, i) => {
+      const t = i / 39;
+      const a = -0.4 - t * Math.PI * 1.7;
+      const r = rim - 0.04 - t * (rim - edge - 0.06);
+      return [Math.cos(a) * r, Math.sin(a) * r * squash];
+    });
+    this.winding = { x: 0, y: -this.floor.h / 2 - 0.05, w: 0.18, h: 0.08 };
+    this.drops = { x: 0, y: this.floor.h / 2 + 0.07, w: 0.26, h: 0.07 };
+    this.beacons = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sy], i) => ({ x: (sx * this.floor.w) / 2, y: (sy * this.floor.h) / 2, at: i * 0.25 }));
+  }
+}
+
+/** A riser's tone, 0 or 1 of the three Tones, by how squarely its wall faces the light from the
+ *  upper left: a pit's walls face in, so its far (north-west) walls are in shadow. */
+function faceTone([a, b]) {
+  const mx = (a[0] + b[0]) / 2;
+  const my = (a[1] + b[1]) / 2;
+  const l = Math.hypot(mx, my) || 1;
+  const facing = (-mx / l) * -0.6 + (-my / l) * -0.8; // the wall faces the centre; the light comes from (-0.6, -0.8)
+  return facing > -0.2 ? 1 : 0; // a lit wall the middle Tone, one in shadow the dark; the treads take the light one
+}
+
+/** The ground a port's hull is drawn as from orbit: Dolcoath's `pit`, else a town round a field. */
+export const groundOf = (hull) => (hull === "pit" ? "pit" : "town");
 
 // --- a planet from high orbit ----------------------------------------------------------------
 

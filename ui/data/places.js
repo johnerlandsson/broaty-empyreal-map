@@ -25,7 +25,10 @@ export default [
     "builder": "decks",
     "docks": [
       "botallack_head"
-    ]
+    ],
+    "hulls": {
+      "botallack_head": "outpost"
+    }
   },
   {
     "id": "caradon",
@@ -33,7 +36,10 @@ export default [
     "builder": "decks",
     "docks": [
       "caradon_works"
-    ]
+    ],
+    "hulls": {
+      "caradon_works": "outpost"
+    }
   },
   {
     "id": "carrow",
@@ -41,7 +47,10 @@ export default [
     "builder": "decks",
     "docks": [
       "carrow_yard"
-    ]
+    ],
+    "hulls": {
+      "carrow_yard": "outpost"
+    }
   },
   {
     "id": "dolcoath",
@@ -49,7 +58,10 @@ export default [
     "builder": "levels",
     "docks": [
       "dolcoath"
-    ]
+    ],
+    "hulls": {
+      "dolcoath": "pit"
+    }
   },
   {
     "id": "garrow",
@@ -57,7 +69,10 @@ export default [
     "builder": "decks",
     "docks": [
       "garrow_stop"
-    ]
+    ],
+    "hulls": {
+      "garrow_stop": "outpost"
+    }
   },
   {
     "id": "gwithian",
@@ -65,7 +80,10 @@ export default [
     "builder": "decks",
     "docks": [
       "gwithian_reach"
-    ]
+    ],
+    "hulls": {
+      "gwithian_reach": "outpost"
+    }
   },
   {
     "id": "kilmar",
@@ -73,7 +91,10 @@ export default [
     "builder": "decks",
     "docks": [
       "kilmar_steading"
-    ]
+    ],
+    "hulls": {
+      "kilmar_steading": "outpost"
+    }
   },
   {
     "id": "kynance",
@@ -81,7 +102,10 @@ export default [
     "builder": "decks",
     "docks": [
       "kynance_spindle"
-    ]
+    ],
+    "hulls": {
+      "kynance_spindle": "outpost"
+    }
   },
   {
     "id": "lamorna",
@@ -89,7 +113,10 @@ export default [
     "builder": "decks",
     "docks": [
       "lamorna_light"
-    ]
+    ],
+    "hulls": {
+      "lamorna_light": "outpost"
+    }
   },
   {
     "id": "lanyon",
@@ -97,7 +124,10 @@ export default [
     "builder": "decks",
     "docks": [
       "lanyon_high"
-    ]
+    ],
+    "hulls": {
+      "lanyon_high": "outpost"
+    }
   },
   {
     "id": "marazion",
@@ -105,7 +135,10 @@ export default [
     "builder": "decks",
     "docks": [
       "marazion_quay"
-    ]
+    ],
+    "hulls": {
+      "marazion_quay": "outpost"
+    }
   },
   {
     "id": "morvah",
@@ -113,7 +146,10 @@ export default [
     "builder": "decks",
     "docks": [
       "morvah_deep"
-    ]
+    ],
+    "hulls": {
+      "morvah_deep": "outpost"
+    }
   },
   {
     "id": "orrin",
@@ -121,7 +157,10 @@ export default [
     "builder": "decks",
     "docks": [
       "orrin_station"
-    ]
+    ],
+    "hulls": {
+      "orrin_station": "outpost"
+    }
   },
   {
     "id": "penwith",
@@ -129,7 +168,10 @@ export default [
     "builder": "decks",
     "docks": [
       "penwith_vats"
-    ]
+    ],
+    "hulls": {
+      "penwith_vats": "outpost"
+    }
   },
   {
     "id": "polperro",
@@ -137,7 +179,10 @@ export default [
     "builder": "decks",
     "docks": [
       "polperro_old_dock"
-    ]
+    ],
+    "hulls": {
+      "polperro_old_dock": "outpost"
+    }
   },
   {
     "id": "tiss",
@@ -145,7 +190,10 @@ export default [
     "builder": "wheel",
     "docks": [
       "tiss"
-    ]
+    ],
+    "hulls": {
+      "tiss": "wheel"
+    }
   },
   {
     "id": "wenna",
@@ -153,7 +201,10 @@ export default [
     "builder": "drum",
     "docks": [
       "wenna_halt"
-    ]
+    ],
+    "hulls": {
+      "wenna_halt": "outpost"
+    }
   },
   {
     "id": "zennor",
@@ -161,7 +212,10 @@ export default [
     "builder": "town",
     "docks": [
       "zennor"
-    ]
+    ],
+    "hulls": {
+      "zennor": "port"
+    }
   }
 ];
 

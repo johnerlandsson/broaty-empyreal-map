@@ -375,8 +375,11 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
     const built = await placeFile(ctx, { kind: "area", file: `content/areas/${file}`, area, raw, path: join(outDir, `${id}.js`) });
     if (!built) continue;
     const own = new Set(raw.map((r) => r.id));
-    const docks = src.world.filter((w) => own.has(w.berth)).map((w) => w.id).sort();
-    places.push({ id, prefix: id, builder: built.builder, docks });
+    const berthed = src.world.filter((w) => own.has(w.berth)).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    const docks = berthed.map((w) => w.id);
+    // each dock's hull (hulls.yaml), whose exterior is how a port looks from orbit: a `pit` is Dolcoath's
+    const hulls = Object.fromEntries(berthed.filter((w) => typeof w.hull === "string").map((w) => [w.id, w.hull]));
+    places.push({ id, prefix: id, builder: built.builder, docks, hulls });
   }
   const planIds = [];
   for (const plan of plans) {

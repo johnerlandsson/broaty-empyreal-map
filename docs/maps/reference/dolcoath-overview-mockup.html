@@ -1,0 +1,286 @@
+<!doctype html>
+<!-- Dolcoath's top band, 2026-11-07: the section underground (three ways), the rim over the Pit,
+     and the Pit from orbit (three ways). Drawn by hand from content/areas/dolcoath.yaml and the
+     `pit` hull's exterior (empyreal 6441e99). Self-contained: opens from disk. A throwaway: take
+     its look, not its code. Picked: C underground and E from orbit (2026-11-07); the rim as
+     shown, later given the Pit's north wall face on (docs/maps/dolcoath.md). -->
+<html><head><meta charset="utf-8"><title>Dolcoath overview: options</title><style>
+body{margin:0;background:#04060c;color:#7d8a9a;font:13px Inter,system-ui,sans-serif;padding:14px 18px;width:max-content}
+h2{color:#e3eaf2;font-size:15px;margin:18px 0 2px} h2 small{color:#7d8a9a;font-weight:400;font-size:12px;margin-left:8px}
+h1{color:#e3eaf2;font-size:17px;margin:6px 0 0}
+p{margin:2px 0 6px;max-width:1170px} .row{display:flex;gap:12px;align-items:flex-start} figure{margin:0}
+figcaption{font:11px "DejaVu Sans Mono",monospace;margin-top:3px}
+svg.band{width:380px;height:220px;display:block;background:#04060c;border:1px solid #1b2230;border-radius:4px}
+</style></head><body>
+<h1>Underground: a section through the shaft</h1>
+<p>You're in Bal Cross (the Town, 80 FM); the cage is between the Town and the Smelts going down. Each band is the panel's top band at its size; ⌂ frames the whole section, + and − zoom, as the T.I.S.S. model's do. It doesn't turn.</p>
+<h2>A · True to depth, levels as galleries <small>depth to scale; each level a gallery off the shafts, named on the right</small></h2>
+<div class="row" id="A"></div>
+<h2>B · The city in the rock <small>depth to scale, drawn: the Pit's benches in section, the headframe, each level's halls cut as caverns, the Smelts glowing</small></h2>
+<div class="row" id="B"></div>
+<h2>C · A shaft diagram <small>not to scale: the levels evenly spaced, a gauge you read at a glance; the Pit small at the top</small></h2>
+<div class="row" id="C"></div>
+
+<h1 style="margin-top:28px">The rim, from the Pit's three outdoor rooms</h1>
+<p>Zennor's sky as it is (the sun where it is today), over the Pit's own rim: the benches climbing on both sides to a rim high over the floor, so the sky is a smaller lid. Framed by the room: the Pit mid-floor, the Pithead with the headframe close by, the Drops behind its banks of broken rock. One way, no pick needed unless you want changes.</p>
+<div class="row" id="R"></div>
+
+<h1 style="margin-top:28px">From orbit, over the Pit</h1>
+<p>The <code>port</code> scene's ground, as Zennor's is drawn (the planet's face across the lower band), with Dolcoath's port in place of the town. By day and by night: the floodlights light the floor and leave the terraces black.</p>
+<h2>D · Rings from straight above <small>the benches as nested rings, lighter at the rim; the floor's plate grid with its pads; the winding house at the north edge, the Drops south</small></h2>
+<div class="row" id="D"></div>
+<h2>E · Cut benches, low-poly <small>an angular pit, the benches as faceted steps in the three Tones, the haul road spiralling down; the same floor and winding house</small></h2>
+<div class="row" id="E"></div>
+<h2>F · Seen at an angle <small>the pit foreshortened so the far wall's benches show as steps and the near wall hides its own; the headframe stands up</small></h2>
+<div class="row" id="F"></div>
+
+<script>
+const NS = "http://www.w3.org/2000/svg";
+const T = ["#3a4556", "#58667b", "#7e8da3"], EDGE = "#0d1218", HL = "#ffb347", TXT = "#e3eaf2", DIM = "#7d8a9a", LAMP = "#ffd98a", GLASS = "#cfe3ff", ROCK = "#141a22", ROCK2 = "#1b222c";
+function E(tag, a = {}, p, text) { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (text != null) e.textContent = text; if (p) p.appendChild(e); return e; }
+function band(row, cap, vb = "0 0 380 220") { const f = document.createElement("figure"); const s = E("svg", { viewBox: vb, class: "band" }); f.appendChild(s); const c = document.createElement("figcaption"); c.textContent = cap; f.appendChild(c); document.getElementById(row).appendChild(f); return s; }
+function ctrls(s) { ["+", "−", "⌂"].forEach((t, i) => { E("rect", { x: 352, y: 8 + i * 22, width: 18, height: 18, rx: 3, fill: "#0b1018", stroke: "#2b3646" }, s); E("text", { x: 361, y: 21 + i * 22, fill: TXT, "font-size": 11, "text-anchor": "middle" }, s, t); }); }
+const font = { "font-family": "Inter, system-ui, sans-serif" };
+function txt(s, x, y, t, a = {}) { return E("text", { x, y, fill: DIM, "font-size": 7, ...font, ...a }, s, t); }
+let seed = 7; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+
+const LEVELS = [
+  { n: "TWENTY FATHOM", d: 20, w: [-70, 60] }, { n: "FORTY FATHOM", d: 40, w: [-40, 90] },
+  { n: "THE TOWN", d: 80, w: [-110, 120] }, { n: "THE SMELTS", d: 120, w: [-80, 100] },
+  { n: "THE WORKINGS", d: 160, w: [-60, 150] },
+];
+
+// ---------- A: galleries to scale ----------
+function sectionA(s, you, cage, zoom) {
+  const k = zoom ? 2.2 : 0.8, top = zoom ? -95 : 44, cx = zoom ? 150 : 170;
+  const Y = (d) => top + d * k, X = (x) => cx + x * (zoom ? 1.6 : 0.8);
+  E("rect", { x: 0, y: Y(0), width: 380, height: 300, fill: ROCK }, s);
+  // the pit's bowl above the surface
+  const pit = [[-240, -28], [-150, -28], [-130, -20], [-110, -12], [-90, -5], [-70, 0], [70, 0], [90, -5], [110, -12], [130, -20], [150, -28], [240, -28]];
+  E("path", { d: "M" + pit.map(([x, h]) => `${X(x)},${Y(0) + h * (zoom ? 1.6 : 0.9)}`).join("L") + `L${X(240)},${Y(0) + 400}L${X(-240)},${Y(0) + 400}Z`, fill: ROCK2, stroke: T[0], "stroke-width": 0.8 }, s);
+  E("path", { d: `M${X(-70)},${Y(0)}H${X(70)}`, stroke: T[2], "stroke-width": 1.4 }, s);
+  // galleries
+  for (const L of LEVELS) {
+    const lit = L.n === you;
+    E("rect", { x: X(L.w[0]), y: Y(L.d) - 3, width: X(L.w[1]) - X(L.w[0]), height: 6, fill: lit ? HL : T[0], opacity: lit ? 0.9 : 1, rx: 1 }, s);
+    txt(s, X(L.w[1]) + 5, Y(L.d) + 2.5, `${L.d} FM  ${L.n}`, { fill: lit ? HL : DIM, "font-size": zoom ? 9 : 7, "font-weight": lit ? 600 : 400 });
+  }
+  // pump gallery, winze
+  E("rect", { x: X(-60), y: Y(170) - 2, width: X(-20) - X(-60), height: 4, fill: T[0] }, s); txt(s, X(-60) - 4, Y(170) + 2, "PUMP GALLERY", { "text-anchor": "end", "font-size": 6 });
+  E("path", { d: `M${X(130)},${Y(160)}V${Y(200)}`, stroke: T[0], "stroke-width": 2 }, s);
+  E("rect", { x: X(120), y: Y(200) - 2.5, width: X(145) - X(120), height: 5, fill: T[0] }, s); txt(s, X(145) + 4, Y(200) + 2, "200 FM  THE WINZE", { "font-size": 6 });
+  // shafts: cage (wide, black) and man engine beside it
+  E("rect", { x: X(-4), y: Y(0) - 26, width: X(4) - X(-4), height: Y(160) - Y(0) + 26, fill: "#05070a", stroke: T[1], "stroke-width": 0.6 }, s);
+  E("rect", { x: X(-12), y: Y(0), width: X(-8) - X(-12), height: Y(160) - Y(0), fill: "#05070a", stroke: T[0], "stroke-width": 0.5 }, s);
+  E("path", { d: `M${X(-10)},${Y(0)}V${Y(160)}`, stroke: "#8a6a44", "stroke-width": 0.8 }, s);
+  // headframe
+  const hx = X(0), hy = Y(0) - 26;
+  E("path", { d: `M${hx - 9},${Y(0) - 1}L${hx},${hy - 10}L${hx + 9},${Y(0) - 1}M${hx},${hy - 10}L${hx + 16},${Y(0) - 1}`, stroke: T[2], "stroke-width": 1, fill: "none" }, s);
+  E("circle", { cx: hx, cy: hy - 10, r: 3, fill: "none", stroke: T[2], "stroke-width": 1 }, s);
+  // cage
+  const cy = Y(cage.d);
+  E("rect", { x: X(-3.2), y: cy - 5, width: X(3.2) - X(-3.2), height: 10, fill: T[2], stroke: "#fff3df", "stroke-width": 0.6 }, s);
+  E("path", { d: cage.down ? `M${X(6)},${cy - 3}l3,5l3,-5z` : `M${X(6)},${cy + 3}l3,-5l3,5z`, fill: TXT }, s);
+  txt(s, 8, 14, zoom ? "DOLCOATH · zoomed in on the Town" : "DOLCOATH · 1.5 g", { "letter-spacing": 1.5, "font-size": 8 });
+  txt(s, X(-70) + 2, Y(0) - 3, "THE PIT", { "font-size": 6 });
+  ctrls(s);
+}
+
+// ---------- B: city in the rock ----------
+function sectionB(s, you, cage) {
+  const k = 0.78, top = 52, cx = 168;
+  const Y = (d) => top + d * k, X = (x) => cx + x * 0.8;
+  // sky glimpse and the pit's benches stepping in section
+  const steps = (side) => { const p = []; for (let i = 0; i < 6; i++) { const x0 = side * (70 + i * 18), x1 = side * (70 + i * 18 + 14), h = -i * 5; p.push([x0, h], [x1, h], [x1, h - 5]); } return p; };
+  const L = steps(-1).reverse(), R = steps(1);
+  const prof = [[-260, -30], ...L, [70, 0].map((v, i) => i ? v : -70), [70, 0], ...R, [260, -30]];
+  E("path", { d: "M" + prof.map(([x, h]) => `${X(x)},${Y(0) + h}`).join("L") + `L${X(260)},${Y(0) + 400}L${X(-260)},${Y(0) + 400}Z`, fill: ROCK, stroke: T[1], "stroke-width": 0.8, "stroke-linejoin": "round" }, s);
+  // frost line at the top (frozen rock) to warm below
+  const g = E("linearGradient", { id: "warm", x1: 0, y1: 0, x2: 0, y2: 1 }, E("defs", {}, s));
+  E("stop", { offset: 0, "stop-color": "#1c2633" }, g); E("stop", { offset: 1, "stop-color": "#24170f" }, g);
+  E("rect", { x: 0, y: Y(4), width: 380, height: 300, fill: "url(#warm)" }, s);
+  E("path", { d: `M${X(-70)},${Y(0)}H${X(70)}`, stroke: GLASS, "stroke-opacity": .5, "stroke-width": 1.2 }, s);
+  // caverns
+  const hall = (x0, x1, d, h, fill, stroke) => { const y = Y(d); E("path", { d: `M${X(x0)},${y + 3}V${y - h + 3}Q${(X(x0) + X(x1)) / 2},${y - h - 3} ${X(x1)},${y - h + 3}V${y + 3}Z`, fill, stroke, "stroke-width": 0.8 }, s); };
+  for (const Lv of LEVELS) {
+    const lit = Lv.n === you;
+    const h = Lv.n === "THE TOWN" ? 14 : Lv.n === "THE SMELTS" ? 11 : 7;
+    hall(Lv.w[0], Lv.w[1], Lv.d, h, lit ? "#3a2a14" : "#0a0d12", lit ? HL : T[0]);
+    // lamps / pillars
+    for (let x = Lv.w[0] + 8; x < Lv.w[1] - 4; x += 12) {
+      if (Lv.n === "THE TOWN" || Lv.d < 50) E("rect", { x: X(x), y: Y(Lv.d) - h + 4, width: 1.4, height: h - 1, fill: lit ? "#a07a40" : T[0] }, s);
+      E("circle", { cx: X(x + 5), cy: Y(Lv.d) - h / 2 + 2, r: 0.9, fill: LAMP, opacity: lit ? .9 : .45 }, s);
+    }
+    if (Lv.n === "THE SMELTS") E("ellipse", { cx: X(40), cy: Y(Lv.d) - 3, rx: 30, ry: 7, fill: "#e8925a", opacity: .35 }, s);
+    txt(s, X(Lv.w[1]) + 5, Y(Lv.d), `${Lv.n}`, { fill: lit ? HL : DIM, "font-size": 7, "font-weight": lit ? 600 : 400 });
+    txt(s, X(Lv.w[1]) + 5, Y(Lv.d) + 7, `${Lv.d} fathoms`, { fill: lit ? HL : "#55606e", "font-size": 5.5 });
+  }
+  // great stair (40 -> 80) and pump gallery, winze
+  E("path", { d: `M${X(-30)},${Y(40) + 2}L${X(-90)},${Y(80)}`, stroke: T[1], "stroke-width": 1.6, "stroke-dasharray": "2 1" }, s);
+  hall(-60, -22, 172, 5, "#0a0d12", T[0]); txt(s, X(-60) - 3, Y(172), "PUMP GALLERY", { "text-anchor": "end", "font-size": 5.5 });
+  E("path", { d: `M${X(132)},${Y(160)}V${Y(198)}`, stroke: T[0], "stroke-width": 2 }, s);
+  hall(118, 146, 200, 5, "#0a0d12", T[0]); txt(s, X(146) + 4, Y(200), "THE WINZE · 200", { "font-size": 5.5 });
+  // shafts
+  E("rect", { x: X(-4), y: Y(0) - 2, width: 6.4, height: Y(160) - Y(0) + 2, fill: "#020304", stroke: T[1], "stroke-width": .6 }, s);
+  E("rect", { x: X(-13), y: Y(0), width: 3, height: Y(160) - Y(0), fill: "#020304", stroke: T[0], "stroke-width": .5 }, s);
+  for (let d = 0; d <= 160; d += 8) E("path", { d: `M${X(-13)},${Y(d)}h3`, stroke: "#8a6a44", "stroke-width": .5 }, s);
+  // headframe + winding house + mist
+  const hx = X(0), y0 = Y(0);
+  E("rect", { x: hx + 12, y: y0 - 10, width: 16, height: 10, fill: T[0], stroke: EDGE }, s);
+  E("path", { d: `M${hx - 8},${y0}L${hx - 1},${y0 - 30}L${hx + 6},${y0}M${hx - 1},${y0 - 30}L${hx + 16},${y0 - 10}`, stroke: T[2], "stroke-width": 1.1, fill: "none" }, s);
+  E("circle", { cx: hx - 1, cy: y0 - 30, r: 3.5, fill: "none", stroke: T[2] }, s);
+  E("ellipse", { cx: hx + 1, cy: y0 - 4, rx: 10, ry: 4, fill: "#cfd8e3", opacity: .15 }, s);
+  // cage
+  const cy = Y(cage.d);
+  E("rect", { x: X(-3.4), y: cy - 5, width: 5.2, height: 10, fill: T[2], stroke: "#fff3df", "stroke-width": .6 }, s);
+  E("path", { d: `M${X(-4) + 10},${cy - 3}l3,5l3,-5z`, fill: TXT }, s);
+  txt(s, 8, 14, "DOLCOATH · 1.5 g", { "letter-spacing": 1.5, "font-size": 8 });
+  ctrls(s);
+}
+
+// ---------- C: diagram ----------
+function sectionC(s, you, cageIdx) {
+  const rows = [["THE PIT", "surface"], ["TWENTY FATHOM", "20"], ["FORTY FATHOM", "40"], ["THE TOWN", "80"], ["THE SMELTS", "120"], ["THE WORKINGS", "160"], ["THE WINZE", "200"]];
+  const y0 = 38, dy = 26, sx = 120;
+  // the pit, tiny, on top
+  E("path", { d: `M${sx - 60},${y0 - 14}l10,4l10,4l10,4h60l10,-4l10,-4l10,-4`, fill: "none", stroke: T[1] }, s);
+  E("path", { d: `M${sx - 4},${y0}V${y0 - 18}M${sx - 9},${y0}L${sx},${y0 - 20}L${sx + 7},${y0}`, stroke: T[2], fill: "none", "stroke-width": .9 }, s);
+  E("rect", { x: sx - 4, y: y0, width: 8, height: dy * 5, fill: "#05070a", stroke: T[1], "stroke-width": .6 }, s);
+  E("rect", { x: sx - 16, y: y0, width: 4, height: dy * 5, fill: "#05070a", stroke: T[0], "stroke-width": .5 }, s);
+  txt(s, sx - 14, y0 + dy * 5 + 10, "man engine", { "text-anchor": "middle", "font-size": 5.5 });
+  txt(s, sx, y0 + dy * 5 + 10, "cage", { "font-size": 5.5, "text-anchor": "start", x: sx + 2 });
+  E("path", { d: `M${sx + 40},${y0 + dy * 5}V${y0 + dy * 6}`, stroke: T[0], "stroke-dasharray": "2 2" }, s);
+  rows.forEach(([n, d], i) => {
+    const y = y0 + dy * i, lit = n === you;
+    const x = i === 6 ? sx + 40 : sx;
+    E("circle", { cx: x, cy: y, r: lit ? 4.2 : 3, fill: lit ? HL : "#0b1018", stroke: lit ? "#fff3df" : T[2], "stroke-width": .8 }, s);
+    E("path", { d: `M${x + 8},${y}H${x + 30}`, stroke: lit ? HL : T[0], "stroke-width": lit ? 2.4 : 1.4 }, s);
+    txt(s, x + 36, y + 3, n, { fill: lit ? HL : TXT, "font-size": 8, "font-weight": lit ? 600 : 400 });
+    txt(s, x - 24, y + 3, d === "surface" ? "0" : d, { "text-anchor": "end", "font-size": 7 });
+  });
+  txt(s, sx - 24, y0 - 6, "FM", { "text-anchor": "end", "font-size": 6 });
+  const cy = y0 + dy * cageIdx;
+  E("rect", { x: sx - 3, y: cy - 5, width: 6, height: 10, fill: T[2], stroke: "#fff3df", "stroke-width": .6 }, s);
+  E("path", { d: `M${sx + 9},${cy - 3}l3,5l3,-5z`, fill: TXT, transform: "translate(-21 0)" }, s);
+  txt(s, 8, 14, "DOLCOATH · 1.5 g", { "letter-spacing": 1.5, "font-size": 8 });
+  ctrls(s);
+}
+
+sectionA(band("A", "A1 · in the Town, cage going down"), "THE TOWN", { d: 100, down: true });
+sectionA(band("A", "A2 · zoomed in round the Town"), "THE TOWN", { d: 100, down: true }, true);
+sectionB(band("B", "B1 · in the Town, cage going down"), "THE TOWN", { d: 100 });
+sectionB(band("B", "B2 · in the Workings, cage at Twenty"), "THE WORKINGS", { d: 20 });
+sectionC(band("C", "C1 · in the Town, cage going down"), "THE TOWN", 3.5);
+sectionC(band("C", "C2 · in the Workings, cage at Twenty"), "THE WORKINGS", 1);
+
+// ---------- the rim ----------
+function rim(s, room) {
+  const HZ = room === "pit" ? 120 : 112, DOME = 150;
+  // sky dome (night, Zennor's tint), smaller: the rim cuts it
+  const clip = E("clipPath", { id: "c" + room }, E("defs", {}, s)); E("path", { d: `M${190 - DOME},${HZ}A${DOME},${DOME} 0 0 1 ${190 + DOME},${HZ}Z` }, clip);
+  const g = E("g", { "clip-path": `url(#c${room})` }, s);
+  E("rect", { x: 0, y: 0, width: 380, height: 220, fill: "#1c2430" }, g);
+  seed = 3; for (let i = 0; i < 160; i++) E("circle", { cx: rnd() * 380, cy: rnd() * HZ, r: .5 + rnd() * .5, fill: "#fffaf0", opacity: .3 + rnd() * .6 }, g);
+  E("path", { d: `M${190 - DOME},${HZ}A${DOME},${DOME} 0 0 1 ${190 + DOME},${HZ}`, fill: "none", stroke: "#2b3646", "stroke-dasharray": "2 3" }, s);
+  // benches climbing both sides
+  const half = (side, n, w, rise, start) => { const p = []; let x = start, h = 190; for (let i = 0; i < n; i++) { p.push([190 + side * x, h]); x += w; p.push([190 + side * x, h]); h -= rise; p.push([190 + side * x, h]); x += 4; p.push([190 + side * x, h]); } return p; };
+  const steps = room === "pit" ? [9, 14, 8.6, 60] : [8, 12, 10, 40];
+  const Lp = half(-1, steps[0], steps[1], steps[2], steps[3]), Rp = half(1, steps[0], steps[1], steps[2], steps[3]);
+  const land = [[-10, Lp[Lp.length - 1][1]], ...Lp.reverse(), ...Rp, [400, Rp[Rp.length - 1][1]]];
+  E("path", { d: "M" + land.map(([x, y]) => `${x},${y}`).join("L") + "L400,230L-10,230Z", fill: T[0], stroke: EDGE, "stroke-width": 1, "stroke-linejoin": "round" }, s);
+  // bench tops lit
+  for (const pts of [Lp, Rp]) for (let i = 0; i + 3 < pts.length; i += 4) E("path", { d: `M${pts[i + 2][0]},${pts[i + 2][1]}L${pts[i + 3][0]},${pts[i + 3][1]}`, stroke: T[2], "stroke-width": 1 }, s);
+  // floor
+  E("rect", { x: 0, y: 190, width: 380, height: 30, fill: "#2a313b" }, s);
+  for (let x = 10; x < 380; x += 22) E("path", { d: `M${x},190l${(x - 190) * .25},30`, stroke: GLASS, "stroke-opacity": .25, "stroke-width": .5 }, s);
+  if (room === "pithead") {
+    // the headframe close by, sheaves against the sky
+    E("path", { d: "M160,192L196,62L232,192M196,62L262,192M172,150H220M180,110H212", stroke: "#0a0c10", "stroke-width": 4, fill: "none" }, s);
+    E("path", { d: "M160,192L196,62L232,192M196,62L262,192M172,150H220M180,110H212", stroke: T[1], "stroke-width": 1.2, fill: "none" }, s);
+    E("circle", { cx: 196, cy: 62, r: 13, fill: "none", stroke: T[2], "stroke-width": 2 }, s);
+    E("ellipse", { cx: 196, cy: 188, rx: 55, ry: 12, fill: "#cfd8e3", opacity: .14 }, s);
+  }
+  if (room === "drops") {
+    const banks = "M-10,220L-10,170L30,160L60,168L90,156L130,170L160,162L200,172L240,158L280,168L320,160L360,170L390,162L390,220Z";
+    E("path", { d: banks, fill: T[1], stroke: EDGE, "stroke-width": 1 }, s);
+    // a chute far overhead, a can coming down
+    E("path", { d: "M250,8L262,40", stroke: "#e8925a", "stroke-width": 1.4, opacity: .7 }, s);
+  }
+  if (room === "pit") for (const x of [60, 150, 240, 330]) { E("path", { d: `M${x},190V172`, stroke: T[1], "stroke-width": 1.2 }, s); E("rect", { x: x - 3, y: 170, width: 6, height: 2.5, fill: T[2] }, s); }
+  // the station
+  E("circle", { cx: 230, cy: 70, r: 2.4, fill: "#ffcf6a" }, s); txt(s, 236, 73, "Orrin Station", { "font-size": 7 });
+  txt(s, 190 - DOME, HZ - 3, "W", { "text-anchor": "middle", "font-size": 7 }); txt(s, 190 + DOME, HZ - 3, "E", { "text-anchor": "middle", "font-size": 7 });
+  ctrls(s);
+}
+rim(band("R", "the Pit · the benches either side, floodlight masts"), "pit");
+rim(band("R", "the Pithead · the headframe over the shaft"), "pithead");
+rim(band("R", "the Drops · behind its banks"), "drops");
+
+// ---------- from orbit ----------
+function ground(s, day) {
+  const top = 115, R = 380 * 1.4, cx = 190, cy = top + R;
+  const g = E("linearGradient", { id: "gr" + day + seed, x1: 0, y1: 0, x2: 0, y2: 1 }, E("defs", {}, s));
+  const cols = day ? ["#6e5a44", "#8a7052", "#5c4936"] : ["#121821", "#0e131b", "#080b11"];
+  // Orrin is frozen: a colder, greyer face than Zennor's dust would also do; kept Zennor's ground for now
+  E("stop", { offset: 0, "stop-color": day ? "#6d6a66" : cols[0] }, g); E("stop", { offset: .15, "stop-color": day ? "#8a8781" : cols[1] }, g); E("stop", { offset: 1, "stop-color": day ? "#55524e" : cols[2] }, g);
+  seed = 5; for (let i = 0; i < 90; i++) E("circle", { cx: rnd() * 380, cy: rnd() * top, r: .4 + rnd() * .5, fill: "#fff", opacity: .3 + rnd() * .5 }, s);
+  E("circle", { cx, cy, r: R, fill: `url(#gr${day}${seed})` }, s);
+  E("circle", { cx, cy, r: R, fill: "none", stroke: "rgba(207,227,255,.5)", "stroke-width": 1.5 }, s);
+  return { tx: 190, ty: top + 55 };
+}
+const FLOOR = "#9a958c", PAD = "#e3d3b8";
+function padsFloor(s, x, y, w, h, day) {
+  E("rect", { x: x - w / 2, y: y - h / 2, width: w, height: h, fill: day ? FLOOR : "#0c1016", stroke: day ? "#6d6860" : "none", "stroke-width": .5 }, s);
+  if (day) for (let i = 1; i < 6; i++) E("path", { d: `M${x - w / 2 + (w * i) / 6},${y - h / 2}v${h}`, stroke: "#837e75", "stroke-width": .4 }, s);
+  for (const px of [-w / 3, 0, w / 3]) E("circle", { cx: x + px, cy: y, r: h * .28, fill: "none", stroke: day ? PAD : "rgba(255,217,138,.25)", "stroke-width": .8 }, s);
+  if (!day) { E("ellipse", { cx: x, cy: y, rx: w * .62, ry: h * .75, fill: "rgba(255,240,210,.18)" }, s); for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) E("circle", { cx: x + sx * w / 2, cy: y + sy * h / 2, r: 2.4, fill: "rgba(232,176,74,.9)" }, s); }
+}
+function winding(s, x, y, day, up = 0) {
+  E("rect", { x: x - 6, y: y - 4 - up, width: 12, height: 6, fill: day ? T[0] : "#0b0e13", stroke: EDGE, "stroke-width": .6 }, s);
+  if (up) E("path", { d: `M${x - 3},${y}L${x},${y - up - 10}L${x + 3},${y}`, stroke: day ? "#22262c" : "#1a1e25", "stroke-width": 1.2, fill: "none" }, s);
+  E("rect", { x: x - 2, y: y + 2, width: 4, height: 3, fill: "#020304" }, s);
+  if (!day) E("circle", { cx: x, cy: y - up - 4, r: 5, fill: "rgba(207,216,227,.25)" }, s);
+}
+function pitD(s, day) {
+  const { tx, ty } = ground(s, day);
+  for (let i = 6; i >= 1; i--) {
+    const rx = 36 + i * 13, ry = 16 + i * 6;
+    const tone = day ? ["#5d5952", "#67635b", "#716c64", "#7b766d", "#858077", "#8f8a80"][i - 1] : "#07090d";
+    E("ellipse", { cx: tx, cy: ty, rx, ry, fill: tone, stroke: day ? "#4a4741" : "#11151b", "stroke-width": .7 }, s);
+  }
+  E("ellipse", { cx: tx, cy: ty, rx: 38, ry: 17, fill: day ? "#4f4b45" : "#07090d" }, s);
+  padsFloor(s, tx, ty + 1, 62, 22, day);
+  winding(s, tx, ty - 20, day);
+  E("rect", { x: tx - 8, y: ty + 13, width: 16, height: 4, fill: day ? "#6a5f50" : "#0b0e13" }, s); // the Drops' stone bed
+  txt(s, 8, 14, day ? "over Dolcoath, by day" : "over Dolcoath, by night", { "font-size": 8 });
+}
+function pitE(s, day) {
+  const { tx, ty } = ground(s, day);
+  const poly = (r, sq) => { const p = []; for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2 + .2; p.push([tx + Math.cos(a) * r * (1 + .08 * Math.sin(i * 2.7)), ty + Math.sin(a) * r * sq]); } return "M" + p.map((q) => q.join(",")).join("L") + "Z"; };
+  for (let i = 6; i >= 1; i--) E("path", { d: poly(40 + i * 12, .5), fill: day ? T[(i + 1) % 3] : "#07090d", stroke: EDGE, "stroke-width": .8, "stroke-linejoin": "round" }, s);
+  // haul road spiral
+  if (day) E("path", { d: `M${tx + 112},${ty - 8}Q${tx + 60},${ty - 46} ${tx - 30},${ty - 40}Q${tx - 92},${ty - 22} ${tx - 80},${ty + 12}Q${tx - 50},${ty + 34} ${tx + 30},${ty + 28}`, stroke: "#a39b8c", "stroke-width": .8, fill: "none", "stroke-dasharray": "3 1.5" }, s);
+  E("path", { d: poly(38, .5), fill: day ? "#4c5462" : "#07090d", stroke: EDGE }, s);
+  padsFloor(s, tx, ty + 1, 60, 20, day);
+  winding(s, tx, ty - 17, day);
+  E("rect", { x: tx - 8, y: ty + 12, width: 16, height: 4, fill: day ? T[0] : "#0b0e13" }, s);
+  txt(s, 8, 14, day ? "over Dolcoath, by day" : "over Dolcoath, by night", { "font-size": 8 });
+}
+function pitF(s, day) {
+  const { tx, ty } = ground(s, day);
+  // far wall: benches as visible steps (top half), near wall foreshortened
+  for (let i = 6; i >= 0; i--) {
+    const rx = 40 + i * 12, ry = 10 + i * 4, dy = -i * 3.2;
+    E("path", { d: `M${tx - rx},${ty + dy}A${rx},${ry} 0 0 1 ${tx + rx},${ty + dy}L${tx + rx},${ty + dy + 3}A${rx},${ry} 0 0 0 ${tx - rx},${ty + dy + 3}Z`, fill: day ? T[2] : "#0a0d12", stroke: EDGE, "stroke-width": .5 }, s);
+    E("path", { d: `M${tx - rx},${ty + dy + 3}A${rx},${ry} 0 0 0 ${tx + rx},${ty + dy + 3}`, fill: "none", stroke: day ? T[0] : "#0a0d12", "stroke-width": 3 }, s);
+  }
+  E("ellipse", { cx: tx, cy: ty + 3, rx: 40, ry: 10, fill: day ? "#4c5462" : "#07090d" }, s);
+  padsFloor(s, tx, ty + 3, 54, 12, day);
+  winding(s, tx, ty - 8, day, 10);
+  txt(s, 8, 14, day ? "over Dolcoath, by day" : "over Dolcoath, by night", { "font-size": 8 });
+}
+for (const [row, fn] of [["D", pitD], ["E", pitE], ["F", pitF]]) { fn(band(row, `${row}1 · by day`), true); fn(band(row, `${row}2 · by night`), false); }
+// Zennor for comparison
+(function () { const s = band("D", "for comparison: Zennor's town, as now, by day"); const { tx, ty } = ground(s, true); E("rect", { x: tx - 35, y: ty - 7, width: 70, height: 14, fill: "#b89a74" }, s); seed = 9; for (let i = 0; i < 26; i++) { const x = (rnd() - .5) * 2.2 * 70, y = (rnd() - .5) * 1.3 * 70; if (Math.abs(x) < 40 && Math.abs(y) < 10) continue; E("rect", { x: tx + x, y: ty + y, width: 4 + rnd() * 9, height: 3 + rnd() * 6, fill: T[1 + (i % 2)] }, s); } })();
+</script>
+</body></html>

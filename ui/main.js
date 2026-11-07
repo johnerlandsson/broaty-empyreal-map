@@ -50,13 +50,14 @@ function built(key) {
     const s = (stations[key] = BUILD[key]());
     s.model.setTurning(turning);
     s.deck.div.style.display = "none"; // showDeck() shows it once it's the plan showing
-    if (key === "zennor" && chart.index) s.model.setCharts(chart.index);
+    if (chart.index) s.model.setCharts?.(chart.index); // a port's sky needs the charts to place it
   }
   return stations[key];
 }
 const ships = {}; // plan id -> that plan's views (buildShip), for the ship of its `name`, built on first use
 const cars = {}; // car kind (lift, tram) -> the DeckView drawing it, built on first use
-const space = new SpaceView(modelEl);
+// each port's hull, whose exterior says how it looks from orbit (a `pit` is Dolcoath's)
+const space = new SpaceView(modelEl, { hulls: Object.fromEntries(places.flatMap((p) => Object.entries(p.hulls ?? {}))) });
 // your ship's model, over the space scene's canvas (after it, at its z-index) and under the chart,
 // the lanes map and the belt map; framed in the band's lower middle (map.css)
 const shipModels = document.createElement("div");
@@ -139,15 +140,15 @@ document.addEventListener("visibilitychange", runChart);
 let scene = null; // the overview scene from the scene message: anything but "station" draws over the band
 let skyTimer = 0;
 
-/** Keep the town's sky moving, a redraw a second, while it's the band showing, there's a sky (out
- *  of doors, with charts that place the town), and nothing covers it: not the chart or the lanes map, not a space
- *  scene, not a hidden panel. Starting draws it for now at once. */
+/** Keep a port's sky moving (Zennor's, the Pit's), a redraw a second, while it's the band showing,
+ *  there's a sky (out of doors, with charts that place the port), and nothing covers it: not the chart or the lanes
+ *  map, not a space scene, not a hidden panel. Starting draws it for now at once. A model with no
+ *  sky has no `live`. */
 function runSky() {
   clearInterval(skyTimer);
   skyTimer = 0;
-  if (current !== "zennor") return;
-  const sky = stations.zennor.model;
-  if (!sky.live || chart.shown || lanes.shown || belt.shown || document.hidden || (scene && scene !== "station")) return;
+  const sky = stations[current]?.model;
+  if (!sky?.live || chart.shown || lanes.shown || belt.shown || document.hidden || (scene && scene !== "station")) return;
   sky.draw(Date.now());
   skyTimer = setInterval(() => sky.draw(Date.now()), 1000);
 }
@@ -294,7 +295,7 @@ panel.on("clearance", (msg) => waiting.set(msg));
 panel.on("charts", (msg) => {
   chart.setCharts(msg);
   space.setCharts(chart.index);
-  stations.zennor?.model.setCharts(chart.index);
+  for (const s of Object.values(stations)) s.model.setCharts?.(chart.index);
   belt.setCharts(chart.index);
   runChart();
 });

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // Dolcoath's plans (reference/dolcoath-levels-options.png, pick B): one a level, switching as you
-// change level; the ways off each drawn beside their rooms, with where they go on hover; the
-// level you're on in words in the top band; and the cage's own drawing while you ride it.
+// change level; the ways off each drawn beside their rooms, with where they go on hover; and the
+// cage's own drawing while you ride it. The top band is levels-view.test.js's.
 
 import { describe, expect, it } from "vitest";
 import dolcoath from "../tests/fixtures/generated/dolcoath.js";
@@ -82,18 +82,6 @@ describe("Dolcoath's plans", () => {
     const fillOf = (name) => [...deck.plans[1].g.querySelectorAll("text")].find((t) => t.textContent === name).parentNode.querySelector("rect").getAttribute("fill");
     expect(fillOf("The Exchange")).toBe(dolcoath.look.palette.concourse);
     expect(fillOf("Count House")).toBe(dolcoath.look.palette.commons);
-  });
-
-  it("names the level you're on over the plan, in words, and keeps it off the plan", () => {
-    const p = place();
-    const text = () => [...p.model.svg.querySelectorAll("text")].map((t) => t.textContent);
-    expect(text()).toEqual(["DOLCOATH · 1.5 g", "THE PIT", "at the surface"]);
-    at(p, "bal-cross");
-    expect(text()).toEqual(["DOLCOATH · 1.5 g", "THE TOWN", "80 fathoms down"]);
-    at(p, "cage");
-    expect(text()[1]).toBe("THE TOWN");
-    at(p, "pump-gallery");
-    expect(text().slice(1)).toEqual(["PUMP GALLERY", ""]);
   });
 });
 

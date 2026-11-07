@@ -1,14 +1,15 @@
-// A town's top band (Zennor): you're on the ground, so not a model but the skyline, the city across
-// the Carn's valley framed on the district you're in, still and low-poly in the models' Tones
-// (ui/lib/skyline.js, drawn by town-skyline.js), with lamps in its windows once the sky is dark.
+// A port's top band out of doors: you're on the ground, so not a model but its skyline, still and
+// low-poly in the models' Tones (ui/lib/skyline.js, drawn by town-skyline.js), with lamps in its
+// windows once the sky is dark: Zennor's city across the Carn's valley framed on the district
+// you're in, or the Pit's benches climbing to its rim round the room you're in (SKYLINES).
 // Out of doors the sky is over it, as the game's `look sky`
 // tells it (ui/lib/sky.js): a dome from the western horizon through overhead to the eastern, with
 // Senara, T.I.S.S. and Orrin where the game puts them, each named and hovered with its sentence,
 // the sky's tint, stars and glow stepped with the game's bands. Indoors, or with no charts to say,
 // it's the skyline alone, with nothing in its sky. main.js redraws it each second while it's
-// live; it needs `div`, `set()` and `setTurning()` as from a ModelView, and `setCharts()`.
+// live, for any port; it needs `div`, `set()` and `setTurning()` as from a ModelView, and `setCharts()`.
 
-import { skylineFor } from "./lib/skyline.js";
+import { skylineOf } from "./lib/skyline.js";
 import { groundSky, skyScene } from "./lib/sky.js";
 import { attachPanZoom, el, stars, zoomButtons } from "./lib/svg.js";
 import { drawSkyline } from "./town-skyline.js";
@@ -27,15 +28,18 @@ export class SkyView {
   /**
    * @param {HTMLElement} containerEl the band
    * @param {{ byId: Map<string, { outdoors: boolean }> }} town indexTown()'s index, for which rooms are open to the sky
-   * @param {string} port the town's id in the charts ("zennor")
+   * @param {string} port the port's id in the charts ("zennor", "dolcoath")
+   * @param {ReturnType<typeof skylineOf>} [skyline] its skyline, SKYLINES' for the port by default
    */
-  constructor(containerEl, town, port) {
+  constructor(containerEl, town, port, skyline = skylineOf(port)) {
     this.town = town;
     this.port = port;
+    this.skyline = skyline;
     this.charts = null;
     this.outdoors = false;
-    this.district = "downs"; // where the skyline's framed: you come to Zennor by landing on the Downs
-    this.drawn = null; // the district and lamps it was last drawn with
+    // where the skyline's framed: Zennor's district (you land on the Downs), the Pit's room (the field)
+    this.frame = skyline.start;
+    this.drawn = null; // the frame and lamps it was last drawn with
     this.tips = new Map(); // data-tip key -> { title, body }: the hovered thing's name and the game's sentence
     this.tipKey = null; // what's hovered
     this.tipShown = null; // what the tooltip last showed, so a redraw doesn't re-show the same
@@ -59,8 +63,10 @@ export class SkyView {
     div.appendChild(svg);
     this.svg = svg;
     const defs = el("defs", {}, svg);
-    el("path", { d: dome() }, el("clipPath", { id: "sky-clip" }, defs));
-    el("feGaussianBlur", { stdDeviation: 10 }, el("filter", { id: "sky-soft", x: "-50%", y: "-50%", width: "200%", height: "200%" }, defs));
+    // ids of the port's own: another port's band may be in the page, hidden, with its own
+    this.ids = { clip: `sky-clip-${port}`, soft: `sky-soft-${port}`, dawn: `sky-dawn-${port}` };
+    el("path", { d: dome() }, el("clipPath", { id: this.ids.clip }, defs));
+    el("feGaussianBlur", { stdDeviation: 10 }, el("filter", { id: this.ids.soft, x: "-50%", y: "-50%", width: "200%", height: "200%" }, defs));
     this.back = el("g", {}, svg); // tint and stars, behind the skyline
     this.land = el("g", {}, svg); // the skyline
     this.front = el("g", {}, svg); // the dome, its marks and the glow, over it: nothing up is hidden
@@ -77,12 +83,14 @@ export class SkyView {
 
   /**
    * Where you are: out of doors in one of the town's rooms the sky shows, anywhere else not. The
-   * location message's `district` frames the skyline; somewhere with none (the tram, your ship on
-   * the field) keeps the last.
+   * skyline frames on where you are as its port's does (Zennor's on the location message's
+   * `district`, the Pit's on your room); somewhere it has none for (the tram, your ship on the
+   * field) keeps the last.
    */
   set(where, msg) {
     this.outdoors = where?.kind === "room" && !!this.town?.byId.get(where.id)?.outdoors;
-    if (skylineFor(msg?.district)) this.district = msg.district;
+    const frame = this.skyline.frame(where, msg);
+    if (frame) this.frame = frame;
     this.draw(Date.now());
   }
 
@@ -105,10 +113,10 @@ export class SkyView {
     this.front.replaceChildren();
     this.tips = new Map();
     const sky = this.outdoors && this.charts ? groundSky(this.charts, this.port, t) : null;
-    const drawn = `${this.district} ${!!sky?.dark}`;
+    const drawn = `${this.frame} ${!!sky?.dark}`;
     if (drawn !== this.drawn) {
       this.drawn = drawn;
-      drawSkyline(this.land, skylineFor(this.district), { lamps: !!sky?.dark });
+      drawSkyline(this.land, this.skyline.layers(this.frame) ?? [], { lamps: !!sky?.dark, cap: this.skyline.cap });
     }
     if (sky) this.drawSky(sky);
     this.refreshTip();
@@ -128,24 +136,24 @@ export class SkyView {
   /** The tint, stars and glow behind the skyline, and the dome and its marks over it. */
   drawSky(sky) {
     const scene = skyScene(sky);
-    const inside = el("g", { "clip-path": "url(#sky-clip)" }, this.back);
+    const inside = el("g", { "clip-path": `url(#${this.ids.clip})` }, this.back);
     if (scene.tint) el("path", { d: dome(), fill: scene.tint }, inside);
     if (scene.stars !== "none") inside.appendChild(this.starfield(scene.stars === "all" ? 260 : 25));
     // Dawn's paling, in the sky behind the ridge, rising from Senara's side of the horizon: the
     // glow on the horizon alone sits on the ridge's face, pale on pale, and doesn't show.
     if (scene.glow?.kind === "dawn") {
       const cx = scene.glow.east ? DOME : -DOME;
-      const g = el("radialGradient", { id: "sky-dawn", cx, cy: HORIZON, r: 190, gradientUnits: "userSpaceOnUse" }, inside);
+      const g = el("radialGradient", { id: this.ids.dawn, cx, cy: HORIZON, r: 190, gradientUnits: "userSpaceOnUse" }, inside);
       el("stop", { offset: 0, "stop-color": "#8fa2bd", "stop-opacity": 0.7 }, g);
       el("stop", { offset: 0.5, "stop-color": "#4a5a74", "stop-opacity": 0.3 }, g);
       el("stop", { offset: 1, "stop-color": "#04060c", "stop-opacity": 0 }, g);
-      el("path", { d: dome(), fill: "url(#sky-dawn)" }, inside);
+      el("path", { d: dome(), fill: `url(#${this.ids.dawn})` }, inside);
     }
 
     const f = this.front;
     if (scene.glow) {
       const [fill, opacity] = GLOWS[scene.glow.kind];
-      el("ellipse", { cx: scene.glow.east ? DOME : -DOME, cy: HORIZON, rx: 70, ry: 26, fill, opacity, filter: "url(#sky-soft)" }, f);
+      el("ellipse", { cx: scene.glow.east ? DOME : -DOME, cy: HORIZON, rx: 70, ry: 26, fill, opacity, filter: `url(#${this.ids.soft})` }, f);
     }
     el("path", { d: dome(), fill: "transparent", "data-tip": "sky" }, f);
     this.tips.set("sky", { title: "The sky", body: scene.hover });

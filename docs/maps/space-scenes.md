@@ -1,6 +1,6 @@
 # Space scenes
 
-*Status: built. Last updated 2026-10-24.*
+*Status: built. Last updated 2026-11-07.*
 
 ## What it is and when it shows
 
@@ -13,7 +13,7 @@ again when you dock.
 | parked | undocked, not travelling, not at a belt | a starfield, barely drifting |
 | travelling | on the way somewhere | the stars streaming past as streaks |
 | belt | at an asteroid belt | low-poly rocks tumbling past on a faint backdrop, with the ship's sensors sweeping, an assay held on a rock or the laser cutting one while she's at it, and the rocks flowing past the other way while she moves across the belt |
-| port | parked over a port (Zennor), not landed | the planet's face across the lower band with the town on it, lit or dark, under the still stars |
+| port | parked over a port (Zennor, Dolcoath), not landed | the planet's face across the lower band with the port on it as its hull describes it, Zennor's town or Dolcoath's pit, lit or dark, under the still stars |
 | orbit | in high orbit over a planet (`travel tamsin`) | the planet's face, rounder than over a port, with faint cloud on it and no town, lit or dark as her side faces the star, or a dusk between when that isn't known, under the still stars |
 | station | docked at a station, or not aboard a ship you own or crew | nothing: the station model shows |
 
@@ -239,6 +239,36 @@ in the middle of the face, its size by the band's width and the face's height:
   each corner blinking in turn in the busy status light (`#e8b04a`). *"A
   scatter of lights and the landing field's beacons blinking."*
 
+**Over Dolcoath** the port is the Pit, drawn as its `pit` hull's exterior has
+it (content/game/hulls.yaml): *"A vast terraced pit in the frozen ground, its
+benches stepping down to a floor marked out in pads, a winding house standing
+over the shaft at its edge."* John's pick E
+(`reference/dolcoath-overview-options.png`, 2026-11-07); D (the benches as
+smooth oval rings) and F (the pit seen at a slant) were turned down.
+
+- **By day:** a cold grey face (`#6d6a66` at the limb, `#8a8781`, `#55524e`),
+  no dust. The pit is angular and low-poly: ten corners, a little uneven, as a
+  dug pit is, squashed to the scene's slant, and six benches stepping down to
+  the floor, each a wide tread in the light Tone and a narrow riser in the
+  middle Tone where its wall faces the light (from the upper left) and the
+  dark one where it doesn't, all edged in the Model edge. The haul road spirals
+  down round them, dashed. The floor is steel plate (`#5d6470`), the pads'
+  plates a shade lighter with three pads ringed in `#e3d3b8`, the winding house
+  a box in the dark Tone at the floor's north edge with the shaft's black collar
+  under it, and the Drops' crushed stone at its south end.
+- **By night:** the pit is a black hole in the dark face. The floodlights
+  light the floor and leave the terraces black (the Pit's floodlights,
+  content/areas/dolcoath.yaml): a warm glow over the plates in the Porthole
+  colour, the pads faintly ringed, and a beacon at each corner of the floor
+  blinking in turn as the field's do.
+
+Which way a port is drawn comes from its hull. Space.Charts doesn't say, so
+the data build carries each dock's hull from world.yaml into
+`ui/data/places.js` (`hulls`), and `main.js` hands the map to the space view:
+`pit` is the Pit, anything else (Zennor's `port`) the town. Zennor looks as it
+did. The Pit has its own seeded generator, so the town and the cloud are the
+same as before.
+
 The ground fades in and out with the scene, as rocks do.
 
 In high orbit (option B of `docs/maps/reference/high-orbit-mockup.html`,
@@ -319,11 +349,13 @@ Unchanged: it says where you are aboard.
 `ui/space-view.js` (the canvas and frame loop, the ground below a port and the planet from high orbit),
 `ui/lib/space.js` (scene targets, easing, starfield, belt, rocks, the held
 rock and the flow while she moves, `work()`, `heading()`, `moveCard()` and
-`workLines()`, the town's layout, a dock's or an undock's
+`workLines()`, the town's layout and the Pit's (`Town`, `Pit`, `groundOf()`), a dock's or an undock's
 distance, the orbit scene's cloud and `litFor`), `ui/lib/orbits.js` (`daylit`, `orbitLit`), `ui/model-view.js` (`setAway`),
 `src/station_map/scene.lua`, `src/station_map/work.lua`,
 `src/station_map/manoeuvre.lua`. The preview's `?scene=port-day` and
-`?scene=port-night` put Zennor's town on the day or night side, and
+`?scene=port-night` put Zennor's town on the day or night side, `?scene=pit-day`
+and `?scene=pit-night` Dolcoath's pit (with `pitCharts()`, Senara's charts with
+Dolcoath placed), and
 `?scene=orbit-day`, `orbit-night` and `orbit-unknown` put her in high orbit
 over Tamsin on the star's side, the far side or no side known.
 `?work=scanning` (or `assaying`, `mining`, `idle`) opens on the belt with the

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DISTRICTS, PLACES, TERRACES, VALLEY, groundAt, project, skylineFor, terraceFlats } from "./skyline.js";
+import { DISTRICTS, PIT, PLACES, SKYLINES, TERRACES, VALLEY, groundAt, pitRimFor, project, skylineFor, skylineOf, terraceFlats } from "./skyline.js";
 
 describe("the valley", () => {
   it("runs west to east, with the river its lowest ground", () => {
@@ -75,5 +75,61 @@ describe("skylineFor", () => {
     const ids = [...readFileSync(yaml, "utf8").matchAll(/^\s+district: ([a-z-]+)\s*$/gm)].map((m) => m[1]);
     expect(ids.length).toBeGreaterThan(0);
     expect(new Set(DISTRICTS)).toEqual(new Set(ids));
+  });
+});
+
+describe("the Pit's rim", () => {
+  it("runs west to east, its floor the lowest ground, the benches climbing both sides to the rim", () => {
+    const { land, floor } = PIT;
+    for (let i = 1; i < land.length; i++) expect(land[i][0]).toBeGreaterThan(land[i - 1][0]);
+    expect(groundAt(land, 0)).toBe(0);
+    expect(groundAt(land, floor[0])).toBe(0);
+    expect(groundAt(land, floor[1])).toBe(0);
+    // stepping up: never down, going out from the floor either way
+    const out = (side) => land.filter(([x]) => side * x >= floor[1]).sort((a, b) => side * (a[0] - b[0])).map(([, h]) => h);
+    for (const side of [-1, 1]) {
+      const hs = out(side);
+      for (let i = 1; i < hs.length; i++) expect(hs[i]).toBeGreaterThanOrEqual(hs[i - 1]);
+    }
+    // the rim stands above the sky's horizon (y 52 in the band): the sky is a lid on it
+    const layer = pitRimFor("dolcoath.field").find((l) => l.section === PIT);
+    expect(project(layer, 190, groundAt(land, 190))[1]).toBeLessThan(52);
+  });
+
+  it("frames on each of the Pit's three outdoor rooms: its north wall face on, then the benches either side, then what stands in front", () => {
+    for (const room of ["dolcoath.field", "dolcoath.drops", "dolcoath.pithead"]) {
+      const layers = pitRimFor(room);
+      expect(layers[0].section.wall.length).toBeGreaterThan(0);
+      expect(layers[0].far).toBe(true);
+      expect(layers[1].section).toBe(PIT);
+    }
+    const kinds = (room) => pitRimFor(room).flatMap((l) => l.section.props.map((p) => p[1]));
+    expect(kinds("dolcoath.pithead")).toContain("headframe");
+    expect(kinds("dolcoath.pithead")).toContain("mist");
+    expect(pitRimFor("dolcoath.drops")).toHaveLength(4); // its banks in front
+    for (const room of [null, undefined, "", "dolcoath.lamp-room", "zennor.square", "toString"]) expect(pitRimFor(room)).toBeNull();
+  });
+});
+
+describe("SKYLINES", () => {
+  it("frames Zennor on your district and the Pit on your room, keeping the last where it has none", () => {
+    expect(SKYLINES.zennor.frame({ kind: "room", id: "zennor.square" }, { district: "market-quarter" })).toBe("market-quarter");
+    expect(SKYLINES.zennor.frame({ kind: "off" }, {})).toBeNull();
+    expect(SKYLINES.dolcoath.frame({ kind: "room", id: "dolcoath.drops" }, { district: "pit" })).toBe("dolcoath.drops");
+    expect(SKYLINES.dolcoath.frame({ kind: "room", id: "dolcoath.bal-cross" })).toBeNull();
+    expect(SKYLINES.dolcoath.frame({ kind: "off" })).toBeNull();
+  });
+
+  it("starts where you'd land, and lines only Zennor's horizon with the ice cap", () => {
+    expect(SKYLINES.zennor).toMatchObject({ start: "downs", cap: true });
+    expect(SKYLINES.dolcoath).toMatchObject({ start: "dolcoath.field", cap: false });
+    expect(SKYLINES.zennor.layers("downs")).toEqual(skylineFor("downs"));
+  });
+
+  it("gives a port with no skyline drawn a bare one: just its sky", () => {
+    const bare = skylineOf("pendeen");
+    expect(bare.frame({ kind: "room", id: "x" }, { district: "y" })).toBeNull();
+    expect(bare.layers(null)).toEqual([]);
+    expect(skylineOf("toString").layers(null)).toEqual([]);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Belt, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, heading, litFor, moveCard, rockFaces, makeRock, targets, work, workLines } from "./space.js";
+import { Belt, Pit, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, groundOf, heading, litFor, moveCard, rockFaces, makeRock, targets, work, workLines } from "./space.js";
 import { rng } from "./svg.js";
 
 describe("targets", () => {
@@ -556,5 +556,52 @@ describe("awayLook", () => {
   it("clamps out-of-range distances", () => {
     expect(awayLook(-1)).toEqual(awayLook(0));
     expect(awayLook(2)).toEqual(awayLook(1));
+  });
+});
+
+describe("Pit", () => {
+  const pit = new Pit(rng(43));
+  const r = ([x, y]) => Math.hypot(x, y / 0.5); // undo the slant
+
+  it("steps down from the rim to the floor, a tread and a riser a bench", () => {
+    expect(pit.rings).toHaveLength(Pit.BENCHES * 2 + 1);
+    for (let i = 1; i < pit.rings.length; i++) pit.rings[i].forEach((p, j) => expect(r(p)).toBeLessThan(r(pit.rings[i - 1][j])));
+    expect(pit.faces).toHaveLength(Pit.BENCHES * 2 * Pit.SIDES);
+    expect(pit.faces.filter((f) => f.riser)).toHaveLength(Pit.BENCHES * Pit.SIDES);
+    expect(pit.faces[0].riser).toBe(false); // the rim's tread first
+  });
+
+  it("tones its risers by the way they face: walls facing the light lit, the far ones in shadow", () => {
+    const tones = new Set(pit.faces.filter((f) => f.riser).map((f) => f.tone));
+    expect([...tones].sort()).toEqual([0, 1]);
+    // a riser on the pit's south-east side faces north-west, toward the light, and is lit
+    const se = pit.faces.find((f) => f.riser && f.pts[0][0] > 0 && f.pts[0][1] > 0 && f.pts[1][0] > 0 && f.pts[1][1] > 0);
+    expect(se.tone).toBe(1);
+  });
+
+  it("keeps the floor, its pads, the winding house and the Drops inside the floor's edge", () => {
+    const edge = Math.min(...pit.edge.map(r));
+    const { w, h } = pit.floor;
+    expect(r([w / 2, 0])).toBeLessThan(edge);
+    expect(pit.winding.y).toBeLessThan(-h / 2); // north of the plates, over the shaft
+    expect(pit.drops.y).toBeGreaterThan(h / 2); // south
+    for (const b of [pit.winding, pit.drops]) expect(r([b.x, b.y])).toBeLessThan(edge);
+    expect(pit.pads).toHaveLength(3);
+    expect(pit.beacons.map((b) => [Math.abs(b.x), Math.abs(b.y)])).toEqual(Array(4).fill([w / 2, h / 2]));
+  });
+
+  it("winds the haul road down from the rim toward the floor", () => {
+    expect(r(pit.road[0])).toBeGreaterThan(r(pit.road[pit.road.length - 1]));
+  });
+
+  it("is the same pit from the same seed", () => {
+    expect(new Pit(rng(43))).toEqual(pit);
+  });
+});
+
+describe("groundOf", () => {
+  it("draws a pit hull as the Pit and anything else as a town", () => {
+    expect(groundOf("pit")).toBe("pit");
+    for (const h of ["port", undefined, null, "wheel"]) expect(groundOf(h)).toBe("town");
   });
 });

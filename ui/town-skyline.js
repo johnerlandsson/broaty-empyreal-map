@@ -1,7 +1,7 @@
-// Draws Zennor's skyline (ui/lib/skyline.js) into the town's top band, under its sky
-// (town-view.js): still and low-poly, in the models' Tones, its layers far to near. Once the sky
-// is dark, lamps are lit in its windows ("By night it's lamps, from the river to the ridges on
-// both sides", the Overlook).
+// Draws a port's skyline (ui/lib/skyline.js) into its top band, under its sky (town-view.js):
+// Zennor's valley, or the Pit's rim. Still and low-poly, in the models' Tones, its layers far to
+// near. Once the sky is dark, lamps are lit in its windows ("By night it's lamps, from the river
+// to the ridges on both sides", the Overlook).
 
 import { TERRACES, groundAt, project, terraceFlats } from "./lib/skyline.js";
 import { el, rng } from "./lib/svg.js";
@@ -15,11 +15,12 @@ const KILN = "#e8925a"; // the dusk glow's
 const CROPS = "#4caf7a"; // hydroponics' green, for the terraces' rows
 const HORIZON = 52;
 
-/** Draw a skylineFor() result into g, replacing what's there. */
-export function drawSkyline(g, layers, { lamps = false } = {}) {
+/** Draw a skylineFor() or pitRimFor() result into g, replacing what's there; `cap` lines the
+ *  horizon with Zennor's ice cap. */
+export function drawSkyline(g, layers, { lamps = false, cap = true } = {}) {
   g.replaceChildren();
   // the ice cap, far up the valley to the north, "a bright line where the sky starts"
-  el("path", { d: `M-1500,${HORIZON}H1500`, stroke: GLASS, "stroke-opacity": 0.4, "stroke-width": 1.4 }, g);
+  if (cap) el("path", { d: `M-1500,${HORIZON}H1500`, stroke: GLASS, "stroke-opacity": 0.4, "stroke-width": 1.4 }, g);
   for (const layer of layers) drawLayer(g, layer, lamps);
 }
 
@@ -45,8 +46,23 @@ function drawLayer(g, layer, lamps) {
     // the Downs' top, lit, on to the horizon east
     el("path", { d: `M${path(land.filter(([x]) => x >= b))}`, fill: "none", stroke: tones[2], "stroke-width": 1.6 }, g);
   }
-  const [r0, r1] = section.river;
-  el("path", { d: `M${at(r0, 0)}H${P(r1, 0)[0]}`, stroke: GLASS, "stroke-opacity": 0.55, "stroke-width": 2 * s }, g);
+  if (section.river) {
+    const [r0, r1] = section.river;
+    el("path", { d: `M${at(r0, 0)}H${P(r1, 0)[0]}`, stroke: GLASS, "stroke-opacity": 0.55, "stroke-width": 2 * s }, g);
+  }
+  if (section.wall) {
+    // a wall face on: each bench's tread a line catching the light, all the way across
+    for (const h of section.wall) el("path", { d: `M-1500,${P(0, h)[1]}H1500`, stroke: tones[2], "stroke-width": 1 }, g);
+  }
+  if (section.floor) {
+    // the Pit's floor of steel plate, frost white in its seams, and the benches' treads catching the light
+    const [f0, f1] = section.floor;
+    el("path", { d: `M${at(f0, 0)}H${P(f1, 0)[0]}`, stroke: GLASS, "stroke-opacity": 0.3, "stroke-width": 1.2, "stroke-dasharray": "6 1" }, g);
+    for (let i = 1; i < land.length; i++) {
+      const [x0, h0] = land[i - 1], [x1, h1] = land[i];
+      if (h0 === h1 && h0 > 0 && Math.abs(x0) < 400) el("path", { d: `M${at(x0, h0)}L${at(x1, h1)}`, stroke: tones[2], "stroke-width": 1.2 }, g);
+    }
+  }
 
   if (section.tram) {
     const { from, to } = section.tram;
@@ -175,6 +191,26 @@ function prop(g, P, s, land, [x, kind, w, h], tones, lamp) {
       break;
     case "tank": // a fuel tank half sunk in the ground
       face(`M${x0},${bot - 1}A${W / 2},${bot - top || 3} 0 0 1 ${x1},${bot - 1}Z`, tones[1]);
+      break;
+    case "cut": // a door and windows cut into the foot of a terrace: the offices, the Lamp Room
+      face(`M${x0},${bot}V${top}H${x1}V${bot}Z`, tones[1]);
+      face(`M${x0 + W * 0.38},${bot}V${top + (bot - top) * 0.4}H${x1 - W * 0.38}V${bot}Z`, EDGE);
+      lamps(top, 2);
+      break;
+    case "headframe": { // the winding house's black iron headframe, its sheave against the sky
+      const mid = x0 + W / 2;
+      const legs = `M${x0},${bot}L${mid},${top}L${x1},${bot}M${mid},${top}L${x1 + W * 0.55},${bot}M${x0 + W * 0.2},${bot - (bot - top) * 0.3}H${x1 - W * 0.2}M${x0 + W * 0.33},${bot - (bot - top) * 0.6}H${x1 - W * 0.33}`;
+      el("path", { d: legs, fill: "none", stroke: EDGE, "stroke-width": 1.2 + W * 0.06 }, g);
+      el("path", { d: legs, fill: "none", stroke: tones[1], "stroke-width": 0.5 + W * 0.02 }, g);
+      el("circle", { cx: mid, cy: top, r: W * 0.17, fill: "none", stroke: tones[2], "stroke-width": 0.5 + W * 0.03 }, g);
+      break;
+    }
+    case "mist": // warm air off the shaft, smoking in the cold
+      el("ellipse", { cx: x0 + W / 2, cy: bot - 3 * s, rx: W / 2, ry: (bot - top) / 2 + 2, fill: "#cfd8e3", opacity: 0.14 }, g);
+      break;
+    case "flood": // a floodlight on its squat iron mast
+      el("path", { d: `M${x0},${bot}V${top}`, stroke: tones[2], "stroke-width": 0.9 }, g);
+      face(`M${x0 - 2 * s},${top}h${4 * s}v${-2 * s}h${-4 * s}Z`, tones[2]);
       break;
     case "mast":
       el("path", { d: `M${x0},${bot}V${top}M${x0 - 2 * s},${top + 3 * s}h${4 * s}`, stroke: tones[2], "stroke-width": 0.9 }, g);

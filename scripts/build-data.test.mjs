@@ -63,8 +63,8 @@ describe("build", () => {
     ]);
     expect(report.rooms).toEqual({ added: [], removed: [], renamed: [] });
     expect(await loadIndex(join(opts.outDir, "places.js"))).toEqual([
-      { id: "mini", prefix: "mini", builder: "decks", docks: ["mini"] },
-      { id: "wheelie", prefix: "wheelie", builder: "wheel", docks: ["wheelie"] },
+      { id: "mini", prefix: "mini", builder: "decks", docks: ["mini"], hulls: { mini: "outpost" } },
+      { id: "wheelie", prefix: "wheelie", builder: "wheel", docks: ["wheelie"], hulls: { wheelie: "wheel" } },
     ]);
     expect(JSON.parse(readFileSync(opts.reportPath, "utf8"))).toEqual(report);
   });

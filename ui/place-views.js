@@ -1,5 +1,5 @@
 // A place's views, built the one way for the panel (main.js) and the tweak editor: its 3D overview
-// (a ModelView, or a SkyView for a town) in one element and its plan (a DeckView) in another.
+// (a ModelView, a SkyView for a town, or a LevelsBand for a city of levels) in one element and its plan (a DeckView) in another.
 // buildPlace picks the builder by name, as the generated index (data/places.js) gives it. A ship's
 // plan (data/ships.js) is built the decks way by buildShip, with her name and the lines under her.
 
@@ -56,19 +56,21 @@ function decks(data, modelEl, deckEl, opts) {
   return { index, model, deck: new DeckView(deckEl, index, decksPlans(data), opts), locate: locateDecks };
 }
 
-/** Zennor: a city on the ground, rooms placed by their compass exits, ⌂ framing your district; its sky over it. */
+/** Zennor: a city on the ground, rooms placed by their compass exits, ⌂ framing your district; its
+ *  sky over it, the port's by its place id, which is its id in the charts. */
 function town(data, modelEl, deckEl, opts) {
   const spec = townSpec(data);
   const index = indexTown(townData(data), spec);
-  return { index, model: new SkyView(modelEl, index, "zennor"), deck: new DeckView(deckEl, index, townPlans(spec), opts), locate: locateTown, info: townInfo };
+  return { index, model: new SkyView(modelEl, index, data.id), deck: new DeckView(deckEl, index, townPlans(spec), opts), locate: locateTown, info: townInfo };
 }
 
 /** Dolcoath: a city of levels underground, a plan a level, its rooms placed by their compass exits,
- *  the ways off each level drawn where they leave; the level you're on in words over it. */
+ *  the ways off each level drawn where they leave; over it the section through its shaft, or out of
+ *  doors the sky over the Pit, the port's by its place id. */
 function levels(data, modelEl, deckEl, opts) {
   const spec = levelsSpec(data);
   const index = indexLevels(levelsData(data), spec);
-  return { index, model: new LevelsBand(modelEl, index), deck: new DeckView(deckEl, index, levelsPlans(spec), opts), locate: locateLevels, info: levelsInfo };
+  return { index, model: new LevelsBand(modelEl, index, data.id), deck: new DeckView(deckEl, index, levelsPlans(spec), opts), locate: locateLevels, info: levelsInfo };
 }
 
 const BUILDERS = { decks, drum, levels, town, wheel };

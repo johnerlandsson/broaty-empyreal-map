@@ -1,7 +1,7 @@
 # Dolcoath
 
-*Status: built. The plans and the cage are done; the top band is words only, and the overview
-is a job of its own. Last updated 2026-11-07.*
+*Status: built. The plans, the cage, the top band (the section underground, the sky over the
+Pit) and the Pit from orbit are done. Last updated 2026-11-07.*
 
 ## What it is and when it shows
 
@@ -65,13 +65,69 @@ The cage's stops keep their `name`s ("the Town", "Forty Fathom"): the build used
 the Smelts industrial, the Workings midring. `paint` makes the Exchange, the city's market,
 concourse, as Orrin Station's market is.
 
-## Top band: words
+## Top band: the section, or the sky over the Pit
 
-For now, only words over the plan: `DOLCOATH · 1.5 g`, the level you're on (`THE TOWN`), and how
-deep it is (`80 fathoms down`, `at the surface`, or nothing where the depth isn't known). Off the
-plan, riding the cage or aboard your landed ship, it keeps the last level; before any, the Pit.
-`ui/levels-view.js`'s `LevelsBand`. It doesn't use Zennor's sky: `SkyView` is Zennor's valley and
-`place-views.js` names `zennor` for it. The overview, the city in the rock, is a job of its own.
+John's picks from `reference/dolcoath-overview-options.png` (2026-11-07): C for underground, a
+shaft diagram, over A and B (the section to scale, as plain galleries or as caverns drawn in the
+rock); and the rim over the Pit as it was mocked up, with no pick asked. `ui/levels-view.js`'s
+`LevelsBand` holds both and shows one: the sky in the Pit's three rooms open to the sky, the
+section everywhere else, aboard your landed ship and riding the cage included.
+
+### Underground: the section
+
+`ui/section-view.js`, laid out by `ui/lib/section.js`. Not to scale: the levels go down the band
+evenly spaced, top to bottom, because the depths run from 0 to 200 fathoms and a short, wide
+band can't show them to scale and still be read.
+
+- **The shafts.** The cage's shaft, black, runs through every level the cage stops at, from the
+  Pit to the Workings; the man engine's, narrower and with its rod in timber, runs beside it to
+  the west through every level it has a stage on. Each is named at its foot.
+- **The levels.** Each one on the shaft is a ring on the cage's shaft with a tick out to its name
+  east (`THE TOWN`) and its depth west (`80 FM`). The Pit, at the surface, has no depth.
+- **The levels off the shaft** (the Pump Gallery, the Bottom of the Winze) hang off it east, a
+  column each, joined dashed to the level a way down reaches them from, the Workings. The Pump
+  Gallery has no depth: the game doesn't give it.
+- **The Pit** is small over the top: its benches stepping down either side and the headframe
+  over the shaft.
+- **Lit:** the level you're on, amber, ring, tick and name. Off the plan, aboard your ship on the
+  field, nothing is lit.
+- **The cage** is drawn only while you ride it, since Empyreal.Vehicle goes only to those aboard:
+  where the location message's `lift` puts it (kind `cage`), on its station when it's `at` one,
+  or midway between the two it's `between`, lit in place of a level, with an arrow the way it's
+  `heading` (`up`, `down`) between stations. Its hover is the car's words: "down, the Town → the
+  Smelts".
+- **Hover a level** for its name and how deep it is: "The Town, 80 fathoms down".
+- **Zoom and ⌂** as the T.I.S.S. model's: + and − zoom, it pans, and ⌂ frames the whole
+  section. It doesn't turn, and the turn setting is ignored.
+
+### Out of doors: the sky over the Pit
+
+In the Pit, the Drops and the Pithead the band is the sky (town.md's `SkyView`, its port
+`dolcoath`) over the Pit's own rim in place of Zennor's valley (`PIT` and `pitRimFor()` in
+`ui/lib/skyline.js`): the Pit's north wall face on, bench above bench to a rim high over the
+horizon, "so high the sky is a lid on it"; the benches either side climbing to it in section; and
+the floor of plate between, frost in its seams. Floodlights stand on squat masts round the plates,
+the Field Office and the Port Office are cut into the first terrace west and east, and the
+headframe stands far off over the Pithead. It's framed on the room you're in:
+
+- **The Pit:** the floor, the headframe far off up the field.
+- **The Pithead:** the headframe close, "as tall as the terrace behind it", its sheave against the
+  sky, the mist off the shaft at its foot, and the Lamp Room and the man engine's head in the
+  terrace's foot.
+- **The Drops:** the banks of broken rock in front.
+
+Indoors it keeps the last room's. There's no ice cap on the horizon: that's Zennor's. Lamps come
+on in the offices' windows once the sky is dark, as Zennor's windows do. The floodlights' light
+isn't drawn (John declined room light, 2026-11-03).
+
+The sun is where `ui/lib/sky.js` puts it today, with today's words, which are Zennor's: the
+per-port sky (Orrin's tilt and seasons, the Pit's own lines) is the `rochet/ground-sky-seasons`
+branch, which isn't merged yet. Once it is, the Pit's sky takes it with no change here.
+
+### From orbit
+
+Over Dolcoath, the `port` scene draws the Pit as its `pit` hull's exterior describes it, and
+Zennor as the town it was (space-scenes.md).
 
 ## Bottom band: a plan a level
 
@@ -153,7 +209,13 @@ given at all.
   names and depths; `locateLevels()`, `levelsInfo()`, `waysOff()`, `wayTip()`,
   `levelLayout()` (townLayout's for a level, with its ways placed) and `levelFrame()`.
 - `ui/levels-deck.js`: the plans, each a `townPlan()` (town-deck.js) with the ways drawn over it.
-- `ui/levels-view.js`: the top band's words.
+- `ui/levels-view.js`: the top band, the section or the sky (`LevelsBand`).
+- `ui/lib/section.js`: `sectionLayout()`, the diagram's rows and shafts; `cageAt()`, where the
+  cage is; `rowTip()`. Tested in `section.test.js`.
+- `ui/section-view.js`: the section's drawing, its lit level and the cage, zoom and ⌂.
+- `ui/lib/skyline.js`: the Pit's rim (`PIT`, `pitRimFor()`), and `SKYLINES`' `dolcoath`.
+- `ui/lib/space.js`, `ui/space-view.js`: the Pit from orbit (`Pit`, `drawPit()`).
+- `ui/levels-view.test.js`, `ui/port-sky.test.js`: the band, and main.js giving any port its sky.
 - `ui/lib/look.js`: `levelsSpec()`, `levelsData()`.
 - `ui/lib/cars.js`, `ui/car-deck.js`: the cage.
 - `src/station_map/location.lua`: lets the `cage` kind through as a car.

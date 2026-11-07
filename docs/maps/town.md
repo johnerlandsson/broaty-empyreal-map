@@ -1,6 +1,6 @@
 # Towns
 
-*Status: built for Zennor, the city. Last updated 2026-10-30.*
+*Status: built for Zennor, the city. Last updated 2026-11-07.*
 
 ## What it is and when it shows
 
@@ -175,10 +175,21 @@ ship, or before the charts have come, the game shows no sky, and neither
 does the band: it's the skyline alone, with no stars, no arc, no lamps and
 nothing about the hour. Stepping outdoors brings the sky straight back.
 
-`ui/town-view.js`'s `SkyView` is the sky and the band. `main.js` asks of it
-what it asks of a model (`div`, `set()` and `setTurning()`), plus
-`setCharts()`, `live` and `draw(t)` for its timer. `set(where, msg)` also
-takes the location message, for its `district`.
+`ui/town-view.js`'s `SkyView` is the sky and the band, for any port: it takes
+the port's id (its place id, which is its id in the charts) and draws that
+port's skyline from `SKYLINES` in `ui/lib/skyline.js`. Each skyline says
+where it starts, whether Zennor's ice cap lines its horizon, what it's framed
+on for where you are (`frame(where, msg)`: Zennor's on the location message's
+`district`, the Pit's on your room) and the layers to draw (`layers(key)`). A
+port with none is the sky alone. Dolcoath's band holds one for the sky over
+the Pit (dolcoath.md). Its clip, blur and dawn gradient have the port in their
+ids (`sky-clip-zennor`), since another port's band may be in the page, hidden.
+
+`main.js` asks of it what it asks of a model (`div`, `set()` and
+`setTurning()`), plus `setCharts()`, `live` and `draw(t)` for its timer. It
+asks it of whichever station is showing: the charts go to every built band
+with `setCharts()`, and the sky's second timer runs for any band with a
+`live` sky, Zennor's or the Pit's.
 
 ## Bottom band: the city plan
 
@@ -292,10 +303,12 @@ address, so the district and the town stand where an address would. In the
 - `ui/town-deck.js`: the plan's drawing, and its names by zoom; `townPlan()`,
   which Dolcoath's levels are each drawn as too (dolcoath.md).
 - `ui/deck-view.js`: a plan's optional `frame(where)`, `maxW` and `onView()`.
-- `ui/town-view.js`: the band and the sky over the skyline.
+- `ui/town-view.js`: the band and the sky over the skyline, for any port.
 - `ui/lib/skyline.js`: the valley's section (`VALLEY`), the terraces'
   (`TERRACES`), where each district is across it (`PLACES`), and
-  `skylineFor()`, the layers to draw for a district. Pure, tested in
+  `skylineFor()`, the layers to draw for a district; the Pit's (`PIT`,
+  `pitRimFor()`, dolcoath.md); and `SKYLINES` and `skylineOf()`, whose is
+  whose. Pure, tested in
   `skyline.test.js`, including that every district in zennor.yaml has a
   view when `~/dev/empyreal` is there.
 - `ui/town-skyline.js`: draws them.
@@ -323,10 +336,12 @@ adds the town to `ui/data/places.js`, so no code changes. The game gives a
 town no layout, so add `data/tweaks/<place>.json` with `paintDistricts` and a
 `town` section (root, uphill, open ground, gate, wells, river, scarp).
 Without a `town` section the build reports it as `noBuilder`. See `sync.md`.
-The skyline is Zennor's valley; a second town would want its
-own section and places for its districts. The sky works for any port the
-charts place: `SkyView` takes the port's id, and `SHORT` in `ui/lib/sky.js`
-the short names of the stations over it. The river is drawn only for an
+The skyline is Zennor's valley; a second town would want its own section
+and places for its districts, and an entry in `SKYLINES` saying what it's
+framed on. Without one it gets the sky with no land under it. The sky works
+for any port the charts place: `SkyView` takes the port's id, and `SHORT` in
+`ui/lib/sky.js` the short names of the stations over it. From orbit a port
+is drawn by its hull (space-scenes.md): a `port` is a town like Zennor's. The river is drawn only for an
 uphill of east or west. Where the exits can't all be true at once (a loop
 that doesn't close), `placeRooms()` still places every room, but some may
 share a cell; check the plan.

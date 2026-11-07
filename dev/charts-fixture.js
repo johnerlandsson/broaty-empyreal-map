@@ -53,6 +53,24 @@ function zennor(now, side) {
   return { body: { id: "zennor", name: "Zennor", kind: "port", orbit: o }, place: { id: "zennor", name: "Zennor", kind: "station", orbit: o, fit: null } };
 }
 
+/** Senara's charts with Dolcoath on Orrin too, by day or by night there as `side` says (and Zennor). */
+export function pitCharts(now, side = "day") {
+  const charts = senaraCharts(now, null, side);
+  const pit = dolcoath(now, side);
+  return { ...charts, bodies: [...charts.bodies, pit.body], places: [...charts.places, pit.place] };
+}
+
+/** Dolcoath, Orrin's port, turning with Orrin's 13-hour day, set to face Senara at `now` (day) or
+ *  away from it (night), as zennor() is. Orrin's phase is 150. */
+function dolcoath(now, side) {
+  const since = (now - epoch(now)) / 1000;
+  const orrin = 150 + (360 * since) / period(FRAMES.senara, 12000);
+  const turned = (360 * since) / 46800;
+  const phase = (((orrin + (side === "night" ? 0 : 180) - turned) % 360) + 360) % 360;
+  const o = { parent: "orrin", a: 500, e: 0, peri: 0, phase, period: 46800 };
+  return { body: { id: "dolcoath", name: "Dolcoath", kind: "port", orbit: o }, place: { id: "dolcoath", name: "Dolcoath", kind: "station", orbit: o, fit: null } };
+}
+
 export function senaraCharts(now, edge = null, side = "day") {
   const tiss = station("tiss", "Tamsin International Space Station", "tamsin", 900);
   const orrinStation = station("orrin_station", "Orrin Station", "orrin", 800);

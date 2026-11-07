@@ -61,7 +61,7 @@ export function loadSource(dir) {
   const worldPath = join(content, "game/world.yaml");
   const hulls = need(hullsPath, readYaml(hullsPath), "hulls");
   const worldDoc = readYaml(worldPath);
-  const world = need(worldPath, worldDoc, "world.stations").map((s) => pick(s, ["id", "name", "berth"]));
+  const world = need(worldPath, worldDoc, "world.stations").map((s) => pick(s, ["id", "name", "berth", "hull"]));
   // A ship's gravity where her plan gives none; none at all without it, as the game's loader has it.
   const shipGravity = worldDoc.world.shipGravity ?? 0;
   const framesPath = join(content, "game/frames.yaml");

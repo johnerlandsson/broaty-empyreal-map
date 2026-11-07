@@ -21,8 +21,8 @@ describe("loadSource", () => {
       { id: "tub", name: "tub", class: "medium", plan: "tub", price: 1 },
     ]);
     expect(src.world).toEqual([
-      { id: "mini", name: "Mini Outpost", berth: "mini.dock" },
-      { id: "wheelie", name: "Wheelie Station", berth: "wheelie.rim-12" },
+      { id: "mini", name: "Mini Outpost", berth: "mini.dock", hull: "outpost" },
+      { id: "wheelie", name: "Wheelie Station", berth: "wheelie.rim-12", hull: "wheel" },
     ]);
     expect(src.shipGravity).toBe(0.25);
     expect(src.heavyWidth).toBe(110);

@@ -7,7 +7,9 @@
 // planetside.md §5.1), where every view looks onto more city (decision 17); nothing in it is a
 // room. The view is framed on the district you're in (Empyreal.Room's `district`): walking down
 // the city slides it west to east. The Terraces are south of the city, off this section, and have
-// one of their own, with the city small up the valley behind. Pure: town-skyline.js draws it.
+// one of their own, with the city small up the valley behind. The Pit, Dolcoath's open pit, has a
+// section of its own, its benches climbing to the rim on both sides (PIT, below), and SKYLINES
+// says whose is whose. Pure: town-skyline.js draws them.
 
 import { rng } from "./svg.js";
 
@@ -117,3 +119,93 @@ export function skylineFor(district) {
 
 /** A point of a section into the band, by its layer. */
 export const project = (layer, x, h) => [(x - layer.x0) * layer.k, layer.y0 - h * layer.v];
+
+// --- the Pit, Dolcoath's open pit ----------------------------------------------------------------
+
+/** n benches up from the floor's edge at x0 (west, side -1, or east, 1): a riser `rise` high,
+ *  then a tread `tread` wide, each "taller than a house" (the Pit's terraces), to the rim. */
+function benches(side, x0, n, rise, tread) {
+  const out = [];
+  let x = x0, h = 0;
+  for (let i = 0; i < n; i++) {
+    out.push([x, h]);
+    h += rise;
+    out.push([x + side * 3, h]); // a riser leans back a little
+    x += side * (3 + tread);
+  }
+  out.push([x, h]);
+  return side < 0 ? out.reverse() : out;
+}
+
+/**
+ * A section across the Pit, west to east, looking north up the field as Zennor's looks north up
+ * its river, so west is on the left as it is on the sky's dome: the floor of steel plate, then
+ * "bench above bench of worked stone" climbing on both sides "to a rim so high the sky is a lid on
+ * it" (content/areas/dolcoath.yaml, the Pit). The Field Office is cut into the first terrace west
+ * and the Port Office east, and floodlights stand on squat iron masts round the plates. Its own
+ * units, framed one to one into the band: the floor's foot at y 96, the rim at y 2.
+ */
+export const PIT = {
+  land: [[-1600, 94], ...benches(-1, -66, 7, 13, 14), ...benches(1, 66, 7, 13, 14), [1600, 94]],
+  floor: [-66, 66],
+  props: [
+    [-66, "cut", 12, 9], // the Field Office, in the first terrace west
+    [54, "cut", 12, 9], // the Port Office, east
+    [-48, "flood", 1, 12], [-16, "flood", 1, 12], [16, "flood", 1, 12], [48, "flood", 1, 12],
+  ],
+};
+
+/** The Pit's north wall, across the field from you, face on: bench above bench to the rim, each
+ *  tread a lit line along it (`wall`, their heights). Behind the benches either side. */
+const NORTH_WALL = { land: [[-1600, 91], [1600, 91]], wall: [13, 26, 39, 52, 65, 78], props: [] };
+
+/** The headframe far off over the Pithead, north up the field, as you see it from the floor. */
+const HEADFRAME_FAR = { land: [[-1600, 0], [1600, 0]], props: [[-5, "headframe", 10, 28]] };
+
+/** At the Pithead: the headframe over the shaft "as tall as the terrace behind it", its sheaves
+ *  against the sky, the mist off the collar; the Lamp Room east in the terrace's foot and the man
+ *  engine's head west. */
+const PITHEAD = {
+  land: [[-1600, 0], [1600, 0]],
+  props: [[-78, "cut", 14, 10], [64, "cut", 14, 10], [-24, "mist", 48, 6], [-20, "headframe", 40, 86]],
+};
+
+/** At the Drops: the banks of broken rock that wall it off, in front of the rest of the Pit. */
+const BANKS = {
+  land: [[-1600, 0], [-200, 0], [-170, 24], [-140, 30], [-112, 22], [-80, 32], [-52, 20], [-30, 14], [-18, 0], [18, 0], [30, 16], [58, 26], [86, 20], [118, 34], [150, 24], [178, 30], [200, 0], [1600, 0]],
+  props: [],
+};
+
+/** The Pit's three rooms open to the sky, each with what's in front of the benches. */
+const PIT_ROOMS = {
+  "dolcoath.field": [NORTH_WALL, PIT, HEADFRAME_FAR],
+  "dolcoath.pithead": [NORTH_WALL, PIT, PITHEAD],
+  "dolcoath.drops": [NORTH_WALL, PIT, HEADFRAME_FAR, BANKS],
+};
+const ONE = { x0: 0, k: 1, y0: 96, v: 1, size: 1.2 };
+const NEAR = { x0: 0, k: 1, y0: 100, v: 1, size: 1.2 };
+
+/** The Pit's rim as layers, far to near, for one of its outdoor rooms; null for any other room. */
+export function pitRimFor(room) {
+  const sections = Object.hasOwn(PIT_ROOMS, room ?? "") ? PIT_ROOMS[room] : null;
+  if (!sections) return null;
+  return sections.map((section) => ({ section, ...(section === NORTH_WALL || section === PIT ? ONE : NEAR), far: section === NORTH_WALL || section === HEADFRAME_FAR }));
+}
+
+// --- whose skyline -------------------------------------------------------------------------------
+
+/**
+ * Each port's skyline under its sky (town-view.js): `frame(where, msg)` the key it's framed on
+ * for where you are, or null to keep the last; `layers(key)` what to draw for that key; `start`
+ * where it's framed before anything says; `cap` whether Zennor's ice cap lines the horizon.
+ * Zennor frames on your district, the Pit on the room you're in.
+ */
+export const SKYLINES = {
+  zennor: { start: "downs", cap: true, frame: (where, msg) => (skylineFor(msg?.district) ? msg.district : null), layers: skylineFor },
+  dolcoath: { start: "dolcoath.field", cap: false, frame: (where) => (where?.kind === "room" && pitRimFor(where.id) ? where.id : null), layers: pitRimFor },
+};
+
+/** A port's skyline, or a bare one (no land, just the sky) for a port that has none drawn. */
+export function skylineOf(port) {
+  return Object.hasOwn(SKYLINES, port ?? "") ? SKYLINES[port] : { start: null, cap: false, frame: () => null, layers: () => [] };
+}

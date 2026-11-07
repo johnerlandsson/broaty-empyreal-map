@@ -1,64 +1,68 @@
-// A city of levels' top band (Dolcoath), for now: words, no drawing. The city's name, the level
-// you're on and how deep it is. The overview, the city in the rock, is a job of its own. Off
-// the plan (riding the cage, aboard your landed ship) it keeps the last level, and before any it
-// names the top one, where you land. It has a view (`vb`, `setView`) for the editor, which keeps
-// a place's views where they were, but it neither turns, pans nor zooms.
+// A city of levels' top band (Dolcoath): underground, the section through its shaft (section-view.js),
+// your level lit and the cage where it is while you ride it; out of doors in the Pit's three rooms
+// open to the sky (the Pit, the Drops, the Pithead), the sky over the Pit with its rim round it
+// (town-view.js's SkyView, the Pit's skyline). One shows at a time. It needs what main.js and the
+// editor ask of a place's model: `div`, `set()`, `setTurning()`, `vb` and `setView()` (the
+// section's), and for the sky `setCharts()`, `live` and `draw()`.
 
-import { el } from "./lib/svg.js";
-
-const TXT = "#e3eaf2";
-const DIM = "#7d8a9a";
-const W = 380;
-const H = 170;
-const FONT = { "font-family": "Inter, system-ui, sans-serif", "text-anchor": "middle" };
+import { SectionView } from "./section-view.js";
+import { SkyView } from "./town-view.js";
 
 export class LevelsBand {
   /**
    * @param {HTMLElement} containerEl
    * @param {ReturnType<typeof import("./lib/levels.js").indexLevels>} index
+   * @param {string} port the city's id in the charts ("dolcoath"), for its sky
    */
-  constructor(containerEl, index) {
-    this.index = index;
+  constructor(containerEl, index, port) {
     const div = document.createElement("div");
     div.className = "model";
-    Object.assign(div.style, { position: "relative", width: "100%", height: "100%", overflow: "hidden", background: "#04060c" });
+    Object.assign(div.style, { position: "relative", width: "100%", height: "100%", overflow: "hidden" });
     containerEl.appendChild(div);
     this.div = div;
-    this.vb = [0, 0, W, H];
-    const svg = el("svg", { viewBox: this.vb.join(" "), preserveAspectRatio: "xMidYMid meet" });
-    Object.assign(svg.style, { display: "block", width: "100%", height: "100%" });
-    div.appendChild(svg);
-    this.svg = svg;
-    const place = String(index.area?.name ?? "").toUpperCase();
-    const g = String(index.area?.gravity ?? "");
-    el("text", { x: W / 2, y: 52, fill: DIM, "font-size": 11, "letter-spacing": 3, ...FONT }, svg, g ? `${place} · ${g} g` : place);
-    this.name = el("text", { x: W / 2, y: 88, fill: TXT, "font-size": 20, "font-weight": 600, "letter-spacing": 3, ...FONT }, svg, "");
-    this.depth = el("text", { x: W / 2, y: 114, fill: DIM, "font-size": 12, "letter-spacing": 1, ...FONT }, svg, "");
-    this.level = null;
-    this.show(index.levels[0] ?? null);
+    this.section = new SectionView(div, index);
+    this.sky = new SkyView(div, index, port);
+    this.sky.div.style.display = "none";
   }
 
-  show(lv) {
-    if (lv === this.level) return;
-    this.level = lv;
-    this.name.textContent = String(lv?.name ?? "").toUpperCase();
-    this.depth.textContent = !lv ? "" : lv.depth ? `${lv.depth} fathoms down` : lv.depth === 0 ? "at the surface" : "";
+  get svg() {
+    return this.section.svg;
   }
 
-  /** Name the level of where you are; off the plan, keep the last. */
-  set(where) {
-    if (where?.kind !== "room") return;
-    this.show(this.index.levels.find((l) => l.level === where.level) ?? this.level);
-  }
-
-  /** The words the golden renders keep for where you are. */
-  lights() {
-    return `level=${this.level?.level ?? "none"}`;
+  get vb() {
+    return this.section.vb;
   }
 
   setView(v) {
-    this.vb = v;
+    this.section.setView(v);
   }
 
   setTurning() {}
+
+  /** Where you are: the sky out of doors in the Pit, the section anywhere else. */
+  set(where, msg) {
+    this.section.set(where, msg);
+    this.sky.set(where, msg);
+    const out = this.sky.outdoors;
+    this.sky.div.style.display = out ? "" : "none";
+    this.section.div.style.display = out ? "none" : "";
+  }
+
+  setCharts(index) {
+    this.sky.setCharts(index);
+  }
+
+  /** A sky to keep up: out of doors, with charts that place the city. */
+  get live() {
+    return this.sky.live;
+  }
+
+  draw(t) {
+    this.sky.draw(t);
+  }
+
+  /** What the golden renders keep for where you are. */
+  lights() {
+    return `${this.section.lights()} outdoors=${this.sky.outdoors} frame=${this.sky.frame}`;
+  }
 }

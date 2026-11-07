@@ -13,7 +13,7 @@
 // early eases back to the scene's own picture.
 
 import { daylit, orbitLit } from "./lib/orbits.js";
-import { Belt, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, heading, litFor, rockFaces, targets, work, workLines } from "./lib/space.js";
+import { Belt, Pit, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, groundOf, heading, litFor, rockFaces, targets, work, workLines } from "./lib/space.js";
 import { rng } from "./lib/svg.js";
 
 const BG = "#04060c";
@@ -30,8 +30,13 @@ const STALL = 0.25; // s: the longest step taken at once, after the page stalls
 // the planet's face: [top, upper, bottom] of its gradient, by day and by night
 const DAY = ["#6e5a44", "#8a7052", "#5c4936"];
 const NIGHT = ["#121821", "#0e131b", "#080b11"];
+const FROZEN = ["#6d6a66", "#8a8781", "#55524e"]; // Orrin's frozen ground round the Pit, by day
+const PLATE = "#5d6470"; // the Pit's floor of steel plate
+const ROAD = "163,155,140"; // the haul road round the benches
+const STONE = "#6a6f78"; // the Drops' crushed stone
 const FIELD = "#b89a74"; // the landing field's dust, the room colour (style guide §4)
 const PAD = "#e3d3b8";
+const FIELD_PIT = "#6b7380"; // the pads' plates, a shade lighter than the rest of the floor
 const LAMP = "255,217,138"; // the Porthole colour
 const BEACON = "232,176,74"; // the busy status light
 const RIM = "207,227,255"; // Glass: the thin air at the limb
@@ -42,8 +47,12 @@ const CLOUD = "232,220,200"; // the bands on the face from high orbit
 const HAZE = 16; // px of thin air glowing over the limb from high orbit, by day
 
 export class SpaceView {
-  /** @param {HTMLElement} containerEl the overview band, already holding the station model */
-  constructor(containerEl) {
+  /**
+   * @param {HTMLElement} containerEl the overview band, already holding the station model
+   * @param {{ hulls?: Record<string, string> }} [opts] each port's hull by its id (data/places.js), which
+   *   says how it looks from orbit: a `pit` is drawn as Dolcoath's, anything else as a town
+   */
+  constructor(containerEl, { hulls = {} } = {}) {
     const cv = document.createElement("canvas");
     Object.assign(cv.style, {
       position: "absolute",
@@ -64,6 +73,8 @@ export class SpaceView {
     this.far = Array.from({ length: 90 }, () => [r(), r(), 0.2 + r() * 0.5]); // the belt's backdrop
     this.town = new Town(r);
     this.clouds = clouds(22, r);
+    this.pit = new Pit(rng(43)); // its own generator, so the town and the clouds stay as they were
+    this.hulls = hulls;
     this.charts = null; // indexCharts() of Space.Charts, to tell day from night below
     this.ship = null; // the chart's ship (src/station_map/charts.lua), for her side in high orbit
     this.port = null;
@@ -438,9 +449,11 @@ export class SpaceView {
     }
   }
 
-  /** The planet's face across the lower band, the town on it, by day and by night cross-faded. */
+  /** The planet's face across the lower band, the port on it (a town, or Dolcoath's pit), by day
+   *  and by night cross-faded. */
   drawGround() {
-    const { g, w, h, town, lit } = this;
+    const { g, w, h, lit } = this;
+    const pit = groundOf(this.hulls[this.port]) === "pit";
     const R = w * 1.4;
     const cx = w / 2;
     const top = h * 0.52;
@@ -462,10 +475,30 @@ export class SpaceView {
     g.fillRect(0, top, w, h - top);
     if (lit > 0) {
       g.globalAlpha = this.ground * lit;
-      g.fillStyle = face(DAY);
+      g.fillStyle = face(pit ? FROZEN : DAY);
       g.fillRect(0, top, w, h - top);
     }
     g.globalAlpha = this.ground;
+    const k = Math.min(Math.max(24, Math.min(70, w * 0.1)), (h - top) * 0.7); // the field's width in px; the town fits the face
+    const tx = cx;
+    const ty = top + (h - top) * 0.5;
+    if (pit) this.drawPit(k, tx, ty);
+    else this.drawTown(k, tx, ty, top);
+    g.restore();
+
+    g.globalAlpha = this.ground;
+    g.strokeStyle = `rgba(${RIM},${0.18 + 0.37 * lit})`;
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.arc(cx, cy, R, 0, Math.PI * 2);
+    g.stroke();
+    g.globalAlpha = 1;
+  }
+
+  /** Zennor's look: dusty patches, the field and its pads, low roofs, and by night the lamps and the
+   *  field's blinking beacons. `k` px the field's width, about tx, ty. */
+  drawTown(k, tx, ty, top) {
+    const { g, w, h, town, lit } = this;
     for (const d of town.dust) {
       g.fillStyle = `rgba(40,28,18,${(0.08 + d.a * 0.1) * lit})`;
       g.beginPath();
@@ -473,9 +506,6 @@ export class SpaceView {
       g.fill();
     }
 
-    const k = Math.min(Math.max(24, Math.min(70, w * 0.1)), (h - top) * 0.7); // the field's width in px; the town fits the face
-    const tx = cx;
-    const ty = top + (h - top) * 0.5;
     const X = (u) => tx + u * k;
     const Y = (v) => ty + v * k;
     const { w: fw, h: fh } = town.field;
@@ -519,15 +549,106 @@ export class SpaceView {
         g.fill();
       }
     }
-    g.restore();
+  }
 
-    g.globalAlpha = this.ground;
-    g.strokeStyle = `rgba(${RIM},${0.18 + 0.37 * lit})`;
-    g.lineWidth = 1.5;
-    g.beginPath();
-    g.arc(cx, cy, R, 0, Math.PI * 2);
-    g.stroke();
-    g.globalAlpha = 1;
+  /** Dolcoath's pit (Pit, John's pick E): the benches as faceted steps, risers toned by the way they
+   *  face, the haul road round them, the floor of plate in pads, the winding house over the shaft at
+   *  its north edge and the Drops at its south. By night the floodlights light the floor and leave
+   *  the terraces black, and the floor's corners blink. `k` px the floor's width, about tx, ty. */
+  drawPit(k, tx, ty) {
+    const { g, pit, lit } = this;
+    const X = (u) => tx + u * k;
+    const Y = (v) => ty + v * k;
+    const poly = (pts) => {
+      g.beginPath();
+      pts.forEach(([u, v], i) => (i ? g.lineTo(X(u), Y(v)) : g.moveTo(X(u), Y(v))));
+      g.closePath();
+    };
+    const { w: fw, h: fh } = pit.floor;
+    if (lit > 0) {
+      g.globalAlpha = this.ground * lit;
+      g.strokeStyle = EDGE;
+      g.lineWidth = 0.4;
+      g.lineJoin = "round";
+      for (const f of pit.faces) {
+        poly(f.pts);
+        g.fillStyle = f.riser ? TONES[f.tone] : TONES[2];
+        g.fill();
+        g.stroke();
+      }
+      g.strokeStyle = `rgba(${ROAD},0.7)`;
+      g.setLineDash([3, 1.5]);
+      g.lineWidth = 0.8;
+      g.beginPath();
+      pit.road.forEach(([u, v], i) => (i ? g.lineTo(X(u), Y(v)) : g.moveTo(X(u), Y(v))));
+      g.stroke();
+      g.setLineDash([]);
+      poly(pit.edge);
+      g.fillStyle = PLATE;
+      g.fill();
+      g.fillStyle = FIELD_PIT;
+      g.fillRect(X(-fw / 2), Y(-fh / 2), fw * k, fh * k);
+      g.strokeStyle = EDGE;
+      g.lineWidth = 0.4;
+      for (let i = 1; i < 6; i++) {
+        g.beginPath();
+        g.moveTo(X(-fw / 2 + (fw * i) / 6), Y(-fh / 2));
+        g.lineTo(X(-fw / 2 + (fw * i) / 6), Y(fh / 2));
+        g.stroke();
+      }
+      g.strokeStyle = PAD;
+      g.lineWidth = 0.8;
+      for (const p of pit.pads) {
+        g.beginPath();
+        g.arc(X(p), ty, fh * k * 0.28, 0, Math.PI * 2);
+        g.stroke();
+      }
+      const box = (b, fill) => {
+        g.fillStyle = fill;
+        g.fillRect(X(b.x - b.w / 2), Y(b.y - b.h / 2), b.w * k, b.h * k);
+        g.strokeStyle = EDGE;
+        g.lineWidth = 0.6;
+        g.strokeRect(X(b.x - b.w / 2), Y(b.y - b.h / 2), b.w * k, b.h * k);
+      };
+      box(pit.drops, STONE);
+      box(pit.winding, TONES[0]);
+      g.fillStyle = "#020304"; // the shaft's collar under it
+      g.fillRect(X(-0.03), Y(pit.winding.y + pit.winding.h / 2), 0.06 * k, 0.04 * k);
+    }
+    if (lit < 1) {
+      const night = this.ground * (1 - lit);
+      g.globalAlpha = 1;
+      poly(pit.rings[0]); // the pit, a black hole in the dark ground
+      g.fillStyle = `rgba(4,6,10,${0.9 * night})`;
+      g.fill();
+      const fx = X(0);
+      const fy = Y(0);
+      const glow = g.createRadialGradient(fx, fy, 0, fx, fy, fw * k * 0.62);
+      glow.addColorStop(0, `rgba(${LAMP},${0.22 * night})`);
+      glow.addColorStop(1, `rgba(${LAMP},0)`);
+      g.fillStyle = glow;
+      g.beginPath();
+      g.ellipse(fx, fy, fw * k * 0.62, fh * k * 0.9, 0, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = `rgba(${LAMP},${0.2 * night})`;
+      g.lineWidth = 0.8;
+      for (const p of pit.pads) {
+        g.beginPath();
+        g.arc(X(p), ty, fh * k * 0.28, 0, Math.PI * 2);
+        g.stroke();
+      }
+      const br = k * 0.11;
+      for (const b of pit.beacons) {
+        const blink = 0.55 + 0.45 * Math.cos(2 * Math.PI * (this.clock * 0.8 - b.at));
+        const grd = g.createRadialGradient(X(b.x), Y(b.y), 0, X(b.x), Y(b.y), br);
+        grd.addColorStop(0, `rgba(${BEACON},${0.95 * blink * night})`);
+        grd.addColorStop(1, `rgba(${BEACON},0)`);
+        g.fillStyle = grd;
+        g.beginPath();
+        g.arc(X(b.x), Y(b.y), br, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
   }
 
   /**
