@@ -131,13 +131,23 @@ nothing in it is named or hovered.
 
 In a room open to the sky (`outdoors` in the area file), the band shows what
 the game's `look sky` says is overhead, worked out from Space.Charts as the
-game's `ground.ts` works it out (planetside.md §4), and moving as you watch:
+game's `ground.ts` works it out (planetside.md §4, calendar.md §8.2), and
+moving as you watch. Since empyreal 6441e99 Tamsin is tilted 20° and Zennor
+is at 40° north, so Senara climbs higher and the days run longer from spring
+to autumn, over a 30-day year. The game names where Senara and the planets
+are on eight points ("low in the south-east"). The stations it still sees as
+from the equator, east or west.
 
 - **The dome.** A faint dashed arc in Orbit springs from the horizon either
-  side of the town, with W and E at its feet. The game's sky has only those
-  two directions: everything in it is somewhere on that one arc, from the
-  western horizon through overhead to the eastern. A body `alt` degrees up
-  sits `alt` degrees along the arc from its side's foot.
+  side of the town, with W and E at its feet. It looks north, as the skyline
+  does, with west on the left. Each thing is placed by its east-west part
+  across and its height up, and its north-south part is dropped. A station
+  sits on the arc, `alt` degrees along it from its side's foot. Senara and
+  the planets can be inside the arc: the noon sun is due south, so it stands
+  in the middle of the dome, near the top in summer (70°, "high overhead")
+  and half-way up in winter (30°, "well up in the south"). A summer sunrise
+  in the north-east and a winter one in the south-east both sit near the
+  eastern foot. Which one it is shows only in the words.
 - **Senara** is the chart's Star disc with its glow, drawn only while it's
   above the horizon.
 - **T.I.S.S.** is a pale fleck by day and a bright spark with a glint once
@@ -148,21 +158,59 @@ game's `ground.ts` works it out (planetside.md §4), and moving as you watch:
   sentence for it ("T.I.S.S. is climbing up out of the west, a bright,
   steady spark."). Hovering over the empty sky gives Senara's.
 - **The sky's colour** steps with the game's bands, so it never says more
-  than the words. Night is black and crowded with stars. At dusk Senara's
-  side glows warm and a few stars are out. At dawn the sky pales, a glow rising
-  from its side of the horizon behind the skyline, and there are no stars,
-  since the game's dawn names none. By day the dome
+  than the words. Night is black and crowded with stars. At dusk the glow
+  is warm where Senara went down, and a few stars are out. At dawn the sky
+  pales, a glow rising behind the skyline where Senara will come up, and
+  there are no stars, since the game's dawn names none. Each glow sits on
+  the horizon by Senara's east-west part, as a mark would. By day the dome
   is tinted a dark, dusty blue-grey, a step lighter for each band: just up,
   low, well up, overhead.
 
+**Each port's own words.** The sentences are the port's own, word for word:
+the `sky` words in its station's `words` in `world.yaml` (`high`, `up`,
+`low`, `rises`, `sets`, `paling`, `dusk` and `night`), over Zennor's, which
+are the game's defaults in `systems/port-words.ts`. `{star}`, `{dir}` and
+`{away}` are filled in as the game's `fillWords` does. Zennor's Senara is "well
+up in the south of a pale, dusty sky". Dolcoath's is "up in the south, small
+and pale in a dark blue sky". The stations' and planets' sentences are the
+same everywhere, as the game has them.
+
+**What the charts don't carry.** Space.Charts has no tilt, equinox, latitude
+or sky words. `npm run build:data` reads them into `ui/data/sky.js`, one
+entry per port with a `surface` in `system.yaml`: its planet, that planet's
+`tilt` and `equinox`, its `latitude` (each 0 where the source gives none, as
+the game has it), and its words. The sync report lists any planet field
+(`planet.*`) or surface field (`surface.*`) in `system.yaml` the map doesn't
+read, the first build it appears, as it does for `hull.*`. Each port's turn
+is already in the charts: the game sends a port as an orbit at its planet's
+radius, at its `bearing`, round in its planet's `day`.
+
+**Any port.** `groundSky(index, port, t)` works for any port with a sky in
+`ui/data/sky.js`, and returns null for one without. A town's band shows the
+sky over the port of its own id: Zennor's, and the Pit's at Dolcoath
+(dolcoath.md), each in its own words.
+The space scene's day or night below a port uses the same sun height, so it
+agrees with the game's `isDay`.
+
 It follows ground.ts's rules to the degree. Dawn and dusk are 10° either
-side of the horizon, about 7 minutes with Tamsin turning 90° an hour; that's
-the code's, not planetside.md's "half hour". It's "well up" from 30° and
-overhead from 60°. It's dark below −5°. Rising and heading are judged a
-minute ahead, and time is in the game's whole ticks. Positions use the
-game's own Kepler sum, not the chart's, because at a pass exactly overhead
-rounding decides whether the game says east or west. The bodies and the glow
-draw over the skyline, so nothing the game says is up is hidden.
+side of the horizon. It's "well up" from 30° and overhead from 60°. It's
+dark below −5°. Rising and heading are judged a minute ahead, and time is in
+the game's whole ticks. Positions use the game's own Kepler sum, not the
+chart's, because at a pass exactly overhead rounding decides whether the
+game says east or west. The bodies and the glow draw over the skyline, so
+nothing the game says is up is hidden.
+
+**Tested against the game.** `dev/sky-cases.ts` runs the game from its
+source and records its Space.Charts and its sky text either side of every
+change, over a year of each port's planet: Tamsin's 2,592,000 s for Zennor,
+and Orrin's, about 7,331,284 s, for Dolcoath. A text said more than once is
+kept once. `ui/lib/sky.test.js` checks every case word for word. The game
+wants Node 24, so with an older node run
+`npx -y node@24 dev/sky-cases.ts > dev/sky-cases.json`. The game's checkout
+needs its `node_modules`. Without them, run it on an exported copy
+(`git archive HEAD`, then `pnpm install`) with `EMPYREAL=<copy>` and
+`EMPYREAL_COMMIT=<sha>`. `dev/preview.html?sky=` has `summer-noon`,
+`winter-noon`, `summer-dawn` and `winter-dusk` for the seasons.
 
 It's redrawn once a second while it's the band showing, the panel is
 visible, and neither the chart (◎), the lanes map (⋈) nor a space scene covers

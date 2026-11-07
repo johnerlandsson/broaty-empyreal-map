@@ -28,7 +28,7 @@ export class SkyView {
   /**
    * @param {HTMLElement} containerEl the band
    * @param {{ byId: Map<string, { outdoors: boolean }> }} town indexTown()'s index, for which rooms are open to the sky
-   * @param {string} port the port's id in the charts ("zennor", "dolcoath")
+   * @param {string} port the port's id in the charts and data/sky.js ("zennor", "dolcoath")
    * @param {ReturnType<typeof skylineOf>} [skyline] its skyline, SKYLINES' for the port by default
    */
   constructor(containerEl, town, port, skyline = skylineOf(port)) {
@@ -142,7 +142,7 @@ export class SkyView {
     // Dawn's paling, in the sky behind the ridge, rising from Senara's side of the horizon: the
     // glow on the horizon alone sits on the ridge's face, pale on pale, and doesn't show.
     if (scene.glow?.kind === "dawn") {
-      const cx = scene.glow.east ? DOME : -DOME;
+      const cx = scene.glow.x * DOME;
       const g = el("radialGradient", { id: this.ids.dawn, cx, cy: HORIZON, r: 190, gradientUnits: "userSpaceOnUse" }, inside);
       el("stop", { offset: 0, "stop-color": "#8fa2bd", "stop-opacity": 0.7 }, g);
       el("stop", { offset: 0.5, "stop-color": "#4a5a74", "stop-opacity": 0.3 }, g);
@@ -153,7 +153,7 @@ export class SkyView {
     const f = this.front;
     if (scene.glow) {
       const [fill, opacity] = GLOWS[scene.glow.kind];
-      el("ellipse", { cx: scene.glow.east ? DOME : -DOME, cy: HORIZON, rx: 70, ry: 26, fill, opacity, filter: `url(#${this.ids.soft})` }, f);
+      el("ellipse", { cx: scene.glow.x * DOME, cy: HORIZON, rx: 70, ry: 26, fill, opacity, filter: `url(#${this.ids.soft})` }, f);
     }
     el("path", { d: dome(), fill: "transparent", "data-tip": "sky" }, f);
     this.tips.set("sky", { title: "The sky", body: scene.hover });
@@ -162,13 +162,12 @@ export class SkyView {
     el("text", { ...label, x: -DOME, y: HORIZON + 11, "text-anchor": "middle" }, f, "W");
     el("text", { ...label, x: DOME, y: HORIZON + 11, "text-anchor": "middle" }, f, "E");
     for (const m of scene.marks) {
-      const a = (m.angle * Math.PI) / 180;
-      const x = -DOME * Math.cos(a);
-      const y = HORIZON - DOME * Math.sin(a);
+      const x = DOME * m.at[0];
+      const y = HORIZON - DOME * m.at[1];
       const g = el("g", { "data-tip": m.id }, f);
       this.tips.set(m.id, { title: m.name, body: m.line });
       mark(g, m.look, x, y);
-      const east = m.angle > 120;
+      const east = m.at[0] > 0.5;
       el("text", { ...label, x: x + (east ? -9 : 9), y: y + 3, "text-anchor": east ? "end" : "start" }, g, m.name);
     }
   }

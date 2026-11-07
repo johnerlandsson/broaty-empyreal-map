@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 // Build the map's place data from the Empyreal source and the tweak files: ui/data/<area>.js for
 // each area with a builder, ui/data/places.js, ui/data/plans/<plan>.js for each ship plan (and a
-// one-room plan for each hull without one), ui/data/ships.js, ui/data/frames.js, and the sync
-// report. Reads the source, never writes it.
+// one-room plan for each hull without one), ui/data/ships.js, ui/data/frames.js, ui/data/sky.js
+// (each port's tilt, latitude and sky words), and the sync report. Reads the source, never writes it.
 // Usage: node scripts/build-data.mjs [--source DIR] [--tweaks DIR] [--out DIR] [--report PATH]
 
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { keepArea, keepHull, keepRoom, ROOM_FIELDS } from "./source/filter.mjs";
 import { hullClashes, overlaps } from "./source/footprints.mjs";
 import { placeRooms } from "./source/place.mjs";
@@ -17,6 +17,7 @@ import { loadSource } from "./source/read.mjs";
 import { levelRooms } from "./source/levels.mjs";
 import { diffRooms, droppedOf, emptyReport, formatReport, sortReport } from "./source/report.mjs";
 import { loadTweaks, originOf, resolveLook, resolveTweak, via } from "./source/tweaks.mjs";
+import { skyOf } from "./source/sky.mjs";
 import { RINGS } from "./source/wheel.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -26,7 +27,10 @@ const ROOM_KEYS = ["id", "name", "address", "at", "terrain", ...ROOM_FIELDS.slic
 /** The look's keys, in order (resolveLook's, then the palette). */
 const LOOK_KEYS = ["paint", "fixtures", "footprints", "hull", "profile", "surface", "greebles", "view", "drum", "town", "levels", "wheel", "palette"];
 /** What a checkout must have; loadSource reads each. */
-const SOURCE_PATHS = ["content/areas", "content/plans", "content/game/hulls.yaml", "content/game/world.yaml", "content/game/frames.yaml"];
+/** The game's port words (Zennor's, under each port's own in world.yaml), which build() imports and runs. */
+const PORT_WORDS = "packages/game/src/systems/port-words.ts";
+/** What a checkout must have; loadSource reads each, and build() imports PORT_WORDS. */
+const SOURCE_PATHS = ["content/areas", "content/plans", "content/game/hulls.yaml", "content/game/world.yaml", "content/game/frames.yaml", "content/game/system.yaml", PORT_WORDS];
 
 function ordered(obj, keys) {
   const out = {};
@@ -148,7 +152,7 @@ function shipsText(commit, hulls, planIds) {
 }
 
 /** The out dir's index files, which are generated but no place's. */
-const INDEXES = ["places.js", "ships.js", "frames.js"];
+const INDEXES = ["places.js", "ships.js", "frames.js", "sky.js"];
 
 /** The ids of the generated place files (stamped; hand-made files aren't) among the names, each read by `read`. */
 function generatedIds(outDir, names, read) {
@@ -341,6 +345,8 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   const areasDir = join(source, "content/areas");
   if (!readdirSync(areasDir).some((f) => f.endsWith(".yaml"))) throw new Error(`Empyreal source has no areas: no *.yaml in ${areasDir}`);
   const src = loadSource(source);
+  const { portWords } = await import(pathToFileURL(join(source, PORT_WORDS)).href);
+  const sky = skyOf(src.bodies, src.stations, portWords);
   const tweaks = loadTweaks(tweaksDir, { shownAs: tweaksShownAs });
   const previous = previousReport(reportPath);
   const report = emptyReport(src.commit);
@@ -359,13 +365,15 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   for (const hull of ships) if (hull.plan !== undefined) planOf.get(hull.plan).hulls.push(hull.id);
 
   // Dropped flags and fields are named by name, the first build their name appears anywhere in the
-  // source; a nested field by its dotted name ("car.perStop"). A hull's place is its id.
+  // source; a nested field by its dotted name ("car.perStop"). A hull's place is its id, a planet's
+  // and a port's surface's their body's.
   const dropped = [
     ...[...src.areas, ...src.plans].flatMap(({ area, rooms }) => [
       { place: area.id, dropped: { ...keepArea(area).dropped, flags: [] } },
       ...rooms.map((raw) => ({ place: area.id, dropped: keepRoom(raw).dropped })),
     ]),
     ...src.hulls.map((raw) => ({ place: raw.id, dropped: keepHull(raw).dropped })),
+    ...sky.dropped,
   ];
   Object.assign(report, droppedOf(dropped, previous));
 
@@ -418,6 +426,7 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   );
   files.set(join(outDir, "ships.js"), shipsText(src.commit, hulls, planIds));
   files.set(join(outDir, "frames.js"), moduleText(src.commit, { heavyWidth: src.heavyWidth }));
+  files.set(join(outDir, "sky.js"), moduleText(src.commit, sky.ports));
   sortReport(report);
   files.set(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 

@@ -120,9 +120,10 @@ Indoors it keeps the last room's. There's no ice cap on the horizon: that's Zenn
 on in the offices' windows once the sky is dark, as Zennor's windows do. The floodlights' light
 isn't drawn (John declined room light, 2026-11-03).
 
-The sun is where `ui/lib/sky.js` puts it today, with today's words, which are Zennor's: the
-per-port sky (Orrin's tilt and seasons, the Pit's own lines) is the `rochet/ground-sky-seasons`
-branch, which isn't merged yet. Once it is, the Pit's sky takes it with no change here.
+The sun is where `ui/lib/sky.js` puts it, as the game's `ground.ts` does: seen from Dolcoath's 30°
+north on Orrin, tilted 25°, so the Pit has seasons through Orrin's long year, and said in the Pit's
+own words from `world.yaml` ("Senara hangs low in the south-east, just over the Pit's rim, ...").
+The dome places each thing by its east-west part, as Zennor's does (town.md).
 
 ### From orbit
 

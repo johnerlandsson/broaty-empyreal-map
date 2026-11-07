@@ -88,8 +88,10 @@ export function positionOf(index, id, t, depth = 0) {
 // the star: straight up from the centre through it, against the way to the star.
 const facesStar = (here, centre) => (here[0] - centre[0]) * -here[0] + (here[1] - centre[1]) * -here[1] > 0; // the star is at the origin
 
-// Whether a port on its planet's surface has its star above the horizon at wall-clock t (ms),
-// as the game's isDay (planetside.md §4). Null when the charts can't place the town or its planet.
+// Whether a port on its planet's surface has its star above the horizon at wall-clock t (ms), as
+// the game's isDay had it before planets were tilted: on the equator of an untilted planet. sky.js's
+// sunAlt is the game's isDay now; this is for a port it has no sky for. Null when the charts can't
+// place the town or its planet.
 export function daylit(index, id, t) {
   const planet = parentOf(index, id);
   const here = positionOf(index, id, t);

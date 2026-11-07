@@ -1,11 +1,6 @@
 {
   "commit": "6441e99",
-  "newPlaces": [
-    {
-      "place": "dolcoath",
-      "builder": "levels"
-    }
-  ],
+  "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
   "rooms": {
@@ -20,7 +15,60 @@
   "unplaced": [],
   "orphans": [],
   "droppedFlags": [],
-  "unknownFields": [],
+  "unknownFields": [
+    {
+      "name": "planet.gravity",
+      "places": [
+        "bolventor",
+        "botallack",
+        "carclaze",
+        "carrow",
+        "gwithian",
+        "henwood",
+        "kynance",
+        "lamorna",
+        "lanyon",
+        "lelant",
+        "marazion",
+        "morvah",
+        "orrin",
+        "pensilva",
+        "penwith",
+        "polperro",
+        "roughtor",
+        "tamsin",
+        "traboe",
+        "tregonning",
+        "wenna"
+      ]
+    },
+    {
+      "name": "planet.reach",
+      "places": [
+        "bolventor",
+        "botallack",
+        "carclaze",
+        "carrow",
+        "gwithian",
+        "henwood",
+        "kynance",
+        "lamorna",
+        "lanyon",
+        "lelant",
+        "marazion",
+        "morvah",
+        "orrin",
+        "pensilva",
+        "penwith",
+        "polperro",
+        "roughtor",
+        "tamsin",
+        "traboe",
+        "tregonning",
+        "wenna"
+      ]
+    }
+  ],
   "knownDroppedFlags": [
     "bank",
     "barber",
@@ -86,6 +134,8 @@
     "hull.slots",
     "hull.sold",
     "mail",
-    "noFirearms"
+    "noFirearms",
+    "planet.gravity",
+    "planet.reach"
   ]
 }

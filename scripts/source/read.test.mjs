@@ -23,7 +23,10 @@ describe("loadSource", () => {
     expect(src.world).toEqual([
       { id: "mini", name: "Mini Outpost", berth: "mini.dock", hull: "outpost" },
       { id: "wheelie", name: "Wheelie Station", berth: "wheelie.rim-12", hull: "wheel" },
+      { id: "pit", name: "The Pit" },
     ]);
+    expect(src.stations.find((s) => s.id === "pit").words.sky).toEqual({ night: "Night over the Pit." });
+    expect(src.bodies.map((b) => b.id)).toEqual(["sol", "rock", "mini", "pit"]);
     expect(src.shipGravity).toBe(0.25);
     expect(src.heavyWidth).toBe(110);
   });

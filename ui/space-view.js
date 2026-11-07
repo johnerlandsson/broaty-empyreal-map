@@ -14,6 +14,7 @@
 
 import { daylit, orbitLit } from "./lib/orbits.js";
 import { Belt, Pit, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, groundOf, heading, litFor, rockFaces, targets, work, workLines } from "./lib/space.js";
+import { sunAlt } from "./lib/sky.js";
 import { rng } from "./lib/svg.js";
 
 const BG = "#04060c";
@@ -153,7 +154,10 @@ export class SpaceView {
   daylight() {
     if (!this.charts) return null;
     if (this.port) {
-      const day = daylit(this.charts, this.port, Date.now());
+      // The game's isDay: its star above the port's horizon on its tilted planet, else, for a port
+      // data/sky.js has no sky for, straight up from the planet's centre facing it.
+      const alt = sunAlt(this.charts, this.port, Date.now());
+      const day = alt === null ? daylit(this.charts, this.port, Date.now()) : alt > 0;
       return day === null ? null : litFor(day);
     }
     if (this.planet) return litFor(orbitLit(this.charts, this.ship, Date.now()));

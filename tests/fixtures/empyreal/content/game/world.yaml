@@ -10,5 +10,10 @@ world:
       name: Wheelie Station
       berth: wheelie.rim-12
       hull: wheel
+    - id: pit
+      name: The Pit
+      words:
+        sky:
+          night: 'Night over the Pit.'
   speed: 10
   shipGravity: 0.25

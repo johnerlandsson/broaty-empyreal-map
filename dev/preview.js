@@ -49,8 +49,9 @@
 //             the Lua side posts: undock-tiss (3 s, then the undock), dock-orrin-queued (10 s behind
 //             other ships' calls, then the dock) or land-zennor (1 s, the automated voice, over Zennor;
 //             the overview draws no landing); ?stop=N stops it N s into the wait; the bar's menu switches it
-//   ?sky=S    stand in Zennor's Square under sky S (night, dusk, dawn, low, overhead or tiss-overhead): the game's
-//             own charts from dev/sky-cases.json, shifted so a recorded moment of that sky is now; the bar's menu switches it
+//   ?sky=S    stand in Zennor's Square under sky S (night, dusk, dawn, low, overhead, tiss-overhead, summer-noon,
+//             winter-noon, summer-dawn or winter-dusk): the game's own charts from dev/sky-cases.json, shifted so a
+//             recorded moment of that sky is now; the bar's menu switches it
 
 import { data } from "../ui/data/places.js";
 import ships from "../ui/data/ships.js";
@@ -838,10 +839,14 @@ const SKY_WORDS = {
   overhead: (t) => t.includes("stands high overhead"),
   "tiss-overhead": (t) => t.includes("passing overhead, a bright"),
 };
+/** Moments by the season, ticks found from the recorded year: Senara's highest and lowest noons, a
+ *  summer dawn paling in the north-east and a winter dusk glowing in the south-west. */
+const SKY_TICKS = { "summer-noon": 639000, "winter-noon": 1935000, "summer-dawn": 651150, "winter-dusk": 1938570 };
 
 /** A tick half a minute into a stretch of that sky lasting five minutes or more. */
 function skyTick(name) {
-  const cs = skyCases.cases;
+  if (SKY_TICKS[name] !== undefined) return SKY_TICKS[name];
+  const cs = skyCases.ports.zennor.cases.map(([tick, i]) => ({ tick, text: skyCases.texts[i] }));
   const i = cs.findIndex((c, k) => SKY_WORDS[name](c.text) && cs[k + 1] && cs[k + 1].tick - c.tick >= 300);
   return i < 0 ? null : cs[i].tick + 30;
 }
