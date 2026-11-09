@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import PORTS from "../data/sky.js";
+import WORLDS from "../data/worlds.js";
 import cases from "../../dev/sky-cases.json" with { type: "json" };
 import { indexCharts } from "./orbits.js";
-import { groundSky, isDark, isUp, NO_WEATHER, POINTS, skyAt, skyScene, starColour, sunAlt, sunBand, sunPhase } from "./sky.js";
+import { groundSky, isDark, isUp, NO_WEATHER, POINTS, skyAt, skyScene, sunAlt, sunBand, sunPhase } from "./sky.js";
 
 // Where the game's own sky over Zennor and Dolcoath puts things, recorded by dev/sky-cases.ts from
 // ground.ts (empyreal 44913e47) with the weather stubbed out: its Space.Charts, and the facts its
@@ -45,8 +46,8 @@ describe.each(["zennor", "dolcoath"])("groundSky over %s against the game", (por
     for (const c of all) expect(factsOf(groundSky(idx, port, at(c.tick, 999)), c.facts), `tick ${c.tick}`).toEqual(theGame(c.facts));
   });
 
-  it("names the star's colour as the game's words do, from data/sky.js's temperature", () => {
-    expect(starColour(PORTS[port].temperature)).toBe(cases.ports[port].colour);
+  it("names the star's colour as the game's words do, from data/worlds.js", () => {
+    expect(WORLDS.stars.senara.colour).toBe(cases.ports[port].colour);
     for (const c of all.slice(0, 50)) expect(groundSky(idx, port, at(c.tick)).sun.colour).toBe(cases.ports[port].colour);
   });
 
@@ -129,9 +130,10 @@ describe("groundSky for any port", () => {
 });
 
 // A hand-placed sky: a star at the origin, a planet a billion km out that doesn't move in a
-// minute, and a port 1 km up on it, on the equator of a planet with no tilt, under a white star,
+// minute, and a port 1 km up on it, on the equator of a planet with no tilt, under a white star (WHITE),
 // turned so its star stands `alt` degrees up in the east (rising, the morning) or the west (setting).
-const STUB = { x: { planet: "p", tilt: 0, equinox: 0, latitude: 0, temperature: 6000 } };
+const STUB = { x: { planet: "p", tilt: 0, equinox: 0, latitude: 0 } };
+const WHITE = { stars: { s: { colour: "white" } } };
 function stub(alt, east) {
   return indexCharts({
     epoch: 0,
@@ -143,7 +145,7 @@ function stub(alt, east) {
     places: [],
   });
 }
-const sunAt = (alt, east = true) => groundSky(stub(alt, east), "x", 0, { ports: STUB });
+const sunAt = (alt, east = true) => groundSky(stub(alt, east), "x", 0, { ports: STUB, worlds: WHITE });
 const E = 0.01; // well clear of the stub's rounding (about 1e-7 degrees)
 
 describe("groundSky's thresholds, as ground.ts's", () => {
@@ -187,30 +189,12 @@ describe("groundSky's thresholds, as ground.ts's", () => {
     expect(sunAt(-5 - E).dark).toBe(true);
   });
 
-  it("leaves the colour out for a star with no temperature", () => {
-    const none = { x: { ...STUB.x, temperature: null } };
-    const sky = groundSky(stub(40, true), "x", 0, { ports: none });
+  it("leaves the colour out for a star data/worlds.js gives none or doesn't know", () => {
+    const none = groundSky(stub(40, true), "x", 0, { ports: STUB, worlds: { stars: { s: { colour: null } } } });
+    expect(none.sun.line).toBe("Sun is well up in the east, climbing.");
+    const sky = groundSky(stub(40, true), "x", 0, { ports: STUB, worlds: { stars: {} } });
     expect(sky.sun.colour).toBeNull();
     expect(sky.sun.line).toBe("Sun is well up in the east, climbing.");
-  });
-});
-
-describe("starColour, as stars.ts's", () => {
-  it("colours a star by the coolest temperature each colour starts at", () => {
-    expect(starColour(3400)).toBe("red");
-    expect(starColour(4299)).toBe("red");
-    expect(starColour(4300)).toBe("orange");
-    expect(starColour(4440)).toBe("orange");
-    expect(starColour(5000)).toBe("gold");
-    expect(starColour(5400)).toBe("pale yellow");
-    expect(starColour(5900)).toBe("white");
-    expect(starColour(8000)).toBe("blue-white");
-    expect(starColour(12000)).toBe("blue-white");
-  });
-
-  it("has none for a star without a temperature", () => {
-    expect(starColour(undefined)).toBeNull();
-    expect(starColour(null)).toBeNull();
   });
 });
 

@@ -185,17 +185,17 @@ clear sky as fact and never shows a `{placeholder}`. `ui/data/sky.js` still
 carries the words, unread. If the game sends a port's current sky over GMCP
 one day, the band could draw cloud and rain and say what the game says.
 
-The star's colour is the game's `starColour` (`stars.ts`), ported to
-`starColour()` in `ui/lib/sky.js`: its surface temperature in `system.yaml`,
-red below 4300 K, then orange, gold from 5000, pale yellow from 5400, white
-from 5900 and blue-white from 8000. Senara, at 4440 K, is orange.
+The star's colour is `stars.<id>.colour` in `ui/data/worlds.js`, which
+build:data gets by running the game's own `starColour` (`stars.ts`) on the
+star's surface temperature in `system.yaml`, as the chart and the worlds'
+faces do (space-scenes.md). Senara, at 4440 K, is orange. A star with no
+colour (a neutron star) or one the data doesn't know is named without one.
 
-**What the charts don't carry.** Space.Charts has no tilt, equinox, latitude,
-star temperature or sky words. `npm run build:data` reads them into `ui/data/sky.js`, one
+**What the charts don't carry.** Space.Charts has no tilt, equinox, latitude
+or sky words. `npm run build:data` reads them into `ui/data/sky.js`, one
 entry per port with a `surface` in `system.yaml`: its planet, that planet's
 `tilt` and `equinox`, its `latitude` (each 0 where the source gives none, as
-the game has it), its star's `temperature` (null for a star with none), and
-its words. The sync report lists any planet field
+the game has it), and its words. The sync report lists any planet field
 (`planet.*`) or surface field (`surface.*`) in `system.yaml` the map doesn't
 read, the first build it appears, as it does for `hull.*`. Each port's turn
 is already in the charts: the game sends a port as an orbit at its planet's
@@ -226,8 +226,8 @@ facts either side of every change, over a year of each port's planet:
 Tamsin's 2,592,000 s for Zennor, and Orrin's, 10,375,200 s since empyreal
 44913e4, for Dolcoath. A set of facts said more than once is kept once.
 `ui/lib/sky.test.js` checks the plugin puts everything where the game does
-at every case, and that `starColour()` gives the colour the game's words
-name. The game's prose isn't compared: the plugin no longer says it. The
+at every case, and that `ui/data/worlds.js` gives Senara the colour the
+game's words name. The game's prose isn't compared: the plugin no longer says it. The
 game wants Node 24, so with an older node run
 `npx -y node@24 dev/sky-cases.ts > dev/sky-cases.json`. The game's checkout
 needs its `node_modules`. Without them, run it on an exported copy

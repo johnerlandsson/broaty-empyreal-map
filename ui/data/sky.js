@@ -5,7 +5,6 @@ export default {
     "tilt": 25,
     "equinox": 0,
     "latitude": 30,
-    "temperature": 4440,
     "words": {
       "high": "{star} stands high over the Pit, a small {colour} coin, and warms nothing.",
       "up": "{star} is up in the {dir}, small and {colour} in a dark blue sky.",
@@ -22,7 +21,6 @@ export default {
     "tilt": 20,
     "equinox": 0,
     "latitude": 40,
-    "temperature": 4440,
     "words": {
       "high": "{star} stands high overhead, small and {colour}, and the shadows are short.",
       "up": "{star} is well up in the {dir} of a {haze} sky.",

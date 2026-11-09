@@ -3,7 +3,8 @@
 // ground.ts, planetside.md §4, calendar.md §8.2) works it out from its orbits, with its thresholds.
 // The star and the planets are seen from the port's latitude on its tilted planet, on eight points
 // of the compass; the stations cross as from the equator, east or west. Space.Charts carries none
-// of the tilt, the latitude or the star's temperature: build:data puts them in data/sky.js.
+// of the tilt or the latitude: build:data puts them in data/sky.js. The star's colour is
+// data/worlds.js's, the game's own starColour run by build:data, as the chart's and the faces' are.
 //
 // What the game says about the sky is weather too (weather.ts, weather-words.ts): cloud, fog and
 // dust, and lines that replace the star's when it's hidden. The weather is simulated per port,
@@ -13,6 +14,7 @@
 // the haze. Pure and DOM-free; see docs/superpowers/specs/2026-10-23-zennor-sky-design.md.
 
 import PORTS from "../data/sky.js";
+import WORLDS from "../data/worlds.js";
 
 /** Degrees either side of the horizon that are dawn or dusk rather than day or night. */
 const TWILIGHT = 10;
@@ -38,22 +40,6 @@ const unit = (a) => {
 const clamp = (v) => Math.max(-1, Math.min(1, v));
 const side = (east) => (east ? "east" : "west");
 const num = (v, d = 0) => (typeof v === "number" && Number.isFinite(v) ? v : d);
-
-/** The coolest surface temperature (K) each colour starts at, coolest first: stars.ts's COLOURS. */
-const COLOURS = [
-  [0, "red"],
-  [4300, "orange"],
-  [5000, "gold"],
-  [5400, "pale yellow"],
-  [5900, "white"],
-  [8000, "blue-white"],
-];
-
-/** A star's colour by its surface temperature, as stars.ts's starColour; null for one with none. */
-export function starColour(temperature) {
-  if (typeof temperature !== "number" || !Number.isFinite(temperature)) return null;
-  return COLOURS.findLast(([from]) => temperature >= from)?.[1] ?? null;
-}
 
 /**
  * Where a body is at a tick, in its star's frame, by the game's own sum (Orbits.local and bodyPos
@@ -168,7 +154,6 @@ function portSky(index, port, ports) {
   };
   return {
     planet,
-    colour: starColour(p.temperature),
     seen(id, tick) {
       const now = seenAt(id, tick);
       const soon = seenAt(id, tick + SOON);
@@ -210,9 +195,9 @@ export function sunAlt(index, port, t, { ports = PORTS } = {}) {
  * on which `side`) and, when dark, each other planet that's up, each with its sentence. The
  * sentences are this file's, not the game's: see the top. Null when the charts can't place the
  * port, its planet or its star, or there's no sky for the port in `ports` (data/sky.js's, by
- * default).
+ * default). The colour is the star's in `worlds` (data/worlds.js's), null where it has none.
  */
-export function groundSky(index, port, t, { ports = PORTS, short = SHORT } = {}) {
+export function groundSky(index, port, t, { ports = PORTS, short = SHORT, worlds = WORLDS } = {}) {
   try {
     const sky = portSky(index, port, ports);
     const star = starOf(index);
@@ -222,7 +207,8 @@ export function groundSky(index, port, t, { ports = PORTS, short = SHORT } = {})
     if (!s) return null;
     const name = star.name;
     const band = sunBand(s.alt);
-    const line = sunLine(name, sky.colour, band, s);
+    const colour = worlds?.stars?.[star.id]?.colour ?? null;
+    const line = sunLine(name, colour, band, s);
     const dark = isDark(s.alt);
 
     const bodies = [];
@@ -252,7 +238,7 @@ export function groundSky(index, port, t, { ports = PORTS, short = SHORT } = {})
         bodies.push({ id: it.id, kind: "planet", name: it.name, ...b, line: l });
       }
 
-    return { sun: { id: star.id, name, colour: sky.colour, ...s, line }, dark, band, bodies };
+    return { sun: { id: star.id, name, colour, ...s, line }, dark, band, bodies };
   } catch {
     return null;
   }

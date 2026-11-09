@@ -147,12 +147,12 @@ describe("build", () => {
     expect(report.knownUnknownFields).toEqual(["hull.price", "hull.slots"]);
   });
 
-  it("writes each port's sky: its planet's tilt and equinox, its latitude, its star's temperature, and its words over Zennor's", async () => {
+  it("writes each port's sky: its planet's tilt and equinox, its latitude, and its words over Zennor's", async () => {
     const opts = setup();
     await build(opts);
     const sky = await load(join(opts.outDir, "sky.js"));
     expect(Object.keys(sky)).toEqual(["pit"]);
-    expect(sky.pit).toMatchObject({ planet: "rock", tilt: 20, equinox: 90, latitude: 40, temperature: 5800 });
+    expect(sky.pit).toMatchObject({ planet: "rock", tilt: 20, equinox: 90, latitude: 40 });
     expect(sky.pit.words).toEqual({
       high: "{star} stands high.",
       up: "{star} is up in the {dir}.",
@@ -177,16 +177,6 @@ describe("build", () => {
     writeFileSync(path, stringify(doc));
     await build(opts);
     expect((await load(join(opts.outDir, "sky.js"))).pit).toMatchObject({ tilt: 0, equinox: 0, latitude: 0 });
-  });
-
-  it("gives a port whose star has no temperature null for it, as a neutron star has none", async () => {
-    const opts = setup();
-    const path = join(opts.source, "content/game/system.yaml");
-    const doc = parse(readFileSync(path, "utf8"));
-    delete doc.bodies.find((b) => b.id === "sol").temperature;
-    writeFileSync(path, stringify(doc));
-    await build(opts);
-    expect((await load(join(opts.outDir, "sky.js"))).pit.temperature).toBeNull();
   });
 
   it("names a planet or surface field the map doesn't read once, with the bodies that have it", async () => {
