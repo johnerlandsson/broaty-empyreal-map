@@ -20,10 +20,22 @@ const dropped = (prefix, raw, keep) => [
   ...new Set(Object.entries(raw ?? {}).filter(([key]) => !keep.includes(key)).flatMap(([key, value]) => leaves(`${prefix}.${key}`, value))),
 ];
 
+/** The star a body is in the system of: up its parents (a port's is its surface's) to the one with none. */
+function starOf(byId, id) {
+  let b = byId.get(id);
+  for (let i = 0; b && i < 16; i++) {
+    if (b.kind === "star") return b;
+    b = byId.get(b.surface?.parent ?? b.orbit?.parent);
+  }
+  return undefined;
+}
+
 /**
  * Each port's sky: its planet, that planet's `tilt` and `equinox`, its own `latitude` (each 0 where
- * the source gives none, as the game has it), and its sky words as the game's `portWords` gives
- * them, Zennor's defaults under its own; and each planet's and surface's fields the map doesn't read.
+ * the source gives none, as the game has it), its star's surface `temperature` in K, which the
+ * game's sky words say as a colour (`{colour}`, stars.ts's starColour; null for a star with none),
+ * and its sky words as the game's `portWords` gives them, Zennor's defaults under its own; and each
+ * planet's and surface's fields the map doesn't read.
  * @param {object[]} bodies  system.yaml's `bodies`
  * @param {object[]} stations  world.yaml's `world.stations`, as written
  * @param {(station: object) => {sky: Record<string, string>}} portWords  the game's (systems/port-words.ts)
@@ -40,6 +52,7 @@ export function skyOf(bodies, stations, portWords) {
       tilt: planet?.tilt ?? 0,
       equinox: planet?.equinox ?? 0,
       latitude: b.surface.latitude ?? 0,
+      temperature: starOf(byId, b.id)?.temperature ?? null,
       words: { ...portWords(stations.find((s) => s.id === b.id) ?? {}).sky },
     };
   }

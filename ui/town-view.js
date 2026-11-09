@@ -2,9 +2,10 @@
 // low-poly in the models' Tones (ui/lib/skyline.js, drawn by town-skyline.js), with lamps in its
 // windows once the sky is dark: Zennor's city across the Carn's valley framed on the district
 // you're in, or the Pit's benches climbing to its rim round the room you're in (SKYLINES).
-// Out of doors the sky is over it, as the game's `look sky`
-// tells it (ui/lib/sky.js): a dome from the western horizon through overhead to the eastern, with
-// Senara, T.I.S.S. and Orrin where the game puts them, each named and hovered with its sentence,
+// Out of doors the sky is over it, where the game's `look sky`
+// puts things (ui/lib/sky.js): a dome from the western horizon through overhead to the eastern, with
+// Senara, T.I.S.S. and the planets where the game puts them, each named and hovered with where it
+// is in sky.js's own words (the game's say the weather, which the map can't know),
 // the sky's tint, stars and glow stepped with the game's bands. Indoors, or with no charts to say,
 // it's the skyline alone, with nothing in its sky. main.js redraws it each second while it's
 // live, for any port; it needs `div`, `set()` and `setTurning()` as from a ModelView, and `setCharts()`.
@@ -40,7 +41,7 @@ export class SkyView {
     // where the skyline's framed: Zennor's district (you land on the Downs), the Pit's room (the field)
     this.frame = skyline.start;
     this.drawn = null; // the frame and lamps it was last drawn with
-    this.tips = new Map(); // data-tip key -> { title, body }: the hovered thing's name and the game's sentence
+    this.tips = new Map(); // data-tip key -> { title, body }: the hovered thing's name and sky.js's line
     this.tipKey = null; // what's hovered
     this.tipShown = null; // what the tooltip last showed, so a redraw doesn't re-show the same
     this.starfields = new Map(); // star count -> its starfield, built once: they don't move, so a redraw puts it back

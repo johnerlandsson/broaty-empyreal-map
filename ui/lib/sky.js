@@ -1,11 +1,16 @@
-// The sky from the ground: what a port's outdoor rooms and `look sky` say is overhead, worked
+// The sky from the ground: where a port's outdoor rooms and `look sky` put things overhead, worked
 // out from the charts exactly as the game's ground.ts (empyreal packages/game/src/systems/
-// ground.ts, planetside.md §4, calendar.md §8.2) works it out from its orbits, with its thresholds,
-// and each port's own words (world.yaml's, over Zennor's). The star and the planets are seen from
-// the port's latitude on its tilted planet, on eight points of the compass; the stations cross as
-// from the equator, east or west. Space.Charts carries none of the tilt, the latitude or the
-// words: build:data puts them in data/sky.js. Pure and DOM-free; see
-// docs/superpowers/specs/2026-10-23-zennor-sky-design.md.
+// ground.ts, planetside.md §4, calendar.md §8.2) works it out from its orbits, with its thresholds.
+// The star and the planets are seen from the port's latitude on its tilted planet, on eight points
+// of the compass; the stations cross as from the equator, east or west. Space.Charts carries none
+// of the tilt, the latitude or the star's temperature: build:data puts them in data/sky.js.
+//
+// What the game says about the sky is weather too (weather.ts, weather-words.ts): cloud, fog and
+// dust, and lines that replace the star's when it's hidden. The weather is simulated per port,
+// never saved and sent in no GMCP package, so this says only what doesn't hang on it, in its own
+// words: each thing's name, where it is, whether it's rising or setting, and the star's colour.
+// It never says the port's sky words (data/sky.js's `words`), which are the clear sky's and name
+// the haze. Pure and DOM-free; see docs/superpowers/specs/2026-10-23-zennor-sky-design.md.
 
 import PORTS from "../data/sky.js";
 
@@ -34,8 +39,21 @@ const clamp = (v) => Math.max(-1, Math.min(1, v));
 const side = (east) => (east ? "east" : "west");
 const num = (v, d = 0) => (typeof v === "number" && Number.isFinite(v) ? v : d);
 
-/** A line with its `{name}`s filled in, as the game's fillWords: an unknown name stays as written. */
-export const fillWords = (line, values) => line.replace(/\{(\w+)\}/g, (all, k) => values[k] ?? all);
+/** The coolest surface temperature (K) each colour starts at, coolest first: stars.ts's COLOURS. */
+const COLOURS = [
+  [0, "red"],
+  [4300, "orange"],
+  [5000, "gold"],
+  [5400, "pale yellow"],
+  [5900, "white"],
+  [8000, "blue-white"],
+];
+
+/** A star's colour by its surface temperature, as stars.ts's starColour; null for one with none. */
+export function starColour(temperature) {
+  if (typeof temperature !== "number" || !Number.isFinite(temperature)) return null;
+  return COLOURS.findLast(([from]) => temperature >= from)?.[1] ?? null;
+}
 
 /**
  * Where a body is at a tick, in its star's frame, by the game's own sum (Orbits.local and bodyPos
@@ -87,8 +105,24 @@ export const isDark = (alt) => alt < -TWILIGHT / 2;
 /** Whether a station or planet at an altitude is in the sky at all: above 0, not on the line. */
 export const isUp = (alt) => alt > 0;
 
-/** The word for each of the star's bands, by which way it's going where that matters. */
-const WORD = { overhead: () => "high", "well up": () => "up", low: () => "low", up: (r) => (r ? "rises" : "sets"), twilight: (r) => (r ? "paling" : "dusk"), night: () => "night" };
+/** "an orange star", "a white star": the star's colour as a phrase, or nothing without one. */
+const aStar = (colour) => (colour ? `, ${/^[aeiou]/.test(colour) ? "an" : "a"} ${colour} star,` : "");
+
+/** Where the star is, as a sentence of fact: its band, its point where the band names one, and
+ *  whether it's climbing. Nothing about how it looks through the air, which is the weather's. */
+function sunLine(name, colour, band, s) {
+  const it = `${name}${aStar(colour)}`;
+  const way = s.rising ? "climbing" : "going down";
+  if (band === "overhead") return `${it} is high overhead, ${way}.`;
+  if (band === "well up") return `${it} is well up in the ${s.dir}, ${way}.`;
+  if (band === "low") return `${it} is low in the ${s.dir}, ${way}.`;
+  if (band === "up") return s.rising ? `${it} is rising in the ${s.dir}.` : `${it} is setting in the ${s.dir}.`;
+  if (band === "twilight") return s.rising ? `${it} will rise in the ${s.dir} soon.` : `${it} has just set in the ${s.dir}.`;
+  return `${it} is below the horizon.`;
+}
+
+/** What the empty sky's hover adds: the map draws where things are, never what hides them. */
+export const NO_WEATHER = "The map shows where things are, not the weather: cloud, fog or dust may hide them.";
 
 /**
  * A port's sky, for asking where things are in it at a tick: null when the charts can't place the
@@ -134,7 +168,7 @@ function portSky(index, port, ports) {
   };
   return {
     planet,
-    words: p.words ?? {},
+    colour: starColour(p.temperature),
     seen(id, tick) {
       const now = seenAt(id, tick);
       const soon = seenAt(id, tick + SOON);
@@ -169,12 +203,14 @@ export function sunAlt(index, port, t, { ports = PORTS } = {}) {
 }
 
 /**
- * The sky over a port at wall-clock t (ms), as the game would tell it, in the port's own words:
- * the star's place (`alt`, its compass point `dir`, the one opposite `away`, its way `e` east and
- * `n` north) and sentence, whether it's dark, its band, and each station of the port's planet
- * that's up and, when dark, each other planet that's up, with the whole as the game's text. Null
- * when the charts can't place the port, its planet or its star, or there's no sky for the port in
- * `ports` (data/sky.js's, by default).
+ * The sky over a port at wall-clock t (ms), where the game puts things in it: the star's place
+ * (`alt`, its compass point `dir`, the one opposite `away`, its way `e` east and `n` north,
+ * whether it's `rising`), its `colour` and its sentence, whether it's dark, its band, and each
+ * station of the port's planet that's up (`how` it's passing, `overhead`, `climbing` or `sinking`,
+ * on which `side`) and, when dark, each other planet that's up, each with its sentence. The
+ * sentences are this file's, not the game's: see the top. Null when the charts can't place the
+ * port, its planet or its star, or there's no sky for the port in `ports` (data/sky.js's, by
+ * default).
  */
 export function groundSky(index, port, t, { ports = PORTS, short = SHORT } = {}) {
   try {
@@ -186,9 +222,7 @@ export function groundSky(index, port, t, { ports = PORTS, short = SHORT } = {})
     if (!s) return null;
     const name = star.name;
     const band = sunBand(s.alt);
-    const said = sky.words[WORD[band](s.rising)];
-    if (typeof said !== "string") return null;
-    const line = fillWords(said, { star: name, dir: s.dir, away: s.away });
+    const line = sunLine(name, sky.colour, band, s);
     const dark = isDark(s.alt);
 
     const bodies = [];
@@ -198,14 +232,15 @@ export function groundSky(index, port, t, { ports = PORTS, short = SHORT } = {})
       const b = sky.seen(it.id, tick);
       if (!b || !isUp(b.alt)) continue;
       const nm = short[it.id] ?? it.name;
-      const look = dark ? "a bright, steady spark" : "a pale fleck against the sky";
+      const how = b.alt >= OVERHEAD ? "overhead" : b.rising ? "climbing" : "sinking";
+      const towards = side(how === "overhead" ? b.heading : b.east);
       const l =
-        b.alt >= OVERHEAD
-          ? `${nm} is passing overhead, ${look}, heading ${side(b.heading)}.`
-          : b.rising
-            ? `${nm} is climbing up out of the ${side(b.east)}, ${look}.`
-            : `${nm} is sinking toward the ${side(b.east)}, ${look}.`;
-      bodies.push({ id: it.id, kind: "station", name: nm, ...b, line: l });
+        how === "overhead"
+          ? `${nm} is passing overhead, heading ${towards}.`
+          : how === "climbing"
+            ? `${nm} is climbing up out of the ${towards}.`
+            : `${nm} is sinking toward the ${towards}.`;
+      bodies.push({ id: it.id, kind: "station", name: nm, ...b, how, side: towards, line: l });
     }
     // At night, the other planets that are up.
     if (dark)
@@ -213,17 +248,11 @@ export function groundSky(index, port, t, { ports = PORTS, short = SHORT } = {})
         if (it.kind !== "planet" || it.id === sky.planet) continue;
         const b = sky.sky(it.id, tick);
         if (!b || !isUp(b.alt)) continue;
-        const l = b.alt >= OVERHEAD ? `${it.name} is a steady golden star high overhead.` : `${it.name} is a steady golden star in the ${b.dir}.`;
+        const l = b.alt >= OVERHEAD ? `${it.name} is high overhead.` : `${it.name} is up in the ${b.dir}.`;
         bodies.push({ id: it.id, kind: "planet", name: it.name, ...b, line: l });
       }
 
-    return {
-      sun: { id: star.id, name, ...s, line },
-      dark,
-      band,
-      bodies,
-      text: [line, ...bodies.map((b) => b.line)].join(" "),
-    };
+    return { sun: { id: star.id, name, colour: sky.colour, ...s, line }, dark, band, bodies };
   } catch {
     return null;
   }
@@ -248,10 +277,11 @@ export const SKY_TINTS = { up: "#1c2430", low: "#232d3a", "well up": "#2c3846", 
 
 /**
  * What the dome draws for a sky from groundSky(): its tint, its stars and its glow, stepped
- * with the game's band so they say no more than its words ("the first stars are out" at dusk,
- * none named at dawn), the empty sky's hover (Senara's line), and a mark for each thing the
- * words name, where they put it: Senara while it's up, the stations as a spark when dark and a
- * fleck when not, the planets as gold.
+ * with the game's band so they say no more than its clear-sky words would ("the first stars are
+ * out" at dusk, none named at dawn), the empty sky's hover (Senara's line and NO_WEATHER), and a
+ * mark for each thing groundSky lists, where the game puts it: Senara while it's up, the stations
+ * as a spark when dark and a fleck when not, the planets as gold. Cloud isn't drawn: the map
+ * doesn't know it.
  */
 export function skyScene(sky) {
   const { sun, band } = sky;
@@ -270,7 +300,7 @@ export function skyScene(sky) {
     tint: SKY_TINTS[band] ?? null,
     stars: band === "night" ? "all" : twilight && !sun.rising ? "few" : "none",
     glow: twilight ? { east: sun.east, x: skyAt(sun)[0], kind: sun.rising ? "dawn" : "dusk" } : null,
-    hover: sun.line,
+    hover: `${sun.line} ${NO_WEATHER}`,
     marks,
   };
 }

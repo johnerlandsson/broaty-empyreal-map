@@ -875,13 +875,13 @@ beltMenu.addEventListener("change", () => emitBelt(beltMenu.value));
 // --- Zennor's sky: the game's recorded charts, shifted so a moment of the named sky is now ---------
 
 const skyMenu = document.getElementById("sky");
-const SKY_WORDS = {
-  night: (t) => t.startsWith("Night:") && t.includes("Orrin") && t.includes("T.I.S.S."),
-  dusk: (t) => t.startsWith("Dusk:"),
-  dawn: (t) => t.startsWith("The sky is paling"),
-  low: (t) => t.includes(" is low in "),
-  overhead: (t) => t.includes("stands high overhead"),
-  "tiss-overhead": (t) => t.includes("passing overhead, a bright"),
+const SKY_FACTS = {
+  night: (f) => f.band === "night" && f.planets.some(([n]) => n === "Orrin") && f.stations.some(([n]) => n === "T.I.S.S."),
+  dusk: (f) => f.band === "twilight" && !f.rising,
+  dawn: (f) => f.band === "twilight" && f.rising,
+  low: (f) => f.band === "low",
+  overhead: (f) => f.band === "overhead",
+  "tiss-overhead": (f) => f.band === "night" && f.stations.some(([n, how]) => n === "T.I.S.S." && how === "overhead"),
 };
 /** Moments by the season, ticks found from the recorded year: Senara's highest and lowest noons, a
  *  summer dawn paling in the north-east and a winter dusk glowing in the south-west. */
@@ -890,8 +890,8 @@ const SKY_TICKS = { "summer-noon": 639000, "winter-noon": 1935000, "summer-dawn"
 /** A tick half a minute into a stretch of that sky lasting five minutes or more. */
 function skyTick(name) {
   if (SKY_TICKS[name] !== undefined) return SKY_TICKS[name];
-  const cs = skyCases.ports.zennor.cases.map(([tick, i]) => ({ tick, text: skyCases.texts[i] }));
-  const i = cs.findIndex((c, k) => SKY_WORDS[name](c.text) && cs[k + 1] && cs[k + 1].tick - c.tick >= 300);
+  const cs = skyCases.ports.zennor.cases.map(([tick, i]) => ({ tick, facts: skyCases.facts[i] }));
+  const i = cs.findIndex((c, k) => SKY_FACTS[name](c.facts) && cs[k + 1] && cs[k + 1].tick - c.tick >= 300);
   return i < 0 ? null : cs[i].tick + 30;
 }
 

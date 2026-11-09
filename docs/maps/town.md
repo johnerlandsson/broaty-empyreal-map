@@ -1,6 +1,6 @@
 # Towns
 
-*Status: built for Zennor, the city. Last updated 2026-11-07.*
+*Status: built for Zennor, the city. Last updated 2026-11-09.*
 
 ## What it is and when it shows
 
@@ -129,8 +129,8 @@ nothing in it is named or hovered.
 
 ### Out of doors
 
-In a room open to the sky (`outdoors` in the area file), the band shows what
-the game's `look sky` says is overhead, worked out from Space.Charts as the
+In a room open to the sky (`outdoors` in the area file), the band shows where
+the game's `look sky` puts things overhead, worked out from Space.Charts as the
 game's `ground.ts` works it out (planetside.md §4, calendar.md §8.2), and
 moving as you watch. Since empyreal 6441e99 Tamsin is tilted 20° and Zennor
 is at 40° north, so Senara climbs higher and the days run longer from spring
@@ -152,11 +152,14 @@ from the equator, east or west.
   above the horizon.
 - **T.I.S.S.** is a pale fleck by day and a bright spark with a glint once
   it's dark, drawn only while it's above the horizon.
-- **Orrin** is a golden star, drawn only when the game names it: when it's
-  up and it's dark.
-- **Names** in Dim beside each. Hovering over a body gives the game's
-  sentence for it ("T.I.S.S. is climbing up out of the west, a bright,
-  steady spark."). Hovering over the empty sky gives Senara's.
+- **The other planets** (Orrin, Senara 1 and Senara 4 from Zennor) are
+  golden stars, drawn only when the game names them: when they're up and
+  it's dark.
+- **Names** in Dim beside each. Hovering over a body gives its name, where
+  it is, and whether it's rising or setting, in the plugin's own words, not
+  the game's ("T.I.S.S. is climbing up out of the west.", "Senara, an orange
+  star, is well up in the south, going down."). Hovering over the empty sky
+  gives Senara's line and that the map doesn't show the weather.
 - **The sky's colour** steps with the game's bands, so it never says more
   than the words. Night is black and crowded with stars. At dusk the glow
   is warm where Senara went down, and a few stars are out. At dawn the sky
@@ -166,20 +169,33 @@ from the equator, east or west.
   is tinted a dark, dusty blue-grey, a step lighter for each band: just up,
   low, well up, overhead.
 
-**Each port's own words.** The sentences are the port's own, word for word:
-the `sky` words in its station's `words` in `world.yaml` (`high`, `up`,
-`low`, `rises`, `sets`, `paling`, `dusk` and `night`), over Zennor's, which
-are the game's defaults in `systems/port-words.ts`. `{star}`, `{dir}` and
-`{away}` are filled in as the game's `fillWords` does. Zennor's Senara is "well
-up in the south of a pale, dusty sky". Dolcoath's is "up in the south, small
-and pale in a dark blue sky". The stations' and planets' sentences are the
-same everywhere, as the game has them.
+**The weather isn't drawn.** Since empyreal 44913e4 the game's sky is
+weather too (`weather.ts`, `weather-words.ts`): a weather line comes first,
+the star's line is replaced by cloud or fog when the sky is overcast or lost
+("The sky is one low ceiling of cloud, and Senara is lost behind it."), and
+the stations and planets go unsaid through thin cloud. The port's sky words
+take `{haze}` and `{reddened}` from the weather's dust, and a world locked to
+its star has lines of its own (`lockedSun`; neither port's planet is
+locked). The weather is simulated per port, never saved and sent in no GMCP
+package, so the plugin can't know it. It draws Senara, the stations and the
+planets where they are whatever the weather, and says only what doesn't hang
+on it: names, where, rising or setting, and the star's colour. It never
+says the port's sky words, which are the clear sky's, so it never states a
+clear sky as fact and never shows a `{placeholder}`. `ui/data/sky.js` still
+carries the words, unread. If the game sends a port's current sky over GMCP
+one day, the band could draw cloud and rain and say what the game says.
 
-**What the charts don't carry.** Space.Charts has no tilt, equinox, latitude
-or sky words. `npm run build:data` reads them into `ui/data/sky.js`, one
+The star's colour is the game's `starColour` (`stars.ts`), ported to
+`starColour()` in `ui/lib/sky.js`: its surface temperature in `system.yaml`,
+red below 4300 K, then orange, gold from 5000, pale yellow from 5400, white
+from 5900 and blue-white from 8000. Senara, at 4440 K, is orange.
+
+**What the charts don't carry.** Space.Charts has no tilt, equinox, latitude,
+star temperature or sky words. `npm run build:data` reads them into `ui/data/sky.js`, one
 entry per port with a `surface` in `system.yaml`: its planet, that planet's
 `tilt` and `equinox`, its `latitude` (each 0 where the source gives none, as
-the game has it), and its words. The sync report lists any planet field
+the game has it), its star's `temperature` (null for a star with none), and
+its words. The sync report lists any planet field
 (`planet.*`) or surface field (`surface.*`) in `system.yaml` the map doesn't
 read, the first build it appears, as it does for `hull.*`. Each port's turn
 is already in the charts: the game sends a port as an orbit at its planet's
@@ -188,7 +204,7 @@ radius, at its `bearing`, round in its planet's `day`.
 **Any port.** `groundSky(index, port, t)` works for any port with a sky in
 `ui/data/sky.js`, and returns null for one without. A town's band shows the
 sky over the port of its own id: Zennor's, and the Pit's at Dolcoath
-(dolcoath.md), each in its own words.
+(dolcoath.md).
 The space scene's day or night below a port uses the same sun height, so it
 agrees with the game's `isDay`.
 
@@ -201,16 +217,24 @@ game says east or west. The bodies and the glow draw over the skyline, so
 nothing the game says is up is hidden.
 
 **Tested against the game.** `dev/sky-cases.ts` runs the game from its
-source and records its Space.Charts and its sky text either side of every
-change, over a year of each port's planet: Tamsin's 2,592,000 s for Zennor,
-and Orrin's, about 7,331,284 s, for Dolcoath. A text said more than once is
-kept once. `ui/lib/sky.test.js` checks every case word for word. The game
-wants Node 24, so with an older node run
+source with the weather stubbed out, so ground.ts says the sky as it would
+with none, and reads each sentence back into facts: Senara's band, whether
+it's climbing, its point and the one opposite where the words name them,
+its colour, and each station and planet that's up, by name, how and where.
+A sentence that doesn't read stops it. It records the Space.Charts and those
+facts either side of every change, over a year of each port's planet:
+Tamsin's 2,592,000 s for Zennor, and Orrin's, 10,375,200 s since empyreal
+44913e4, for Dolcoath. A set of facts said more than once is kept once.
+`ui/lib/sky.test.js` checks the plugin puts everything where the game does
+at every case, and that `starColour()` gives the colour the game's words
+name. The game's prose isn't compared: the plugin no longer says it. The
+game wants Node 24, so with an older node run
 `npx -y node@24 dev/sky-cases.ts > dev/sky-cases.json`. The game's checkout
 needs its `node_modules`. Without them, run it on an exported copy
 (`git archive HEAD`, then `pnpm install`) with `EMPYREAL=<copy>` and
-`EMPYREAL_COMMIT=<sha>`. `dev/preview.html?sky=` has `summer-noon`,
-`winter-noon`, `summer-dawn` and `winter-dusk` for the seasons.
+`EMPYREAL_COMMIT=<sha>`. It takes about seven minutes. `dev/preview.html?sky=`
+has `summer-noon`, `winter-noon`, `summer-dawn` and `winter-dusk` for the
+seasons.
 
 It's redrawn once a second while it's the band showing, the panel is
 visible, and neither the chart (◎), the lanes map (⋈) nor a space scene covers
