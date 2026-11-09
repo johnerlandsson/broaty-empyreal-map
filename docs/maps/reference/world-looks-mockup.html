@@ -1,0 +1,231 @@
+<!doctype html>
+<!-- Worlds from high orbit by their climate, and stars by their colour, 2026-11-09. Three ways to
+     draw a planet's face from what the game knows (empyreal 44913e4: system.yaml `climate`, the
+     substances' `veil` words, stars.ts `starColour`), for six contrasting worlds. No weather: cloud
+     that comes and goes isn't in GMCP and isn't drawn. Self-contained: opens from disk. A throwaway:
+     take its look, not its code. Picked: B, low-poly (2026-11-09); giants keep their bands
+     (docs/maps/space-scenes.md, "A world's face"). -->
+<html><head><meta charset="utf-8"><title>World looks: options</title><style>
+body{margin:0;background:#04060c;color:#7d8a9a;font:13px Inter,system-ui,sans-serif;padding:14px 18px;width:max-content}
+h1{color:#e3eaf2;font-size:17px;margin:6px 0 0} h2{color:#e3eaf2;font-size:15px;margin:18px 0 2px}
+h2 small{color:#7d8a9a;font-weight:400;font-size:12px;margin-left:8px}
+p{margin:2px 0 6px;max-width:1700px} .row{display:flex;gap:10px;align-items:flex-start} figure{margin:0}
+figcaption{font:11px "DejaVu Sans Mono",monospace;margin-top:3px;width:270px;line-height:1.35}
+canvas{display:block;border:1px solid #1b2230;border-radius:4px}
+.k{color:#c3ccd8}
+</style></head><body>
+<h1>A planet from high orbit, by its climate</h1>
+<p>The <code>orbit</code> scene's band as it's drawn today (the face's top, a rounder limb, by day), one world a column. Every option reads the same few facts: the star's colour (its light on the day side), the air's pressure (how much limb glow, none when airless), the albedo (how bright the ground), seas and ice as the game's own physics has them, and a world's <i>veil</i> where the game says one hides it. <b>No cloud on any world</b>: what the canopy says of cloud is weather, which changes and isn't sent.</p>
+<div id="worlds"></div>
+<h1 style="margin-top:26px">Stars by their colour</h1>
+<p>One way, no pick needed unless you want changes: the six colours <code>starColour</code> gives, on the chart (the star and its glow), the lanes map (the dot), and as the light on a world's day side in the space scenes (which draw no star disc of their own).</p>
+<div class="row" id="stars"></div>
+<script>
+// ---- the worlds, as build:data would give them (the game's own phase and veil answers) ----------
+const STARS = { // starColour's words, and the light each throws
+  red: [255, 150, 110], orange: [255, 190, 130], gold: [255, 214, 150], "pale yellow": [255, 240, 205], white: [245, 247, 255], "blue-white": [205, 222, 255],
+};
+const WORLDS = [
+  { name: "Tamsin", star: "Senara", colour: "orange", air: 1, albedo: 0.25, seas: { of: "water", share: 0.15 }, ice: null, veil: null,
+    says: "1 bar N₂ O₂ · seas of water 15% · prose: “brown, white and a little blue”" },
+  { name: "Orrin", star: "Senara", colour: "orange", air: 1, albedo: 0.4, seas: null, ice: "all", veil: null,
+    says: "1 bar N₂ · water ice · Dolcoath's frost" },
+  { name: "Lamorna", star: "Feock", colour: "red", air: 1.5, albedo: 0.2, seas: { of: "methane", share: 0.05 }, ice: null, veil: { kind: "haze", rgb: [150, 82, 48] },
+    says: "veil: “A thick rust-brown haze hides its surface from edge to edge.”" },
+  { name: "Lelant", star: "Trencrom", colour: "white", air: 90, albedo: 0.75, seas: null, ice: null, veil: { kind: "deck", rgb: [236, 222, 160] },
+    says: "veil: “A blank, bright deck of pale yellow cloud hides it from edge to edge.”" },
+  { name: "Botallack", star: "Madron", colour: "orange", air: 0, albedo: 0.15, seas: null, ice: null, veil: null,
+    says: "airless · albedo 0.15, dark rock" },
+  { name: "Kynance", star: "Piran", colour: "blue-white", air: 0, albedo: 0.6, seas: null, ice: "all", veil: null,
+    says: "airless · water ice · prose: “the white curve of Kynance … a blue dusk”" },
+];
+
+const W = 270, H = 160;
+const BG = "#04060c";
+const RIM = [207, 227, 255];
+const rgb = (c, a = 1) => `rgba(${c.map(Math.round).join(",")},${a})`;
+const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+const TINT = 0.45; // how much of the star's colour reaches the eye: an eye in its light half-adapts to it
+const lightBy = (c, star) => c.map((v, i) => v * (1 - TINT + TINT * (STARS[star][i] / 255)));
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32); }
+
+// the ground's own colour: rock, as bright as its albedo; ice white; a veil its own
+function groundOf(w) {
+  if (w.veil) return w.veil.rgb;
+  if (w.ice === "all") return mix([200, 205, 212], [242, 245, 250], w.albedo);
+  const k = 0.35 + w.albedo * 1.6; // albedo 0.1 → dark, 0.4 → light
+  return [120 * k, 98 * k, 76 * k].map((v) => Math.min(235, v));
+}
+const SEA = { water: [38, 70, 112], methane: [40, 30, 26] };
+const airGlow = (w) => (w.air <= 0 ? 0 : Math.min(1, 0.35 + Math.log10(1 + w.air) * 0.5));
+const airTint = (w) => (w.veil ? mix(w.veil.rgb, [255, 255, 255], 0.25) : RIM);
+
+function frame(cv) {
+  const g = cv.getContext("2d");
+  g.fillStyle = BG; g.fillRect(0, 0, W, H);
+  const r = rng(7);
+  for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(223,231,241,${0.2 + r() * 0.6})`; g.fillRect(r() * W, r() * H * 0.55, 1, 1); }
+  const R = W * 0.78, cx = W / 2, top = H * 0.46, cy = top + R;
+  return { g, R, cx, top, cy };
+}
+function limbHaze(f, w, px, strength) {
+  const { g, R, cx, cy } = f;
+  const a = airGlow(w) * strength;
+  if (a <= 0) return;
+  const h = g.createRadialGradient(cx, cy, R, cx, cy, R + px);
+  h.addColorStop(0, rgb(lightBy(airTint(w), w.colour), a));
+  h.addColorStop(1, rgb(airTint(w), 0));
+  g.fillStyle = h; g.beginPath(); g.arc(cx, cy, R + px, 0, Math.PI * 2); g.fill();
+}
+function limbLine(f, w, a) {
+  const { g, R, cx, cy } = f;
+  g.strokeStyle = w.air > 0 ? rgb(lightBy(airTint(w), w.colour), a) : `rgba(120,130,145,${a * 0.6})`;
+  g.lineWidth = w.air > 0 ? 1.5 : 1;
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+}
+function darkenEdge(f, k) {
+  const { g, R, cx, cy, top } = f;
+  const l = g.createRadialGradient(cx, cy, R * 0.86, cx, cy, R);
+  l.addColorStop(0, "rgba(4,6,12,0)"); l.addColorStop(1, `rgba(4,6,12,${k})`);
+  g.fillStyle = l; g.fillRect(0, top, W, H - top);
+}
+function clipFace(f) { const { g, R, cx, cy } = f; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.clip(); }
+// a point on the face, `d` 0 at the limb .. 1 the band's foot, `a` radians across
+function onFace(f, d, a) { const { R, cx, cy, top } = f; const rr = R - 4 - d * (H - top + 20); return [cx + Math.sin(a) * rr, cy - Math.cos(a) * rr]; }
+
+// ---- A · soft: painted, gradients, seas as soft-edged patches -------------------------------
+function drawA(cv, w) {
+  const f = frame(cv); const { g, top } = f;
+  limbHaze(f, w, w.veil ? 24 : 16, 0.55);
+  g.save(); clipFace(f);
+  const base = lightBy(groundOf(w), w.colour);
+  const grd = g.createLinearGradient(0, top, 0, H);
+  grd.addColorStop(0, rgb(mix(base, [255, 255, 255], 0.08))); grd.addColorStop(0.15, rgb(base)); grd.addColorStop(1, rgb(mix(base, [0, 0, 0], 0.3)));
+  g.fillStyle = grd; g.fillRect(0, top, W, H - top);
+  if (!w.veil) {
+    // ground mottling, faint, so it reads as land and not paint
+    const r = rng(w.name.length * 31);
+    for (let i = 0; i < 26; i++) {
+      const [x, y] = onFace(f, r(), (r() - 0.5) * 1.4);
+      const s = 6 + r() * 18;
+      const m = g.createRadialGradient(x, y, 0, x, y, s);
+      m.addColorStop(0, rgb(mix(base, r() < 0.5 ? [0, 0, 0] : [255, 255, 255], 0.12), 0.7)); m.addColorStop(1, rgb(base, 0));
+      g.fillStyle = m; g.fillRect(x - s, y - s, s * 2, s * 2);
+    }
+    if (w.seas) {
+      const sea = lightBy(SEA[w.seas.of], w.colour);
+      const n = Math.round(w.seas.share * 60);
+      for (let i = 0; i < n; i++) {
+        const [x, y] = onFace(f, r(), (r() - 0.5) * 1.3);
+        const s = 10 + r() * 16;
+        const m = g.createRadialGradient(x, y, 0, x, y, s);
+        m.addColorStop(0, rgb(sea, 0.95)); m.addColorStop(0.6, rgb(sea, 0.8)); m.addColorStop(1, rgb(sea, 0));
+        g.save(); g.translate(x, y); g.scale(1.8, 0.7); g.translate(-x, -y);
+        g.fillStyle = m; g.fillRect(x - s, y - s, s * 2, s * 2); g.restore();
+      }
+    }
+  } else {
+    // a veil is even, edge to edge: only the faintest banding along the curve
+    const { R, cx, cy } = f;
+    g.lineWidth = 6;
+    for (let i = 0; i < 7; i++) { g.strokeStyle = rgb(mix(base, [255, 255, 255], 0.06), 0.25); g.beginPath(); g.arc(cx, cy, R - 10 - i * 16, -Math.PI / 2 - 0.8, -Math.PI / 2 + 0.8); g.stroke(); }
+  }
+  darkenEdge(f, w.air > 0 ? 0.45 : 0.25);
+  g.restore();
+  limbLine(f, w, 0.45);
+}
+
+// ---- B · low-poly: the face as facets, as the station model and Dolcoath's benches are -------
+function drawB(cv, w) {
+  const f = frame(cv); const { g, top, R, cx, cy } = f;
+  limbHaze(f, w, w.veil ? 20 : 12, 0.5);
+  g.save(); clipFace(f);
+  const base = lightBy(groundOf(w), w.colour);
+  const r = rng(w.name.length * 17 + 3);
+  // a grid of triangles in (ring, angle), each shaded by a little light from the upper left
+  const rings = 7, cols = 16;
+  const pt = (i, j) => {
+    const jitter = (i > 0 && i < rings ? (r() - 0.5) * 0.5 : 0);
+    const d = (i + jitter * 0.6) / rings, a = ((j - 1 + (i % 2) * 0.5) / cols - 0.5) * 2.0;
+    return onFace(f, d * 1.02, a);
+  };
+  const P = Array.from({ length: rings + 1 }, (_, i) => Array.from({ length: cols + 3 }, (_, j) => pt(i, j)));
+  const seaCells = new Set(); const seaR = rng(99 + w.name.length);
+  if (w.seas && !w.veil) {
+    // seas as a few clumps of cells, about their share of the face
+    const want = Math.round(w.seas.share * rings * (cols + 1) * 2);
+    let have = 0;
+    while (have < want) {
+      let i = Math.floor(seaR() * rings), j = Math.floor(seaR() * (cols + 1));
+      for (let k = 0; k < 5 && have < want; k++) {
+        const key = `${i},${j},${k % 2}`;
+        if (!seaCells.has(key)) { seaCells.add(key); have++; }
+        if (seaR() < 0.5) j = Math.min(cols, j + 1); else i = Math.min(rings - 1, i + 1);
+      }
+    }
+  }
+  for (let i = 0; i < rings; i++) for (let j = 0; j <= cols + 1; j++) for (const k of [0, 1]) {
+    const tri = k ? [P[i][j], P[i + 1][j + 1], P[i + 1][j]] : [P[i][j], P[i][j + 1], P[i + 1][j + 1]];
+    const [a, b, c] = tri;
+    const nx = (b[1] - a[1]) - (c[1] - a[1]), shade = 0.86 + ((nx > 0 ? 1 : -1) * 0.04) + (r() - 0.5) * (w.veil ? 0.03 : 0.16) - (i / rings) * 0.18;
+    let col = seaCells.has(`${i},${j},${k}`) ? lightBy(SEA[w.seas.of], w.colour) : base;
+    col = col.map((v) => Math.min(255, v * shade));
+    g.fillStyle = rgb(col); g.strokeStyle = rgb(col);
+    g.lineWidth = 0.6; g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.lineTo(...c); g.closePath(); g.fill(); g.stroke();
+  }
+  darkenEdge(f, 0.3);
+  g.restore();
+  limbLine(f, w, 0.55);
+}
+
+// ---- C · flat: today's drawing, its face and rim recoloured, nothing on it ------------------
+function drawC(cv, w) {
+  const f = frame(cv); const { g, top } = f;
+  limbHaze(f, w, 16, 0.5);
+  g.save(); clipFace(f);
+  const base = lightBy(groundOf(w), w.colour);
+  const sea = w.seas && !w.veil ? lightBy(SEA[w.seas.of], w.colour) : null;
+  const face = sea ? mix(base, sea, w.seas.share * 1.5) : base; // seas only shift the tone
+  const grd = g.createLinearGradient(0, top, 0, H);
+  grd.addColorStop(0, rgb(mix(face, [255, 255, 255], 0.06))); grd.addColorStop(0.15, rgb(face)); grd.addColorStop(1, rgb(mix(face, [0, 0, 0], 0.32)));
+  g.fillStyle = grd; g.fillRect(0, top, W, H - top);
+  darkenEdge(f, 0.45);
+  g.restore();
+  limbLine(f, w, 0.55);
+}
+
+const OPTIONS = [
+  ["A · Painted", "soft ground mottling, seas as soft patches by their share, ice and veils even; the limb glows as thick as the air", drawA],
+  ["B · Low-poly", "the face as shaded facets, as the station model and Dolcoath's benches are; seas as clumps of facets; a veil nearly flat", drawB],
+  ["C · Flat", "today's drawing with the cloud gone and the face and rim recoloured: seas only shift its tone, nothing drawn on it", drawC],
+];
+const host = document.getElementById("worlds");
+for (const [title, sub, draw] of OPTIONS) {
+  const h = document.createElement("h2"); h.innerHTML = `${title} <small>${sub}</small>`; host.appendChild(h);
+  const row = document.createElement("div"); row.className = "row"; host.appendChild(row);
+  for (const w of WORLDS) {
+    const fig = document.createElement("figure"); const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    fig.appendChild(cv); const cap = document.createElement("figcaption");
+    cap.innerHTML = `<span class="k">${w.name}</span> under ${w.star} (${w.colour})<br>${title[0] === "A" ? w.says : "&nbsp;"}`;
+    fig.appendChild(cap); row.appendChild(fig); draw(cv, w);
+  }
+}
+
+// ---- the stars -------------------------------------------------------------------------------
+const srow = document.getElementById("stars");
+const EXAMPLES = { red: "Feock, Breage, Elowen", orange: "Senara, Maelor, Madron", gold: "Germoe, Mabyn", "pale yellow": "Euny, Caradon", white: "Keyne, Trencrom, Kilmar", "blue-white": "Piran, Garrow, Dozmary" };
+for (const [word, c] of Object.entries(STARS)) {
+  const fig = document.createElement("figure"); const cv = document.createElement("canvas"); cv.width = 200; cv.height = 110;
+  const g = cv.getContext("2d"); g.fillStyle = BG; g.fillRect(0, 0, 200, 110);
+  // the chart: a disc and its glow
+  const gl = g.createRadialGradient(55, 50, 0, 55, 50, 34); gl.addColorStop(0, rgb(c, 0.5)); gl.addColorStop(1, rgb(c, 0));
+  g.fillStyle = gl; g.beginPath(); g.arc(55, 50, 34, 0, 7); g.fill();
+  g.fillStyle = rgb(mix(c, [255, 255, 255], 0.35)); g.beginPath(); g.arc(55, 50, 11, 0, 7); g.fill();
+  g.fillStyle = "#7d8a9a"; g.font = "10px Inter,sans-serif"; g.textAlign = "center"; g.fillText("chart", 55, 100);
+  // the lanes map: a dot
+  g.fillStyle = rgb(mix(c, [255, 255, 255], 0.2), 0.95); g.beginPath(); g.arc(145, 50, 4, 0, 7); g.fill();
+  g.fillStyle = "#7d8a9a"; g.fillText("lanes", 145, 100);
+  fig.appendChild(cv); const cap = document.createElement("figcaption"); cap.style.width = "200px";
+  cap.innerHTML = `<span class="k">${word}</span><br>${EXAMPLES[word]}`; fig.appendChild(cap); srow.appendChild(fig);
+}
+</script></body></html>

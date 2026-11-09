@@ -3,12 +3,16 @@
 
 /**
  * A planet's fields the map reads: those Space.Charts carries (`day` as its ports' orbit period),
- * and its `tilt` and `equinox`, which the sky reads from here. Any other is dropped by dotted name
- * ("planet.gravity").
+ * its `tilt` and `equinox`, which the sky reads from here, and its `climate`, which worlds.mjs
+ * reads for its face from orbit. Any other is dropped by dotted name ("planet.gravity").
  */
-export const PLANET_FIELDS = ["id", "name", "kind", "orbit", "radius", "day", "tilt", "equinox"];
-/** A port's `surface` fields the map reads: `parent` and `bearing` as its orbit in the charts, and its `latitude`. */
-export const SURFACE_FIELDS = ["parent", "bearing", "latitude"];
+export const PLANET_FIELDS = ["id", "name", "kind", "orbit", "radius", "day", "tilt", "equinox", "climate"];
+/**
+ * A port's `surface` fields the map reads: `parent` and `bearing` as its orbit in the charts, its
+ * `latitude`, and of its `site` only `coast`, which worlds.mjs reads for the sea seen over it. A
+ * dotted name keeps that leaf only, so `surface.site.height` is still reported.
+ */
+export const SURFACE_FIELDS = ["parent", "bearing", "latitude", "site.coast"];
 
 /** Dotted names under `path` down to the leaves, as filter.mjs's for hulls. */
 function leaves(path, value) {
@@ -17,7 +21,12 @@ function leaves(path, value) {
 }
 
 const dropped = (prefix, raw, keep) => [
-  ...new Set(Object.entries(raw ?? {}).filter(([key]) => !keep.includes(key)).flatMap(([key, value]) => leaves(`${prefix}.${key}`, value))),
+  ...new Set(
+    Object.entries(raw ?? {})
+      .filter(([key]) => !keep.includes(key))
+      .flatMap(([key, value]) => leaves(`${prefix}.${key}`, value))
+      .filter((leaf) => !keep.some((k) => leaf === `${prefix}.${k}`)),
+  ),
 ];
 
 /** The star a body is in the system of: up its parents (a port's is its surface's) to the one with none. */

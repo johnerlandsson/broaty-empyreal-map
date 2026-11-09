@@ -3,7 +3,9 @@
 // one, and the seconds left; the rocks flowing past while her thrusters move her or she closes on
 // the rock to cut, out from the core up the view), over a port the town on its planet's face below, lit or dark as
 // its star is up or not, or in high orbit the planet's face, rounder from up there, with cloud on it, lit
-// or dark as her side faces its star (a dusk between when that's not known); no controls. It fades in over the model (hiding its zoom buttons),
+// or dark as her side faces its star (a dusk between when that's not known), drawn by its climate as
+// low-poly facets in its star's light (lib/worlds.js), a giant with its bands over them, and a port's
+// planet below it in the same facets, its sea far off; no controls. It fades in over the model (hiding its zoom buttons),
 // eases the stars' speed and cross-fades stars and rocks; the frame loop runs only while
 // something is on screen, and pauses while the panel is hidden or the system chart covers it.
 // Once a scene has settled it draws only as often as what moves in it needs (frameGap), idle on a
@@ -15,6 +17,7 @@
 import { daylit, orbitLit } from "./lib/orbits.js";
 import { Belt, Pit, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, groundOf, heading, litFor, rockFaces, targets, work, workLines } from "./lib/space.js";
 import { sunAlt } from "./lib/sky.js";
+import { faceOf, facets, lightBy, portFace, portFacets, rgbText, seedOf } from "./lib/worlds.js";
 import { rng } from "./lib/svg.js";
 
 const BG = "#04060c";
@@ -44,8 +47,10 @@ const RIM = "207,227,255"; // Glass: the thin air at the limb
 const SENSE = "89,209,138"; // the ok status light: the sensors' sweep and assay
 const BEAM = "207,227,255"; // Glass, the laser's beam, round a white core
 const DIM = "#7d8a9a"; // the seconds left, bottom right
-const CLOUD = "232,220,200"; // the bands on the face from high orbit
+const CLOUD = [232, 220, 200]; // a giant's bands from high orbit, in its star's light
+const BANDS_OVER_FACETS = 1.6; // a giant's bands this much stronger over its facets, to read over them
 const HAZE = 16; // px of thin air glowing over the limb from high orbit, by day
+const AIRLESS = "120,130,145"; // an airless world's limb from high orbit: a hard grey edge, no glow
 
 export class SpaceView {
   /**
@@ -73,13 +78,16 @@ export class SpaceView {
     this.belt = new Belt(14, r);
     this.far = Array.from({ length: 90 }, () => [r(), r(), 0.2 + r() * 0.5]); // the belt's backdrop
     this.town = new Town(r);
-    this.clouds = clouds(22, r);
+    this.clouds = clouds(22, r); // a giant's bands, and any planet's the data doesn't know
     this.pit = new Pit(rng(43)); // its own generator, so the town and the clouds stay as they were
     this.hulls = hulls;
     this.charts = null; // indexCharts() of Space.Charts, to tell day from night below
     this.ship = null; // the chart's ship (src/station_map/charts.lua), for her side in high orbit
     this.port = null;
     this.planet = null; // the planet she's in high orbit over
+    this.face = null; // its face by its climate (faceOf), or null when the data doesn't know it
+    this.facets = null; // that face's facets, worked out once a planet
+    this.portCells = null; // { key, cells }: the face below a port as facets, worked out once a port and size
     this.lit = 1; // 1 the day side below, 0 the night side; eases toward litTarget
     this.litTarget = 1;
     this.looked = -Infinity;
@@ -118,6 +126,8 @@ export class SpaceView {
     if (port !== this.port || planet !== this.planet) {
       this.port = port;
       this.planet = planet;
+      this.face = planet ? faceOf(planet) : null;
+      this.facets = this.face ? facets(this.face, seedOf(planet)) : null;
       this.looked = -Infinity;
       if (this.ground === 0 && this.high === 0) this.lit = this.litTarget = this.daylight() ?? this.litTarget; // no fade into a known sky
     }
@@ -454,7 +464,9 @@ export class SpaceView {
   }
 
   /** The planet's face across the lower band, the port on it (a town, or Dolcoath's pit), by day
-   *  and by night cross-faded. */
+   *  and by night cross-faded: in its planet's facets, in its star's light, with the sea far off
+   *  where it has one, and its air over the limb; a port data/worlds.js doesn't know is drawn as
+   *  before, Tamsin's ochre or the Pit's frozen grey. */
   drawGround() {
     const { g, w, h, lit } = this;
     const pit = groundOf(this.hulls[this.port]) === "pit";
@@ -462,6 +474,12 @@ export class SpaceView {
     const cx = w / 2;
     const top = h * 0.52;
     const cy = top + R;
+    const k = Math.min(Math.max(24, Math.min(70, w * 0.1)), (h - top) * 0.7); // the field's width in px; the town fits the face
+    const tx = cx;
+    const ty = top + (h - top) * 0.5;
+    const below = portFace(this.port);
+    const rim = below ? rgbText(below.face.rim) : RIM;
+    const glow = below ? below.face.glow : 0;
     const face = (cols) => {
       const grd = g.createLinearGradient(0, top, 0, h);
       grd.addColorStop(0, cols[0]);
@@ -472,6 +490,15 @@ export class SpaceView {
 
     g.save();
     g.globalAlpha = this.ground;
+    if (glow > 0) {
+      const haze = g.createRadialGradient(cx, cy, R, cx, cy, R + HAZE);
+      haze.addColorStop(0, `rgba(${rim},${(0.04 + 0.22 * lit) * glow})`);
+      haze.addColorStop(1, `rgba(${rim},0)`);
+      g.fillStyle = haze;
+      g.beginPath();
+      g.arc(cx, cy, R + HAZE, 0, Math.PI * 2);
+      g.fill();
+    }
     g.beginPath();
     g.arc(cx, cy, R, 0, Math.PI * 2);
     g.clip();
@@ -479,19 +506,27 @@ export class SpaceView {
     g.fillRect(0, top, w, h - top);
     if (lit > 0) {
       g.globalAlpha = this.ground * lit;
-      g.fillStyle = face(pit ? FROZEN : DAY);
-      g.fillRect(0, top, w, h - top);
+      if (below) {
+        const key = `${this.port}:${w}x${h}`;
+        if (this.portCells?.key !== key) this.portCells = { key, cells: portFacets(below, { w, h, top, cx, cy, R, tx, ty, k }, seedOf(this.port)) };
+        this.drawCells(this.portCells.cells);
+        const limb = g.createRadialGradient(cx, cy, R * 0.96, cx, cy, R);
+        limb.addColorStop(0, "rgba(4,6,12,0)");
+        limb.addColorStop(1, "rgba(4,6,12,0.3)");
+        g.fillStyle = limb;
+        g.fillRect(0, top, w, h - top);
+      } else {
+        g.fillStyle = face(pit ? FROZEN : DAY);
+        g.fillRect(0, top, w, h - top);
+      }
     }
     g.globalAlpha = this.ground;
-    const k = Math.min(Math.max(24, Math.min(70, w * 0.1)), (h - top) * 0.7); // the field's width in px; the town fits the face
-    const tx = cx;
-    const ty = top + (h - top) * 0.5;
     if (pit) this.drawPit(k, tx, ty);
     else this.drawTown(k, tx, ty, top);
     g.restore();
 
     g.globalAlpha = this.ground;
-    g.strokeStyle = `rgba(${RIM},${0.18 + 0.37 * lit})`;
+    g.strokeStyle = `rgba(${rim},${0.18 + 0.37 * lit})`;
     g.lineWidth = 1.5;
     g.beginPath();
     g.arc(cx, cy, R, 0, Math.PI * 2);
@@ -656,67 +691,114 @@ export class SpaceView {
   }
 
   /**
-   * The planet's face from high orbit, half its radius up: a rounder limb than over a port, faint
-   * cloud lying along the curve, the face darkening toward its edge, and thin air glowing over the
-   * limb by day; day and night cross-faded, a dusk between when her side isn't known. No town.
+   * The planet's face from high orbit, half its radius up: a rounder limb than over a port, the face
+   * darkening toward its edge, and its air glowing over the limb by day; day and night cross-faded,
+   * a dusk between when her side isn't known. No town. Every planet data/worlds.js knows is low-poly
+   * facets in its star's light, with no glow when it's airless; a giant has its bands over them, in
+   * the same light. A planet the data doesn't know is the old ochre with bands.
    */
   drawOrbit() {
-    const { g, w, h, lit } = this;
+    const { g, w, h, lit, face } = this;
     const R = w * 0.78;
     const cx = w / 2;
     const top = h * 0.46;
     const cy = top + R;
+    const known = Boolean(face);
+    const bands = !face || face.giant;
+    const rim = known ? rgbText(face.rim) : RIM;
+    const glow = known ? face.glow : 1;
 
     g.save();
     g.globalAlpha = this.high;
-    const haze = g.createRadialGradient(cx, cy, R, cx, cy, R + HAZE);
-    haze.addColorStop(0, `rgba(${RIM},${0.04 + 0.22 * lit})`);
-    haze.addColorStop(1, `rgba(${RIM},0)`);
-    g.fillStyle = haze;
-    g.beginPath();
-    g.arc(cx, cy, R + HAZE, 0, Math.PI * 2);
-    g.fill();
+    if (glow > 0) {
+      const px = known && face.veiled ? HAZE * 1.4 : HAZE;
+      const haze = g.createRadialGradient(cx, cy, R, cx, cy, R + px);
+      haze.addColorStop(0, `rgba(${rim},${(0.04 + 0.22 * lit) * glow})`);
+      haze.addColorStop(1, `rgba(${rim},0)`);
+      g.fillStyle = haze;
+      g.beginPath();
+      g.arc(cx, cy, R + px, 0, Math.PI * 2);
+      g.fill();
+    }
 
     g.beginPath();
     g.arc(cx, cy, R, 0, Math.PI * 2);
     g.clip();
-    const face = (cols) => {
+    const grad = (cols) => {
       const grd = g.createLinearGradient(0, top, 0, h);
       grd.addColorStop(0, cols[0]);
       grd.addColorStop(0.15, cols[1]);
       grd.addColorStop(1, cols[2]);
       return grd;
     };
-    g.fillStyle = face(NIGHT);
+    g.fillStyle = grad(NIGHT);
     g.fillRect(0, top, w, h - top);
+    const deep = h - top + 20; // the face reaches a little past the band's foot
     if (lit > 0) {
       g.globalAlpha = this.high * lit;
-      g.fillStyle = face(DAY);
-      g.fillRect(0, top, w, h - top);
+      if (known) this.drawFacets(cx, cy, R, deep);
+      else {
+        g.fillStyle = grad(DAY);
+        g.fillRect(0, top, w, h - top);
+      }
     }
     g.globalAlpha = this.high;
-    g.lineCap = "round";
-    const deep = h - top + 20; // the bands reach a little past the band's foot
-    for (const c of this.clouds) {
-      g.strokeStyle = `rgba(${CLOUD},${c.alpha * (0.2 + 0.8 * lit)})`;
-      g.lineWidth = c.w;
-      g.beginPath();
-      g.arc(cx, cy, R - 6 - c.d * deep, -Math.PI / 2 + c.a - c.len, -Math.PI / 2 + c.a + c.len);
-      g.stroke();
+    if (bands) {
+      // a giant's bands, in its star's light and a little stronger over its facets
+      const band = rgbText(known ? lightBy(CLOUD, face.light) : CLOUD);
+      const strength = known ? BANDS_OVER_FACETS : 1;
+      g.lineCap = "round";
+      for (const c of this.clouds) {
+        g.strokeStyle = `rgba(${band},${c.alpha * strength * (0.2 + 0.8 * lit)})`;
+        g.lineWidth = c.w;
+        g.beginPath();
+        g.arc(cx, cy, R - 6 - c.d * deep, -Math.PI / 2 + c.a - c.len, -Math.PI / 2 + c.a + c.len);
+        g.stroke();
+      }
     }
     const limb = g.createRadialGradient(cx, cy, R * 0.86, cx, cy, R);
     limb.addColorStop(0, "rgba(4,6,12,0)");
-    limb.addColorStop(1, "rgba(4,6,12,0.45)");
+    limb.addColorStop(1, `rgba(4,6,12,${bands ? 0.45 : 0.3})`);
     g.fillStyle = limb;
     g.fillRect(0, top, w, h - top);
     g.restore();
 
+    // the limb's edge: the air's colour where it has air, a hard grey where it has none
     g.globalAlpha = this.high;
-    g.strokeStyle = `rgba(${RIM},${0.18 + 0.37 * lit})`;
-    g.lineWidth = 1.5;
+    g.strokeStyle = glow > 0 ? `rgba(${rim},${0.18 + 0.37 * lit})` : `rgba(${AIRLESS},${0.3 + 0.2 * lit})`;
+    g.lineWidth = glow > 0 ? 1.5 : 1;
     g.beginPath();
     g.arc(cx, cy, R, 0, Math.PI * 2);
     g.stroke();
     g.globalAlpha = 1;
+  }
+
+  /** The high-orbit face's facets, each a triangle at its (depth, angle) points on the curve. */
+  drawFacets(cx, cy, R, deep) {
+    const at = ([d, a]) => {
+      const r = R + 2 - d * deep; // the top ring reaches past the limb, which the clip trims
+      return [cx + Math.sin(a) * r, cy - Math.cos(a) * r];
+    };
+    this.drawCells(this.facets.map((f) => ({ pts: f.pts.map(at), fill: f.fill })));
+  }
+
+  /** Triangles in band px, each filled and edged in its own colour so no seam shows. */
+  drawCells(cells) {
+    const { g } = this;
+    g.lineWidth = 0.6;
+    g.lineJoin = "round";
+    for (const f of cells) {
+      const [p, q, s] = f.pts;
+      const col = `rgb(${rgbText(f.fill)})`;
+      g.fillStyle = col;
+      g.strokeStyle = col;
+      g.beginPath();
+      g.moveTo(p[0], p[1]);
+      g.lineTo(q[0], q[1]);
+      g.lineTo(s[0], s[1]);
+      g.closePath();
+      g.fill();
+      g.stroke();
+    }
   }
 }

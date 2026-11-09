@@ -26,7 +26,8 @@ describe("loadSource", () => {
       { id: "pit", name: "The Pit" },
     ]);
     expect(src.stations.find((s) => s.id === "pit").words.sky).toEqual({ night: "Night over the Pit." });
-    expect(src.bodies.map((b) => b.id)).toEqual(["sol", "rock", "mini", "pit"]);
+    expect(src.bodies.map((b) => b.id)).toEqual(["sol", "rock", "smog", "big", "mini", "pit"]);
+    expect(src.substances.map((s) => s.id)).toEqual(["nitrogen", "methane", "water"]);
     expect(src.shipGravity).toBe(0.25);
     expect(src.heavyWidth).toBe(110);
   });

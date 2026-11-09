@@ -23,12 +23,12 @@ import {
   systemName,
 } from "./lib/lanes.js";
 import { attachPanZoom, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
+import { starFill } from "./lib/worlds.js";
 
 const HL = "#ffb347";
 const HL_STROKE = "#fff3df";
 const DIM = "#7d8a9a";
 const ORBIT = "#2b3646";
-const STAR = "#fffaf0";
 const GLASS = "#cfe3ff";
 const BG = "#04060c";
 const NAME = "#c3ccd8";
@@ -336,7 +336,7 @@ export class LanesView {
       );
     }
 
-    // the stars: a dot, relays as a pair of arcs either side saying its contact, a Glass diamond over a
+    // the stars: a dot in its colour, relays as a pair of arcs either side saying its contact, a Glass diamond over a
     // settled one, its name outward; beside a star whose contact can change, how old it is, or ? not known
     const reach = new Set(open.map((l) => l.between.find((id) => id !== here)));
     for (const s of SYSTEMS) {
@@ -356,7 +356,7 @@ export class LanesView {
           text(ages, fx, fy + 3, field, { "text-anchor": "middle", "font-size": 8, fill: c.state === "in" ? GLASS : c.state === "out" ? DIM : NAME });
         }
       }
-      el("circle", { cx: x, cy: y, r, fill: STAR, opacity: s.band === "shallows" ? 0.95 : 0.8 }, marks);
+      el("circle", { cx: x, cy: y, r, fill: starFill(s.id), opacity: s.band === "shallows" ? 0.95 : 0.8 }, marks); // the canopy's colour (data/worlds.js)
       if (s.stations.length) el("path", { d: `M${x},${y - r - 7.5} l2.2,2.2 l-2.2,2.2 l-2.2,-2.2 Z`, fill: GLASS, opacity: 0.9 }, marks);
       const a = LAYOUT.P[s.id].a;
       const c = Math.cos(a);

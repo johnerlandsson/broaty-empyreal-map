@@ -76,6 +76,15 @@ plugin can't know. When the game's sky changes, re-record `dev/sky-cases.json`
 (town.md, "Tested against the game"). The
 report names a planet or surface field it doesn't read as `planet.<field>`
 or `surface.<field>`.
+`ui/data/worlds.js` has each star's colour and each planet's face from high
+orbit: its star, air, albedo, ground (rock or ice), frost, seas and veil, or
+`giant` for a planet with no `climate`, and each port's planet and `coast`. The build works them out with the
+game's own `climate.ts` and `stars.ts`, imported from the checkout, and
+`content/game/substances.yaml`, and writes none of the climate's other
+figures: no greenhouse or gases. `planet.climate` is read, so it's no longer
+in the report, and of a port's `surface.site` only `coast` is read, so
+`surface.site.height` and `.setting` still are. See
+[space-scenes.md](space-scenes.md), "A world's face" and "Over a port's face".
 `ui/data/frames.js` has the heavy frame's width, from `frames.yaml`, which the
 plans compare with an opening's `clear`: on a hatch exit, a plan's airlock
 room, or a planless hull's `airlock.clear`, which the build puts on her

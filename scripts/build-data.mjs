@@ -2,7 +2,8 @@
 // Build the map's place data from the Empyreal source and the tweak files: ui/data/<area>.js for
 // each area with a builder, ui/data/places.js, ui/data/plans/<plan>.js for each ship plan (and a
 // one-room plan for each hull without one), ui/data/ships.js, ui/data/frames.js, ui/data/sky.js
-// (each port's tilt, latitude and sky words), and the sync report. Reads the source, never writes it.
+// (each port's tilt, latitude and sky words), ui/data/worlds.js (each star's colour and each
+// planet's face from orbit), and the sync report. Reads the source, never writes it.
 // Usage: node scripts/build-data.mjs [--source DIR] [--tweaks DIR] [--out DIR] [--report PATH]
 
 import { execFileSync } from "node:child_process";
@@ -18,6 +19,7 @@ import { levelRooms } from "./source/levels.mjs";
 import { diffRooms, droppedOf, emptyReport, formatReport, sortReport } from "./source/report.mjs";
 import { loadTweaks, originOf, resolveLook, resolveTweak, via } from "./source/tweaks.mjs";
 import { skyOf } from "./source/sky.mjs";
+import { worldsOf } from "./source/worlds.mjs";
 import { RINGS } from "./source/wheel.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -29,8 +31,22 @@ const LOOK_KEYS = ["paint", "fixtures", "footprints", "hull", "profile", "surfac
 /** What a checkout must have; loadSource reads each. */
 /** The game's port words (Zennor's, under each port's own in world.yaml), which build() imports and runs. */
 const PORT_WORDS = "packages/game/src/systems/port-words.ts";
-/** What a checkout must have; loadSource reads each, and build() imports PORT_WORDS. */
-const SOURCE_PATHS = ["content/areas", "content/plans", "content/game/hulls.yaml", "content/game/world.yaml", "content/game/frames.yaml", "content/game/system.yaml", PORT_WORDS];
+/** The game's climate and stars, whose physics says what a world and a star look like (worlds.mjs). */
+const CLIMATE = "packages/game/src/systems/climate.ts";
+const STARS = "packages/game/src/systems/stars.ts";
+/** What a checkout must have; loadSource reads each, and build() imports the game's code. */
+const SOURCE_PATHS = [
+  "content/areas",
+  "content/plans",
+  "content/game/hulls.yaml",
+  "content/game/world.yaml",
+  "content/game/frames.yaml",
+  "content/game/system.yaml",
+  "content/game/substances.yaml",
+  PORT_WORDS,
+  CLIMATE,
+  STARS,
+];
 
 function ordered(obj, keys) {
   const out = {};
@@ -152,7 +168,7 @@ function shipsText(commit, hulls, planIds) {
 }
 
 /** The out dir's index files, which are generated but no place's. */
-const INDEXES = ["places.js", "ships.js", "frames.js", "sky.js"];
+const INDEXES = ["places.js", "ships.js", "frames.js", "sky.js", "worlds.js"];
 
 /** The ids of the generated place files (stamped; hand-made files aren't) among the names, each read by `read`. */
 function generatedIds(outDir, names, read) {
@@ -347,6 +363,9 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   const src = loadSource(source);
   const { portWords } = await import(pathToFileURL(join(source, PORT_WORDS)).href);
   const sky = skyOf(src.bodies, src.stations, portWords);
+  const climate = await import(pathToFileURL(join(source, CLIMATE)).href);
+  const { starColour } = await import(pathToFileURL(join(source, STARS)).href);
+  const worlds = worldsOf(src.bodies, src.substances, { ...climate, starColour });
   const tweaks = loadTweaks(tweaksDir, { shownAs: tweaksShownAs });
   const previous = previousReport(reportPath);
   const report = emptyReport(src.commit);
@@ -427,6 +446,7 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   files.set(join(outDir, "ships.js"), shipsText(src.commit, hulls, planIds));
   files.set(join(outDir, "frames.js"), moduleText(src.commit, { heavyWidth: src.heavyWidth }));
   files.set(join(outDir, "sky.js"), moduleText(src.commit, sky.ports));
+  files.set(join(outDir, "worlds.js"), moduleText(src.commit, worlds));
   sortReport(report);
   files.set(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 

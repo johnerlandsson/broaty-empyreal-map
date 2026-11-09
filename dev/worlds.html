@@ -1,0 +1,50 @@
+<!doctype html>
+<!-- Every port from above and every planet from high orbit, by day, drawn by the space view's own
+     drawGround and drawOrbit from ui/data/worlds.js, one band each: for checking a sync's worlds at a glance
+     (docs/maps/space-scenes.md). Serve the repo root over http and open /dev/worlds.html;
+     ?night shows each by night, ?dusk at the dusk an unknown side gets, ?only=a,b just those. -->
+<html><head><meta charset="utf-8"><title>Worlds from high orbit</title><style>
+body{margin:0;background:#04060c;color:#7d8a9a;font:11px "DejaVu Sans Mono",monospace;padding:10px;display:flex;flex-wrap:wrap;gap:8px}
+figure{margin:0} .band{position:relative;width:270px;height:150px;border:1px solid #1b2230;border-radius:4px;overflow:hidden}
+figcaption{margin-top:2px;width:270px} b{color:#c3ccd8;font-weight:400}
+</style></head><body>
+<script type="module">
+import { SpaceView } from "../ui/space-view.js";
+import WORLDS from "../ui/data/worlds.js";
+const q = new URLSearchParams(location.search);
+const lit = q.has("night") ? 0 : q.has("dusk") ? 0.5 : 1;
+const only = q.get("only")?.split(",");
+const hulls = { dolcoath: "pit" }; // as data/places.js has them; any other port is a town
+for (const [id, p] of Object.entries(WORLDS.ports ?? {})) {
+  if (only && !only.includes(id)) continue;
+  const fig = document.createElement("figure");
+  const band = document.createElement("div");
+  band.className = "band";
+  fig.appendChild(band);
+  const cap = document.createElement("figcaption");
+  cap.innerHTML = `<b>${id}</b> · over ${p.planet} · coast ${p.coast}`;
+  fig.appendChild(cap);
+  document.body.appendChild(fig);
+  const v = new SpaceView(band, { hulls });
+  v.daylight = () => lit;
+  v.resize();
+  v.set("port", id);
+}
+for (const [id, p] of Object.entries(WORLDS.planets)) {
+  if (only && !only.includes(id)) continue;
+  const fig = document.createElement("figure");
+  const band = document.createElement("div");
+  band.className = "band";
+  fig.appendChild(band);
+  const cap = document.createElement("figcaption");
+  const what = p.giant ? "giant" : [p.air ? `${p.air} bar` : "airless", p.ground, p.frost && "frost", p.seas.map((s) => `${s.of} ${s.share}`).join(" "), p.veil && "veiled"].filter(Boolean).join(" · ");
+  cap.innerHTML = `<b>${id}</b> · ${p.star} (${WORLDS.stars[p.star]?.colour}) · ${what}`;
+  fig.appendChild(cap);
+  document.body.appendChild(fig);
+  const v = new SpaceView(band);
+  v.daylight = () => lit; // no charts here: her side is the page's to say
+  v.resize();
+  v.set("orbit", null, id); // the view's own loop draws it, fading in
+}
+document.body.dataset.ready = "1";
+</script></body></html>

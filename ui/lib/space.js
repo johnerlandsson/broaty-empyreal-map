@@ -497,10 +497,11 @@ export const groundOf = (hull) => (hull === "pit" ? "pit" : "town");
 // --- a planet from high orbit ----------------------------------------------------------------
 
 /**
- * Cloud on a planet's face seen from high orbit: bands lying along the curve, each an arc about
- * the planet's centre `d` (0 the limb .. 1 the band's foot) down from the limb, centred `a`
+ * A giant's bands seen from high orbit, as its prose has them: bands lying along the curve, each an
+ * arc about the planet's centre `d` (0 the limb .. 1 the band's foot) down from the limb, centred `a`
  * radians either side of straight down the view, `len` radians long either way, `w` px thick and
- * `alpha` strong by day. Scenery, the same for every planet: the game says nothing of its weather.
+ * `alpha` strong by day. The same for every giant, and for a planet data/worlds.js doesn't know; a
+ * world with a climate is drawn by it (lib/worlds.js), with no cloud, since weather isn't sent.
  */
 export function clouds(n, rnd) {
   return Array.from({ length: n }, () => ({

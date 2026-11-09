@@ -174,7 +174,8 @@ The ring, with the Mid inside it, across the band left of the zoom buttons,
 and a key in a card in the top-left corner
 (`docs/maps/reference/lanes-ring-options.png`, option A):
 
-- **The Shallows:** a Star dot (4 px radius) for each of the twelve, evenly
+- **The Shallows:** a dot (4 px radius) in its star's colour, the canopy's
+  (`ui/data/worlds.js`, style guide §4), for each of the twelve, evenly
   round a circle in ring order, Petroc at the top and clockwise. The circle
   is the trunks, 2 px in the lightest Tone: trunks never close, so they have
   only the one look.

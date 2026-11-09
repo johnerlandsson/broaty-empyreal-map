@@ -1,0 +1,210 @@
+<!doctype html>
+<!-- The view over a port and a giant from high orbit, in the style of the worlds from high orbit
+     (option B of world-looks-mockup.html), 2026-11-09. Drawn by the plugin's own SpaceView, with
+     only the face under the town or Pit, or under a giant's bands, swapped per option. Imports the
+     plugin's modules, so it's blank from disk: serve the repo root over http and open this file;
+     the PNG beside it is the rendering. A throwaway: take its look, not its code.
+     Picked: giants B (2026-11-09); ports went on to port-looks-mockup.html. -->
+<html><head><meta charset="utf-8"><title>Port and giant looks: options</title><style>
+body{margin:0;background:#04060c;color:#7d8a9a;font:13px Inter,system-ui,sans-serif;padding:14px 18px;width:max-content}
+h1{color:#e3eaf2;font-size:17px;margin:6px 0 0} h2{color:#e3eaf2;font-size:15px;margin:16px 0 2px}
+h2 small{color:#7d8a9a;font-weight:400;font-size:12px;margin-left:8px}
+p{margin:2px 0 6px;max-width:1240px} .row{display:flex;gap:10px} figure{margin:0}
+.band{position:relative;width:300px;height:165px;border:1px solid #1b2230;border-radius:4px;overflow:hidden}
+figcaption{font:11px "DejaVu Sans Mono",monospace;margin-top:3px;width:300px} b{color:#c3ccd8;font-weight:400}
+</style></head><body>
+<h1>Over a port</h1>
+<p>Parked over Zennor (Tamsin, under orange Senara) and over Dolcoath's Pit (Orrin, ice, under the same star), by day and by night. Today the face is one flat ochre (Zennor) or frozen grey (the Pit) whatever the world. The town, the Pit and their lamps are as they are now in every option.</p>
+<div id="ports"></div>
+<h1 style="margin-top:24px">A giant from high orbit</h1>
+<p>Giants have no climate in the game, and their prose has bands ("Morvah's clouds … storms, bands"), so the bands stay. What changes is the light: today every giant is the same ochre whatever its star.</p>
+<div id="giants"></div>
+<script type="module">
+import { SpaceView } from "../../../ui/space-view.js";
+import { faceOf, facets, lightBy, rgbText, seedOf, starRgb } from "../../../ui/lib/worlds.js";
+import WORLDS from "../../../ui/data/worlds.js";
+
+const DAY = ["#6e5a44", "#8a7052", "#5c4936"];
+const NIGHT = ["#121821", "#0e131b", "#080b11"];
+const CLOUD = [232, 220, 200];
+const RIM = "207,227,255";
+const rgbOf = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const PORT_PLANET = { zennor: "tamsin", dolcoath: "orrin" };
+
+/** The face under a port, by option: "today" as shipped, else facets with seas (A), facets as land only (B), or smooth (C). */
+function portFace(v, opt) {
+  const { g, w, h, lit } = v;
+  const pit = v.port === "dolcoath";
+  const R = w * 1.4, cx = w / 2, top = h * 0.52, cy = top + R;
+  const grad = (cols) => {
+    const grd = g.createLinearGradient(0, top, 0, h);
+    cols.forEach((c, i) => grd.addColorStop([0, 0.15, 1][i], c));
+    return grd;
+  };
+  const face = faceOf(PORT_PLANET[v.port]);
+  const k = Math.min(Math.max(24, Math.min(70, w * 0.1)), (h - top) * 0.7);
+  const tx = cx, ty = top + (h - top) * 0.5;
+  g.save();
+  g.globalAlpha = v.ground;
+  if (opt !== "today" && face.glow > 0) {
+    const haze = g.createRadialGradient(cx, cy, R, cx, cy, R + 16);
+    haze.addColorStop(0, `rgba(${rgbText(face.rim)},${(0.04 + 0.22 * lit) * face.glow})`);
+    haze.addColorStop(1, `rgba(${rgbText(face.rim)},0)`);
+    g.fillStyle = haze;
+    g.beginPath(); g.arc(cx, cy, R + 16, 0, 7); g.fill();
+  }
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.clip();
+  g.fillStyle = grad(NIGHT); g.fillRect(0, top, w, h - top);
+  if (lit > 0) {
+    g.globalAlpha = v.ground * lit;
+    if (opt === "today") {
+      g.fillStyle = grad(pit ? ["#6d6a66", "#8a8781", "#55524e"] : DAY);
+      g.fillRect(0, top, w, h - top);
+    } else if (opt === "C") {
+      const c = face.ground;
+      g.fillStyle = grad([`rgb(${rgbText(c.map((x) => x * 1.05))})`, `rgb(${rgbText(c)})`, `rgb(${rgbText(c.map((x) => x * 0.72))})`]);
+      g.fillRect(0, top, w, h - top);
+    } else {
+      const deep = h - top + 20;
+      const at = ([d, a]) => { const r = R + 2 - d * deep; return [cx + Math.sin(a * 0.42) * r, cy - Math.cos(a * 0.42) * r]; };
+      const land = opt === "B" ? { ...face, seas: [] } : face;
+      g.lineWidth = 0.6;
+      for (const f of facets(land, seedOf(PORT_PLANET[v.port]))) {
+        const pts = f.pts.map(at);
+        const mx = (pts[0][0] + pts[1][0] + pts[2][0]) / 3, my = (pts[0][1] + pts[1][1] + pts[2][1]) / 3;
+        // the port stands on land: the facets round it are its ground, never sea
+        const near = Math.hypot(mx - tx, (my - ty) * 1.6) < k * 1.4;
+        const fill = near && f.fill[2] > f.fill[0] ? face.ground : f.fill;
+        g.fillStyle = g.strokeStyle = `rgb(${rgbText(fill)})`;
+        g.beginPath(); g.moveTo(...pts[0]); g.lineTo(...pts[1]); g.lineTo(...pts[2]); g.closePath(); g.fill(); g.stroke();
+      }
+    }
+  }
+  g.globalAlpha = v.ground;
+  if (pit) v.drawPit(k, tx, ty); else v.drawTown(k, tx, ty, top);
+  g.restore();
+  g.globalAlpha = v.ground;
+  g.strokeStyle = opt === "today" ? `rgba(${RIM},${0.18 + 0.37 * lit})` : `rgba(${rgbText(face.rim)},${0.18 + 0.37 * lit})`;
+  g.lineWidth = 1.5;
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+  g.globalAlpha = 1;
+}
+
+/** A giant from high orbit, by option: "today", its face and bands in its star's light (A), or that over faint facets (B). */
+function giantFace(v, opt) {
+  if (opt === "today") return SpaceView.prototype.drawOrbit.call(v);
+  const { g, w, h, lit } = v;
+  const light = starRgb(WORLDS.planets[v.planet].star);
+  const R = w * 0.78, cx = w / 2, top = h * 0.46, cy = top + R;
+  const rim = rgbText(lightBy(rgbOf("#cfe3ff"), light));
+  g.save();
+  g.globalAlpha = v.high;
+  const haze = g.createRadialGradient(cx, cy, R, cx, cy, R + 16);
+  haze.addColorStop(0, `rgba(${rim},${0.04 + 0.22 * lit})`); haze.addColorStop(1, `rgba(${rim},0)`);
+  g.fillStyle = haze; g.beginPath(); g.arc(cx, cy, R + 16, 0, 7); g.fill();
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.clip();
+  const grad = (cols) => {
+    const grd = g.createLinearGradient(0, top, 0, h);
+    cols.forEach((c, i) => grd.addColorStop([0, 0.15, 1][i], c));
+    return grd;
+  };
+  g.fillStyle = grad(NIGHT); g.fillRect(0, top, w, h - top);
+  const deep = h - top + 20;
+  if (lit > 0) {
+    g.globalAlpha = v.high * lit;
+    const day = DAY.map((c) => `rgb(${rgbText(lightBy(rgbOf(c), light))})`);
+    g.fillStyle = grad(day); g.fillRect(0, top, w, h - top);
+    if (opt === "B") {
+      const face = { ground: lightBy(rgbOf(DAY[1]), light), seas: [], frost: null, veiled: false };
+      const at = ([d, a]) => { const r = R + 2 - d * deep; return [cx + Math.sin(a) * r, cy - Math.cos(a) * r]; };
+      g.lineWidth = 0.6;
+      for (const f of facets(face, seedOf(v.planet))) {
+        const pts = f.pts.map(at);
+        g.fillStyle = g.strokeStyle = `rgb(${rgbText(f.fill)})`;
+        g.beginPath(); g.moveTo(...pts[0]); g.lineTo(...pts[1]); g.lineTo(...pts[2]); g.closePath(); g.fill(); g.stroke();
+      }
+    }
+  }
+  g.globalAlpha = v.high;
+  g.lineCap = "round";
+  const band = rgbText(lightBy(CLOUD, light));
+  for (const c of v.clouds) {
+    g.strokeStyle = `rgba(${band},${c.alpha * (0.2 + 0.8 * lit) * (opt === "B" ? 1.6 : 1)})`;
+    g.lineWidth = c.w;
+    g.beginPath();
+    g.arc(cx, cy, R - 6 - c.d * deep, -Math.PI / 2 + c.a - c.len, -Math.PI / 2 + c.a + c.len);
+    g.stroke();
+  }
+  const limb = g.createRadialGradient(cx, cy, R * 0.86, cx, cy, R);
+  limb.addColorStop(0, "rgba(4,6,12,0)"); limb.addColorStop(1, "rgba(4,6,12,0.45)");
+  g.fillStyle = limb; g.fillRect(0, top, w, h - top);
+  g.restore();
+  g.globalAlpha = v.high;
+  g.strokeStyle = `rgba(${rim},${0.18 + 0.37 * lit})`;
+  g.lineWidth = 1.5;
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+  g.globalAlpha = 1;
+}
+
+function band(host, caption, setup) {
+  const fig = document.createElement("figure");
+  const div = document.createElement("div");
+  div.className = "band";
+  fig.appendChild(div);
+  const cap = document.createElement("figcaption");
+  cap.innerHTML = caption;
+  fig.appendChild(cap);
+  host.appendChild(fig);
+  const v = new SpaceView(div, { hulls: { dolcoath: "pit", zennor: "port" } });
+  setup(v);
+}
+
+function section(root, title, sub) {
+  const h = document.createElement("h2");
+  h.innerHTML = `${title} <small>${sub}</small>`;
+  root.appendChild(h);
+  const row = document.createElement("div");
+  row.className = "row";
+  root.appendChild(row);
+  return row;
+}
+
+const PORT_OPTS = [
+  ["today", "Today", "one flat ochre or frozen grey, whatever the world"],
+  ["A", "A · Facets with seas", "the planet's high-orbit facets, zoomed in: Tamsin's seas show where they fall, but never under the town; Orrin's ice; its air over the limb"],
+  ["B", "B · Facets, land only", "the same facets and colours without the seas: from this low, you're over the port's own land"],
+  ["C", "C · Smooth", "today's smooth face, recoloured to the planet's ground in its star's light, no facets"],
+];
+const ports = document.getElementById("ports");
+for (const [opt, title, sub] of PORT_OPTS) {
+  const row = section(ports, title, sub);
+  for (const [port, lit] of [["zennor", 1], ["zennor", 0], ["dolcoath", 1], ["dolcoath", 0]]) {
+    band(row, `<b>${port === "zennor" ? "Zennor" : "Dolcoath"}</b> · ${PORT_PLANET[port]} · ${lit ? "day" : "night"}`, (v) => {
+      v.daylight = () => lit;
+      v.drawGround = () => portFace(v, opt);
+      v.resize();
+      v.set("port", port);
+    });
+  }
+}
+
+const GIANT_OPTS = [
+  ["today", "Today", "the same ochre and bands under every star"],
+  ["A", "A · In its star's light", "today's face and bands, lit as every world is now: by its star's colour at .45"],
+  ["B", "B · Light and facets", "as A, over facets shaded as a rocky world's are, with the bands a little stronger to read over them"],
+];
+const GIANTS = ["morvah", "keyne_5", "garrow_2", "elowen_2"];
+const giants = document.getElementById("giants");
+for (const [opt, title, sub] of GIANT_OPTS) {
+  const row = section(giants, title, sub);
+  for (const id of GIANTS) {
+    const star = WORLDS.planets[id].star;
+    band(row, `<b>${id}</b> · under ${star} (${WORLDS.stars[star].colour})`, (v) => {
+      v.daylight = () => 1;
+      v.drawOrbit = () => giantFace(v, opt);
+      v.resize();
+      v.set("orbit", null, id);
+    });
+  }
+}
+</script></body></html>

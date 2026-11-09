@@ -51,7 +51,7 @@ function pick(obj, keys) {
 
 /**
  * @param {string} dir  the Empyreal checkout
- * @returns {{commit: string|null, areas: object[], plans: object[], hulls: object[], world: object[], stations: object[], bodies: object[], shipGravity: number, heavyWidth: number}}
+ * @returns {{commit: string|null, areas: object[], plans: object[], hulls: object[], world: object[], stations: object[], bodies: object[], substances: object[], shipGravity: number, heavyWidth: number}}
  *   `world` is each station's id, name and berth; `stations` each as written, for its port words
  */
 export function loadSource(dir) {
@@ -66,11 +66,13 @@ export function loadSource(dir) {
   const world = stations.map((s) => pick(s, ["id", "name", "berth", "hull"]));
   const systemPath = join(content, "game/system.yaml");
   const bodies = need(systemPath, readYaml(systemPath), "bodies");
+  const substancesPath = join(content, "game/substances.yaml");
+  const substances = need(substancesPath, readYaml(substancesPath), "substances");
   // A ship's gravity where her plan gives none; none at all without it, as the game's loader has it.
   const shipGravity = worldDoc.world.shipGravity ?? 0;
   const framesPath = join(content, "game/frames.yaml");
   const frames = need(framesPath, readYaml(framesPath), "frames");
   // A body's size is length, width and height (hauling.md §3); its width is what must clear an opening.
   const heavyWidth = need(framesPath, { heavy: frames.find((f) => f.id === "heavy_frame") }, "heavy.body.size.1");
-  return { commit: commitOf(dir), areas, plans, hulls, world, stations, bodies, shipGravity, heavyWidth };
+  return { commit: commitOf(dir), areas, plans, hulls, world, stations, bodies, substances, shipGravity, heavyWidth };
 }

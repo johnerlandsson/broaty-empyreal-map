@@ -40,6 +40,7 @@ import {
 } from "./lib/orbits.js";
 import { courseCard } from "./lib/course.js";
 import { attachPanZoom, attachPick, brackets, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
+import { hex, starFill, starRgb } from "./lib/worlds.js";
 import { card as sweepText, chased, isDark, markText, nameOf as contactName, shipLine, shipTip, sweepOf } from "./lib/contacts.js";
 
 const HL = "#ffb347";
@@ -145,10 +146,13 @@ export class ChartView {
     glow.setAttribute("width", "300%");
     glow.setAttribute("height", "300%");
     glow.firstChild.setAttribute("stdDeviation", 2.2);
+    // the star's glow, in its colour: its stops are set to the star's as it's drawn
     const sun = el("radialGradient", { id: `${id}-sun` }, defs);
-    el("stop", { offset: "0", "stop-color": STAR }, sun);
-    el("stop", { offset: ".35", "stop-color": STAR, "stop-opacity": 0.9 }, sun);
-    el("stop", { offset: "1", "stop-color": STAR, "stop-opacity": 0 }, sun);
+    this.sunStops = [
+      el("stop", { offset: "0", "stop-color": STAR }, sun),
+      el("stop", { offset: ".35", "stop-color": STAR, "stop-opacity": 0.9 }, sun),
+      el("stop", { offset: "1", "stop-color": STAR, "stop-opacity": 0 }, sun),
+    ];
     this.sunFill = `url(#${id}-sun)`;
 
     stars(el("g", { "pointer-events": "none" }, svg), 0, 0, 2400, 1400, 2000, 31);
@@ -605,8 +609,11 @@ export class ChartView {
           const [x, y] = P(p);
           const r = Math.max(5, (Number(it.radius) || 0) / s);
           const g = el("g", {}, marks);
+          // in the colour the canopy gives it (data/worlds.js), the old warm white for one it doesn't know
+          const glow = hex(starRgb(it.id));
+          for (const stop of this.sunStops) stop.setAttribute("stop-color", glow);
           el("circle", { cx: x, cy: y, r: r * 2.6, fill: this.sunFill, "pointer-events": "none" }, g);
-          el("circle", { cx: x, cy: y, r, fill: STAR }, g);
+          el("circle", { cx: x, cy: y, r, fill: starFill(it.id) }, g);
           label(x, y + r * 2.2 + 8, it.name); // below the brightest of the glow, so it reads
           tip(g, `body:${it.id}`, it.name);
           offView.push([it.name, p, r * 1.6]); // its glow is still half as bright out there: it reads as the star

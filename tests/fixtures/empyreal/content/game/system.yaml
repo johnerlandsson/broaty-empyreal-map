@@ -1,4 +1,4 @@
-# A star, a tilted planet with a port on it, and a station over it.
+# A star, a tilted planet with a port on it and a climate, a station over it, a hazy world and a giant.
 bodies:
   - id: sol
     name: Sol
@@ -14,6 +14,29 @@ bodies:
     day: 18000
     equinox: 90
     tilt: 20
+    climate:
+      albedo: 0.3
+      air: 1
+      greenhouse: 30
+      gases: { nitrogen: 1 }
+      volatiles:
+        - { of: water, amount: abundant, sea: 0.2 }
+  - id: smog
+    name: Smog
+    kind: planet
+    orbit: { parent: sol, a: 15000 }
+    radius: 300
+    climate:
+      albedo: 0.2
+      air: 2
+      gases: { nitrogen: 0.9, methane: 0.1 }
+      volatiles:
+        - { of: water, amount: abundant }
+  - id: big
+    name: Big
+    kind: planet
+    orbit: { parent: sol, a: 20000 }
+    radius: 5000
   - id: mini
     name: Mini Outpost
     kind: station
@@ -21,4 +44,4 @@ bodies:
   - id: pit
     name: The Pit
     kind: port
-    surface: { parent: rock, bearing: 0, latitude: 40 }
+    surface: { parent: rock, bearing: 0, latitude: 40, site: { coast: 0.3 } }

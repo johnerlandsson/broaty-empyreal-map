@@ -1,0 +1,15 @@
+# The game's substances, cut down for the build's tests: what the cut-down climate.ts reads.
+substances:
+  - id: nitrogen
+    name: nitrogen
+    melts: 63
+    boils: 77
+  - id: methane
+    name: methane
+    melts: 91
+    boils: 112
+    veil: A thick brown haze hides it.
+  - id: water
+    name: water
+    melts: 273
+    boils: 373

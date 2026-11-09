@@ -1,6 +1,6 @@
 # Map style guide
 
-*Last updated 2026-10-26.*
+*Last updated 2026-11-09.*
 
 This guide is the visual language every map in the panel shares: the station
 models, the space scenes, the deck plans and the ship plans. Each kind of map
@@ -123,7 +123,8 @@ On a town's plan (the ground, not a deck; see town.md):
 | Model edge | `#0d1218` | real edges between faces (1.3) and the rocks' outlines |
 | Glass mix | Glass mixed in at .45 | domes, window collars |
 | Orbit | `#2b3646` | the chart's orbit rings and its dotted edge ring (§13); the same as the panel's rule |
-| Star | `#fffaf0` | the chart's star, and the centre of its radial glow (§13) |
+| Star | `#fffaf0` | a star whose colour the data doesn't know (§13) |
+| Star colours | red `#ff966e`, orange `#ffbe82`, gold `#ffd696`, pale yellow `#fff0cd`, white `#f5f7ff`, blue-white `#cddeff` | a star's light by the canopy's colour word (`STAR_RGB` in `ui/lib/worlds.js`): the chart's glow, and at .45 the light a world's face is seen by; its disc and the lanes map's dot mixed .3 toward white (§12, §13) |
 | Glass | `#cfe3ff` (§4.2) | the chart's station diamonds, port domes and lane mouth chevrons (§13) |
 | Planet star | `#ffcf6a` | another planet seen from the ground at night, a steady golden star (Orrin from Zennor, town.md) |
 | Day tints | `#1c2430`, `#232d3a`, `#2c3846`, `#364455` | a town's sky dome while its star is just up, low, well up and overhead (`SKY_TINTS` in `ui/lib/sky.js`) |
@@ -389,8 +390,15 @@ A new map type says in its doc what its line shows.
   like it belongs with a station.
 - Eased, never sudden: the stars speed up and slow down, stars cross-fade to
   rocks, and the ground below a port fades in and from day to night.
-- The ground below a port is the one place with colours of its own: Tamsin's
-  dusty face by day, near-black with Porthole lamps by night (space-scenes.md).
+- The ground below a port and a planet from high orbit have colours of their
+  own, all low poly (space-scenes.md): a world's facets by its climate in its
+  star's light, rock as bright as its albedo, ice, seas (water `#264670`, else
+  `#281e1a`), frost, or a veil in the colour its words name, with its air
+  glowing over the limb as thick as it is and none airless. A giant is ochre
+  facets under its bands, in its star's light. Below a port the same face, in
+  facets the same size on screen, its sea only far off on the horizon; by
+  night near-black with Porthole lamps. Never weather: no cloud that comes
+  and goes.
 - The frame loop runs only while something is on screen, and pauses while the
   panel is hidden.
 - The chart (§13) can cover the scene. While it does, the scene keeps its
@@ -409,8 +417,9 @@ what it draws and how.
 - **Backdrop:** Background with the seeded stars, as every band.
 - **Orbits:** a 1 px ring or ellipse in Orbit for everything with an orbit,
   around its parent's position now.
-- **Star:** a Star disc, at least 5 px across the radius, else its true
-  radius, inside a soft radial glow of Star fading out at about 2.6 times it.
+- **Star:** a disc in its Star colour, at least 5 px across the radius, else
+  its true radius, inside a soft radial glow of that colour fading out at
+  about 2.6 times it.
 - **Planets:** a disc in the darkest Tone with a Model edge outline, its half
   toward the star in the lightest Tone; at least 3.5 px radius, else its true
   radius.
@@ -543,7 +552,7 @@ what it draws and how.
 A schematic of the galaxy's systems and lanes (see lanes.md), behind the
 **⋈** toggle left of ◎, styled and shown like it. It shares the chart's colours:
 
-- **Stars:** the Shallows as Star dots (4 px) evenly round a ring, in ring
+- **Stars:** the Shallows as dots (4 px) in their Star colours evenly round a ring, in ring
   order from Petroc at the top, clockwise; the Mid's (3.2 px, at .8) on a
   disc inside it (`#0c1320`, its rim dashed `2 3` in the darkest Tone),
   Dozmary and Garrow, the deepest, nearest the centre. Never placed where

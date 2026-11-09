@@ -1,6 +1,6 @@
 # Space scenes
 
-*Status: built. Last updated 2026-11-07.*
+*Status: built. Last updated 2026-11-09.*
 
 ## What it is and when it shows
 
@@ -13,8 +13,8 @@ again when you dock.
 | parked | undocked, not travelling, not at a belt | a starfield, barely drifting |
 | travelling | on the way somewhere | the stars streaming past as streaks |
 | belt | at an asteroid belt | low-poly rocks tumbling past on a faint backdrop, with the ship's sensors sweeping, an assay held on a rock or the laser cutting one while she's at it, and the rocks flowing past the other way while she moves across the belt |
-| port | parked over a port (Zennor, Dolcoath), not landed | the planet's face across the lower band with the port on it as its hull describes it, Zennor's town or Dolcoath's pit, lit or dark, under the still stars |
-| orbit | in high orbit over a planet (`travel tamsin`) | the planet's face, rounder than over a port, with faint cloud on it and no town, lit or dark as her side faces the star, or a dusk between when that isn't known, under the still stars |
+| port | parked over a port (Zennor, Dolcoath), not landed | the planet's face across the lower band in its low-poly facets, the sea far off where it has one, with the port on it as its hull describes it, Zennor's town or Dolcoath's pit, lit or dark, under the still stars |
+| orbit | in high orbit over a planet (`travel tamsin`) | the planet's face, rounder than over a port, drawn by its climate in its star's light (a giant with its bands) and no town, lit or dark as her side faces the star, or a dusk between when that isn't known, under the still stars |
 | station | docked at a station, or not aboard a ship you own or crew | nothing: the station model shows |
 
 ## Where its data comes from
@@ -227,11 +227,14 @@ map doesn't fade in again over the station model.
 
 Over a port, the planet's limb is a wide arc across the band, its top a little
 above halfway down, with the still stars above it (dimmed by half by day: a
-sunlit face outshines them) and a thin rim of Glass for the air. The town sits
-in the middle of the face, its size by the band's width and the face's height:
+sunlit face outshines them) and its air over the limb as from high orbit. The
+town sits in the middle of the face, its size by the band's width and the
+face's height. The face is the planet's own, in the same low-poly style as from
+high orbit ("Over a port's face", below); a port `worlds.js` doesn't know is
+the old dusty ochre (`#6e5a44` at the limb, `#8a7052`, `#5c4936`), or the Pit's
+cold grey, with Glass at the limb:
 
-- **By day:** a dusty ochre face (`#6e5a44` at the limb, `#8a7052`, `#5c4936`
-  at the bottom of the band) with darker dust patches; the landing field in the
+- **By day:** Tamsin's facets with darker dust patches; the landing field in the
   room colour (`#b89a74`) with three pads ringed in `#e3d3b8`, and low roofs in
   the models' two lighter Tones with a Model edge shadow. *"Low roofs and a
   landing field marked out in the dust."*
@@ -247,8 +250,7 @@ over the shaft at its edge."* John's pick E
 (`reference/dolcoath-overview-options.png`, 2026-11-07); D (the benches as
 smooth oval rings) and F (the pit seen at a slant) were turned down.
 
-- **By day:** a cold grey face (`#6d6a66` at the limb, `#8a8781`, `#55524e`),
-  no dust. The pit is angular and low-poly: ten corners, a little uneven, as a
+- **By day:** Orrin's ice in facets, no dust, no sea (its `coast` is 0). The pit is angular and low-poly: ten corners, a little uneven, as a
   dug pit is, squashed to the scene's slant, and six benches stepping down to
   the floor, each a wide tread in the light Tone and a narrow riser in the
   middle Tone where its wall faces the light (from the upper left) and the
@@ -272,27 +274,90 @@ same as before.
 
 The ground fades in and out with the scene, as rocks do.
 
+### Over a port's face
+
+(The far sea of `docs/maps/reference/port-looks-mockup.html`, rendered in
+`port-looks-options.png`, picked 2026-11-09 over land only, coarse facets,
+valley relief, a river, lakes and a river to the sea.) The face below a port
+is its planet's face from high orbit (below) seen from much lower: the same
+colours in the same star's light, and facets the same size on screen, 17 px
+(`PORT_CELL`), laid as a jittered grid over the band rather than round the
+curve. `portFacets` in `ui/lib/worlds.js` works them out once a port and band
+size.
+
+**The sea, far off.** `worlds.js` gives each port its planet and its site's
+`coast` (system.yaml, weather.md §3 in `~/dev/empyreal`: how close the sea's
+influence is, 0 none). Where the planet has seas and the port a coast, its sea
+lies along the far horizon on one side, the port's seed saying which, reaching
+in from the limb 0.8 of a facet for each 0.1 of coast, with a slow wave along
+its shore, and never within 2.2 town widths of the port: the port stands on its
+own land, the sea some way off. Zennor's 0.2 puts Tamsin's sea on the right
+of the horizon; Dolcoath's 0, and Orrin's ice, give it none. No river or lakes:
+the prose has Zennor's river, but nothing places it, and lakes would be made up.
+
 In high orbit (option B of `docs/maps/reference/high-orbit-mockup.html`,
 rendered in `high-orbit-options.png`), she's half the planet's radius up, so
 it looks rounder than over a port: the limb is an arc of 0.78 band widths'
 radius, its top a little short of halfway down, falling away to both lower
-corners. The face is the port's, in the same day and night colours, with no
-town, no dust and no lamps:
+corners. Its night face is the port's, near-black; by day it's drawn by what the
+game says of the world, under "A world's face" below. No town, no dust and no
+lamps. Shared by every planet:
 
-- **Cloud:** 22 short bands, each an arc round the planet's centre so it lies
-  along the curve, in `rgba(232,220,200)` at .04 to .11 by day and a fifth of
-  that by night. Scenery, the same on every planet: the game says nothing of
-  weather.
-- **The limb** darkens toward the edge (to .45 of the Background), and by day
-  thin air glows 16 px out from it in Glass (.26 by day, .04 by night), over
-  the Glass rim the port has.
+- **The limb** darkens toward the edge (to .3 of the Background on a world
+  with a climate, .45 on a giant), and by day its air glows 16 px out from it
+  (22 under a veil), at .26 by day and .04 by night times the air's glow, over
+  a 1.5 px rim in the same colour. An airless world has no glow and a hard
+  1 px grey rim (`rgba(120,130,145)`).
 - **Unknown side:** a dusk, the day and night faces half and half, the stars
   dimmed by a quarter.
 
-Every planet is drawn in Tamsin's dusty ochre for now: the charts give a
-planet's kind and radius and nothing of what it looks like. The face's size
-doesn't depend on the radius: high orbit is always 1.5 radii out, so every
-planet looks the same size from there.
+The face's size doesn't depend on the radius: high orbit is always 1.5 radii
+out, so every planet looks the same size from there.
+
+### A world's face
+
+(Option B of `docs/maps/reference/world-looks-mockup.html`, rendered in
+`world-looks-options.png`, picked 2026-11-09.) Empyreal gives every world but
+a giant a `climate` in system.yaml (albedo, air in bar, greenhouse, gases,
+volatiles) and every star a temperature and stage (worlds.md, atmospheres.md
+and stars.md in `~/dev/empyreal`). The build reads them and writes
+`ui/data/worlds.js` (sync.md): each star's colour, and each planet's face as
+the game's own physics has it. It imports the game's `climate.ts` and
+`stars.ts`, as it does `port-words.ts`, so what's ice, sea or haze is the
+game's answer, not a copy of its formulas:
+
+| `worlds.js` | From the game | Drawn |
+|---|---|---|
+| `stars.<id>.colour` | `starColour(temperature)`, the canopy's word; null for a star with no surface | the light the face is seen by, and the star on the chart and the lanes map (style guide §13) |
+| `planets.<id>.star` | up its orbits' parents | whose light |
+| `air` | `climate.air` | the limb's glow, by its log: 0.17 at Penwith's 0.015 bar, 0.51 at a bar, 1 at Lelant's 90; none airless |
+| `albedo` | `climate.albedo` | how bright rock is (ice a little) |
+| `ground` | `ice` where any volatile's `surfaceOf` is ice, else `rock` | ice near-white, rock a brown-grey |
+| `frost` | a trace whose `phaseOf` is ice, on rock | about one facet in seven half-way to white |
+| `seas` | each volatile whose `surfaceOf` is seas, with its `sea` share | clumps of facets over about that share: water deep blue, anything else (methane, ethane) near black |
+| `veil` | `veilOf`, the substance's `veil` words that `look` from orbit says | the whole face in the colour its words name (`VEIL_WORDS`, "rust-brown" at Lamorna, "pale yellow" at Lelant), nearly flat, with nothing under it shown |
+| `giant: true` | no `climate`: a giant | the old ochre (`GIANT`) in facets in its star's light, its 22 bands over them in that light and 1.6 times as strong, and clear air's glow (option B of `port-giant-looks-mockup.html`, picked 2026-11-09) |
+| `ports.<id>` | its `surface.parent` and `site.coast` (0 where none) | the face below it and its far sea (above) |
+
+Drawn as low-poly facets, as the station model and Dolcoath's benches are:
+7 rings down from the limb by 16 columns across, two triangles a cell, the
+inner points jittered, each shaded by which way it leans and darker further
+down the face, seeded by the planet's id so it's the same every time. Every
+colour is seen in its star's light at `TINT` .45: an eye in that light
+half-adapts to it, so Orrin's ice under orange Senara is still ice, and
+Kynance under blue-white Piran is the "white curve … in a blue dusk" its prose
+has. That's what players read: Tamsin "brown, white and a little blue" from
+T.I.S.S. (its white is weather, not drawn), Lamorna "a dim curve of rust-brown
+haze" from Lamorna Light, Henwood "green and grey" and Pensilva "a brown
+curve" from their stations.
+
+**No weather.** What the canopy says of cloud, "Whorls of cloud drift across
+it", is weather (`fromSpace` in weather.ts), which changes and isn't in GMCP,
+so no world has cloud on it; the veil is drawn because it doesn't change.
+A planet `worlds.js` doesn't know (a build older than it) is drawn as before,
+Tamsin's ochre with bands. `dev/worlds.html`, served over http, draws every
+port from above and every planet from high orbit in the data, by day
+(`?night`, `?dusk`, `?only=a,b`), for checking a sync at a glance.
 
 **At a belt, the ship's work** (style guide §12) is drawn over the rocks, and
 fades with them:
@@ -351,7 +416,7 @@ Unchanged: it says where you are aboard.
 `ui/lib/space.js` (scene targets, easing, starfield, belt, rocks, the held
 rock and the flow while she moves, `work()`, `heading()`, `moveCard()` and
 `workLines()`, the town's layout and the Pit's (`Town`, `Pit`, `groundOf()`), a dock's or an undock's
-distance, the orbit scene's cloud and `litFor`), `ui/lib/orbits.js` (`daylit`, `orbitLit`), `ui/model-view.js` (`setAway`),
+distance, a giant's bands and `litFor`), `ui/lib/worlds.js` (stars' colours, `faceOf`, `facets`, `portFace`, `portFacets`), `ui/lib/orbits.js` (`daylit`, `orbitLit`), `ui/model-view.js` (`setAway`),
 `src/station_map/scene.lua`, `src/station_map/work.lua`,
 `src/station_map/manoeuvre.lua`. The preview's `?scene=port-day` and
 `?scene=port-night` put Zennor's town on the day or night side, `?scene=pit-day`
@@ -379,5 +444,5 @@ from the core up).
 ## Where it differs from the style guide
 
 Drawn on a canvas, not SVG, for the frame rate; the colours are the same. The
-planet's face is in colours of its own (above): Tamsin is dry and dusty, and
-nothing else in the maps is ground.
+planet's face is in colours of its own (above), by its climate and its star's
+light, and nothing else in the maps is ground.
