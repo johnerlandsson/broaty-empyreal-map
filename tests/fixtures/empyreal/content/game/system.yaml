@@ -4,6 +4,7 @@ bodies:
     name: Sol
     kind: star
     radius: 800
+    temperature: 5800
     frame: { a: 6000, period: 2592000 }
   - id: rock
     name: Rock

@@ -66,9 +66,14 @@ with no plan. `ui/data/ships.js` indexes them: each hull's `id`, `name`,
 or a plan and a place share an id, or when a hull names a plan that
 `content/plans/` doesn't have. See [ship-plans.md](ship-plans.md).
 `ui/data/sky.js` has each port's sky: its planet's `tilt` and `equinox` and
-its `latitude` from `system.yaml`, and its sky words from `world.yaml` over
+its `latitude` from `system.yaml`, its star's `temperature` (the plugin
+says it as a colour, as the game's `starColour` does), and its sky words
+from `world.yaml` over
 the game's defaults, which the build gets by importing the game's
 `packages/game/src/systems/port-words.ts` (see [town.md](town.md)). The
+plugin doesn't say the words: the game's sky says the weather, which the
+plugin can't know. When the game's sky changes, re-record `dev/sky-cases.json`
+(town.md, "Tested against the game"). The
 report names a planet or surface field it doesn't read as `planet.<field>`
 or `surface.<field>`.
 `ui/data/frames.js` has the heavy frame's width, from `frames.yaml`, which the

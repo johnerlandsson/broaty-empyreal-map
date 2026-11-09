@@ -2,52 +2,59 @@ import { describe, expect, it } from "vitest";
 import PORTS from "../data/sky.js";
 import cases from "../../dev/sky-cases.json" with { type: "json" };
 import { indexCharts } from "./orbits.js";
-import { fillWords, groundSky, isDark, isUp, POINTS, skyAt, skyScene, sunAlt, sunBand, sunPhase } from "./sky.js";
+import { groundSky, isDark, isUp, NO_WEATHER, POINTS, skyAt, skyScene, starColour, sunAlt, sunBand, sunPhase } from "./sky.js";
 
-// The game's own sky over Zennor and Dolcoath, recorded by dev/sky-cases.ts from ground.ts
-// (empyreal 6441e998): its Space.Charts, and the text either side of every change over a year of
-// each port's planet, a case [tick, its text's index in texts].
+// Where the game's own sky over Zennor and Dolcoath puts things, recorded by dev/sky-cases.ts from
+// ground.ts (empyreal 44913e47) with the weather stubbed out: its Space.Charts, and the facts its
+// sentences give either side of every change over a year of each port's planet, a case [tick, its
+// facts' index in facts]. Not its prose, which now says the weather (see sky.js's top).
 const idx = indexCharts(cases.charts);
 const at = (tick, ms = 0) => idx.epoch + tick * 1000 + ms;
-const casesOf = (port) => cases.ports[port].cases.map(([tick, i]) => ({ tick, text: cases.texts[i] }));
+const casesOf = (port) => cases.ports[port].cases.map(([tick, i]) => ({ tick, facts: cases.facts[i] }));
 const STATION = { zennor: "tiss", dolcoath: "orrin_station" };
 const OTHER = { zennor: "orrin", dolcoath: "tamsin" };
+
+/** What the plugin's sky says, in the recording's terms. */
+function factsOf(sky, game) {
+  return {
+    band: sky.band,
+    rising: sky.sun.rising,
+    dir: game.dir === null ? null : sky.sun.dir,
+    away: game.away === null ? null : sky.sun.away,
+    stations: sky.bodies.filter((b) => b.kind === "station").map((b) => [b.name, b.how, b.side]),
+    planets: sky.bodies.filter((b) => b.kind === "planet").map((b) => [b.name, b.alt >= 60 ? "overhead" : b.dir]),
+  };
+}
+const theGame = ({ colour, ...f }) => f;
 
 it("records both ports, each over its planet's year", () => {
   expect(Object.keys(cases.ports)).toEqual(["zennor", "dolcoath"]);
   expect(cases.ports.zennor.year).toBe(2592000);
-  expect(cases.ports.dolcoath.year).toBeGreaterThan(7.3e6);
+  expect(cases.ports.dolcoath.year).toBeGreaterThan(1e7);
   for (const port of ["zennor", "dolcoath"]) expect(cases.ports[port].cases.at(-1)[0]).toBeGreaterThan(cases.ports[port].year - 3600);
 });
 
 describe.each(["zennor", "dolcoath"])("groundSky over %s against the game", (port) => {
   const all = casesOf(port);
 
-  it("says what the game says, at every change over a year", () => {
-    for (const c of all) expect(groundSky(idx, port, at(c.tick))?.text, `tick ${c.tick}`).toBe(c.text);
+  it("puts everything where the game does, at every change over a year", () => {
+    for (const c of all) expect(factsOf(groundSky(idx, port, at(c.tick)), c.facts), `tick ${c.tick}`).toEqual(theGame(c.facts));
   });
 
   it("counts whole ticks: 999 ms into a tick is still that tick", () => {
-    for (const c of all) expect(groundSky(idx, port, at(c.tick, 999))?.text, `tick ${c.tick}`).toBe(c.text);
+    for (const c of all) expect(factsOf(groundSky(idx, port, at(c.tick, 999)), c.facts), `tick ${c.tick}`).toEqual(theGame(c.facts));
   });
 
-  it("says each of the port's own sky words, filled in", () => {
-    const words = PORTS[port].words;
-    const said = new Set(all.map((c) => groundSky(idx, port, at(c.tick)).sun.line));
-    for (const [key, line] of Object.entries(words)) {
-      const pattern = new RegExp(`^${line.replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace(/\{(\w+)\}/g, ".+?")}$`);
-      expect([...said].some((l) => pattern.test(l)), key).toBe(true);
-    }
+  it("names the star's colour as the game's words do, from data/sky.js's temperature", () => {
+    expect(starColour(PORTS[port].temperature)).toBe(cases.ports[port].colour);
+    for (const c of all.slice(0, 50)) expect(groundSky(idx, port, at(c.tick)).sun.colour).toBe(cases.ports[port].colour);
   });
 
-  it("puts the sun where the game's words do: dawn as it comes up, dusk as it goes down", () => {
+  it("puts the sun in the game's phase: dawn as it comes up, dusk as it goes down", () => {
     const want = { overhead: "day", "well up": "day", low: "day", night: "night" };
     for (const c of all) {
       const { sun, band } = groundSky(idx, port, at(c.tick));
-      const paling = fillWords(PORTS[port].words.paling, { star: sun.name, dir: sun.dir });
-      const rises = fillWords(PORTS[port].words.rises, { star: sun.name, dir: sun.dir });
-      const phase = want[band] ?? (c.text.startsWith(paling) || c.text.startsWith(rises) ? "dawn" : "dusk");
-      expect(sunPhase(sun.alt, sun.rising), `tick ${c.tick}: ${c.text}`).toBe(phase);
+      expect(sunPhase(sun.alt, sun.rising), `tick ${c.tick}`).toBe(want[band] ?? (c.facts.rising ? "dawn" : "dusk"));
     }
   });
 
@@ -63,10 +70,19 @@ describe.each(["zennor", "dolcoath"])("groundSky over %s against the game", (por
     for (const c of all) expect(sunAlt(idx, port, at(c.tick))).toBe(groundSky(idx, port, at(c.tick)).sun.alt);
   });
 
-  it("gives each sentence as its body's line, and the text as them joined", () => {
+  it("never says the port's sky words, a placeholder, or the weather", () => {
+    const lines = new Set();
+    const hovers = new Set();
     for (const c of all) {
       const sky = groundSky(idx, port, at(c.tick));
-      expect([sky.sun.line, ...sky.bodies.map((b) => b.line)].join(" ")).toBe(c.text);
+      for (const l of [sky.sun.line, ...sky.bodies.map((b) => b.line)]) lines.add(l);
+      hovers.add(skyScene(sky).hover);
+    }
+    const said = new Set(Object.values(PORTS[port].words));
+    for (const l of [...lines, ...hovers]) expect(l).not.toMatch(/[{}]/);
+    for (const l of lines) {
+      expect(said.has(l)).toBe(false);
+      expect(l).not.toMatch(/dust|haze|cloud|fog|shadow|spark|fleck|golden|crowded|pale/);
     }
   });
 
@@ -81,13 +97,6 @@ describe("groundSky for any port", () => {
   it("names T.I.S.S. by its short name", () => {
     const sky = casesOf("zennor").map((c) => groundSky(idx, "zennor", at(c.tick))).find((s) => s.bodies.some((b) => b.id === "tiss"));
     expect(sky.bodies).toContainEqual(expect.objectContaining({ id: "tiss", kind: "station", name: "T.I.S.S." }));
-  });
-
-  it("says Zennor's and Dolcoath's skies in their own words", () => {
-    expect(PORTS.zennor.words.night).not.toBe(PORTS.dolcoath.words.night);
-    const night = (port) => casesOf(port).find((c) => groundSky(idx, port, at(c.tick)).band === "night");
-    expect(groundSky(idx, "zennor", at(night("zennor").tick)).sun.line).toBe(PORTS.zennor.words.night);
-    expect(groundSky(idx, "dolcoath", at(night("dolcoath").tick)).sun.line).toBe(PORTS.dolcoath.words.night);
   });
 
   it("returns null for charts without the port", () => {
@@ -120,9 +129,9 @@ describe("groundSky for any port", () => {
 });
 
 // A hand-placed sky: a star at the origin, a planet a billion km out that doesn't move in a
-// minute, and a port 1 km up on it, on the equator of a planet with no tilt, in Zennor's words,
+// minute, and a port 1 km up on it, on the equator of a planet with no tilt, under a white star,
 // turned so its star stands `alt` degrees up in the east (rising, the morning) or the west (setting).
-const STUB = { x: { planet: "p", tilt: 0, equinox: 0, latitude: 0, words: PORTS.zennor.words } };
+const STUB = { x: { planet: "p", tilt: 0, equinox: 0, latitude: 0, temperature: 6000 } };
 function stub(alt, east) {
   return indexCharts({
     epoch: 0,
@@ -146,36 +155,62 @@ describe("groundSky's thresholds, as ground.ts's", () => {
 
   it("is overhead from 60", () => {
     expect(sunAt(60 + E).band).toBe("overhead");
-    expect(sunAt(60 + E).sun.line).toBe("Sun stands high overhead, small and white, and the shadows are short.");
+    expect(sunAt(60 + E).sun.line).toBe("Sun, a white star, is high overhead, climbing.");
     expect(sunAt(60 - E).band).toBe("well up");
   });
 
   it("is well up from 30", () => {
-    expect(sunAt(30 + E).sun.line).toBe("Sun is well up in the east of a pale, dusty sky.");
+    expect(sunAt(30 + E).sun.line).toBe("Sun, a white star, is well up in the east, climbing.");
     expect(sunAt(30 - E).band).toBe("low");
   });
 
   it("is low from 10", () => {
-    expect(sunAt(10 + E, false).sun.line).toBe("Sun is low in the west, and the shadows reach long to the east.");
+    expect(sunAt(10 + E, false).sun.line).toBe("Sun, a white star, is low in the west, going down.");
     expect(sunAt(10 - E).band).toBe("up");
   });
 
   it("is just up or going down from 0", () => {
-    expect(sunAt(E).sun.line).toBe("Sun has just come up over the eastern horizon, and everything it touches is gold.");
-    expect(sunAt(E, false).sun.line).toBe("Sun is going down in the west, reddened by the dust.");
+    expect(sunAt(E).sun.line).toBe("Sun, a white star, is rising in the east.");
+    expect(sunAt(E, false).sun.line).toBe("Sun, a white star, is setting in the west.");
     expect(sunAt(-E).band).toBe("twilight");
   });
 
   it("is dawn or dusk down to -10, and night below", () => {
-    expect(sunAt(-10 + E).sun.line).toBe("The sky is paling in the east: Sun will be up soon.");
-    expect(sunAt(-10 + E, false).sun.line).toBe("Dusk: the west still glows where Sun went down, and the first stars are out.");
+    expect(sunAt(-10 + E).sun.line).toBe("Sun, a white star, will rise in the east soon.");
+    expect(sunAt(-10 + E, false).sun.line).toBe("Sun, a white star, has just set in the west.");
     expect(sunAt(-10 - E).band).toBe("night");
-    expect(sunAt(-10 - E).sun.line).toBe("Night: the sky is black and crowded with stars.");
+    expect(sunAt(-10 - E).sun.line).toBe("Sun, a white star, is below the horizon.");
   });
 
   it("is dark below -5", () => {
     expect(sunAt(-5 + E).dark).toBe(false);
     expect(sunAt(-5 - E).dark).toBe(true);
+  });
+
+  it("leaves the colour out for a star with no temperature", () => {
+    const none = { x: { ...STUB.x, temperature: null } };
+    const sky = groundSky(stub(40, true), "x", 0, { ports: none });
+    expect(sky.sun.colour).toBeNull();
+    expect(sky.sun.line).toBe("Sun is well up in the east, climbing.");
+  });
+});
+
+describe("starColour, as stars.ts's", () => {
+  it("colours a star by the coolest temperature each colour starts at", () => {
+    expect(starColour(3400)).toBe("red");
+    expect(starColour(4299)).toBe("red");
+    expect(starColour(4300)).toBe("orange");
+    expect(starColour(4440)).toBe("orange");
+    expect(starColour(5000)).toBe("gold");
+    expect(starColour(5400)).toBe("pale yellow");
+    expect(starColour(5900)).toBe("white");
+    expect(starColour(8000)).toBe("blue-white");
+    expect(starColour(12000)).toBe("blue-white");
+  });
+
+  it("has none for a star without a temperature", () => {
+    expect(starColour(undefined)).toBeNull();
+    expect(starColour(null)).toBeNull();
   });
 });
 
@@ -211,8 +246,8 @@ describe("skyAt", () => {
     expect(Math.abs(winter.at[0])).toBeLessThan(0.01);
     expect(summer.at[1]).toBeCloseTo(Math.sin((70 * Math.PI) / 180), 2);
     expect(winter.at[1]).toBeCloseTo(0.5, 2);
-    expect(summer.line).toMatch(/stands high overhead/);
-    expect(winter.line).toBe("Senara is well up in the south of a pale, dusty sky.");
+    expect(summer.line).toMatch(/is high overhead/);
+    expect(winter.line).toMatch(/^Senara, an orange star, is well up in the south, (climbing|going down)\.$/);
   });
 });
 
@@ -268,8 +303,8 @@ describe("skyScene", () => {
     }
   });
 
-  it("hovers the empty sky with the sun's line", () => {
-    for (const sky of skies) expect(skyScene(sky).hover).toBe(sky.sun.line);
+  it("hovers the empty sky with the sun's line, and that the weather isn't shown", () => {
+    for (const sky of skies) expect(skyScene(sky).hover).toBe(`${sky.sun.line} ${NO_WEATHER}`);
   });
 });
 

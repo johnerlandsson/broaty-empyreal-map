@@ -1,7 +1,7 @@
 # Dolcoath
 
 *Status: built. The plans, the cage, the top band (the section underground, the sky over the
-Pit) and the Pit from orbit are done. Last updated 2026-11-07.*
+Pit) and the Pit from orbit are done. Last updated 2026-11-09.*
 
 ## What it is and when it shows
 
@@ -121,8 +121,12 @@ on in the offices' windows once the sky is dark, as Zennor's windows do. The flo
 isn't drawn (John declined room light, 2026-11-03).
 
 The sun is where `ui/lib/sky.js` puts it, as the game's `ground.ts` does: seen from Dolcoath's 30°
-north on Orrin, tilted 25°, so the Pit has seasons through Orrin's long year, and said in the Pit's
-own words from `world.yaml` ("Senara hangs low in the south-east, just over the Pit's rim, ...").
+north on Orrin, tilted 25°, so the Pit has seasons through Orrin's long year (10,375,200 s since
+empyreal 44913e4). The Pit has its own sky words in `world.yaml` ("Senara hangs low in the
+south-east, just over the Pit's rim, ..."), but the band doesn't say them: since 44913e4 the game's
+sky over the Pit is weather too, frost haze and cloud the plugin can't know (town.md, "The weather
+isn't drawn"). Hovering says where Senara, Orrin Station and the planets are, whether they're
+rising or setting, and that Senara is orange, in the plugin's own words.
 The dome places each thing by its east-west part, as Zennor's does (town.md).
 
 ### From orbit
