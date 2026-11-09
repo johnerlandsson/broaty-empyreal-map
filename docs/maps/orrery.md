@@ -240,8 +240,9 @@ keep clear of the chart's own labels as well as of each other.
   brighter. A click on the star shows the whole system; on the planet, its
   neighbourhood again. From the system, a planet with something on her charts
   going round it (a station, a port, a belt) has a dotted Glass ring round its
-  disc, and a click within it (never the end of a drag) shows its
-  neighbourhood; its tooltip says so. Shown only where some planet has a
+  disc, and a click within it (never the end of a drag, and even on her
+  chevron where it sits on the planet) shows its neighbourhood; its tooltip
+  says so. Shown only where some planet has a
   level.
 - **Hover** any mark for its name; a belt's error and when it was seen; a
   port's planet; where she's bound and when she'll arrive, or where she's
@@ -258,8 +259,8 @@ when a trip starts or ends, or a course is plotted or cleared, while you
 haven't zoomed or panned since. Until you pan or zoom, it also follows her, keeping the
 zoom, when she drifts out from where ⌂ or a resize left her by more than 35% of
 the view. Once you pan or zoom, it holds still until ⌂. A click on the levels'
-chip or a planet's ring frames that level, and the view is then yours, as a
-pan makes it.
+chip or a planet's ring frames that level, no narrower than the zoom's
+1,000 km, and the view is then yours, as a pan makes it.
 
 **True size** (2026-11-09). The game's systems are their real size now: Tamsin
 6,400 km across 71.4 million km from Senara, T.I.S.S. 22,950 km round it,

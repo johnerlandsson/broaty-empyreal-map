@@ -360,18 +360,27 @@ export function systemBox(index) {
   return [-r, -r, r, r];
 }
 
-/** How far a planet's neighbourhood reaches, km: its furthest satellite's apoapsis, 0 with none. */
-function reachOf(index, planet) {
-  let far = 0;
-  for (const it of index.items.values()) if (it.orbit?.parent === planet) far = Math.max(far, apo(it.orbit));
-  return far;
+/** Each planet with something going round it, by id, to how far its neighbourhood reaches (km: its
+ *  furthest satellite's apoapsis), in the charts' order; worked out once a charts index. */
+const REACHES = new WeakMap();
+function reaches(index) {
+  let out = REACHES.get(index);
+  if (out) return out;
+  const far = new Map();
+  for (const it of index.items.values()) {
+    const p = it.orbit?.parent;
+    if (p != null) far.set(p, Math.max(far.get(p) ?? 0, apo(it.orbit)));
+  }
+  out = new Map();
+  for (const it of index.items.values()) if (it.kind === "planet" && far.get(it.id) > 0) out.set(it.id, far.get(it.id));
+  REACHES.set(index, out);
+  return out;
 }
+const reachOf = (index, planet) => reaches(index).get(planet) ?? 0;
 
 /** The planets the chart has a level for (option B of true-size-nesting-mockup.html): those with
  *  something on her charts going round them, a station, a port or a belt, in the charts' order. */
-export function levelPlanets(index) {
-  return [...index.items.values()].filter((it) => it.kind === "planet" && reachOf(index, it.id) > 0).map((it) => it.id);
-}
+export const levelPlanets = (index) => [...reaches(index).keys()];
 
 /** A planet's km box at wall-clock t (ms): round it out to its furthest satellite, with a margin;
  *  null for a planet with none, or one the charts can't place. */
@@ -383,13 +392,15 @@ export function planetBox(index, planet, t) {
   return [c[0] - r, c[1] - r, c[0] + r, c[1] + r];
 }
 
-/** A view no wider than this many times a planet's neighbourhood is at that planet's level. */
+/** A view no bigger than this many times a planet's neighbourhood, along its longer side, is at that
+ *  planet's level. */
 export const LEVEL_SPAN = 40;
 
 /**
  * Which level the viewBox vb ([x, y, w, h] in km, y flipped) shows at wall-clock t (ms): the planet
- * whose neighbourhood is in view and at least 1/LEVEL_SPAN of its width (the one nearest the middle,
- * if more are), or null for the system.
+ * whose neighbourhood (out to its furthest satellite, with planetBox's margin) reaches into the view
+ * and is at least 1/LEVEL_SPAN of the view's longer side (the one nearest the middle, if more are),
+ * or null for the system.
  */
 export function levelOf(index, vb, t) {
   const [x, y, w, h] = vb;
@@ -397,13 +408,13 @@ export function levelOf(index, vb, t) {
   const cy = -(y + h / 2);
   let best = null;
   let bestD = Infinity;
-  for (const id of levelPlanets(index)) {
+  for (const [id, far] of reaches(index)) {
     const c = positionOf(index, id, t);
-    const span = 2 * reachOf(index, id) * 1.15;
-    if (!c || w > LEVEL_SPAN * span) continue;
+    const r = far * 1.15;
+    if (!c || Math.max(w, h) > LEVEL_SPAN * 2 * r) continue;
     const dx = Math.abs(c[0] - cx);
     const dy = Math.abs(c[1] - cy);
-    if (dx > w / 2 || dy > h / 2) continue;
+    if (dx > w / 2 + r || dy > h / 2 + r) continue;
     const d = Math.hypot(dx, dy);
     if (d < bestD) [best, bestD] = [id, d];
   }

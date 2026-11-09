@@ -26,10 +26,13 @@ beforeEach(async () => {
 });
 
 const chip = () => [...chart.chip.querySelectorAll("button")].map((b) => [b.textContent, b.classList.contains("on")]);
-const click = (x, y) => {
-  chart.div.dispatchEvent(new PointerEvent("pointerdown", { clientX: x, clientY: y, button: 0, bubbles: true }));
-  chart.div.dispatchEvent(new PointerEvent("pointerup", { clientX: x, clientY: y, button: 0, bubbles: true }));
+const picks = () => [...chart.picks.querySelectorAll("[data-level]")];
+const pickOf = (id) => picks().find((p) => p.getAttribute("data-level") === id);
+const press = (target, x = 0, y = 0, to = [x, y]) => {
+  target.dispatchEvent(new PointerEvent("pointerdown", { clientX: x, clientY: y, button: 0, bubbles: true }));
+  target.dispatchEvent(new PointerEvent("pointerup", { clientX: to[0], clientY: to[1], button: 0, bubbles: true }));
 };
+const toSystem = () => chart.chip.querySelector('button[data-chip=""]').click();
 
 describe("the chart's levels", () => {
   it("opens docked at T.I.S.S. on Tamsin, the chip saying Senara ▸ Tamsin", () => {
@@ -38,21 +41,42 @@ describe("the chart's levels", () => {
   });
 
   it("shows the system from the chip's Senara, with a ring to click for each planet with places", () => {
-    chart.chip.querySelector('button[data-level=""]').click();
+    toSystem();
     expect(chip()).toEqual([["Senara", true]]);
     expect(chart.touched).toBe(true);
-    expect(chart.levelHits.map((h) => h.id)).toEqual(["tamsin", "orrin"]);
-    const orrin = chart.levelHits.find((h) => h.id === "orrin");
-    click(orrin.x + 2, orrin.y);
+    expect(picks().map((p) => p.getAttribute("data-level"))).toEqual(["tamsin", "orrin"]);
+    press(pickOf("orrin"));
     expect(chip()).toEqual([["Senara", false], ["Orrin", true]]);
-    expect(chart.levelHits.map((h) => h.id)).toEqual(["tamsin"]); // at Orrin's level, Orrin has no ring
+    expect(picks().map((p) => p.getAttribute("data-level"))).toEqual(["tamsin"]); // at Orrin's level, Orrin has no ring
+  });
+
+  it("puts a planet's pick over her chevron, so a click on her there still picks it", () => {
+    toSystem();
+    const lit = chart.lit.compareDocumentPosition(chart.picks);
+    expect(lit & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("takes no pick at the end of a drag", () => {
-    chart.chip.querySelector('button[data-level=""]').click();
-    const t = chart.levelHits.find((h) => h.id === "tamsin");
-    chart.div.dispatchEvent(new PointerEvent("pointerdown", { clientX: t.x + 40, clientY: t.y, button: 0, bubbles: true }));
-    chart.div.dispatchEvent(new PointerEvent("pointerup", { clientX: t.x, clientY: t.y, button: 0, bubbles: true }));
+    toSystem();
+    press(pickOf("tamsin"), 40, 0, [0, 0]);
     expect(chip()).toEqual([["Senara", true]]);
+  });
+
+  it("takes no pick from a press on the zoom buttons or a card, wherever it ends", () => {
+    toSystem();
+    const buttons = [...chart.div.querySelectorAll("button:not([data-chip])")];
+    expect(buttons.length).toBeGreaterThan(2); // + − ⌂ and the card's
+    for (const b of buttons) press(b);
+    expect(chip()[0][0]).toBe("Senara");
+    expect(chip().length).toBe(1);
+  });
+
+  it("frames a planet no narrower than the zoom goes", () => {
+    const c = chartCase("docked-tiss", Date.now());
+    // all that goes round Orrin pulled in to 20 km: its box far narrower than the zoom's 1,000 km
+    for (const p of [...c.charts.bodies, ...c.charts.places]) if (p.orbit?.parent === "orrin") p.orbit = { ...p.orbit, a: 20 };
+    chart.setCharts(c.charts);
+    chart.showLevel("orrin");
+    expect(chart.vb[2]).toBeGreaterThanOrEqual(1000);
   });
 });

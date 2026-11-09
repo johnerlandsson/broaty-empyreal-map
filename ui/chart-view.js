@@ -39,7 +39,7 @@ import {
   systemRadius,
 } from "./lib/orbits.js";
 import { courseCard } from "./lib/course.js";
-import { attachPanZoom, brackets, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
+import { attachPanZoom, attachPick, brackets, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
 import { card as sweepText, chased, isDark, markText, nameOf as contactName, shipLine, shipTip, sweepOf } from "./lib/contacts.js";
 
 const HL = "#ffb347";
@@ -66,7 +66,8 @@ const TOP_CLEAR = 22; // px kept clear at the top for the scale bar and the butt
 const MOUTH_GAP = 18; // px: mouths nearer than this on the edge are spread apart, their names stacked
 const MARKER_GAP = 12; // px: off-view markers nearer than this are one chevron, a line each
 const STACK_GAP = 48; // px: off-view markers nearer than this whose names would overlap stack them
-const SEEN_DIM = 0.35; // a station or mouth the sweep had behind a body or missed, as drawn
+const SEEN_DIM = 0.35;
+const MIN_W = 1000; // km: the narrowest view, zoomed or framed // a station or mouth the sweep had behind a body or missed, as drawn
 
 let instances = 0;
 
@@ -157,6 +158,9 @@ export class ChartView {
     const hot = el("g", { filter: `url(#${id}-glow)` }, svg);
     this.pulse = pulse(el("g", {}, hot));
     this.lit = el("g", {}, this.pulse);
+    // a planet's pick circle, over her chevron (which often sits on the planet she's at, seen from
+    // the system) so a click there still picks it
+    this.picks = el("g", {}, svg);
     this.over = el("g", { "pointer-events": "none" }, svg); // edge markers and the scale bar
 
     // the course she has plotted, while she's at rest: a card in the corner, as the action card is
@@ -168,7 +172,7 @@ export class ChartView {
     div.appendChild(card);
     this.card = card;
 
-    this.zoom = attachPanZoom(div, () => this.vb, (v) => this.userView(v), { minW: 1000, maxW: Infinity });
+    this.zoom = attachPanZoom(div, () => this.vb, (v) => this.userView(v), { minW: MIN_W, maxW: Infinity });
     zoomButtons(div, "8px", (f) => {
       if (f) this.zoom(f);
       else this.home();
@@ -230,30 +234,14 @@ export class ChartView {
     chip.hidden = true;
     chip.addEventListener("pointerdown", (e) => e.stopPropagation()); // the chip's, not a pan
     chip.addEventListener("click", (e) => {
-      const b = e.target.closest("button[data-level]");
-      if (b) this.showLevel(b.dataset.level || null);
+      const b = e.target.closest("button[data-chip]");
+      if (b) this.showLevel(b.dataset.chip || null);
     });
     div.appendChild(chip);
     this.chip = chip;
     this.chipHtml = "";
-    // a click (never the end of a pan) within a planet's ring picks it, whatever's drawn over it:
-    // from the system her chevron often sits on the planet she's at
-    this.levelHits = []; // [{ id, x, y, r }] px, from the last draw
-    let down = null;
-    div.addEventListener("pointerdown", (e) => {
-      down = e.button === 0 ? [e.clientX, e.clientY] : null;
-    });
-    div.addEventListener("pointerup", (e) => {
-      if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return;
-      down = null;
-      const b = div.getBoundingClientRect();
-      const [x, y] = [e.clientX - b.left, e.clientY - b.top];
-      const hit = this.levelHits
-        .map((it) => ({ ...it, d: Math.hypot(it.x - x, it.y - y) }))
-        .filter((it) => it.d <= it.r)
-        .sort((a, b) => a.d - b.d)[0];
-      if (hit) this.showLevel(hit.id);
-    });
+    // a click (never the end of a pan) on a planet's pick circle frames what goes round it
+    attachPick(div, (id) => this.showLevel(id), "data-level");
 
     div.addEventListener("pointermove", (e) => this.hoverAt(e.target));
     div.addEventListener("pointerdown", () => this.hideTip());
@@ -389,8 +377,13 @@ export class ChartView {
     const box = planet ? planetBox(this.index, planet, t) : systemBox(this.index);
     if (!box) return;
     const [w, h] = this.size();
-    const vb = fitBox(box, w, h);
+    let vb = fitBox(box, w, h);
     if (!vb.every(Number.isFinite)) return;
+    if (vb[2] < MIN_W) {
+      // no narrower than + − and the wheel can make it
+      const k = MIN_W / vb[2];
+      vb = [vb[0] + (vb[2] * (1 - k)) / 2, vb[1] + (vb[3] * (1 - k)) / 2, vb[2] * k, vb[3] * k];
+    }
     this.vb = this.clamp(vb);
     this.touched = true;
     this.margin = null;
@@ -542,7 +535,7 @@ export class ChartView {
     let level = null;
     safe(() => (level = levelOf(index, this.visible(), t)));
     const levels = new Set(levelPlanets(index));
-    const levelHits = [];
+    const picks = document.createDocumentFragment();
 
     // the star's position, for lighting the planets
     const star = items.find((it) => it.kind === "star");
@@ -633,13 +626,15 @@ export class ChartView {
             el("path", { d: `M${x + nx},${y + ny} A${r},${r} 0 0 0 ${x - nx},${y - ny} Z`, fill: TONES[2] }, g);
           }
           if (!crowded(it)) label(x, y + r + 12, it.name);
-          if (levels.has(it.id)) {
-            // a click shows what goes round it; from the system, a dotted ring says there's something
-            g.style.cursor = "pointer";
-            if (level !== it.id) levelHits.push({ id: it.id, x, y, r: r + 9 });
-            if (level !== it.id) el("circle", { cx: x, cy: y, r: r + 5, fill: "transparent", stroke: GLASS, "stroke-opacity": 0.55, "stroke-dasharray": "2 2" }, g);
+          // from the system (or another planet), a planet with something going round it has a dotted
+          // ring, and a click within it shows what goes round it
+          const pickable = levels.has(it.id) && level !== it.id;
+          if (pickable) {
+            el("circle", { cx: x, cy: y, r: r + 5, fill: "none", stroke: GLASS, "stroke-opacity": 0.55, "stroke-dasharray": "2 2" }, g);
+            const hit = el("circle", { cx: x, cy: y, r: r + 9, fill: "transparent", "data-level": it.id, style: "cursor: pointer" }, picks);
+            tip(hit, `pick:${it.id}`, it.name, "click for what goes round it");
           }
-          tip(g, `body:${it.id}`, it.name, levels.has(it.id) && level !== it.id ? "click for what goes round it" : "");
+          tip(g, `body:${it.id}`, it.name);
           offView.push([it.name, p, r]);
         } else if (markOf(it.kind) === "station") {
           const p = pos(it.id);
@@ -910,10 +905,17 @@ export class ChartView {
           const other = sides.find(([sx, sa]) => fits(boxAt(sx, sa)));
           if (other) [x, anchor] = other;
           else {
-            // neither side is clear: a line at a time in from the band's edge it's on, up to four
-            const step = sin > 0.3 ? -1 : 1;
-            const n = [1, 2, 3, 4].find((i) => fits(boxAt(x, anchor, lift + step * i)));
-            if (n) lift += step * n;
+            // neither side is clear: in from the band's edge it's on, up to four steps: a line at a
+            // time off the top or the bottom, 12 px at a time off a side
+            if (Math.abs(sin) > 0.3) {
+              const step = sin > 0.3 ? -1 : 1;
+              const n = [1, 2, 3, 4].find((i) => fits(boxAt(x, anchor, lift + step * i)));
+              if (n) lift += step * n;
+            } else {
+              const step = Math.cos(k.angle) > 0 ? -12 : 12;
+              const n = [1, 2, 3, 4].find((i) => fits(boxAt(x + step * i, anchor)));
+              if (n) x += step * n;
+            }
           }
         }
         placedBoxes.push(boxAt(x, anchor));
@@ -940,12 +942,12 @@ export class ChartView {
       over.appendChild(tx);
     });
     this.drawChip(level, levels.size > 0, 30 + below);
-    this.levelHits = levelHits;
 
     this.drawSweepCard(t);
     marks.appendChild(labels);
     this.marks.replaceChildren(marks);
     this.lit.replaceChildren(lit);
+    this.picks.replaceChildren(picks);
     this.over.replaceChildren(over);
     this.tips = tips;
     this.refreshTip();
@@ -973,8 +975,8 @@ export class ChartView {
     const name = (id) => esc(this.index.items.get(id)?.name ?? id);
     const html = !any
       ? ""
-      : `<button type="button" data-level=""${level ? "" : ' class="on"'}>${name(this.index.system)}</button>` +
-        (level ? `<span>▸</span><button type="button" data-level="${esc(level)}" class="on">${name(level)}</button>` : "");
+      : `<button type="button" data-chip=""${level ? "" : ' class="on"'}>${name(this.index.system)}</button>` +
+        (level ? `<span>▸</span><button type="button" data-chip="${esc(level)}" class="on">${name(level)}</button>` : "");
     this.chip.hidden = !html;
     this.chip.style.top = `${top}px`;
     if (html !== this.chipHtml) {

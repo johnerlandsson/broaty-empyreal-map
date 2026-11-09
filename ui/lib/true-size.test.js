@@ -135,6 +135,24 @@ describe("the chart's two levels (option B of true-size-nesting-mockup.html)", (
     expect(levelOf(index, view(systemBox(index)), now)).toBe(null);
   });
 
+  it("is the planet with its centre just off the view but its places in it", () => {
+    const vb = view(planetBox(index, "tamsin", now));
+    // panned right by most of the box: Tamsin's centre off the left edge, Gannet's orbit still in view
+    const reach = index.items.get("gannet-1").orbit.a;
+    const off = [vb[0] + vb[2] / 2 + reach * 0.5, vb[1], vb[2], vb[3]];
+    expect(levelOf(index, off, now)).toBe("tamsin");
+  });
+
+  it("weighs a tall band's height as a wide band's width", () => {
+    const vb = view(planetBox(index, "tamsin", now));
+    const c = [vb[0] + vb[2] / 2, vb[1] + vb[3] / 2];
+    const span = 2 * index.items.get("gannet-1").orbit.a * 1.15;
+    const tall = [c[0] - span / 2, c[1] - 50 * span, span, 100 * span];
+    expect(levelOf(index, tall, now)).toBe(null);
+    const wide = [c[0] - 50 * span, c[1] - span / 2, 100 * span, span];
+    expect(levelOf(index, wide, now)).toBe(null);
+  });
+
   it("is no planet with the view somewhere else", () => {
     const vb = view(planetBox(index, "tamsin", now));
     expect(levelOf(index, [vb[0] + 10 * vb[2], vb[1], vb[2], vb[3]], now)).toBe(null);

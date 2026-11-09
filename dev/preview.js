@@ -561,10 +561,12 @@ gameMenu.append(...CASES.map((c) => Object.assign(document.createElement("option
 const bandMenu = document.getElementById("game-band");
 
 /** Case `name` in band `band`: the system chart (chart), the belt map (belt; at a belt) or the space
- *  scene under them (scene: high orbit, over or on a port, at a belt, under way or docked). */
+ *  scene under them (scene: high orbit, over or on a port, at a belt, under way or docked). The belt
+ *  band away from a belt shows the chart. */
 function emitGame(name, band = "chart") {
   if (!name) return;
   const c = chartCase(name, Date.now());
+  if (band === "belt" && !c.status?.belt) band = "chart"; // not at a belt: the chart, not a blank band
   fp.emit("charts", c.charts);
   fp.emit("chart-ship", c.ship);
   fp.emit("course", c.course);
