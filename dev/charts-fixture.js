@@ -1,142 +1,73 @@
-// Fixture for the orrery preview: Space.Charts as C.charts would post it, and the ship's chart state.
-// Built from ~/dev/empyreal/content/game/system.yaml, belts.yaml and galaxy.yaml (Senara, Maelor, Tamsin, Orrin, Wenna
-// and the belts). The game sends each orbit's period as frame.period * (a / frame.a)^1.5, with the
-// parent's frame; `period` below does the same. km / deg / s; fit times in ms.
+// Fixture for the orrery preview and tests: Space.Charts as C.charts would post it, and the ship's
+// chart state. The charts are the game's own, recorded by dev/charts-cases.ts (dev/charts-cases.js
+// moves them on to now): Senara's system as a character with every station and mouth on her charts
+// has it, and Maelor's. Only the ships and the sweep are made up here, placed by those charts.
+// km / deg / s; fit times in ms.
 
-const HOUR = 3600 * 1000;
-const DAY = 24 * HOUR;
+import { chartCase } from "./charts-cases.js";
+import { daylit, indexCharts } from "../ui/lib/orbits.js";
+import { sunAlt } from "../ui/lib/sky.js";
 
-/** A body's orbit as the game sends it: missing e / peri / phase are 0. */
-const period = (frame, a) => Math.round(frame.period * (a / frame.a) ** 1.5);
-function orbit(parent, frame, a, { e = 0, peri = 0, phase = 0 } = {}) {
-  return { parent, a, e, peri, phase, period: period(frame, a) };
+/** A port's star well up (day) or well down (night), by the sky the space scenes use. */
+function side(index, port, t, want) {
+  const alt = sunAlt(index, port, t);
+  if (alt === null) {
+    const day = daylit(index, port, t);
+    return day !== null && day === (want === "day");
+  }
+  return want === "day" ? alt > 20 : alt < -20;
 }
 
-const FRAMES = {
-  senara: { a: 6000, period: 259200 },
-  tamsin: { a: 900, period: 7200 },
-  orrin: { a: 800, period: 10800 },
-  maelor: { a: 5000, period: 216000 },
-  wenna: { a: 700, period: 9000 },
-};
-
-const fit = (now, ago, error) => ({ seen: now - ago, error, at: now });
-
-/** A station is both a body and a place with the same id. */
-function station(id, name, parent, a) {
-  const o = orbit(parent, FRAMES[parent], a);
-  return { body: { id, name, kind: "station", orbit: o }, place: { id, name, kind: "station", orbit: o, fit: null } };
+/** Recorded case `name`'s charts moved on to `now`; with `port`, moved on further till it's `want`
+ *  (day or night) there at `now`, ten minutes at a time over a year at most. */
+function charts(name, now = Date.now(), port = null, want = "day") {
+  const c = chartCase(name);
+  if (port) {
+    const index = indexCharts(c.charts);
+    for (let k = 0; k < 6 * 24 * 400; k++) {
+      if (side(index, port, c.now + k * 600000, want)) return chartCase(name, now - k * 600000).charts;
+    }
+  }
+  return chartCase(name, now).charts;
 }
 
-function belt(id, name, parent, a, extra, f) {
-  return { id, name, kind: "belt", orbit: orbit(parent, FRAMES[parent], a, extra), fit: f };
+/** Charts with every lane mouth's bearing taken out, as a wild mouth's would be. */
+function loose(charts) {
+  for (const p of charts.places) if (p.kind === "mouth") delete p.edge;
+  return charts;
 }
 
-/** A lane mouth: `open` is whether its lane is open now, as the game sends it (a trunk always). */
-const mouth = (from, to, name, edge, open = true) => {
-  const p = { id: `mouth:${from}:${to}`, name, kind: "mouth", orbit: null, fit: null, open };
-  if (edge) p.edge = edge;
-  return p;
-};
-
-/** The epoch is fixed at now - 30000 * 1000 so the moment matches the mockup's. */
-const epoch = (now) => now - 30000 * 1000;
-
-/** Zennor, a port on Tamsin's surface turning with its 4-hour day (gmcp.md §8.4), set to face
- *  Senara at `now` (day) or away from it (night). Tamsin's phase is 0 and the epoch 30000 s back. */
-function zennor(now, side) {
-  const since = (now - epoch(now)) / 1000;
-  const tamsin = (360 * since) / period(FRAMES.senara, 6000);
-  const turned = (360 * since) / 14400;
-  const phase = (((tamsin + (side === "night" ? 0 : 180) - turned) % 360) + 360) % 360;
-  const o = { parent: "tamsin", a: 400, e: 0, peri: 0, phase, period: 14400 };
-  return { body: { id: "zennor", name: "Zennor", kind: "port", orbit: o }, place: { id: "zennor", name: "Zennor", kind: "station", orbit: o, fit: null } };
+/**
+ * Senara's charts as the game sends them, at wall-clock `now`, with the day on Zennor's `side` (day
+ * or night). `loose`: no mouth's bearing known.
+ */
+export function senaraCharts(now, { side = "day", loose: wild = false } = {}) {
+  const c = charts("docked-tiss", now, "zennor", side);
+  return wild ? loose(c) : c;
 }
 
-/** Senara's charts with Dolcoath on Orrin too, by day or by night there as `side` says (and Zennor). */
+/** Senara's charts with Dolcoath's `side` (day or night) of Orrin at now. */
 export function pitCharts(now, side = "day") {
-  const charts = senaraCharts(now, null, side);
-  const pit = dolcoath(now, side);
-  return { ...charts, bodies: [...charts.bodies, pit.body], places: [...charts.places, pit.place] };
+  return charts("docked-tiss", now, "dolcoath", side);
 }
 
-/** Dolcoath, Orrin's port, turning with Orrin's 13-hour day, set to face Senara at `now` (day) or
- *  away from it (night), as zennor() is. Orrin's phase is 150. */
-function dolcoath(now, side) {
-  const since = (now - epoch(now)) / 1000;
-  const orrin = 150 + (360 * since) / period(FRAMES.senara, 12000);
-  const turned = (360 * since) / 46800;
-  const phase = (((orrin + (side === "night" ? 0 : 180) - turned) % 360) + 360) % 360;
-  const o = { parent: "orrin", a: 500, e: 0, peri: 0, phase, period: 46800 };
-  return { body: { id: "dolcoath", name: "Dolcoath", kind: "port", orbit: o }, place: { id: "dolcoath", name: "Dolcoath", kind: "station", orbit: o, fit: null } };
+/**
+ * Maelor's charts as the game sends them at `now`: Wenna, Wenna Halt, Kestrel Belt and three lane
+ * mouths. `loose`: no mouth's bearing known; `closed`: these mouths' lanes closed, as a branch's
+ * may be (made up: the recording has all three open).
+ */
+export function maelorCharts(now, { loose: wild = false, closed = [] } = {}) {
+  const c = charts("docked-wenna-halt", now);
+  for (const p of c.places) if (closed.includes(p.id)) p.open = false;
+  return wild ? loose(c) : c;
 }
-
-export function senaraCharts(now, edge = null, side = "day") {
-  const tiss = station("tiss", "Tamsin International Space Station", "tamsin", 900);
-  const orrinStation = station("orrin_station", "Orrin Station", "orrin", 800);
-  const port = zennor(now, side);
-  return {
-    epoch: epoch(now),
-    system: "senara",
-    bodies: [
-      { id: "senara", name: "Senara", kind: "star", radius: 800 },
-      { id: "tamsin", name: "Tamsin", kind: "planet", radius: 400, orbit: orbit("senara", FRAMES.senara, 6000) },
-      { id: "orrin", name: "Orrin", kind: "planet", radius: 500, orbit: orbit("senara", FRAMES.senara, 12000, { e: 0.1, phase: 150 }) },
-      tiss.body,
-      orrinStation.body,
-      port.body,
-    ],
-    places: [
-      tiss.place,
-      orrinStation.place,
-      port.place,
-      belt("cinders", "The Cinders", "tamsin", 1800, { phase: 90 }, fit(now, 2 * DAY, 2600)),
-      belt("gannet", "Gannet Belt", "tamsin", 2700, { phase: 200 }, fit(now, HOUR, 120)),
-      // lost: an error of at least 0.9 * pi * a (a = 8500)
-      belt("anvil", "The Anvil", "senara", 8500, { e: 0.05, phase: 40 }, fit(now, 9 * DAY, 25000)),
-      mouth("senara", "maelor", "the Maelor lane mouth", edge),
-    ],
-  };
-}
-
-/** Maelor's three mouths at day 60 of the galaxy's year, worked out from galaxy.yaml as the game's
- *  mouthPos does: two trunks (Senara, Elowen) and the Petroc branch, closed (its stars 16.6 units
- *  apart, past its `open` 16). The Senara and Petroc mouths are under a degree apart. */
-const MAELOR_LANES = (now) => [
-  mouth("maelor", "senara", "the Senara lane mouth", { r: 15000, bearing: 287.01, at: now }, true),
-  mouth("maelor", "elowen", "the Elowen lane mouth", { r: 15000, bearing: 198.58, at: now }, true),
-  mouth("maelor", "petroc", "the Petroc lane mouth", { r: 15000, bearing: 287.84, at: now }, false),
-];
-
-/** Maelor, with its one Senara mouth (no bearing unless edge is given), or with all three (`lanes`). */
-export function maelorCharts(now, edge = null, lanes = false) {
-  const wennaHalt = station("wenna_halt", "Wenna Halt", "wenna", 700);
-  return {
-    epoch: epoch(now),
-    system: "maelor",
-    bodies: [
-      { id: "maelor", name: "Maelor", kind: "star", radius: 700 },
-      { id: "wenna", name: "Wenna", kind: "planet", radius: 450, orbit: orbit("maelor", FRAMES.maelor, 5000, { e: 0.05, phase: 60 }) },
-      wennaHalt.body,
-    ],
-    places: [
-      wennaHalt.place,
-      belt("kestrel", "Kestrel Belt", "wenna", 2000, { phase: 300 }, fit(now, 6 * HOUR, 200)),
-      ...(lanes ? MAELOR_LANES(now) : [mouth("maelor", "senara", "the Senara lane mouth", edge)]),
-    ],
-  };
-}
-
-/** The Senara mouth's `edge`, as the game sends it (gmcp.md §8.3): 76° is toward Maelor at tick 0.
- *  Without it (the `maelor` and other Senara scenarios) the chart shows a mouth it can't place. */
-export const EDGE = (now) => ({ r: 15000, bearing: 76, at: now });
 
 /** chart-ship messages by scenario (Senara); `received` and `depart` are stamped when emitted. */
 export const SHIPS = {
-  "parked-gannet": { name: "Mule", docked: false, location: "gannet" },
-  "under-way-orrin": { name: "Mule", docked: false, destination: "orrin_station", progress: 0.4, eta: 250, from: "tiss" },
-  "searching-cinders": { name: "Mule", docked: false, destination: "cinders", progress: 0.3, eta: 120, from: "tiss", searching: "cinders" },
-  "at-point": { name: "Mule", docked: false, point: "pt:tamsin:1500:-2000" },
+  "parked-gannet": { name: "Mule", docked: false, location: "gannet-1" },
+  "under-way-orrin": { name: "Mule", docked: false, destination: "orrin_station", progress: 0.4, eta: 724, from: "tiss" },
+  "searching-cinders": { name: "Mule", docked: false, destination: "cinders-1", progress: 0.3, eta: 120, from: "tiss", searching: "cinders-1" },
+  "at-point": { name: "Mule", docked: false, point: "pt:tamsin:38000:-51000" },
   "docked-tiss": { name: "Mule", docked: true, location: "tiss" },
   "landed-zennor": { name: "Mule", docked: true, location: "zennor" },
   none: null,
@@ -149,7 +80,13 @@ export const MAELOR_SHIP = { name: "Mule", docked: true, location: "wenna_halt" 
  *  Tamsin; Orrin Station missed. Ships are placed off where the charts put Gannet Belt then. */
 export function senaraContacts(now, positionOf, index, ago = 4 * 60 * 1000) {
   const at = now - ago;
-  const g = positionOf(index, "gannet", at);
+  const g = positionOf(index, "gannet-1", at);
+  // toward Tamsin from the belt, and across: the ships are placed off the belt on Tamsin's side, so
+  // a chart framing Tamsin's neighbourhood shows them
+  const t = positionOf(index, "tamsin", at);
+  const l = Math.hypot(t[0] - g[0], t[1] - g[1]);
+  const u = [(t[0] - g[0]) / l, (t[1] - g[1]) / l];
+  const by = (a, b) => [u[0] * a - u[1] * b, u[1] * a + u[0] * b];
   // range and bearing from her at Gannet, as gmcp.ts sends them, and x and y, which may go
   const bearing = (dx, dy) => (Math.round((((Math.atan2(dx, dy) * 180) / Math.PI) + 360) % 360 * 10) / 10) % 360;
   const off = (dx, dy) => ({ x: Math.round(g[0] + dx), y: Math.round(g[1] + dy), km: Math.round(Math.hypot(dx, dy)), bearing: bearing(dx, dy) });
@@ -162,13 +99,13 @@ export function senaraContacts(now, positionOf, index, ago = 4 * 60 * 1000) {
   return {
     at,
     system: "senara",
-    her: { name: "Mule", docked: false, location: "gannet" }, // as charts.lua kept her when it came
+    her: { name: "Mule", docked: false, location: "gannet-1" }, // as charts.lua kept her when it came
     contacts: [
       { kind: "station", id: "tiss", name: "T.I.S.S.", ...place("tiss"), ...none, hidden: "tamsin" },
       { kind: "station", id: "orrin_station", name: "Orrin Station", ...place("orrin_station"), ...none, missed: true },
-      { kind: "ship", id: "ship.42", name: "the Mule", ...off(300, 260), ...none, moving: false, size: 1, hull: "skiff", owner: "Dilbo's" },
-      { kind: "ship", id: "ship.17", name: "Old Faithful", ...off(1900, -1300), ...none, moving: true, size: 3, hull: "freighter", owner: "Annet's" },
-      { kind: "unknown", id: "contact-1", name: "contact-1", ...off(2300, -3600), ...none },
+      { kind: "ship", id: "ship.42", name: "the Mule", ...off(...by(3000, 2000)), ...none, moving: false, size: 1, hull: "skiff", owner: "Dilbo's" },
+      { kind: "ship", id: "ship.17", name: "Old Faithful", ...off(...by(16000, -9000)), ...none, moving: true, size: 3, hull: "freighter", owner: "Annet's" },
+      { kind: "unknown", id: "contact-1", name: "contact-1", ...off(...by(26000, 12000)), ...none },
     ],
   };
 }

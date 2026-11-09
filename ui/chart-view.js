@@ -7,8 +7,8 @@
 // with its age in a card in the bottom-left corner.
 
 import {
-  EDGE_KM,
   HIGH_ORBIT,
+  MOUTH_MAX_KM,
   ago,
   clusters,
   courseLine,
@@ -21,16 +21,21 @@ import {
   indexCharts,
   isClosed,
   isLost,
+  kmText,
+  levelOf,
+  levelPlanets,
   markOf,
   mouthLabel,
   mouthStar,
   onSurface,
   overlapping,
   parsePoint,
+  planetBox,
   positionOf,
   scaleKm,
   shipFix,
   spreadOnEdge,
+  systemBox,
   systemRadius,
 } from "./lib/orbits.js";
 import { courseCard } from "./lib/course.js";
@@ -65,13 +70,6 @@ const SEEN_DIM = 0.35; // a station or mouth the sweep had behind a body or miss
 
 let instances = 0;
 
-const fmt = (n) => Math.round(n).toLocaleString("en");
-
-/** "16k", "8.5k": thousands of km, as the off-view markers name them. */
-function thousands(km) {
-  const k = km / 1000;
-  return `${k >= 10 ? Math.round(k) : Math.round(k * 10) / 10}k`;
-}
 
 /** Seconds as "4m 10s", "1h 2m" or "40s". */
 function span(s) {
@@ -107,7 +105,7 @@ export class ChartView {
     this.sweep = null; // it, indexed, while it's of the charts' system
     this.on = false;
     this.touched = false; // zoomed or panned since the view was last framed
-    this.vb = [-EDGE_KM, -EDGE_KM, 2 * EDGE_KM, 2 * EDGE_KM];
+    this.vb = [-MOUTH_MAX_KM, -MOUTH_MAX_KM, 2 * MOUTH_MAX_KM, 2 * MOUTH_MAX_KM];
     // how far off the centre she may be before the view follows her: 35%, or wherever ⌂ left her
     // if that's further (null: measure at the next draw); a view you've touched doesn't follow
     this.margin = null;
@@ -224,6 +222,38 @@ export class ChartView {
     div.appendChild(sweepCard);
     this.sweepCard = sweepCard;
     this.sweepHtml = "";
+
+    // the levels (option B of true-size-nesting-mockup.html): "Senara ▸ Tamsin" under the scale bar,
+    // a click on a name framing it; and a click on a planet with places round it frames them
+    const chip = document.createElement("div");
+    chip.className = "level-chip";
+    chip.hidden = true;
+    chip.addEventListener("pointerdown", (e) => e.stopPropagation()); // the chip's, not a pan
+    chip.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-level]");
+      if (b) this.showLevel(b.dataset.level || null);
+    });
+    div.appendChild(chip);
+    this.chip = chip;
+    this.chipHtml = "";
+    // a click (never the end of a pan) within a planet's ring picks it, whatever's drawn over it:
+    // from the system her chevron often sits on the planet she's at
+    this.levelHits = []; // [{ id, x, y, r }] px, from the last draw
+    let down = null;
+    div.addEventListener("pointerdown", (e) => {
+      down = e.button === 0 ? [e.clientX, e.clientY] : null;
+    });
+    div.addEventListener("pointerup", (e) => {
+      if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return;
+      down = null;
+      const b = div.getBoundingClientRect();
+      const [x, y] = [e.clientX - b.left, e.clientY - b.top];
+      const hit = this.levelHits
+        .map((it) => ({ ...it, d: Math.hypot(it.x - x, it.y - y) }))
+        .filter((it) => it.d <= it.r)
+        .sort((a, b) => a.d - b.d)[0];
+      if (hit) this.showLevel(hit.id);
+    });
 
     div.addEventListener("pointermove", (e) => this.hoverAt(e.target));
     div.addEventListener("pointerdown", () => this.hideTip());
@@ -351,6 +381,22 @@ export class ChartView {
     this.draw(t);
   }
 
+  /** Frame a level as its chip or its planet's click does: a planet's neighbourhood, or the system
+   *  for null. The view is then yours, as a pan or a zoom makes it, until ⌂. */
+  showLevel(planet) {
+    if (!this.index) return;
+    const t = Date.now();
+    const box = planet ? planetBox(this.index, planet, t) : systemBox(this.index);
+    if (!box) return;
+    const [w, h] = this.size();
+    const vb = fitBox(box, w, h);
+    if (!vb.every(Number.isFinite)) return;
+    this.vb = this.clamp(vb);
+    this.touched = true;
+    this.margin = null;
+    this.draw(t);
+  }
+
   /** The widest the view may be: the whole system with a margin, whatever the band's shape. */
   maxW() {
     const [w, h] = this.size();
@@ -441,9 +487,10 @@ export class ChartView {
     // A label for a mark inside the band is kept inside it, clear of the buttons (its width is
     // guessed: there's no layout here). A label beside a mark (anchor start or end) that doesn't
     // fit is centred at `above` instead, rather than pushed over the mark.
+    const labelBoxes = []; // where the labels went, px, for the off-view names to keep clear of
     const label = (x, y, text, anchor = "middle", above = null) => {
+      const tw = text.length * 5.5;
       if (x >= 0 && x <= w) {
-        const tw = text.length * 5.5;
         const right = y < BUTTONS_H ? w - BUTTONS_W : w;
         if (above && ((anchor === "end" && x - tw < 4) || (anchor === "start" && x + tw > right - 4))) {
           [x, y] = above;
@@ -453,6 +500,8 @@ export class ChartView {
         const hi = anchor === "start" ? tw : anchor === "middle" ? tw / 2 : 0;
         x = Math.min(Math.max(x, lo + 4), right - hi - 4);
       }
+      const x0 = anchor === "end" ? x - tw : anchor === "middle" ? x - tw / 2 : x;
+      labelBoxes.push([x0, y - 9, x0 + tw, y + 3]);
       return el("text", { x, y, "font-size": 10, fill: DIM, "text-anchor": anchor, "font-family": FONT }, labels, text);
     };
 
@@ -489,6 +538,12 @@ export class ChartView {
       return { x: px + u[0] * r, y: py + u[1] * r, u, base: [px, py], r, parent: on.parent };
     };
 
+    // the level the view is at: a planet's, or the system's (null); and the planets with a level
+    let level = null;
+    safe(() => (level = levelOf(index, this.visible(), t)));
+    const levels = new Set(levelPlanets(index));
+    const levelHits = [];
+
     // the star's position, for lighting the planets
     const star = items.find((it) => it.kind === "star");
     const starPos = star ? pos(star.id) : [0, 0];
@@ -517,7 +572,7 @@ export class ChartView {
         loose.forEach((text, i) => label(c[0], c[1] - r + 16 + i * 12, text)); // just inside its top
         const hit = el("circle", { cx: c[0], cy: c[1], r, fill: "none", stroke: "transparent", "stroke-width": 8, "pointer-events": "stroke" }, marks);
         if (loose.length) tip(hit, "edge", loose[0], loose.slice(1).join("\n"));
-        else tip(hit, "edge", "The edge", `${fmt(R)} km out`);
+        else tip(hit, "edge", "The edge", `${kmText(R)} out`);
       });
     }
 
@@ -539,10 +594,10 @@ export class ChartView {
         const ox = c[0] - b[0];
         const oy = c[1] - b[1];
         const n = Math.hypot(ox, oy) || 1;
-        const text = `${it.name} ${lost ? "· lost" : `±${fmt(err)}`}`;
+        const text = `${it.name} ${lost ? "· lost" : `±${kmText(err)}`}`;
         if (!crowded(it)) label(c[0] + (ox / n) * 12, c[1] + (oy / n) * 12 + 3, text, ox < 0 ? "end" : "start", [c[0], c[1] - 10]);
         const seen = Number.isFinite(it.fit?.seen) ? `, seen ${ago(t - it.fit.seen)} ago` : "";
-        tip(g, `belt:${it.id}`, it.name, `±${fmt(err)} km${seen}`);
+        tip(g, `belt:${it.id}`, it.name, `±${kmText(err)}${seen}`);
         if (!lost) offView.push([it.name, here]); // a lost belt is its whole ring: no one place to point at
       });
     }
@@ -578,7 +633,13 @@ export class ChartView {
             el("path", { d: `M${x + nx},${y + ny} A${r},${r} 0 0 0 ${x - nx},${y - ny} Z`, fill: TONES[2] }, g);
           }
           if (!crowded(it)) label(x, y + r + 12, it.name);
-          tip(g, `body:${it.id}`, it.name);
+          if (levels.has(it.id)) {
+            // a click shows what goes round it; from the system, a dotted ring says there's something
+            g.style.cursor = "pointer";
+            if (level !== it.id) levelHits.push({ id: it.id, x, y, r: r + 9 });
+            if (level !== it.id) el("circle", { cx: x, cy: y, r: r + 5, fill: "transparent", stroke: GLASS, "stroke-opacity": 0.55, "stroke-dasharray": "2 2" }, g);
+          }
+          tip(g, `body:${it.id}`, it.name, levels.has(it.id) && level !== it.id ? "click for what goes round it" : "");
           offView.push([it.name, p, r]);
         } else if (markOf(it.kind) === "station") {
           const p = pos(it.id);
@@ -792,7 +853,7 @@ export class ChartView {
         const m = edgeMarker(inner, [p[0], -p[1]], MARKER_INSET * s);
         if (!m) return;
         const km = Math.hypot(p[0] - from[0], p[1] - from[1]);
-        shown.push({ at: P([m.x, -m.y]), angle: m.angle, text: `${name} ${thousands(km)}`, closed });
+        shown.push({ at: P([m.x, -m.y]), angle: m.angle, text: `${name} ${kmText(km)}`, closed });
       });
     }
     // a chevron a cluster; then the names of nearby clusters whose names would overlap stacked as one
@@ -823,9 +884,9 @@ export class ChartView {
       });
     }
     const near = (i, j) => Math.hypot(drawn[i].x - drawn[j].x, drawn[i].y - drawn[j].y) < STACK_GAP;
-    // a name that would still overlap names already placed goes on the other side of its chevron,
+    // a name that would still overlap names already placed, or the chart's own labels, goes on the other side of its chevron,
     // if it fits in the band there; the biggest stacks are placed first, so it's the lone names that move
-    const placedBoxes = [];
+    const placedBoxes = [...labelBoxes];
     const meets = (a) => placedBoxes.some((b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]);
     const stacks = overlapping(drawn.map((k) => k.box), near);
     const size = (grp) => grp.reduce((n, g) => n + drawn[g].lines.length, 0);
@@ -836,22 +897,24 @@ export class ChartView {
         const lines = grp.flatMap((g) => drawn[g].lines);
         // stacked away from the band's edge: up from the bottom, down from the top
         const sin = Math.sin(k.angle);
-        const lift = sin > 0.3 ? -(lines.length - 1) : sin < -0.3 ? 0 : -(lines.length - 1) / 2;
+        let lift = sin > 0.3 ? -(lines.length - 1) : sin < -0.3 ? 0 : -(lines.length - 1) / 2;
         const tw = Math.max(...lines.map((l) => l.length * 5));
-        const top = k.ty + lift * 11 - 9;
-        const bottom = k.ty + (lift + lines.length - 1) * 11 + 2;
-        const boxAt = (x, anchor) => {
+        const boxAt = (x, anchor, l = lift) => {
           const x0 = anchor === "end" ? x - tw : anchor === "middle" ? x - tw / 2 : x;
-          return [x0, top, x0 + tw, bottom];
+          return [x0, k.ty + l * 11 - 9, x0 + tw, k.ty + (l + lines.length - 1) * 11 + 2];
         };
+        const fits = (b) => b[0] >= 0 && b[2] <= w && b[1] >= 0 && b[3] <= h && !meets(b);
         let [x, anchor] = [k.tx, k.anchor];
         if (meets(boxAt(x, anchor))) {
           const sides = anchor === "start" ? [[k.x - 8, "end"]] : anchor === "end" ? [[k.x + 8, "start"]] : [[k.x - 8, "end"], [k.x + 8, "start"]];
-          const other = sides.find(([sx, sa]) => {
-            const b = boxAt(sx, sa);
-            return b[0] >= 0 && b[2] <= w && !meets(b);
-          });
+          const other = sides.find(([sx, sa]) => fits(boxAt(sx, sa)));
           if (other) [x, anchor] = other;
+          else {
+            // neither side is clear: a line at a time in from the band's edge it's on, up to four
+            const step = sin > 0.3 ? -1 : 1;
+            const n = [1, 2, 3, 4].find((i) => fits(boxAt(x, anchor, lift + step * i)));
+            if (n) lift += step * n;
+          }
         }
         placedBoxes.push(boxAt(x, anchor));
         lines.forEach((line, n) => {
@@ -873,9 +936,11 @@ export class ChartView {
       el("line", { x1: x, y1: y, x2: x + L, y2: y, stroke: DIM, "stroke-width": 1 }, over);
       for (const xx of [x, x + L]) el("line", { x1: xx, y1: y - 3, x2: xx, y2: y + 3, stroke: DIM, "stroke-width": 1 }, over);
       const tx = el("text", { x: x + L / 2, y: y - 6, "font-size": 9, fill: DIM, "text-anchor": "middle", "font-family": FONT });
-      tx.textContent = `${fmt(km)} km`;
+      tx.textContent = kmText(km);
       over.appendChild(tx);
     });
+    this.drawChip(level, levels.size > 0, 30 + below);
+    this.levelHits = levelHits;
 
     this.drawSweepCard(t);
     marks.appendChild(labels);
@@ -899,6 +964,23 @@ export class ChartView {
     this.card.querySelector(".age").textContent = card.ragged && card.age ? ` · ${card.age}` : card.age;
     this.card.querySelector(".detail").hidden = !card.ragged && !card.age;
     return this.card.offsetHeight + 8;
+  }
+
+  /** The levels' chip under the scale bar, top px from the band's top: the star, and the planet the
+   *  view is at, if it's at one, each a button; its HTML replaced only when it changes. */
+  drawChip(level, any, top) {
+    const esc = (v) => String(v).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+    const name = (id) => esc(this.index.items.get(id)?.name ?? id);
+    const html = !any
+      ? ""
+      : `<button type="button" data-level=""${level ? "" : ' class="on"'}>${name(this.index.system)}</button>` +
+        (level ? `<span>▸</span><button type="button" data-level="${esc(level)}" class="on">${name(level)}</button>` : "");
+    this.chip.hidden = !html;
+    this.chip.style.top = `${top}px`;
+    if (html !== this.chipHtml) {
+      this.chip.innerHTML = html;
+      this.chipHtml = html;
+    }
   }
 
   /** The sweep's card, its HTML replaced only when it changes (its age is to the minute), so its

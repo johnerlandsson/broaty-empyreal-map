@@ -1,3 +1,4 @@
+import { chartCase } from "../../dev/charts-cases.js";
 import { describe, expect, it } from "vitest";
 import { courseCard, duration, plottedAgo } from "./course.js";
 
@@ -31,6 +32,11 @@ describe("courseCard", () => {
       ragged: false,
       age: "plotted 4m ago",
     });
+  });
+
+  it("words the game's own course to Orrin Station in millions, as the game does", () => {
+    const { course, ship, now } = chartCase("course-orrin");
+    expect(courseCard(course, ship, now).figures).toBe("262.6 million km · 20m 8s · 589 fuel");
   });
 
   it("says a ragged course is ragged", () => {

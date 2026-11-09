@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  EDGE_KM, ago, courseLine, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
+  MOUTH_MAX_KM, ago, courseLine, edgeMarker, errorAt, fitBox, folded, follows, frameOf, homeBox, indexCharts, isLost, legOf, mouthStar,
   HIGH_ORBIT, clusters, daylit, followStep, highOrbit, isClosed, orbitLit, markOf, mouthLabel, offCentre, offsetOn, onSurface, overlapping, parentOf,
   parsePoint, positionOf, scaleKm, shipFix, spreadOnEdge, stopFix, systemRadius,
 } from "./orbits.js";
@@ -27,8 +27,8 @@ const charts = (edge) => ({
 const idx = indexCharts(charts({ r: 15000, bearing: 90, at: "senara" }));
 const T = 123456789;
 
-describe("EDGE_KM", () => {
-  it("is 15000", () => expect(EDGE_KM).toBe(15000));
+describe("MOUTH_MAX_KM", () => {
+  it("is help lanes' 600 million km", () => expect(MOUTH_MAX_KM).toBe(600_000_000));
 });
 
 describe("indexCharts", () => {
@@ -292,8 +292,8 @@ describe("legOf and shipFix", () => {
 
 describe("systemRadius", () => {
   it("is the edge when there is a mouth", () => expect(systemRadius(idx)).toBe(15000));
-  it("is EDGE_KM for a mouth with no edge", () => {
-    expect(systemRadius(indexCharts(charts()))).toBe(EDGE_KM);
+  it("is MOUTH_MAX_KM for a mouth with no edge", () => {
+    expect(systemRadius(indexCharts(charts()))).toBe(MOUTH_MAX_KM);
   });
   it("sums apoapsis through parents without a mouth", () => {
     const i = indexCharts({ ...charts(), places: [{ id: "gannet", kind: "belt", orbit: orbit("tamsin", 2700, 1) }] });

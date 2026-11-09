@@ -27,6 +27,10 @@
 //   ?course=K open the system chart with a plotted course (cinders-tiss, ragged-orrin, contact, from-orbit or
 //             under-way, where the trip line has taken over), emitting course too; the bar's menu
 //             switches it
+//   ?game=G   the game's own case G, recorded by dev/charts-cases.ts (docked-tiss, course-orrin, under-way-orrin,
+//             to-gannet, at-gannet, sweep-gannet, high-orbit-tamsin, landed-zennor, maelor-mouth or docked-wenna-halt),
+//             emitting its charts, chart-ship, course, chart-contacts and scene; &band=chart (the default) opens
+//             the system chart, belt the belt map (at a belt) and scene the space scene; the bar's menus switch them
 //   ?lanes=L  open the lanes map on scenario L (senara, in-trunk, in-mid, dozmary, petroc, cutoff, new or partly), emitting lanes and
 //             lanes-view { on: true }; the bar's menu switches it. &zoom=F opens it zoomed by F, &unfold with
 //             its key's card unfolded
@@ -65,7 +69,8 @@ import { lanesOf } from "../ui/lib/lanes.js";
 import { tissRooms, townData } from "../ui/lib/look.js";
 import { ChartView } from "../ui/chart-view.js";
 import { indexCharts, positionOf } from "../ui/lib/orbits.js";
-import { EDGE, MAELOR_SHIP, SHIPS, maelorCharts, pitCharts, senaraCharts, senaraContacts } from "./charts-fixture.js";
+import { MAELOR_SHIP, SHIPS, maelorCharts, pitCharts, senaraCharts, senaraContacts } from "./charts-fixture.js";
+import { CASES, chartCase } from "./charts-cases.js";
 
 const q = new URLSearchParams(location.search);
 const debug = q.has("debug");
@@ -390,12 +395,12 @@ function walk(from = 0, until = ROUTE.length - 1) {
 document.getElementById("walk").addEventListener("click", () => walk());
 
 const sceneMenu = document.getElementById("scene");
-/** Her in high orbit over Tamsin as the Lua side keeps it, come in from 2,000 km off it toward the
+/** Her in high orbit over Tamsin as the Lua side keeps it, come in from 50,000 km off it toward the
  *  star (day) or away from it (night), or with no trip known (unknown). */
 function overTamsin(now, side) {
   const s = Math.floor(now / 1000);
   const p = positionOf(indexCharts(senaraCharts(now)), "tamsin", s * 1000 - 600000);
-  const k = (side === "day" ? -2000 : 2000) / Math.hypot(p[0], p[1]);
+  const k = (side === "day" ? -50000 : 50000) / Math.hypot(p[0], p[1]);
   const from = `pt:tamsin:${(p[0] * k).toFixed(1)}:${(p[1] * k).toFixed(1)}`;
   const over = side === "unknown" ? { planet: "tamsin" } : { planet: "tamsin", from, depart: s - 600 };
   return { name: "Mule", docked: false, over, received: s };
@@ -410,7 +415,7 @@ function emitScene(name) {
   }
   const [, over, side] = /^(port|pit)-(day|night)$/.exec(name) ?? [];
   if (!side) return fp.emit("scene", { scene: name });
-  fp.emit("charts", over === "pit" ? pitCharts(Date.now(), side) : senaraCharts(Date.now(), null, side));
+  fp.emit("charts", over === "pit" ? pitCharts(Date.now(), side) : senaraCharts(Date.now(), { side }));
   fp.emit("scene", { scene: "port", port: over === "pit" ? "dolcoath" : "zennor" });
 }
 sceneMenu.addEventListener("change", () => emitScene(sceneMenu.value));
@@ -514,12 +519,12 @@ function emitChart(name) {
   };
   // bound for the Maelor lane mouth from T.I.S.S.; stopped two thirds of the way; and off again
   const s = Math.floor(now / 1000);
-  const stop = { from: "tiss", destination: "mouth:senara:maelor", depart: s - 540, arrive: s + 270, at: s - 30 };
+  const stop = { from: "tiss", destination: "mouth:senara:maelor", depart: s - 1240, arrive: s + 620, at: s - 30 };
   const MOUTH_TRIPS = {
-    "to-mouth": { name: "Mule", docked: false, from: "tiss", destination: "mouth:senara:maelor", progress: 0.4, eta: 480 },
+    "to-mouth": { name: "Mule", docked: false, from: "tiss", destination: "mouth:senara:maelor", progress: 0.4, eta: 1100 },
     adrift: { name: "Mule", docked: false, stop, received: s },
-    "from-stop": { name: "Mule", docked: false, stop, destination: "mouth:senara:maelor", progress: 0.2, eta: 210, depart: s - 50, received: s },
-    "to-tamsin": { name: "Mule", docked: false, from: "gannet", destination: "tamsin", progress: 0.6, eta: 120 },
+    "from-stop": { name: "Mule", docked: false, stop, destination: "mouth:senara:maelor", progress: 0.2, eta: 500, depart: s - 125, received: s },
+    "to-tamsin": { name: "Mule", docked: false, from: "gannet-1", destination: "tamsin", progress: 0.6, eta: 120 },
   };
   if (name === "high-orbit" || name === "high-orbit-unknown") {
     fp.emit("charts", senaraCharts(now));
@@ -528,10 +533,11 @@ function emitChart(name) {
     return;
   }
   if (name === "maelor" || name === "maelor-lanes") {
-    fp.emit("charts", maelorCharts(now, null, name === "maelor-lanes"));
+    // maelor: no mouth's bearing known; maelor-lanes: all three, the Keyne branch closed (made up)
+    fp.emit("charts", name === "maelor" ? maelorCharts(now, { loose: true }) : maelorCharts(now, { closed: ["mouth:maelor:keyne"] }));
     fp.emit("chart-ship", stamp(MAELOR_SHIP));
   } else if (MOUTH_TRIPS[name]) {
-    fp.emit("charts", senaraCharts(now, EDGE(now)));
+    fp.emit("charts", senaraCharts(now));
     fp.emit("chart-ship", name === "to-mouth" || name === "to-tamsin" ? stamp(MOUTH_TRIPS[name]) : MOUTH_TRIPS[name]);
   } else if (name === "sweep" || name === "chase") {
     // a sweep at Gannet Belt 4 minutes back; chasing contact-1 from the belt, set off 2 minutes later
@@ -540,14 +546,50 @@ function emitChart(name) {
     fp.emit("chart-contacts", senaraContacts(now, positionOf, indexCharts(charts)));
     fp.emit("chart-ship", name === "sweep"
       ? stamp(SHIPS["parked-gannet"])
-      : { name: "Mule", docked: false, from: "gannet", destination: "contact-1", progress: 0.4, eta: 180, depart: s - 120, received: s });
+      : { name: "Mule", docked: false, from: "gannet-1", destination: "contact-1", progress: 0.4, eta: 180, depart: s - 120, received: s });
   } else {
-    fp.emit("charts", senaraCharts(now, name === "edge" ? EDGE(now) : null));
+    fp.emit("charts", senaraCharts(now));
     fp.emit("chart-ship", stamp(name === "edge" ? SHIPS["parked-gannet"] : SHIPS[name]));
   }
   if (name !== "sweep" && name !== "chase") fp.emit("chart-contacts", null);
   fp.emit("chart", { on: true });
 }
+// --- the game's own: a case dev/charts-cases.ts recorded, moved on to now (dev/charts-cases.js) ---
+
+const gameMenu = document.getElementById("game");
+gameMenu.append(...CASES.map((c) => Object.assign(document.createElement("option"), { textContent: c })));
+const bandMenu = document.getElementById("game-band");
+
+/** Case `name` in band `band`: the system chart (chart), the belt map (belt; at a belt) or the space
+ *  scene under them (scene: high orbit, over or on a port, at a belt, under way or docked). */
+function emitGame(name, band = "chart") {
+  if (!name) return;
+  const c = chartCase(name, Date.now());
+  fp.emit("charts", c.charts);
+  fp.emit("chart-ship", c.ship);
+  fp.emit("course", c.course);
+  fp.emit("chart-contacts", c.contacts);
+  const st = c.status;
+  const scene = c.ship?.over
+    ? { scene: "orbit", planet: c.ship.over.planet }
+    : st?.location === "zennor" || st?.location === "dolcoath"
+      ? { scene: "port", port: st.location }
+      : st?.belt
+        ? { scene: "belt" }
+        : st?.destination
+          ? { scene: "travelling" }
+          : { scene: st?.docked ? "station" : "parked" };
+  fp.emit("scene", scene);
+  if (band === "belt" && st?.belt) {
+    const b = st.belt;
+    const it = c.charts.places.find((p) => p.id === st.location);
+    fp.emit("belt", beltMsg(st.location, it?.name ?? st.location, b.radius, b.x, b.y, { track: [[[b.x, b.y]]] }));
+    fp.emit("belt-view", { on: true });
+  } else fp.emit("belt-view", { on: false });
+  fp.emit("chart", { on: band === "chart" });
+}
+for (const m of [gameMenu, bandMenu]) m.addEventListener("change", () => emitGame(gameMenu.value, bandMenu.value));
+
 // ?unfold also opens the chart with its sweep's card unfolded
 if (q.has("unfold")) ChartView.prototype.unfolded = true;
 chartMenu.addEventListener("change", () => emitChart(chartMenu.value));
@@ -557,15 +599,15 @@ chartMenu.addEventListener("change", () => emitChart(chartMenu.value));
 const courseMenu = document.getElementById("course");
 const COURSES = {
   // docked at T.I.S.S., plotted for the Cinders four minutes ago
-  "cinders-tiss": ["docked-tiss", { to: "cinders", name: "The Cinders", km: 2000, seconds: 231, fuel: 6.4, ragged: false, ago: 4 * 60000 }],
+  "cinders-tiss": ["docked-tiss", { to: "cinders-1", name: "The Cinders", km: 51000, seconds: 231, fuel: 9.2, ragged: false, ago: 4 * 60000 }],
   // parked at Gannet, a failed plot for Orrin Station over an hour ago
-  "ragged-orrin": ["parked-gannet", { to: "orrin_station", name: "Orrin Station", km: 9840, seconds: 1265, fuel: 31.2, ragged: true, ago: 72 * 60000 }],
+  "ragged-orrin": ["parked-gannet", { to: "orrin_station", name: "Orrin Station", km: 262555380, seconds: 1208, fuel: 589, ragged: true, ago: 72 * 60000 }],
   // a ship on the sweep, seen only by her signature: the charts can't place her, so the card alone
-  contact: ["at-point", { to: "contact-2", name: "contact-2", km: 610, seconds: 95, fuel: 1.8, ragged: false, ago: 20000 }],
+  contact: ["at-point", { to: "contact-2", name: "contact-2", km: 15600, seconds: 95, fuel: 1.8, ragged: false, ago: 20000 }],
   // in high orbit over Tamsin, plotted for the Cinders: the line from her place on the ring
-  "from-orbit": ["high-orbit", { to: "cinders", name: "The Cinders", km: 1400, seconds: 170, fuel: 4.6, ragged: false, ago: 90000 }],
+  "from-orbit": ["high-orbit", { to: "cinders-1", name: "The Cinders", km: 36000, seconds: 170, fuel: 6.6, ragged: false, ago: 90000 }],
   // flying the course: her trip line has it, and the card goes
-  "under-way": ["under-way-orrin", { to: "orrin_station", name: "Orrin Station", km: 6900, seconds: 420, fuel: 20, ragged: false, ago: 3 * 60000 }],
+  "under-way": ["under-way-orrin", { to: "orrin_station", name: "Orrin Station", km: 262555380, seconds: 1208, fuel: 589, ragged: false, ago: 3 * 60000 }],
 };
 
 function emitCourse(name) {
@@ -796,8 +838,8 @@ function emitBelt(name) {
     const here = [3.9, 0.2];
     const sweeps = [[-9.5, -4], [-8.2, -5.6], [-10.6, -6.3], [-7.4, -3.1], [-9.1, -7.2], [-6.8, -6], [-8.8, -2.4],
       [-10.2, -4.8], [1.4, 9.9], [2.6, 7.6], [3.6, 5.8], here].map(([x, y]) => ({ x, y, r: 5 }));
-    fp.emit("charts", senaraCharts(Date.now(), EDGE(Date.now())));
-    fp.emit("belt", beltMsg("cinders", "The Cinders", 16, ...here, {
+    fp.emit("charts", senaraCharts(Date.now()));
+    fp.emit("belt", beltMsg("cinders-1", "The Cinders", 16, ...here, {
       track: [[[-12.2, -4.9], [-7.8, -3.9], [-9.6, -6.7], [-7.2, -5.3], [-9.5, -2.6]], [[-7, 4.6], [1.6, 6], here]],
       sweeps,
       left: { x: 4.1, y: 0.7, name: "Old Reliable", id: "ship.7", at: now - 40 * 60 },
@@ -810,9 +852,9 @@ function emitBelt(name) {
   } else if (name === "compass") {
     // at Gannet with the Senara charts, the Maelor mouth's bearing known and a course plotted home:
     // the bearing ring marks the star, Tamsin, the stations, the mouth and where she'd go next
-    fp.emit("charts", senaraCharts(Date.now(), EDGE(Date.now())));
-    fp.emit("course", { course: { to: "tiss", name: "Tamsin International Space Station", km: 2140, seconds: 230, fuel: 6.1, ragged: false, at: Date.now() - 40000 } });
-    fp.emit("belt", beltMsg("gannet", "Gannet Belt", 18, -5.5, -9.5, {
+    fp.emit("charts", senaraCharts(Date.now()));
+    fp.emit("course", { course: { to: "tiss", name: "Tamsin International Space Station", km: 91800, seconds: 230, fuel: 13, ragged: false, at: Date.now() - 40000 } });
+    fp.emit("belt", beltMsg("gannet-1", "Gannet Belt", 18, -5.5, -9.5, {
       track: [[[7.2, 5.1], [9.7, 0.8], [6.0, -4.0], [-5.5, -9.5]]],
       sweeps: [{ x: 7.2, y: 5.1, r: 5 }, { x: 9.7, y: 0.8, r: 5 }, { x: 6.0, y: -4.0, r: 5 }],
     }));
@@ -931,6 +973,11 @@ function start() {
   if (q.has("chart")) {
     chartMenu.value = q.get("chart");
     emitChart(chartMenu.value);
+  }
+  if (q.has("game")) {
+    gameMenu.value = q.get("game");
+    bandMenu.value = q.get("band") ?? "chart";
+    emitGame(gameMenu.value, bandMenu.value);
   }
   if (q.has("course")) {
     courseMenu.value = q.get("course");

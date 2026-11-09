@@ -186,19 +186,27 @@ describe("the last sweep's ships in the belt", () => {
 
 describe("compassMarks", () => {
   const now = Date.UTC(2026, 9, 25, 12);
-  // the Senara fixture with the Maelor mouth on the edge, 140° counter-clockwise from x (gmcp.ts edgeOf)
-  const index = indexCharts(senaraCharts(now, { r: 15000, bearing: 140, at: now }));
+  // the game's Senara charts, the Maelor mouth on the edge 140° counter-clockwise from x (gmcp.ts
+  // edgeOf) and the Keyne mouth's bearing taken out
+  const R = 464_164_484;
+  const withMaelor = (bearing) => {
+    const charts = senaraCharts(now);
+    charts.places = charts.places.filter((p) => p.id !== "mouth:senara:keyne");
+    charts.places.find((p) => p.id === "mouth:senara:maelor").edge = { r: R, bearing, at: now };
+    return charts;
+  };
+  const index = indexCharts(withMaelor(140));
   const from = (core, id) => headingOf(core, positionOf(index, id, now));
 
   it("is nothing without charts or a belt they place", () => {
-    expect(compassMarks(null, "gannet", null, now)).toEqual({ marks: [], next: null });
+    expect(compassMarks(null, "gannet-1", null, now)).toEqual({ marks: [], next: null });
     expect(compassMarks(index, "gannet-9", null, now)).toEqual({ marks: [], next: null });
     expect(compassMarks(index, "tamsin", null, now)).toEqual({ marks: [], next: null }); // no belt
   });
 
   it("lists home first, the other stations, the star, the belt's planet and the mouths", () => {
-    const { marks } = compassMarks(index, "gannet", null, now);
-    expect(marks.map((m) => m.id)).toEqual(["tiss", "orrin_station", "zennor", "senara", "tamsin", "mouth:senara:maelor"]);
+    const { marks } = compassMarks(index, "gannet-1", null, now);
+    expect(marks.map((m) => m.id)).toEqual(["tiss", "zennor", "orrin_station", "dolcoath", "senara", "tamsin", "mouth:senara:maelor"]);
     expect(marks[0]).toMatchObject({ id: HOME, home: true, label: "T.I.S.S.", kind: "station" });
     expect(marks.find((m) => m.id === "zennor").kind).toBe("port");
     expect(marks.find((m) => m.id === "mouth:senara:maelor").label).toBe("Maelor");
@@ -207,20 +215,20 @@ describe("compassMarks", () => {
   });
 
   it("takes each bearing from the core, clockwise from the system's zero", () => {
-    const core = positionOf(index, "gannet", now);
-    for (const m of compassMarks(index, "gannet", null, now).marks) expect(m.deg).toBeCloseTo(from(core, m.id), 9);
+    const core = positionOf(index, "gannet-1", now);
+    for (const m of compassMarks(index, "gannet-1", null, now).marks) expect(m.deg).toBeCloseTo(from(core, m.id), 9);
   });
 
   it("has no planet for a belt round the star", () => {
-    const { marks } = compassMarks(index, "anvil", null, now);
+    const { marks } = compassMarks(index, "anvil-1", null, now);
     expect(marks.some((m) => m.kind === "planet")).toBe(false);
   });
 
   it("puts a place in a belt at its core plus her x and y, on the same axes as her own bearing", () => {
     // a point 3 km east and 4 km north of Gannet's core, as the charts place `pt:` ids, lies the way
     // her belt bearing says (cleanBelt works it out as the game's bearingOf does)
-    const core = positionOf(index, "gannet", now);
-    const p = positionOf(index, "pt:gannet:3:4", now);
+    const core = positionOf(index, "gannet-1", now);
+    const p = positionOf(index, "pt:gannet-1:3:4", now);
     expect(p[0] - core[0]).toBeCloseTo(3, 9);
     expect(p[1] - core[1]).toBeCloseTo(4, 9);
     const place = cleanBelt({ id: "gannet", radius: 18, place: { x: 3, y: 4 } }).place;
@@ -230,28 +238,28 @@ describe("compassMarks", () => {
 
   it("reads a mouth's place from its edge, not its edge bearing as a compass bearing", () => {
     // edge bearing 0 is the star's +x: due east, 90° clockwise from the zero
-    const ix = (bearing) => indexCharts(senaraCharts(now, { r: 15000, bearing, at: now }));
-    const mouth = (bearing) => compassMarks(ix(bearing), "anvil", null, now).marks.find((m) => m.kind === "mouth");
-    const anvil = positionOf(ix(0), "anvil", now);
-    expect(mouth(0).deg).toBeCloseTo(headingOf(anvil, [15000, 0]), 9);
-    expect(mouth(90).deg).toBeCloseTo(headingOf(anvil, [0, 15000]), 9);
+    const ix = (bearing) => indexCharts(withMaelor(bearing));
+    const mouth = (bearing) => compassMarks(ix(bearing), "anvil-1", null, now).marks.find((m) => m.kind === "mouth");
+    const anvil = positionOf(ix(0), "anvil-1", now);
+    expect(mouth(0).deg).toBeCloseTo(headingOf(anvil, [R, 0]), 9);
+    expect(mouth(90).deg).toBeCloseTo(headingOf(anvil, [0, R]), 9);
     // seen from the star itself, east is 90° and north 0°
-    expect(headingOf([0, 0], [15000, 0])).toBe(90);
+    expect(headingOf([0, 0], [R, 0])).toBe(90);
     expect(headingOf([0, 0], positionOf(ix(90), "mouth:senara:maelor", now))).toBeCloseTo(0, 9);
   });
 
   it("names a closed mouth so, and leaves out one with no bearing", () => {
-    const charts = senaraCharts(now, { r: 15000, bearing: 140, at: now });
+    const charts = withMaelor(140);
     charts.places.find((p) => p.kind === "mouth").open = false;
-    expect(compassMarks(indexCharts(charts), "gannet", null, now).marks.at(-1)).toMatchObject({ label: "Maelor · closed", closed: true });
-    const wild = compassMarks(indexCharts(senaraCharts(now)), "gannet", null, now).marks;
+    expect(compassMarks(indexCharts(charts), "gannet-1", null, now).marks.at(-1)).toMatchObject({ label: "Maelor · closed", closed: true });
+    const wild = compassMarks(indexCharts(senaraCharts(now, { loose: true })), "gannet-1", null, now).marks;
     expect(wild.some((m) => m.kind === "mouth")).toBe(false);
   });
 
   it("points next where her plotted course aims", () => {
     const course = { to: "orrin_station", name: "Orrin Station", at: now - 60000, seconds: 1200 };
-    const { next } = compassMarks(index, "gannet", course, now);
-    const core = positionOf(index, "gannet", now);
+    const { next } = compassMarks(index, "gannet-1", course, now);
+    const core = positionOf(index, "gannet-1", now);
     // the course aims where Orrin Station will be when she'd arrive, carried with Senara (the frame)
     const aim = positionOf(index, "orrin_station", now - 60000 + 1200 * 1000);
     expect(next).toMatchObject({ id: "orrin_station", label: "Orrin Station" });
@@ -259,9 +267,9 @@ describe("compassMarks", () => {
   });
 
   it("has no next with no course, one for the belt she's at, or one the charts can't place", () => {
-    expect(compassMarks(index, "gannet", null, now).next).toBe(null);
-    expect(compassMarks(index, "gannet", { to: "gannet", at: now, seconds: 0 }, now).next).toBe(null);
-    expect(compassMarks(index, "gannet", { to: "contact-2", name: "contact-2", at: now, seconds: 60 }, now).next).toBe(null);
+    expect(compassMarks(index, "gannet-1", null, now).next).toBe(null);
+    expect(compassMarks(index, "gannet-1", { to: "gannet-1", at: now, seconds: 0 }, now).next).toBe(null);
+    expect(compassMarks(index, "gannet-1", { to: "contact-2", name: "contact-2", at: now, seconds: 60 }, now).next).toBe(null);
   });
 });
 

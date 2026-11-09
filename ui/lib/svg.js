@@ -172,18 +172,20 @@ export function attachPanZoom(div, get, set, { minW, maxW }) {
 }
 
 /**
- * Picking, for the tweak editor: a click on an element with data-room (a press and release within
+ * Picking, for the tweak editor and the chart: a click on an element with data-room, or the
+ * attribute `attr` (a press and release within
  * PICK_SLOP px, so never the end of a pan) calls pick(id). It listens beside attachPanZoom's own
  * handlers and takes the room from the press, as the pan's pointer capture sends the release to div.
  * @param {HTMLElement} div element the svg fills
  * @param {(id: string) => void} pick
+ * @param {string} [attr] the attribute that names what's picked
  */
-export function attachPick(div, pick) {
+export function attachPick(div, pick, attr = "data-room") {
   let down = null;
   const far = (e) => Math.hypot(e.clientX - down.x, e.clientY - down.y) > PICK_SLOP;
   div.addEventListener("pointerdown", (e) => {
-    const node = e.button === 0 ? e.target.closest?.("[data-room]") : null;
-    down = node ? { x: e.clientX, y: e.clientY, id: node.getAttribute("data-room") } : null;
+    const node = e.button === 0 ? e.target.closest?.(`[${attr}]`) : null;
+    down = node ? { x: e.clientX, y: e.clientY, id: node.getAttribute(attr) } : null;
   });
   div.addEventListener("pointermove", (e) => {
     if (down && far(e)) down = null;

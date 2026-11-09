@@ -1,6 +1,7 @@
 # The orrery
 
-*Status: built. Last updated 2026-10-24.*
+*Status: built. Last updated 2026-11-09: at the game's true sizes (true-size.md and planets.md in
+`~/dev/empyreal`), with a planet's level and the system's (§True size below).*
 
 ## What it is and when it shows
 
@@ -135,8 +136,11 @@ A belt is drawn as an arc along its fit, reaching the error either way. After
 `at` the error grows and never shrinks, until the hourly resend corrects it. At
 90% of half way round it is **lost**: the whole orbit, dashed.
 
-**Lane mouths.** A mouth has no orbit, only a distance, 15,000 km out, which
-`help lanes` tells every player. Since 2026-10-22 the game sends where a
+**Lane mouths.** A mouth has no orbit, only a distance from its star, `edge.r`,
+where the star's well has thinned out: 464 million km at Senara, 185 million at a
+small star like Feock and 600 million at most, as `help lanes` tells every
+player. A mouth with no `edge` puts the edge at 600 million km (`MOUTH_MAX_KM`
+in `ui/lib/orbits.js`), as that's all a player knows of it. Since 2026-10-22 the game sends where a
 stable lane's mouth faces, as `edge {r, bearing, at}`: the bearing in degrees,
 counterclockwise from +x as orbit angles are, as of `at`. It creeps round as
 the stars orbit the galaxy, about 0.08° an hour for Maelor's, and the hourly
@@ -161,7 +165,7 @@ Everything the style guide's §13 draws:
 - **The star** with a soft glow; **planets** as discs lit on the side toward the
   star; **stations** as small Glass diamonds, named on hover only.
 - **Belts** as a fading arc with a few rocks at its centre, named with their
-  error ("Gannet Belt ±2,600"). A lost belt is its whole orbit, dashed, named
+  error in the game's words ("Gannet Belt ±1,800 km", "The Anvil ±732,900 km"). A lost belt is its whole orbit, dashed, named
   "· lost".
 - **Mouths** with a bearing (a stable lane's) as a double chevron named by the
   star it leads to; without one (a wild lane's), the edge ring is named at its
@@ -202,14 +206,14 @@ Everything the style guide's §13 draws:
   be worked out; the card still shows. Its destination is never folded into its parent. Once
   she's under way her route takes over, and the line goes.
 - **The course card**, top left over the chart, while she's at rest with a
-  course: "Course for The Cinders", then "2,000 km · 3m 51s · 7 fuel" as the
-  game words them, then "plotted 4m ago" ("just now" under a minute), with
+  course: "Course for The Cinders", then "51,000 km · 3m 51s · 9 fuel" as the
+  game words them (a million km and over in millions to a tenth, "262.6 million km"), then "plotted 4m ago" ("just now" under a minute), with
   "ragged" in amber before it for a failed plot. The scale bar moves down
   under it. It goes once she's under way.
 
   ```
   ┌ Course for Orrin Station       ┐
-  │ 9,840 km · 21m 5s · 32 fuel    │
+  │ 262.6 million km · 20m 8s · 589 fuel │
   └ ragged · plotted 1h 12m ago    ┘
   ```
 - **Names** are small and Dim. A planet's satellite is named only once its
@@ -218,15 +222,27 @@ Everything the style guide's §13 draws:
   is bound.
 - **Off the view**, a body, a mouth with a bearing or a belt that isn't lost
   gets a small chevron at the band's edge, with its name and its distance from
-  your ship in thousands of km ("Orrin 16k"), or from the middle of the view
+  your ship in the game's words, km under a million and millions to a tenth
+  above ("Orrin 262.5 million km", "The Cinders 63,000 km"), or from the middle of the view
   when she can't be placed. A lost belt gets none, and nor does a body whose
   disc (the star's bright glow) still reaches into the band. A closed mouth's
-  is named "Petroc · closed 21k", its chevron dashed. Markers within 12 px of
+  is named "Petroc · closed 657.6 million km", its chevron dashed. Markers within 12 px of
   each other share one chevron (dashed only if all of them are closed mouths),
   and markers within 48 px whose names would overlap stack them as one, a line
   each. A name that still overlaps one already placed goes on the other side of
-  its own chevron if there's room; bigger stacks are placed first.
-- **A scale bar**, top left, under the course card when there is one.
+  its own chevron if there's room, and with no room either side steps in from
+the band's edge a line at a time; bigger stacks are placed first. The names
+keep clear of the chart's own labels as well as of each other.
+- **A scale bar**, top left, under the course card when there is one, in the
+  game's words: "20,000 km", "50 million km".
+- **The levels' chip** under the scale bar: the star, and the planet the view
+  is at when it's at one, "Senara ▸ Tamsin", the one you're at outlined
+  brighter. A click on the star shows the whole system; on the planet, its
+  neighbourhood again. From the system, a planet with something on her charts
+  going round it (a station, a port, a belt) has a dotted Glass ring round its
+  disc, and a click within it (never the end of a drag) shows its
+  neighbourhood; its tooltip says so. Shown only where some planet has a
+  level.
 - **Hover** any mark for its name; a belt's error and when it was seen; a
   port's planet; where she's bound and when she'll arrive, or where she's
   docked or landed; "closed" under a closed mouth's name.
@@ -241,7 +257,32 @@ when the system changes (and again on the first ship status after it), and
 when a trip starts or ends, or a course is plotted or cleared, while you
 haven't zoomed or panned since. Until you pan or zoom, it also follows her, keeping the
 zoom, when she drifts out from where ⌂ or a resize left her by more than 35% of
-the view. Once you pan or zoom, it holds still until ⌂.
+the view. Once you pan or zoom, it holds still until ⌂. A click on the levels'
+chip or a planet's ring frames that level, and the view is then yours, as a
+pan makes it.
+
+**True size** (2026-11-09). The game's systems are their real size now: Tamsin
+6,400 km across 71.4 million km from Senara, T.I.S.S. 22,950 km round it,
+Gannet 68,800 km, the mouths 464 million km out. Nothing in the payload's shape
+changed, so the orbits scale on their own, and ⌂ still frames Tamsin's
+neighbourhood (about 570,000 km across in a wide band) when she's at T.I.S.S.
+and the whole trip when she's under way. What changed here: the edge's
+fallback, every distance in the game's words, and off-view names that keep
+clear of the labels. What's left: from Tamsin's frame to the whole system is
+about 6,700 times as wide, 22 presses of − or about 60 wheel notches, so a
+planet's stations and the system's planets are both reachable but far apart.
+Three ways to nest a planet's neighbourhood in the system chart were weighed
+in `docs/maps/reference/true-size-nesting-mockup.html`
+(`true-size-nesting-options.png`): A, the system with her planet in a round
+inset; B, two levels with a Senara ▸ Tamsin chip; C, each planet's
+neighbourhood magnified in place as a lens. B was picked (2026-11-09): it adds
+jumps and keeps one true scale on the band at a time. The view is at a
+planet's level while that planet's neighbourhood (out to its furthest
+satellite, with a margin) is in view and at least a fortieth of its width
+(`levelOf`, `LEVEL_SPAN` in `ui/lib/orbits.js`), the planet nearest the middle
+if more are; else at the system's. ⌂ still opens on the level she's at:
+Tamsin docked at T.I.S.S., the system under way to Orrin. The wheel and + −
+zoom smoothly between, as before.
 
 ## Bottom band
 
@@ -286,12 +327,29 @@ Unchanged: it says where you are aboard.
 - `ui/main.js`: wires the messages to the chart and keeps the redraw timer.
   `setCovered` in `ui/space-view.js` stops the scene drawing while the chart is
   over it.
-- Preview: `dev/charts-fixture.js` builds Senara's and Maelor's systems from the
-  game's content, and `?chart=` in `dev/preview.js` opens the chart on one of
+- The game's own charts: `dev/charts-cases.ts` runs the game from its source
+  (as `dev/sky-cases.ts` does) and records Space.Charts, Ship.Status,
+  Ship.Course and Space.Contacts for a character flying her skiff: docked at
+  T.I.S.S., a course plotted to Orrin Station, under way there, under way to
+  Gannet, at Gannet and after a `scan` there, in high orbit over Tamsin,
+  landed at Zennor, at Maelor's Senara mouth and docked at Wenna Halt with
+  Kestrel Belt charted. `npx -y node@24 dev/charts-cases.ts >
+  dev/charts-cases.json`; with no `node_modules` in the game's checkout, run it
+  on an exported copy with `EMPYREAL=<copy>` and `EMPYREAL_COMMIT=<sha>`.
+  `dev/charts-cases.js` moves a case on to now (`chartCase(name, now)`), with
+  the ship message charts.lua would make of it. `ui/lib/true-size.test.js`
+  tests the edge, the game's words, the scale bar, the framing, the belt fits
+  and the levels against it, and `ui/chart-levels.test.js` the chip and the
+  rings' clicks.
+- Preview: `dev/charts-fixture.js` gives Senara's and Maelor's charts from the
+  recording, Senara's moved on till it's day or night at Zennor or Dolcoath as
+  asked; only its ships and its sweep are made up. `?game=` in `dev/preview.js`
+  opens a recorded case as it is (`&band=chart`, `belt` or `scene`), and `?chart=` in `dev/preview.js` opens the chart on one of
   its scenarios (`parked-gannet`, `under-way-orrin`, `searching-cinders`,
-  `at-point`, `docked-tiss`, `landed-zennor`, `none`, `maelor`, `maelor-lanes` for Maelor's
-  three mouths with the Petroc branch closed, `edge` for Senara's mouth with
-  its bearing, `to-tamsin` under way to high orbit, `high-orbit` and
+  `at-point`, `docked-tiss`, `landed-zennor`, `none`, `maelor` for Maelor's
+  mouths with no bearing known, `maelor-lanes` for its three mouths with the
+  Keyne branch made closed, `edge` (now as `parked-gannet`, every Senara
+  scenario having the mouths' bearings, as the game sends them), `to-tamsin` under way to high orbit, `high-orbit` and
   `high-orbit-unknown` up there with her side known or not, or `sweep` and `chase` for the last
   sweep, contacts.md). The bar's menu switches between them. `?course=` opens it with
   a course: `cinders-tiss` (docked, plotted 4m ago), `ragged-orrin` (parked at

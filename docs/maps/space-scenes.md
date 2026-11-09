@@ -106,8 +106,9 @@ the star is above the town's horizon. A port's `orbit` is round its planet at
 the planet's radius with its period the planet's day, so `daylit` in
 `ui/lib/orbits.js` works it out from Space.Charts at the wall clock: the way
 straight up from the planet's centre through the town, against the way to the
-star. The star is a few thousand km off, not at infinity, so the terminator
-falls a few degrees past the quarter turn, as it does in the game. The view
+star. At true size the star is 71.4 million km off and Tamsin 6,400 km in radius, so
+the terminator falls a two-hundredth of a degree past the quarter turn: in
+effect at it, as in the game. The view
 asks once a second and cross-fades (1 per second) when the answer changes;
 Tamsin's day is 4 hours, so a session sees a dawn or a dusk. There's no
 twilight look: the canopy says only lit or dark. Until the charts can place
@@ -357,7 +358,13 @@ distance, the orbit scene's cloud and `litFor`), `ui/lib/orbits.js` (`daylit`, `
 and `?scene=pit-night` Dolcoath's pit (with `pitCharts()`, Senara's charts with
 Dolcoath placed), and
 `?scene=orbit-day`, `orbit-night` and `orbit-unknown` put her in high orbit
-over Tamsin on the star's side, the far side or no side known.
+over Tamsin on the star's side, the far side or no side known, come in from
+50,000 km off. Their charts are the game's own (`dev/charts-cases.ts`,
+orrery.md), Senara's moved on till it's day or night at the port, and
+`?game=high-orbit-tamsin&band=scene` and `?game=landed-zennor&band=scene` show
+a recorded moment as the game had it. Checked at true size (2026-11-09):
+Tamsin 6,400 km, high orbit 9,600 km from its centre, both lit and dark as the
+game's sky has them; nothing in the scenes is drawn to km, so none of it moved.
 `?work=scanning` (or `assaying`, `mining`, `idle`) opens on the belt with the
 ship at that work, a scan or assay starting again a second after it ends, as
 a program at par would. `?move=rcs-out` plays the thrusters out from the core for 20 s,

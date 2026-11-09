@@ -1,0 +1,256 @@
+<!doctype html>
+<!-- A planet's neighbourhood in the system chart at true sizes, 2026-11-09: three ways to reach both
+     T.I.S.S. and Orrin when Tamsin's neighbourhood is 160,000 km across and the system 930 million.
+     Drawn from the game's own charts (dev/charts-cases.json, docked at T.I.S.S.), served over http
+     (it imports the plugin's modules, so it's blank from disk). A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>True size: a planet's neighbourhood in the system chart</title>
+<style>
+  body { margin:0; background:#0b0f16; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:18px; width:940px; }
+  h1 { color:#e3eaf2; font-size:16px; font-weight:500; margin:0 0 4px; }
+  p.lead { margin:0 0 14px; font-size:12px; line-height:1.45; max-width:900px; }
+  figure { margin:0 0 20px; }
+  figcaption { color:#e3eaf2; font-size:14px; margin-bottom:6px; }
+  figcaption small { display:block; color:#7d8a9a; font-size:12px; line-height:1.45; margin-top:3px; max-width:900px; }
+  .pair { display:flex; gap:10px; }
+  .band { position:relative; background:#04060c; border:1px solid #2b3646; border-radius:6px; overflow:hidden; }
+  .cap { position:absolute; left:8px; bottom:6px; font-size:10px; color:#58667b; }
+  svg { display:block; }
+  text { font-family: Inter, system-ui, sans-serif; }
+  .chip { position:absolute; left:12px; top:30px; display:flex; gap:4px; align-items:center; font-size:11px; }
+  .chip span { padding:2px 7px; border:1px solid #2b3646; border-radius:10px; background:#0d1218; color:#aebccc; }
+  .chip span.on { color:#e3eaf2; border-color:#7d8a9a; }
+  .chip i { color:#58667b; font-style:normal; }
+</style></head><body>
+<h1>Tamsin's stations and Senara's planets at true size</h1>
+<p class="lead">Docked at T.I.S.S., as the game has it now: Tamsin 6,400 km, T.I.S.S. 22,950 km out, Gannet 68,800 km, Tamsin 71.4 million km from Senara, the mouths at 464 million. The chart opens on Tamsin; seeing Orrin from there takes about 22 presses of −. Each option is drawn from the game's own charts. Buttons, the scale bar and the corner cards stay where they are.</p>
+<div id="out"></div>
+<script type="module">
+import { chartCase } from "/dev/charts-cases.js";
+import { indexCharts, positionOf, systemRadius, kmText, scaleKm, errorAt } from "/ui/lib/orbits.js";
+
+const DIM = "#7d8a9a", ORBIT = "#2b3646", GLASS = "#cfe3ff", STAR = "#fffaf0", HL = "#ffb347", TONES = ["#3a4556", "#58667b", "#7e8da3"];
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs, parent, text) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (text != null) n.textContent = text;
+  parent?.appendChild(n);
+  return n;
+};
+const c = chartCase("docked-tiss");
+const ix = indexCharts(c.charts);
+const t = c.now;
+const pos = (id) => positionOf(ix, id, t);
+const R = systemRadius(ix);
+const items = [...ix.items.values()];
+
+/** A projector: km about centre `ctr` at `s` km a px into a box centred on (ox, oy). */
+const proj = (ctr, s, ox, oy) => (p) => [ox + (p[0] - ctr[0]) / s, oy - (p[1] - ctr[1]) / s];
+
+function stars(g, w, h, n = 90) {
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < n; i++) el("circle", { cx: rnd() * w, cy: rnd() * h, r: rnd() * 0.9 + 0.2, fill: "#9fb0c6", opacity: 0.25 + rnd() * 0.4 }, g);
+}
+function ring(g, P, s, base, a, extra = {}) {
+  const [x, y] = P(base);
+  el("circle", { cx: x, cy: y, r: a / s, fill: "none", stroke: ORBIT, ...extra }, g);
+}
+function planet(g, x, y, r, sx, sy, name, below = true) {
+  el("circle", { cx: x, cy: y, r, fill: TONES[0], stroke: "#0d1218" }, g);
+  const a = Math.atan2(sy - y, sx - x);
+  const nx = -Math.sin(a) * r, ny = Math.cos(a) * r;
+  el("path", { d: `M${x + nx},${y + ny} A${r},${r} 0 0 0 ${x - nx},${y - ny} Z`, fill: TONES[2] }, g);
+  if (name) el("text", { x, y: y + r + 11, "font-size": 10, fill: DIM, "text-anchor": "middle" }, g, name);
+}
+function sun(g, x, y, r = 5) {
+  el("circle", { cx: x, cy: y, r: r * 2.6, fill: STAR, opacity: 0.12 }, g);
+  el("circle", { cx: x, cy: y, r, fill: STAR }, g);
+}
+const diamond = (g, x, y) => el("rect", { x: x - 2.6, y: y - 2.6, width: 5.2, height: 5.2, fill: GLASS, transform: `rotate(45 ${x} ${y})` }, g);
+const chev = (g, x, y, ang = -90) => el("path", { d: "M7,0 L-5,-5 L-2,0 L-5,5 Z", fill: HL, stroke: "#fff3df", "stroke-width": 0.8, transform: `translate(${x} ${y}) rotate(${ang})` }, g);
+function beltArc(g, P, s, base, id, colour = TONES[2]) {
+  const it = ix.items.get(id);
+  const here = pos(id);
+  const err = errorAt(it.fit, it.orbit.a, t);
+  const th = Math.atan2(here[1] - base[1], here[0] - base[0]);
+  const r = Math.hypot(here[0] - base[0], here[1] - base[1]);
+  const half = Math.min(Math.PI, err / r);
+  for (let i = 0; i < 10; i++) {
+    const f = (i + 0.5) / 10;
+    const a0 = th - half + (2 * half * i) / 10, a1 = a0 + (2 * half) / 10;
+    const p0 = P([base[0] + r * Math.cos(a0), base[1] + r * Math.sin(a0)]);
+    const p1 = P([base[0] + r * Math.cos(a1), base[1] + r * Math.sin(a1)]);
+    el("line", { x1: p0[0], y1: p0[1], x2: p1[0], y2: p1[1], stroke: colour, "stroke-width": 4, "stroke-linecap": "round", "stroke-opacity": 0.15 + 0.6 * (1 - Math.abs(2 * f - 1)) }, g);
+  }
+  return P(here);
+}
+function scaleBar(g, s, x = 16, y = 18) {
+  const km = scaleKm(s, 90);
+  const L = km / s;
+  el("line", { x1: x, y1: y, x2: x + L, y2: y, stroke: DIM }, g);
+  for (const xx of [x, x + L]) el("line", { x1: xx, y1: y - 3, x2: xx, y2: y + 3, stroke: DIM }, g);
+  el("text", { x: x + L / 2, y: y - 6, "font-size": 9, fill: DIM, "text-anchor": "middle" }, g, kmText(km));
+}
+function buttons(g, w) {
+  ["◎", "+", "−", "⌂"].forEach((b, i) => {
+    const x = i === 0 ? w - 64 : w - 32, y = i === 0 ? 8 : 8 + (i - 1) * 28;
+    el("rect", { x, y, width: 24, height: 24, rx: 5, fill: "#0d1218", stroke: ORBIT }, g);
+    el("text", { x: x + 12, y: y + 16, "font-size": 12, fill: "#dfe7f1", "text-anchor": "middle" }, g, b);
+  });
+}
+function band(w, h, parent) {
+  const div = document.createElement("div");
+  div.className = "band";
+  div.style.width = `${w}px`;
+  div.style.height = `${h}px`;
+  parent.appendChild(div);
+  const svg = el("svg", { width: w, height: h, viewBox: `0 0 ${w} ${h}` });
+  div.appendChild(svg);
+  stars(el("g", {}, svg), w, h);
+  return { div, svg };
+}
+function figure(title, note) {
+  const f = document.createElement("figure");
+  f.innerHTML = `<figcaption>${title}<small>${note}</small></figcaption>`;
+  document.getElementById("out").appendChild(f);
+  return f;
+}
+
+/** The system at system scale into g, in a w × h box: rings, the edge, the star, the planets, the Anvil. */
+function system(g, w, h, { skip = [], s: sForce = null, ox = w / 2, oy = h / 2, names = true } = {}) {
+  const s = sForce ?? (2.15 * R) / h;
+  const P = proj([0, 0], s, ox, oy);
+  for (const it of items) if (it.orbit?.parent === "senara") ring(g, P, s, [0, 0], it.orbit.a);
+  ring(g, P, s, [0, 0], R, { "stroke-dasharray": "1 5" });
+  const [sx, sy] = P([0, 0]);
+  sun(g, sx, sy);
+  if (names) el("text", { x: sx, y: sy + 20, "font-size": 10, fill: DIM, "text-anchor": "middle" }, g, "Senara");
+  beltArc(g, P, s, [0, 0], "anvil-1");
+  for (const it of items) {
+    if (it.kind !== "planet" || skip.includes(it.id)) continue;
+    const [x, y] = P(pos(it.id));
+    planet(g, x, y, 3.5, sx, sy, names ? it.name : null);
+  }
+  for (const m of items.filter((it) => it.kind === "mouth")) {
+    const [x, y] = P(pos(m.id));
+    const deg = (Math.atan2(pos(m.id)[1], pos(m.id)[0]) * 180) / Math.PI;
+    el("path", { d: "M-5,-6 L3,0 L-5,6 M-1,-6 L7,0 L-1,6", fill: "none", stroke: GLASS, "stroke-width": 1.4, transform: `translate(${x} ${y}) rotate(${-deg})` }, g);
+    if (names) el("text", { x: x + (x < sx ? 12 : -12), y: y + 3, "font-size": 10, fill: DIM, "text-anchor": x < sx ? "start" : "end" }, g, m.name.replace(/^the (.*) lane mouth$/, "$1"));
+  }
+  return { P, s, sx, sy };
+}
+
+/** Tamsin's neighbourhood about (ox, oy), out to rpx px: T.I.S.S., Zennor, the Cinders, Gannet, her at T.I.S.S. */
+function neighbourhood(g, ox, oy, rpx, sunAt, { names = true } = {}) {
+  const far = ix.items.get("gannet-1").orbit.a * 1.12;
+  const s = far / rpx;
+  const tam = pos("tamsin");
+  const P = proj(tam, s, ox, oy);
+  for (const id of ["tiss", "cinders-1", "gannet-1"]) ring(g, P, s, tam, ix.items.get(id).orbit.a);
+  const r = Math.max(3.5, 6400 / s);
+  // the star's way, as the system chart lights it
+  planet(g, ox, oy, r, ox + Math.cos(sunAt) * 100, oy - Math.sin(sunAt) * 100, names ? "Tamsin" : null);
+  const c = beltArc(g, P, s, tam, "cinders-1");
+  const gn = beltArc(g, P, s, tam, "gannet-1");
+  const [tx, ty] = P(pos("tiss"));
+  diamond(g, tx, ty);
+  chev(g, tx, ty);
+  if (names) {
+    el("text", { x: c[0] + 6, y: c[1] - 5, "font-size": 9, fill: DIM }, g, "The Cinders");
+    el("text", { x: gn[0] + 6, y: gn[1] - 5, "font-size": 9, fill: DIM }, g, "Gannet Belt");
+    el("text", { x: tx + 8, y: ty + 3, "font-size": 9, fill: DIM }, g, "T.I.S.S.");
+  }
+  return { s, P };
+}
+const sunAngle = (() => {
+  const p = pos("tamsin");
+  return Math.atan2(-p[1], -p[0]);
+})();
+
+const W = 900, H = 250;
+
+// --- A: the system, Tamsin's neighbourhood in an inset ------------------------------------------
+{
+  const f = figure("A · The system, with her planet in an inset",
+    "The chart opens on the whole system. Tamsin's neighbourhood is in a round inset in the bottom-right corner, joined to Tamsin by a line, with its own scale. A click in the inset makes Tamsin the chart and the system the inset. Under way between planets, the inset follows the planet she left or is bound for.");
+  const { svg } = band(W, H, f);
+  const { P } = system(svg, W, H, { ox: W / 2 - 90 });
+  const [px, py] = P(pos("tamsin"));
+  const ox = W - 150, oy = H - 88, r = 78;
+  el("line", { x1: px, y1: py, x2: ox - r * 0.92, y2: oy - r * 0.38, stroke: DIM, "stroke-dasharray": "2 3", opacity: 0.7 }, svg);
+  el("circle", { cx: px, cy: py, r: 7, fill: "none", stroke: HL, "stroke-opacity": 0.7 }, svg);
+  el("circle", { cx: ox, cy: oy, r, fill: "#04060c", stroke: "#58667b" }, svg);
+  const clip = el("clipPath", { id: "a-clip" }, svg);
+  el("circle", { cx: ox, cy: oy, r: r - 1 }, clip);
+  const inner = el("g", { "clip-path": "url(#a-clip)" }, svg);
+  const { s } = neighbourhood(inner, ox, oy, r - 8, sunAngle, { names: true });
+  el("text", { x: ox, y: oy - r - 5, "font-size": 9, fill: DIM, "text-anchor": "middle" }, svg, `Tamsin · ${kmText(scaleKm(s, 40))} ⟷`);
+  scaleBar(svg, (2.15 * R) / H);
+  buttons(svg, W);
+}
+
+// --- B: two levels, the planet with the way up -------------------------------------------------
+{
+  const f = figure("B · Two levels: a planet, and the system",
+    "⌂ opens on the level she's at: Tamsin when she's at T.I.S.S., the system when she's between planets. A chip under the scale bar names the levels, Senara ▸ Tamsin: a click on Senara shows the system, and a click on a planet (or its name) shows its neighbourhood. In between, the wheel and + − still zoom smoothly, so this only adds jumps.");
+  const pair = document.createElement("div");
+  pair.className = "pair";
+  f.appendChild(pair);
+  {
+    const { div, svg } = band(445, H, pair);
+    const s0 = (2.15 * R) / H;
+    const { P } = system(svg, 445, H, { s: s0 });
+    const [px, py] = P(pos("tamsin"));
+    el("circle", { cx: px, cy: py, r: 9, fill: "none", stroke: GLASS, "stroke-opacity": 0.6, "stroke-dasharray": "2 2" }, svg);
+    el("circle", { cx: px, cy: py, r: 2, fill: HL }, svg);
+    scaleBar(svg, s0);
+    buttons(svg, 445);
+    div.insertAdjacentHTML("beforeend", '<div class="chip"><span class="on">Senara</span></div><div class="cap">the system: a dotted ring round each planet with places on her charts</div>');
+  }
+  {
+    const { div, svg } = band(445, H, pair);
+    const { s } = neighbourhood(svg, 445 / 2, H / 2, H / 2 - 14, sunAngle);
+    el("text", { x: 20, y: H - 30, "font-size": 9, fill: DIM }, svg, "‹ Senara 71.4 million km");
+    el("path", { d: "M14,-4 L10,0 L14,4", transform: `translate(0 ${H - 33})`, fill: "none", stroke: DIM }, svg);
+    scaleBar(svg, s);
+    buttons(svg, 445);
+    div.insertAdjacentHTML("beforeend", '<div class="chip"><span>Senara</span><i>▸</i><span class="on">Tamsin</span></div><div class="cap">a planet: as the chart opens now</div>');
+  }
+}
+
+// --- C: lenses in place ------------------------------------------------------------------------
+{
+  const f = figure("C · The system, each planet's neighbourhood magnified in place",
+    "One view at the system's scale. A planet with places on her charts is drawn as a lens over itself, its neighbourhood magnified inside to fit, with how much (×2,600). The planets stay where they truly are; only inside a lens is the scale different, and the lens says so. Zooming in, a lens grows till it's the true size and goes, leaving the ordinary chart.");
+  const { svg } = band(W, H, f);
+  const s0 = (2.15 * R) / H;
+  const { P, sx, sy } = system(svg, W, H, { skip: ["tamsin", "orrin"] });
+  for (const id of ["tamsin", "orrin"]) {
+    const [x, y] = P(pos(id));
+    const r = 34;
+    el("circle", { cx: x, cy: y, r, fill: "#04060c", stroke: "#58667b" }, svg);
+    const clip = el("clipPath", { id: `c-${id}` }, svg);
+    el("circle", { cx: x, cy: y, r: r - 1 }, clip);
+    const g = el("g", { "clip-path": `url(#c-${id})` }, svg);
+    let s;
+    if (id === "tamsin") s = neighbourhood(g, x, y, r - 4, sunAngle, { names: false }).s;
+    else {
+      const o = pos("orrin");
+      const st = ix.items.get("orrin_station").orbit.a * 1.3;
+      s = st / (r - 4);
+      const Q = proj(o, s, x, y);
+      ring(g, Q, s, o, ix.items.get("orrin_station").orbit.a);
+      planet(g, x, y, 8800 / s, sx, sy, null);
+      const [qx, qy] = Q(pos("orrin_station"));
+      diamond(g, qx, qy);
+    }
+    el("text", { x, y: y + r + 11, "font-size": 10, fill: DIM, "text-anchor": "middle" }, svg, ix.items.get(id).name);
+    el("text", { x: x + r * 0.72 + 2, y: y - r * 0.72, "font-size": 9, fill: "#aebccc" }, svg, `×${Math.round(s0 / s).toLocaleString("en")}`);
+  }
+  scaleBar(svg, s0);
+  buttons(svg, W);
+}
+document.body.dataset.ready = "1";
+</script>
+</body></html>

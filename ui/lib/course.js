@@ -3,6 +3,8 @@
 // game's plot.ts), whether it's ragged, and how long ago it was plotted. Only while she's at rest:
 // under way, her trip line says where she's going and the card goes.
 
+import { kmText } from "./orbits.js";
+
 /** Seconds as the game's durationText: "3m 51s", "1h 2m", "40s". */
 export function duration(s) {
   s = Math.max(0, Math.round(s));
@@ -36,7 +38,7 @@ export function courseCard(msg, ship, now) {
   if (ship?.destination) return null;
   const fin = (v) => typeof v === "number" && Number.isFinite(v);
   const figures = [
-    fin(c.km) ? `${Math.round(c.km).toLocaleString("en")} km` : null,
+    fin(c.km) ? kmText(c.km) : null,
     fin(c.seconds) ? duration(c.seconds) : null,
     fin(c.fuel) ? `${Math.ceil(c.fuel)} fuel` : null,
   ].filter(Boolean).join(" · ");

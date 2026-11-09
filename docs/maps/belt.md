@@ -283,10 +283,15 @@ Unchanged: it's the bottom band's.
 - `dev/preview.html?belt=arriving` (also `rcs-rim`, `sweeps`, `skiff`,
   `freighter-seen`: a skiff whose sweep saw her freighter again, a dark
   contact and the Mule under drive; `docked-pair`: docked at the Full Measure
-  8.7 km out; `compass`: Gannet with the Senara charts, the Maelor mouth and a
+  8.7 km out; `compass`: Gannet with the game's own Senara charts
+  (`dev/charts-cases.ts`, orrery.md), the Maelor and Keyne mouths and a
   course plotted home; `worked`: the Cinders after hours of sweeps, back
   beside her host, the Magpie on the last sweep) shows it without the game;
-  `&zoom=0.33` opens it three times in on her.
+  `&zoom=0.33` opens it three times in on her. `?game=at-gannet&band=belt`
+  opens it on the game's own Ship.Status at Gannet: 15.8 km out at 36°, the
+  belt 17.8 km across. The belt's own km didn't change at true size: what moved
+  is where everything else is, and the ring's marks are bearings, so they read
+  the same. Its compass is tested on the recording (`ui/lib/belt.test.js`).
 - The options it was picked from: `docs/maps/reference/belt-mockup.html`; for
   the ships and the docked pair, `belt-ships-mockup.html`; for the bearing
   ring's marks, `belt-compass-mockup.html` (`belt-compass-options.png`); for

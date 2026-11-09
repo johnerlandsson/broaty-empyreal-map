@@ -1,9 +1,19 @@
 // Orbit maths for the system chart: pure and DOM-free. Positions are a function of
 // wall-clock time, worked out when asked; nothing is stepped or stored.
 
-// How far out the edge of a system is, in km. Players are told 15,000 km
-// (content/help/lanes.md in the Empyreal source).
-export const EDGE_KM = 15000;
+// The furthest out a lane mouth can be, in km: each system's own comes in its mouths' `edge.r`,
+// where its star's well has thinned out, 464 million km at Senara and "600 million at most"
+// (content/help/lanes.md in the Empyreal source, true-size.md §6). The edge is drawn here when the
+// charts have a mouth and none with a bearing.
+export const MOUTH_MAX_KM = 600_000_000;
+
+/** A distance in the game's words, as its kmText (systems/space.ts) has it: "140 km", "1,900 km",
+ *  "21.4 million km": km to the hundred from a thousand, and millions to a tenth from a million. */
+export function kmText(km) {
+  const n = Math.max(Number(km) || 0, 0);
+  if (n >= 999_950) return `${Number((n / 1e6).toFixed(1)).toLocaleString("en-US")} million km`;
+  return `${(n >= 1000 ? Math.round(n / 100) * 100 : Math.round(n)).toLocaleString("en-US")} km`;
+}
 
 // How far out high orbit is over a planet, in its radii (Empyreal's HIGH_ORBIT, navigation.md §6).
 export const HIGH_ORBIT = 1.5;
@@ -316,7 +326,7 @@ export function systemRadius(index) {
   const items = [...index.items.values()];
   if (items.some((it) => it.kind === "mouth" || it.edge)) {
     const rs = items.map((it) => num(it.edge?.r)).filter((r) => r !== null && r > 0);
-    return rs.length ? Math.max(...rs) : EDGE_KM;
+    return rs.length ? Math.max(...rs) : MOUTH_MAX_KM;
   }
   let far = 0;
   for (const it of items) {
@@ -344,11 +354,64 @@ export function homeBox(index, ship, t, course = null) {
   return [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
 }
 
+/** The whole system's km box, out a little past its edge. */
+export function systemBox(index) {
+  const r = 1.08 * systemRadius(index);
+  return [-r, -r, r, r];
+}
+
+/** How far a planet's neighbourhood reaches, km: its furthest satellite's apoapsis, 0 with none. */
+function reachOf(index, planet) {
+  let far = 0;
+  for (const it of index.items.values()) if (it.orbit?.parent === planet) far = Math.max(far, apo(it.orbit));
+  return far;
+}
+
+/** The planets the chart has a level for (option B of true-size-nesting-mockup.html): those with
+ *  something on her charts going round them, a station, a port or a belt, in the charts' order. */
+export function levelPlanets(index) {
+  return [...index.items.values()].filter((it) => it.kind === "planet" && reachOf(index, it.id) > 0).map((it) => it.id);
+}
+
+/** A planet's km box at wall-clock t (ms): round it out to its furthest satellite, with a margin;
+ *  null for a planet with none, or one the charts can't place. */
+export function planetBox(index, planet, t) {
+  const far = reachOf(index, planet);
+  const c = positionOf(index, planet, t);
+  if (!(far > 0) || !c) return null;
+  const r = far * 1.15;
+  return [c[0] - r, c[1] - r, c[0] + r, c[1] + r];
+}
+
+/** A view no wider than this many times a planet's neighbourhood is at that planet's level. */
+export const LEVEL_SPAN = 40;
+
+/**
+ * Which level the viewBox vb ([x, y, w, h] in km, y flipped) shows at wall-clock t (ms): the planet
+ * whose neighbourhood is in view and at least 1/LEVEL_SPAN of its width (the one nearest the middle,
+ * if more are), or null for the system.
+ */
+export function levelOf(index, vb, t) {
+  const [x, y, w, h] = vb;
+  const cx = x + w / 2;
+  const cy = -(y + h / 2);
+  let best = null;
+  let bestD = Infinity;
+  for (const id of levelPlanets(index)) {
+    const c = positionOf(index, id, t);
+    const span = 2 * reachOf(index, id) * 1.15;
+    if (!c || w > LEVEL_SPAN * span) continue;
+    const dx = Math.abs(c[0] - cx);
+    const dy = Math.abs(c[1] - cy);
+    if (dx > w / 2 || dy > h / 2) continue;
+    const d = Math.hypot(dx, dy);
+    if (d < bestD) [best, bestD] = [id, d];
+  }
+  return best;
+}
+
 function restBox(index, ship, t) {
-  const whole = () => {
-    const r = 1.08 * systemRadius(index);
-    return [-r, -r, r, r];
-  };
+  const whole = () => systemBox(index);
   const fix = shipFix(index, ship, t);
   // under way, or adrift where she stopped: her and the trip's two ends
   const leg = fix.kind === "moving" ? fix.leg : fix.stopped;
