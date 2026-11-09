@@ -198,10 +198,13 @@ describe("build", () => {
     doc.bodies.find((b) => b.id === "rock").seasons = { names: "x" };
     doc.bodies.find((b) => b.id === "pit").surface.altitude = 300;
     doc.bodies.find((b) => b.id === "pit").surface.site.height = 120; // of the site only its coast is read
+    doc.bodies.find((b) => b.id === "rock").climate.clouds = 0.4; // nor every climate field
+    doc.bodies.find((b) => b.id === "rock").climate.gases.argon = 0.01; // but all of the gases are
     doc.bodies.find((b) => b.id === "mini").colour = "red"; // not a planet's: not listed
     writeFileSync(path, stringify(doc));
     const { report } = await build(opts);
     expect(report.unknownFields).toEqual([
+      { name: "planet.climate.clouds", places: ["rock"] },
       { name: "planet.gravity", places: ["rock"] },
       { name: "planet.seasons.names", places: ["rock"] },
       { name: "surface.altitude", places: ["pit"] },

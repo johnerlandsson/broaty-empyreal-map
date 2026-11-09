@@ -146,14 +146,10 @@ export class ChartView {
     glow.setAttribute("width", "300%");
     glow.setAttribute("height", "300%");
     glow.firstChild.setAttribute("stdDeviation", 2.2);
-    // the star's glow, in its colour: its stops are set to the star's as it's drawn
-    const sun = el("radialGradient", { id: `${id}-sun` }, defs);
-    this.sunStops = [
-      el("stop", { offset: "0", "stop-color": STAR }, sun),
-      el("stop", { offset: ".35", "stop-color": STAR, "stop-opacity": 0.9 }, sun),
-      el("stop", { offset: "1", "stop-color": STAR, "stop-opacity": 0 }, sun),
-    ];
-    this.sunFill = `url(#${id}-sun)`;
+    // each star's glow, in its own colour: a gradient per star, made the first time it's drawn
+    this.defs = defs;
+    this.sunId = `${id}-sun`;
+    this.suns = new Map(); // star id -> its glow's fill
 
     stars(el("g", { "pointer-events": "none" }, svg), 0, 0, 2400, 1400, 2000, 31);
     this.marks = el("g", {}, svg);
@@ -610,9 +606,7 @@ export class ChartView {
           const r = Math.max(5, (Number(it.radius) || 0) / s);
           const g = el("g", {}, marks);
           // in the colour the canopy gives it (data/worlds.js), the old warm white for one it doesn't know
-          const glow = hex(starRgb(it.id));
-          for (const stop of this.sunStops) stop.setAttribute("stop-color", glow);
-          el("circle", { cx: x, cy: y, r: r * 2.6, fill: this.sunFill, "pointer-events": "none" }, g);
+          el("circle", { cx: x, cy: y, r: r * 2.6, fill: this.sunFill(it.id), "pointer-events": "none" }, g);
           el("circle", { cx: x, cy: y, r, fill: starFill(it.id) }, g);
           label(x, y + r * 2.2 + 8, it.name); // below the brightest of the glow, so it reads
           tip(g, `body:${it.id}`, it.name);
@@ -1051,6 +1045,20 @@ export class ChartView {
     if (this.tipKey) window.panel?.tooltip?.hide?.();
     this.tipKey = null;
     this.tipShown = null;
+  }
+
+  /** A star's glow, a radial gradient in its colour fading out, one per star so no two share a colour. */
+  sunFill(star) {
+    if (!this.suns.has(star)) {
+      const glow = hex(starRgb(star));
+      const id = `${this.sunId}-${this.suns.size}`;
+      const sun = el("radialGradient", { id }, this.defs);
+      el("stop", { offset: "0", "stop-color": glow }, sun);
+      el("stop", { offset: ".35", "stop-color": glow, "stop-opacity": 0.9 }, sun);
+      el("stop", { offset: "1", "stop-color": glow, "stop-opacity": 0 }, sun);
+      this.suns.set(star, `url(#${id})`);
+    }
+    return this.suns.get(star);
   }
 }
 

@@ -1,16 +1,19 @@
 // The sky over each port, from system.yaml and world.yaml: what Space.Charts doesn't carry and
 // the game's ground.ts reads (planetside.md §4, calendar.md §8.2). Pure; build-data.mjs writes it.
 
+import { CLIMATE_FIELDS } from "./worlds.mjs";
+
 /**
  * A planet's fields the map reads: those Space.Charts carries (`day` as its ports' orbit period),
- * its `tilt` and `equinox`, which the sky reads from here, and its `climate`, which worlds.mjs
- * reads for its face from orbit. Any other is dropped by dotted name ("planet.gravity").
+ * its `tilt` and `equinox`, which the sky reads from here, and of its `climate` the fields
+ * worlds.mjs reads for its face from orbit. Any other is dropped by dotted name ("planet.gravity",
+ * "planet.climate.clouds").
  */
-export const PLANET_FIELDS = ["id", "name", "kind", "orbit", "radius", "day", "tilt", "equinox", "climate"];
+export const PLANET_FIELDS = ["id", "name", "kind", "orbit", "radius", "day", "tilt", "equinox", ...CLIMATE_FIELDS.map((f) => `climate.${f}`)];
 /**
  * A port's `surface` fields the map reads: `parent` and `bearing` as its orbit in the charts, its
  * `latitude`, and of its `site` only `coast`, which worlds.mjs reads for the sea seen over it. A
- * dotted name keeps that leaf only, so `surface.site.height` is still reported.
+ * dotted name keeps that field and what's under it only, so `surface.site.height` is still reported.
  */
 export const SURFACE_FIELDS = ["parent", "bearing", "latitude", "site.coast"];
 
@@ -25,7 +28,7 @@ const dropped = (prefix, raw, keep) => [
     Object.entries(raw ?? {})
       .filter(([key]) => !keep.includes(key))
       .flatMap(([key, value]) => leaves(`${prefix}.${key}`, value))
-      .filter((leaf) => !keep.some((k) => leaf === `${prefix}.${k}`)),
+      .filter((leaf) => !keep.some((k) => leaf === `${prefix}.${k}` || leaf.startsWith(`${prefix}.${k}.`))),
   ),
 ];
 

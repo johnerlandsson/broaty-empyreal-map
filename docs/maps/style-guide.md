@@ -419,7 +419,7 @@ what it draws and how.
   around its parent's position now.
 - **Star:** a disc in its Star colour, at least 5 px across the radius, else
   its true radius, inside a soft radial glow of that colour fading out at
-  about 2.6 times it.
+  about 2.6 times it, each star its own glow.
 - **Planets:** a disc in the darkest Tone with a Model edge outline, its half
   toward the star in the lightest Tone; at least 3.5 px radius, else its true
   radius.

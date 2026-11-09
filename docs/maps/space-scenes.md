@@ -291,8 +291,11 @@ influence is, 0 none). Where the planet has seas and the port a coast, its sea
 lies along the far horizon on one side, the port's seed saying which, reaching
 in from the limb 0.8 of a facet for each 0.1 of coast, with a slow wave along
 its shore, and never within 2.2 town widths of the port: the port stands on its
-own land, the sea some way off. Zennor's 0.2 puts Tamsin's sea on the right
-of the horizon; Dolcoath's 0, and Orrin's ice, give it none. No river or lakes:
+own land, the sea some way off. Zennor's 0.2 puts Tamsin's sea on the left
+of the horizon; Dolcoath's 0, and Orrin's ice, give it none. A sea with no
+`sea` share is none in either scene. An airless world's port has the same hard
+grey limb and no glow as from high orbit (`drawAir` and `drawLimb` are the two
+scenes' one drawing of air). No river or lakes:
 the prose has Zennor's river, but nothing places it, and lakes would be made up.
 
 In high orbit (option B of `docs/maps/reference/high-orbit-mockup.html`,
@@ -358,6 +361,23 @@ A planet `worlds.js` doesn't know (a build older than it) is drawn as before,
 Tamsin's ochre with bands. `dev/worlds.html`, served over http, draws every
 port from above and every planet from high orbit in the data, by day
 (`?night`, `?dusk`, `?only=a,b`), for checking a sync at a glance.
+
+**Drawing it.** A face's facets are drawn once, at full alpha, onto a canvas
+of the band's size, each triangle filled and edged in its own colour, and kept
+while the planet or port and the band's size hold (`faceImage`). The scene
+draws that canvas whole at whatever alpha it's fading or dusking at, so a facet's
+edge is never laid over its neighbour's twice, and a frame draws one image, not
+hundreds of triangles. The last planet and port shown are kept when the scene
+moves on, so leaving high orbit or a port fades the face that was there, not the
+old ochre.
+
+**Light at a moon.** The build lights a world with a climate at the distance of
+whatever it orbits that orbits the star, as the game's loader does
+(`lightOn`): a moon at its planet's distance, not its own from the planet.
+
+**The report.** Of a planet's `climate` the build reads the five fields in
+`CLIMATE_FIELDS` (worlds.mjs), and reports any other, as `planet.climate.<field>`,
+so a new one isn't missed.
 
 **At a belt, the ship's work** (style guide §12) is drawn over the rocks, and
 fades with them:

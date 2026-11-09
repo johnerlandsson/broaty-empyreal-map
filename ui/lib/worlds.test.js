@@ -4,11 +4,12 @@ import { COLS, GIANT, PORT_CELL, RINGS, SEA_REACH, STARLESS, STAR_RGB, VEIL_PLAI
 
 const worlds = {
   stars: { sun: { colour: "red" }, pulsar: { colour: null } },
-  ports: { harbour: { planet: "wet", coast: 0.2 }, inland: { planet: "wet", coast: 0 }, camp: { planet: "frosty", coast: 0.4 }, gas: { planet: "big", coast: 0 } },
+  ports: { shore: { planet: "dry", coast: 0.5 }, harbour: { planet: "wet", coast: 0.2 }, inland: { planet: "wet", coast: 0 }, camp: { planet: "frosty", coast: 0.4 }, gas: { planet: "big", coast: 0 } },
   planets: {
     big: { star: "sun", giant: true },
     bare: { star: "sun", air: 0, albedo: 0.1, ground: "rock", frost: false, seas: [], veil: null },
     wet: { star: "sun", air: 1, albedo: 0.3, ground: "rock", frost: false, seas: [{ of: "water", share: 0.3 }], veil: null },
+    dry: { star: "sun", air: 1, albedo: 0.3, ground: "rock", frost: false, seas: [{ of: "water", share: 0 }], veil: null },
     frosty: { star: "sun", air: 0.2, albedo: 0.3, ground: "rock", frost: true, seas: [], veil: null },
     hazy: { star: "sun", air: 1.5, albedo: 0.2, ground: "ice", frost: false, seas: [{ of: "methane", share: 0.05 }], veil: "A thick rust-brown haze hides it." },
   },
@@ -80,6 +81,19 @@ describe("faceOf", () => {
   });
 });
 
+describe("seedOf", () => {
+  it("is the maps' rng seeded by the text: the same text, the same run", () => {
+    const a = seedOf("tamsin");
+    const b = seedOf("tamsin");
+    const c = seedOf("orrin");
+    const run = (r) => [r(), r(), r()];
+    const ra = run(a);
+    expect(run(b)).toEqual(ra);
+    expect(run(c)).not.toEqual(ra);
+    for (const x of ra) expect(x >= 0 && x < 1).toBe(true);
+  });
+});
+
 describe("facets", () => {
   const count = RINGS * (COLS + 1) * 2;
 
@@ -142,6 +156,8 @@ describe("over a port", () => {
     }
     expect(cells("inland").some((c) => c.sea)).toBe(false);
     expect(cells("camp").some((c) => c.sea)).toBe(false); // a coast, but its world has no seas
+    expect(cells("shore").some((c) => c.sea)).toBe(false); // a sea with no share: none from high orbit, so none here
+    expect(faceOf("dry", worlds).seas).toEqual([]);
   });
 
   it("has the real ports as the game places them: Zennor's sea off on the horizon, none round the Pit", () => {

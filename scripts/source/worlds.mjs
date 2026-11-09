@@ -7,16 +7,25 @@
  * The climate fields read here: all five, since a volatile's state needs the mean and bare
  * temperatures (albedo, greenhouse) and its pressure, and a haze needs the gases. Only what
  * follows from them is written: none of these figures reaches the map but `air` and `albedo`.
+ * sky.mjs keeps these from the report; any other climate field is reported as unread.
  */
 export const CLIMATE_FIELDS = ["albedo", "air", "greenhouse", "gases", "volatiles"];
 
 /** The schema's defaults, so a world's climate reads as the game's loader gives it. */
 const climateOf = (c) => ({ air: 0, greenhouse: 0, volatiles: [], ...c });
 
-/** A body's star: up its orbits' parents to the one of kind `star`. */
-function starOf(byId, b) {
-  for (let at = b, n = 0; at && n < 16; at = byId.get(at.orbit?.parent), n++) if (at.kind === "star") return at;
-  return undefined;
+/**
+ * A body's star, and the body on the way up that orbits it, whose distance its light is taken at,
+ * as the game's loader has it (`lightOn`): a moon is lit at its planet's distance, not its own.
+ */
+function lightOf(byId, b) {
+  let at = b;
+  let up = byId.get(b.orbit?.parent);
+  for (let n = 0; up && up.kind !== "star" && n < 16; n++) {
+    at = up;
+    up = byId.get(up.orbit?.parent);
+  }
+  return up?.kind === "star" ? { star: up, km: at.orbit?.a } : { star: undefined, km: undefined };
 }
 
 /**
@@ -50,14 +59,14 @@ export function worldsOf(bodies, substances, game) {
   const planets = {};
   for (const b of sorted) {
     if (b.kind !== "planet") continue;
-    const star = starOf(byId, byId.get(b.orbit?.parent));
+    const { star, km } = lightOf(byId, b);
     if (!b.climate) {
       planets[b.id] = { star: star?.id ?? null, giant: true };
       continue;
     }
     const c = climateOf(b.climate);
-    if (!star || typeof b.orbit?.a !== "number") throw new Error(`${b.id}: a climate with no star to warm it`);
-    const t = game.temperatures(game.sunlight(star, b.orbit.a), c, b.gravity, b.locked);
+    if (!star || typeof km !== "number") throw new Error(`${b.id}: a climate with no star to warm it`);
+    const t = game.temperatures(game.sunlight(star, km), c, b.gravity, b.locked);
     let ground = "rock";
     let frost = false;
     const seas = [];
@@ -65,7 +74,8 @@ export function worldsOf(bodies, substances, game) {
       const s = subs.get(v.of);
       if (!s) throw new Error(`${b.id}: no substance ${v.of} in substances.yaml`);
       const surface = game.surfaceOf(v, s, c.air, t);
-      if (surface === "seas") seas.push({ of: v.of, share: v.sea });
+      // the loader wants a `sea` on anything liquid and plenty; 0 where it has none, so the scenes agree it has none to show
+      if (surface === "seas") seas.push({ of: v.of, share: v.sea ?? 0 });
       else if (surface === "ice") ground = "ice";
       else if (surface === "trace" && game.phaseOf(s, c.air, t) === "ice") frost = true;
     }

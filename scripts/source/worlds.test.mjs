@@ -54,6 +54,21 @@ describe("worldsOf", () => {
     expect(planets.v.frost).toBe(false);
   });
 
+  it("lights a moon at its planet's distance from the star, not its own from the planet", () => {
+    const at = [];
+    const g = { ...game(), sunlight: (s, km) => (at.push(km), 1) };
+    const p = { ...planet("p", { albedo: 0.2 }), orbit: { parent: "sun", a: 150_000_000 } };
+    const moon = { ...planet("m", { albedo: 0.2 }, "p"), orbit: { parent: "p", a: 20_000 } };
+    worldsOf([star("sun"), p, moon], subs, g);
+    expect(at).toEqual([150_000_000, 150_000_000]); // m, then p, by id
+  });
+
+  it("writes a sea with no share as 0, so no scene shows one", () => {
+    const g = game({ surface: () => "seas" });
+    const { planets } = worldsOf([star("sun"), planet("w", { albedo: 0.2, air: 1, volatiles: [{ of: "water", amount: "abundant" }] })], subs, g);
+    expect(planets.w.seas).toEqual([{ of: "water", share: 0 }]);
+  });
+
   it("gives the game's veil words, and finds the star up a moon's parents", () => {
     const g = game({ veil: (c) => (c.air > 1 ? "A haze hides it." : undefined) });
     const { planets } = worldsOf([star("sun"), planet("p", { albedo: 0.2, air: 0 }), planet("m", { albedo: 0.2, air: 1.5 }, "p")], subs, g);

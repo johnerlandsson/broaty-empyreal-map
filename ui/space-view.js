@@ -17,7 +17,7 @@
 import { daylit, orbitLit } from "./lib/orbits.js";
 import { Belt, Pit, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, groundOf, heading, litFor, rockFaces, targets, work, workLines } from "./lib/space.js";
 import { sunAlt } from "./lib/sky.js";
-import { faceOf, facets, lightBy, portFace, portFacets, rgbText, seedOf } from "./lib/worlds.js";
+import { RIM as GLASS_RIM, faceOf, facets, lightBy, portFace, portFacets, rgbText, seedOf } from "./lib/worlds.js";
 import { rng } from "./lib/svg.js";
 
 const BG = "#04060c";
@@ -43,14 +43,14 @@ const PAD = "#e3d3b8";
 const FIELD_PIT = "#6b7380"; // the pads' plates, a shade lighter than the rest of the floor
 const LAMP = "255,217,138"; // the Porthole colour
 const BEACON = "232,176,74"; // the busy status light
-const RIM = "207,227,255"; // Glass: the thin air at the limb
+const RIM = rgbText(GLASS_RIM); // Glass: the thin air at the limb
 const SENSE = "89,209,138"; // the ok status light: the sensors' sweep and assay
 const BEAM = "207,227,255"; // Glass, the laser's beam, round a white core
 const DIM = "#7d8a9a"; // the seconds left, bottom right
 const CLOUD = [232, 220, 200]; // a giant's bands from high orbit, in its star's light
 const BANDS_OVER_FACETS = 1.6; // a giant's bands this much stronger over its facets, to read over them
 const HAZE = 16; // px of thin air glowing over the limb from high orbit, by day
-const AIRLESS = "120,130,145"; // an airless world's limb from high orbit: a hard grey edge, no glow
+const AIRLESS = "120,130,145"; // an airless world's limb, from high orbit or over a port: a hard grey edge, no glow
 
 export class SpaceView {
   /**
@@ -85,9 +85,14 @@ export class SpaceView {
     this.ship = null; // the chart's ship (src/station_map/charts.lua), for her side in high orbit
     this.port = null;
     this.planet = null; // the planet she's in high orbit over
-    this.face = null; // its face by its climate (faceOf), or null when the data doesn't know it
+    // What's drawn of the last planet and port shown, kept through a fade-out after the scene has
+    // moved on (set() clears `planet` and `port` at once): the old face fades, never the fallback.
+    this.shownPlanet = null;
+    this.face = null; // the shown planet's face by its climate (faceOf), or null when the data doesn't know it
     this.facets = null; // that face's facets, worked out once a planet
-    this.portCells = null; // { key, cells }: the face below a port as facets, worked out once a port and size
+    this.shownPort = null;
+    this.below = null; // the shown port's face (portFace), or null when the data doesn't know it
+    this.images = new Map(); // "orbit" | "port" -> { key, canvas }: a face's facets drawn once at full alpha
     this.lit = 1; // 1 the day side below, 0 the night side; eases toward litTarget
     this.litTarget = 1;
     this.looked = -Infinity;
@@ -126,8 +131,15 @@ export class SpaceView {
     if (port !== this.port || planet !== this.planet) {
       this.port = port;
       this.planet = planet;
-      this.face = planet ? faceOf(planet) : null;
-      this.facets = this.face ? facets(this.face, seedOf(planet)) : null;
+      if (planet && planet !== this.shownPlanet) {
+        this.shownPlanet = planet;
+        this.face = faceOf(planet);
+        this.facets = this.face ? facets(this.face, seedOf(planet)) : null;
+      }
+      if (port && port !== this.shownPort) {
+        this.shownPort = port;
+        this.below = portFace(port);
+      }
       this.looked = -Infinity;
       if (this.ground === 0 && this.high === 0) this.lit = this.litTarget = this.daylight() ?? this.litTarget; // no fade into a known sky
     }
@@ -466,10 +478,11 @@ export class SpaceView {
   /** The planet's face across the lower band, the port on it (a town, or Dolcoath's pit), by day
    *  and by night cross-faded: in its planet's facets, in its star's light, with the sea far off
    *  where it has one, and its air over the limb; a port data/worlds.js doesn't know is drawn as
-   *  before, Tamsin's ochre or the Pit's frozen grey. */
+   *  before, Tamsin's ochre or the Pit's frozen grey. The last port shown, through a fade-out. */
   drawGround() {
-    const { g, w, h, lit } = this;
-    const pit = groundOf(this.hulls[this.port]) === "pit";
+    const { g, w, h, lit, below } = this;
+    const port = this.shownPort;
+    const pit = groundOf(this.hulls[port]) === "pit";
     const R = w * 1.4;
     const cx = w / 2;
     const top = h * 0.52;
@@ -477,7 +490,6 @@ export class SpaceView {
     const k = Math.min(Math.max(24, Math.min(70, w * 0.1)), (h - top) * 0.7); // the field's width in px; the town fits the face
     const tx = cx;
     const ty = top + (h - top) * 0.5;
-    const below = portFace(this.port);
     const rim = below ? rgbText(below.face.rim) : RIM;
     const glow = below ? below.face.glow : 0;
     const face = (cols) => {
@@ -490,15 +502,7 @@ export class SpaceView {
 
     g.save();
     g.globalAlpha = this.ground;
-    if (glow > 0) {
-      const haze = g.createRadialGradient(cx, cy, R, cx, cy, R + HAZE);
-      haze.addColorStop(0, `rgba(${rim},${(0.04 + 0.22 * lit) * glow})`);
-      haze.addColorStop(1, `rgba(${rim},0)`);
-      g.fillStyle = haze;
-      g.beginPath();
-      g.arc(cx, cy, R + HAZE, 0, Math.PI * 2);
-      g.fill();
-    }
+    this.drawAir(cx, cy, R, rim, glow, HAZE);
     g.beginPath();
     g.arc(cx, cy, R, 0, Math.PI * 2);
     g.clip();
@@ -507,9 +511,8 @@ export class SpaceView {
     if (lit > 0) {
       g.globalAlpha = this.ground * lit;
       if (below) {
-        const key = `${this.port}:${w}x${h}`;
-        if (this.portCells?.key !== key) this.portCells = { key, cells: portFacets(below, { w, h, top, cx, cy, R, tx, ty, k }, seedOf(this.port)) };
-        this.drawCells(this.portCells.cells);
+        const img = this.faceImage("port", `${port}:${w}x${h}`, () => portFacets(below, { w, h, top, cx, cy, R, tx, ty, k }, seedOf(port)));
+        if (img) g.drawImage(img, 0, 0, w, h);
         const limb = g.createRadialGradient(cx, cy, R * 0.96, cx, cy, R);
         limb.addColorStop(0, "rgba(4,6,12,0)");
         limb.addColorStop(1, "rgba(4,6,12,0.3)");
@@ -526,11 +529,7 @@ export class SpaceView {
     g.restore();
 
     g.globalAlpha = this.ground;
-    g.strokeStyle = `rgba(${rim},${0.18 + 0.37 * lit})`;
-    g.lineWidth = 1.5;
-    g.beginPath();
-    g.arc(cx, cy, R, 0, Math.PI * 2);
-    g.stroke();
+    this.drawLimb(cx, cy, R, rim, !below || glow > 0); // a port the data doesn't know keeps today's Glass
     g.globalAlpha = 1;
   }
 
@@ -695,7 +694,8 @@ export class SpaceView {
    * darkening toward its edge, and its air glowing over the limb by day; day and night cross-faded,
    * a dusk between when her side isn't known. No town. Every planet data/worlds.js knows is low-poly
    * facets in its star's light, with no glow when it's airless; a giant has its bands over them, in
-   * the same light. A planet the data doesn't know is the old ochre with bands.
+   * the same light. A planet the data doesn't know is the old ochre with bands. The last planet
+   * shown, through a fade-out.
    */
   drawOrbit() {
     const { g, w, h, lit, face } = this;
@@ -710,17 +710,7 @@ export class SpaceView {
 
     g.save();
     g.globalAlpha = this.high;
-    if (glow > 0) {
-      const px = known && face.veiled ? HAZE * 1.4 : HAZE;
-      const haze = g.createRadialGradient(cx, cy, R, cx, cy, R + px);
-      haze.addColorStop(0, `rgba(${rim},${(0.04 + 0.22 * lit) * glow})`);
-      haze.addColorStop(1, `rgba(${rim},0)`);
-      g.fillStyle = haze;
-      g.beginPath();
-      g.arc(cx, cy, R + px, 0, Math.PI * 2);
-      g.fill();
-    }
-
+    this.drawAir(cx, cy, R, rim, glow, known && face.veiled ? HAZE * 1.4 : HAZE);
     g.beginPath();
     g.arc(cx, cy, R, 0, Math.PI * 2);
     g.clip();
@@ -736,8 +726,15 @@ export class SpaceView {
     const deep = h - top + 20; // the face reaches a little past the band's foot
     if (lit > 0) {
       g.globalAlpha = this.high * lit;
-      if (known) this.drawFacets(cx, cy, R, deep);
-      else {
+      if (known) {
+        // the facets on the curve, the top ring reaching past the limb, which the clip trims
+        const at = ([d, a]) => {
+          const r = R + 2 - d * deep;
+          return [cx + Math.sin(a) * r, cy - Math.cos(a) * r];
+        };
+        const img = this.faceImage("orbit", `${this.shownPlanet}:${w}x${h}`, () => this.facets.map((f) => ({ pts: f.pts.map(at), fill: f.fill })));
+        if (img) g.drawImage(img, 0, 0, w, h);
+      } else {
         g.fillStyle = grad(DAY);
         g.fillRect(0, top, w, h - top);
       }
@@ -763,42 +760,65 @@ export class SpaceView {
     g.fillRect(0, top, w, h - top);
     g.restore();
 
-    // the limb's edge: the air's colour where it has air, a hard grey where it has none
     g.globalAlpha = this.high;
-    g.strokeStyle = glow > 0 ? `rgba(${rim},${0.18 + 0.37 * lit})` : `rgba(${AIRLESS},${0.3 + 0.2 * lit})`;
-    g.lineWidth = glow > 0 ? 1.5 : 1;
-    g.beginPath();
-    g.arc(cx, cy, R, 0, Math.PI * 2);
-    g.stroke();
+    this.drawLimb(cx, cy, R, rim, glow > 0);
     g.globalAlpha = 1;
   }
 
-  /** The high-orbit face's facets, each a triangle at its (depth, angle) points on the curve. */
-  drawFacets(cx, cy, R, deep) {
-    const at = ([d, a]) => {
-      const r = R + 2 - d * deep; // the top ring reaches past the limb, which the clip trims
-      return [cx + Math.sin(a) * r, cy - Math.cos(a) * r];
-    };
-    this.drawCells(this.facets.map((f) => ({ pts: f.pts.map(at), fill: f.fill })));
+  /** Air glowing `px` out over a limb of radius `R`, in `rim` ("r,g,b"), as strong as `glow` (0 none: airless), brighter by day. */
+  drawAir(cx, cy, R, rim, glow, px) {
+    if (glow <= 0) return;
+    const { g, lit } = this;
+    const haze = g.createRadialGradient(cx, cy, R, cx, cy, R + px);
+    haze.addColorStop(0, `rgba(${rim},${(0.04 + 0.22 * lit) * glow})`);
+    haze.addColorStop(1, `rgba(${rim},0)`);
+    g.fillStyle = haze;
+    g.beginPath();
+    g.arc(cx, cy, R + px, 0, Math.PI * 2);
+    g.fill();
   }
 
-  /** Triangles in band px, each filled and edged in its own colour so no seam shows. */
-  drawCells(cells) {
-    const { g } = this;
-    g.lineWidth = 0.6;
-    g.lineJoin = "round";
-    for (const f of cells) {
+  /** A limb's edge: the air's colour where it has air, a hard grey where it has none. */
+  drawLimb(cx, cy, R, rim, air) {
+    const { g, lit } = this;
+    g.strokeStyle = air ? `rgba(${rim},${0.18 + 0.37 * lit})` : `rgba(${AIRLESS},${0.3 + 0.2 * lit})`;
+    g.lineWidth = air ? 1.5 : 1;
+    g.beginPath();
+    g.arc(cx, cy, R, 0, Math.PI * 2);
+    g.stroke();
+  }
+
+  /**
+   * A face's facets drawn once onto a canvas of the band's size, at full alpha, each triangle
+   * filled and edged in its own colour so no seam shows, and kept while `key` (what, at what size)
+   * holds. The scene draws it whole at whatever alpha it's fading or dusking at, so the edges are
+   * never composited twice. `cells()` gives the triangles in band px. Null where there's no canvas.
+   */
+  faceImage(kind, key, cells) {
+    const k = window.devicePixelRatio || 1;
+    const full = `${key}@${k}`;
+    const had = this.images.get(kind);
+    if (had?.key === full) return had.canvas;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(this.w * k));
+    canvas.height = Math.max(1, Math.round(this.h * k));
+    const c = canvas.getContext("2d");
+    if (!c) return null;
+    c.setTransform(k, 0, 0, k, 0, 0);
+    c.lineWidth = 0.6;
+    c.lineJoin = "round";
+    for (const f of cells()) {
       const [p, q, s] = f.pts;
-      const col = `rgb(${rgbText(f.fill)})`;
-      g.fillStyle = col;
-      g.strokeStyle = col;
-      g.beginPath();
-      g.moveTo(p[0], p[1]);
-      g.lineTo(q[0], q[1]);
-      g.lineTo(s[0], s[1]);
-      g.closePath();
-      g.fill();
-      g.stroke();
+      c.fillStyle = c.strokeStyle = `rgb(${rgbText(f.fill)})`;
+      c.beginPath();
+      c.moveTo(p[0], p[1]);
+      c.lineTo(q[0], q[1]);
+      c.lineTo(s[0], s[1]);
+      c.closePath();
+      c.fill();
+      c.stroke();
     }
+    this.images.set(kind, { key: full, canvas });
+    return canvas;
   }
 }

@@ -8,6 +8,7 @@
 // star's light. No weather: cloud that comes and goes isn't sent, so none is drawn.
 
 import WORLDS from "../data/worlds.js";
+import { rng } from "./svg.js";
 
 /** Each of starColour's words as the light it throws, [r, g, b]. */
 export const STAR_RGB = {
@@ -84,7 +85,7 @@ const FROST = (rock) => mix(rock, [236, 240, 246], 0.45);
  * so a hundredth of a bar is a faint line, a bar about half and Lelant's 90 the most.
  */
 export const airGlow = (air) => (air > 0 ? Math.min(1, 0.15 + 0.35 * Math.log10(1 + 10 * air)) : 0);
-/** Clear air's glow over the limb: Glass, the colour it's always been. */
+/** Clear air's glow over the limb: Glass (style guide §4.2), the colour it's always been. The space view's too. */
 export const RIM = [207, 227, 255];
 
 /** A giant's face under its bands, the ochre every planet had before its climate was known. */
@@ -108,19 +109,19 @@ export function faceOf(id, worlds = WORLDS) {
     light,
     ground: lightBy(veil ?? rock, light),
     frost: !veil && p.frost ? lightBy(FROST(rock), light) : null,
-    seas: veil ? [] : p.seas.map((s) => ({ rgb: lightBy(seaRgb(s.of), light), share: s.share ?? 0 })),
+    // only seas with a share to show, largest first, so every scene shows the same ones
+    seas: veil ? [] : p.seas.filter((s) => s.share > 0).sort((a, b) => b.share - a.share).map((s) => ({ rgb: lightBy(seaRgb(s.of), light), share: s.share })),
     veiled: Boolean(veil),
     glow: airGlow(p.air),
     rim: lightBy(veil ? mix(veil, [255, 255, 255], 0.25) : RIM, light),
   };
 }
 
-/** A generator seeded by a string, so a planet's facets are the same every time it's drawn. */
+/** The maps' seeded generator (svg.js's rng) seeded by a string's hash, so a planet's facets are the same every time it's drawn. */
 export function seedOf(text) {
   let h = 2166136261;
   for (const ch of String(text)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
-  let s = h >>> 0;
-  return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32);
+  return rng(h);
 }
 
 /** The facet grid: rings down from the limb and columns across, as the mockup picked (B). */
@@ -198,7 +199,7 @@ export const SEA_REACH = 0.8;
 /**
  * The face below a port as facets in band px, each `{ pts: [[x, y] ×3], fill, sea }`: a jittered
  * grid of PORT_CELL triangles over the band from `top` down, shaded as the high-orbit facets are.
- * Where the planet has seas and the port's site a `coast`, the sea lies along the far horizon on
+ * Where the planet has seas (its largest, as from high orbit) and the port's site a `coast`, the sea lies along the far horizon on
  * one side (the port's seed says which), as deep as its coast says and never within 2.2 of `k` (the
  * town's size) of the port at (`tx`, `ty`): the port stands on its own land with the sea far off.
  * @param {{w: number, h: number, top: number, cx: number, cy: number, R: number, tx: number, ty: number, k: number}} geo
