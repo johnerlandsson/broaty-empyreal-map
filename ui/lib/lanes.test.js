@@ -95,7 +95,8 @@ describe("the topology", () => {
         id: chunk.split("\n")[0].trim(),
         name: /\n {4}name: (.+)/.exec(chunk)?.[1].trim(),
         kind: /\n {4}kind: (\w+)/.exec(chunk)?.[1],
-        parent: /\n {4}(?:orbit|surface): \{ parent: (\w+)/.exec(chunk)?.[1] ?? null,
+        // `orbit: { parent: x }` on one line, or `surface:` as a block with `parent: x` under it
+        parent: /\n {4}(?:orbit|surface):(?: \{ parent: (\w+)|\n {6}parent: (\w+))/.exec(chunk)?.slice(1).find(Boolean) ?? null,
       }));
     const byId = new Map(bodies.map((b) => [b.id, b]));
     const starOf = (b) => (b.parent ? starOf(byId.get(b.parent)) : b.id);
