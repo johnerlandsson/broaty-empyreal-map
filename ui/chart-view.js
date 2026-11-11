@@ -558,14 +558,17 @@ export class ChartView {
         const R = systemRadius(index);
         const c = P([0, 0]);
         const r = R / s;
-        el("circle", { cx: c[0], cy: c[1], r, fill: "none", stroke: ORBIT, "stroke-dasharray": "1 5", "pointer-events": "none" }, marks);
+        const across = crosses(c, r, w, h);
+        if (across) el("circle", dashedRing(r, w, h, { cx: c[0], cy: c[1], r, fill: "none", stroke: ORBIT, "stroke-dasharray": "1 5", "pointer-events": "none" }), marks);
         const loose = mouths
           .filter((m) => !pos(m.id))
           .map((m) => `${mouthStar(m.name)} lane${isClosed(m) ? ", closed," : ""} somewhere on the edge`);
         loose.forEach((text, i) => label(c[0], c[1] - r + 16 + i * 12, text)); // just inside its top
-        const hit = el("circle", { cx: c[0], cy: c[1], r, fill: "none", stroke: "transparent", "stroke-width": 8, "pointer-events": "stroke" }, marks);
-        if (loose.length) tip(hit, "edge", loose[0], loose.slice(1).join("\n"));
-        else tip(hit, "edge", "The edge", `${kmText(R)} out`);
+        if (across) {
+          const hit = el("circle", { cx: c[0], cy: c[1], r, fill: "none", stroke: "transparent", "stroke-width": 8, "pointer-events": "stroke" }, marks);
+          if (loose.length) tip(hit, "edge", loose[0], loose.slice(1).join("\n"));
+          else tip(hit, "edge", "The edge", `${kmText(R)} out`);
+        }
       });
     }
 
@@ -631,7 +634,7 @@ export class ChartView {
           // ring, and a click within it shows what goes round it
           const pickable = levels.has(it.id) && level !== it.id;
           if (pickable) {
-            el("circle", { cx: x, cy: y, r: r + 5, fill: "none", stroke: GLASS, "stroke-opacity": 0.55, "stroke-dasharray": "2 2" }, g);
+            el("circle", dashedRing(r + 5, w, h, { cx: x, cy: y, r: r + 5, fill: "none", stroke: GLASS, "stroke-opacity": 0.55, "stroke-dasharray": "2 2" }), g);
             const hit = el("circle", { cx: x, cy: y, r: r + 9, fill: "transparent", "data-level": it.id, style: "cursor: pointer" }, picks);
             tip(hit, `pick:${it.id}`, it.name, "click for what goes round it");
           }
@@ -733,7 +736,8 @@ export class ChartView {
             const d = Math.hypot(bx - x, by - y);
             if (d > r + 6) {
               const k = (d - r - 2) / d;
-              el("line", { x1: x, y1: y, x2: x + (bx - x) * k, y2: y + (by - y) * k, stroke: DIM, "stroke-dasharray": "1 3", opacity: 0.7, "pointer-events": "none" }, marks);
+              const seg = inBand([x, y], [x + (bx - x) * k, y + (by - y) * k], w, h, 4);
+              if (seg) el("line", { ...seg, stroke: DIM, "stroke-dasharray": "1 3", opacity: 0.7, "pointer-events": "none" }, marks);
             }
           }
         } else {
@@ -786,7 +790,8 @@ export class ChartView {
         const b = P([f[0] + fix.leg.to[0], f[1] + fix.leg.to[1]]);
         const me = P(fix.pos);
         el("line", { x1: a[0], y1: a[1], x2: me[0], y2: me[1], stroke: HL, "stroke-opacity": 0.25, "stroke-width": 1.2, "pointer-events": "none" }, marks);
-        el("line", { x1: me[0], y1: me[1], x2: b[0], y2: b[1], stroke: HL, "stroke-opacity": 0.55, "stroke-width": 1.2, "stroke-dasharray": "4 4", "pointer-events": "none" }, marks);
+        const ahead = inBand(me, b, w, h, 8);
+        if (ahead) el("line", { ...ahead, stroke: HL, "stroke-opacity": 0.55, "stroke-width": 1.2, "stroke-dasharray": "4 4", "pointer-events": "none" }, marks);
         el("circle", { cx: b[0], cy: b[1], r: ringR, fill: "none", stroke: HL, "stroke-opacity": 0.7, "stroke-width": 1.2, "pointer-events": "none" }, marks);
         const c = chevron(lit, me, -fix.heading);
         tip(c, "ship", shipName, `bound for ${nameOf(fix.place)}, ${span((fix.leg.arrive - t) / 1000)}`);
@@ -807,8 +812,10 @@ export class ChartView {
         const [x, y] = P(c);
         const r = discR(planet) * HIGH_ORBIT;
         const g = el("g", {}, lit);
-        el("circle", { cx: x, cy: y, r, fill: "none", stroke: HL, "stroke-opacity": fix.orbit.angle === null ? 0.8 : 0.45, "stroke-width": 1.2, "stroke-dasharray": "3 3" }, g);
-        el("circle", { cx: x, cy: y, r, fill: "none", stroke: "transparent", "stroke-width": 8 }, g);
+        if (crosses([x, y], r, w, h)) {
+          el("circle", dashedRing(r, w, h, { cx: x, cy: y, r, fill: "none", stroke: HL, "stroke-opacity": fix.orbit.angle === null ? 0.8 : 0.45, "stroke-width": 1.2, "stroke-dasharray": "3 3" }), g);
+          el("circle", { cx: x, cy: y, r, fill: "none", stroke: "transparent", "stroke-width": 8 }, g);
+        }
         const where = `high orbit over ${planet.name}`;
         label(x, y - r - 6, where);
         tip(g, "orbit", shipName, fix.orbit.angle === null ? `${where}, which side not known` : where);
@@ -816,14 +823,14 @@ export class ChartView {
           const a = fix.orbit.angle;
           const me = [x + Math.cos(a) * r, y - Math.sin(a) * r];
           // her course from her place on the ring; with her side not known, the card alone
-          if (line) courseMark(marks, me, P(line.to));
+          if (line) courseMark(marks, me, P(line.to), w, h);
           tip(chevron(lit, me, -Math.PI / 2), "ship", shipName, where);
         }
       } else if (fix.kind === "at" && herPos) {
         // at a port, on its dome: the planet's disc may be drawn bigger than it is
         const at = fix.place ? ground(fix.place) : null;
         const me = at ? [at.x, at.y] : P(herPos);
-        if (line) courseMark(marks, me, P(line.to));
+        if (line) courseMark(marks, me, P(line.to), w, h);
         const c = chevron(lit, me, -Math.PI / 2);
         const docked = at ? "landed at" : "docked at";
         // at no place: stopped mid-trip, at rest where she was
@@ -1064,9 +1071,10 @@ export class ChartView {
 
 /** The plotted course from her at a (px) to its aim at b: her route in waiting, amber, dotted and
  *  fainter than a trip's, with a smaller ring where it aims. Under her chevron. */
-function courseMark(g, a, b) {
+function courseMark(g, a, b, w, h) {
   const off = { "pointer-events": "none" };
-  el("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: HL, "stroke-opacity": 0.45, "stroke-width": 1.2, "stroke-dasharray": "1 4", "stroke-linecap": "round", ...off }, g);
+  const seg = inBand(a, b, w, h, 5);
+  if (seg) el("line", { ...seg, stroke: HL, "stroke-opacity": 0.45, "stroke-width": 1.2, "stroke-dasharray": "1 4", "stroke-linecap": "round", ...off }, g);
   el("circle", { cx: b[0], cy: b[1], r: 4, fill: "none", stroke: HL, "stroke-opacity": 0.5, "stroke-width": 1, ...off }, g);
 }
 
@@ -1103,6 +1111,47 @@ function crosses(c, r, w, h) {
   return Math.hypot(nx, ny) <= r + 4 && far >= r - 4;
 }
 
+// CoreGraphics (WebKit on macOS) makes every dash of a dashed stroke, on screen or not, so a dashed
+// ring or line millions of px long can hang WebKit's GPU process (issue #1). A ring more than this
+// many band diagonals across is drawn solid (what shows of it is all but straight), and a dashed
+// line is cut to the band.
+const DASHED_UP_TO = 4;
+
+/** attrs, without its dashes when a ring of radius r px is too big to dash in the w x h band. */
+function dashedRing(r, w, h, attrs) {
+  if (!(r > DASHED_UP_TO * Math.hypot(w, h))) return attrs;
+  const { "stroke-dasharray": _dashes, ...solid } = attrs;
+  return solid;
+}
+
+/** The part of the line a→b (px) on the w x h band, give or take a few px, as a line's x1, y1, x2,
+ *  y2 and the dash offset that keeps its dashes (period px a repeat) where the whole line has them;
+ *  null when it misses the band. */
+function inBand(a, b, w, h, period) {
+  const m = 8;
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  let t0 = 0;
+  let t1 = 1;
+  for (const [p, q] of [[-dx, a[0] + m], [dx, w + m - a[0]], [-dy, a[1] + m], [dy, h + m - a[1]]]) {
+    if (p === 0) {
+      if (q < 0) return null;
+      continue;
+    }
+    const t = q / p;
+    if (p < 0) t0 = Math.max(t0, t);
+    else t1 = Math.min(t1, t);
+  }
+  if (!(t0 <= t1)) return null;
+  return {
+    x1: a[0] + t0 * dx,
+    y1: a[1] + t0 * dy,
+    x2: a[0] + t1 * dx,
+    y2: a[1] + t1 * dy,
+    ...(t0 > 0 ? { "stroke-dashoffset": (t0 * Math.hypot(dx, dy)) % period } : {}),
+  };
+}
+
 /** An orbit as a circle or an ellipse about its parent at base (km). */
 function ring(parent, orbit, base, P, s, w, h, attrs) {
   const a = Number(orbit.a) || 0;
@@ -1113,6 +1162,7 @@ function ring(parent, orbit, base, P, s, w, h, attrs) {
   const c = P([base[0] - a * e * Math.cos(w0), base[1] - a * e * Math.sin(w0)]);
   const rx = a / s;
   if (!crosses(c, rx, w, h)) return null;
+  attrs = dashedRing(rx, w, h, attrs);
   if (e === 0) return el("circle", { cx: c[0], cy: c[1], r: rx, ...attrs }, parent);
   const ry = (a * Math.sqrt(1 - e * e)) / s;
   return el("ellipse", { cx: c[0], cy: c[1], rx, ry, transform: `rotate(${-peri} ${c[0]} ${c[1]})`, ...attrs }, parent);
