@@ -290,6 +290,7 @@ export const PATH = 20; // a path's
 export const DOOR = 14; // the way from open ground into a building
 export const TRACK = 12; // a track out onto the terraces
 export const RIVER = { w: 36, gap: 22 }; // the river's width, and its clearance from the rooms
+export const OUT_LEN = 92; // a way out onto another area: how far its road runs on before it's faded
 export const MAX_W = 2400; // zoomed right out: the whole city, wider than a station's plans
 export const SIZES = {
   building: { w: 104, h: 54 },
@@ -318,9 +319,9 @@ function edge(b, ux, uy) {
 }
 
 /**
- * The plan: a box for each room, the links between them, the districts' washes and names, the
- * river, the scarp, the gate's arch, the tram's line, the labels beside the streets, and the
- * frame.
+ * The plan: a box for each room, the links between them, its ways out onto another area, the
+ * districts' washes and names, the river, the scarp, the gate's arch, the tram's line, the labels
+ * beside the streets, and the frame.
  * @param {ReturnType<typeof indexTown>} index
  * @param {ReturnType<typeof import("./look.js").townSpec>} spec
  */
@@ -349,17 +350,24 @@ export function townLayout(index, spec) {
     }
   }
 
+  const outs = boxes.flatMap((b) => waysOff(b, byId));
   const river = riverOf(boxes, links, spec);
   const tram = tramOf(index, byId, boxes);
-  const districts = districtsOf(index, boxes, links, spec, river, tram);
+  const districts = districtsOf(index, boxes, links, spec, river, tram, outs);
   const scarp = scarpOf(boxes, links, spec);
   const gate = gateOf(byId, links, spec);
-  const labels = boxes.filter((b) => LINE.has(b.kind)).map((b) => streetLabel(b, links, river, tram));
+  const labels = boxes.filter((b) => LINE.has(b.kind)).map((b) => streetLabel(b, links, river, tram, outs));
 
   // the frame: everything, with room for the info line and N ▲
   const xs = boxes.flatMap((b) => [b.cx - b.w / 2, b.cx + b.w / 2]);
   const ys = boxes.flatMap((b) => [b.cy - b.h / 2, b.cy + b.h / 2]);
   if (river) xs.push(...river.points.map((p) => p[0] - RIVER.w / 2 - 20));
+  for (const o of outs) {
+    const long = o.name.length * 7.5; // about how wide its name is, at 12
+    const x0 = o.label.anchor === "start" ? o.label.x : o.label.anchor === "end" ? o.label.x - long : o.label.x - long / 2;
+    xs.push(o.x2, x0, x0 + long);
+    ys.push(o.y2, o.label.y - 8, o.label.y + 8);
+  }
   const pad = 28;
   const bounds = boxes.length
     ? { x0: Math.min(...xs) - pad, y0: Math.min(...ys) - pad, x1: Math.max(...xs) + pad, y1: Math.max(...ys) + pad }
@@ -370,6 +378,7 @@ export function townLayout(index, spec) {
     boxes,
     byId,
     links,
+    outs,
     districts,
     river,
     scarp,
@@ -453,6 +462,37 @@ function link(a, b, dir, exit, back, spec) {
   return { a: a.room.id, b: b.room.id, dir, kind, ...rect, ...(bridge ? { bridge: true } : {}) };
 }
 
+/**
+ * A room's ways out onto another area: each compass exit to a room the plan doesn't have whose
+ * exit names the area it leads into (`areaName`, as the game's room frame has it, gmcp.md §10.2).
+ * Never the room past the edge, only its area. Each is the road running on `OUT_LEN` from the
+ * room's edge, `{ a, dir, area, name, title, width, x1, y1, x2, y2, label }`, its name past its
+ * end, and `title` what hovering it says: "Out onto the land of Tamsin" for a world's land.
+ */
+function waysOff(b, byId) {
+  const out = [];
+  for (const [dir, e] of Object.entries(b.room.exits)) {
+    const step = STEP[dir];
+    const name = typeof e === "object" && typeof e?.areaName === "string" ? e.areaName.trim() : "";
+    if (!step || !name || byId.has(exitTo(e))) continue;
+    const len = Math.hypot(step[0], step[1]);
+    const [ux, uy] = [step[0] / len, -step[1] / len]; // y down on the plan
+    const width = b.kind === "path" ? PATH : STREET;
+    const r = LINE.has(b.kind) ? width / 2 : edge(b, ux, uy);
+    const [x1, y1] = [b.cx + ux * r, b.cy + uy * r];
+    const [x2, y2] = [x1 + ux * OUT_LEN, y1 + uy * OUT_LEN];
+    const diagonal = step[0] && step[1];
+    const label = { x: x2 + ux * 6, y: y2 + uy * (diagonal ? 12 : 6), anchor: ux > 0.3 ? "start" : ux < -0.3 ? "end" : "middle" };
+    const area = typeof e.area === "string" ? e.area : null;
+    const title = area?.startsWith("surface.") ? `Out onto the land of ${name}` : `Out to ${name}`;
+    out.push({ a: b.room.id, dir, area, name, title, width, x1, y1, x2, y2, label });
+  }
+  return out;
+}
+
+/** The compass ways a way out leaves its room by (a diagonal's two). */
+const outWays = (dir) => (STEP[dir][0] && STEP[dir][1] ? [dir.startsWith("north") ? "north" : "south", dir.endsWith("east") ? "east" : "west"] : [dir]);
+
 /** The compass ways a link leaves room id by on the plan (a diagonal's two), or none. */
 function waysOut(l, id) {
   const way = l.way ?? l.dir;
@@ -464,12 +504,17 @@ function waysOut(l, id) {
 /**
  * Each district: its cells, for its wash, and where its name goes. The name sits in an empty cell
  * beside the district, the nearest to its middle, rather north than south, where nothing else is
- * (no room, no way, the tram's line or the river) and neither of the cells either side is a room;
+ * (no room, no way, a way out, the tram's line or the river) and neither of the cells either side is a room;
  * zoomed right out, it goes over the district's middle instead.
  */
-function districtsOf(index, boxes, links, spec, river, tram) {
+function districtsOf(index, boxes, links, spec, river, tram, outs = []) {
   const rooms = new Set(boxes.map((b) => `${b.room.cell.x}:${b.room.cell.y}`));
   const taken = new Set([...rooms, ...(spec.taken ?? [])]); // and cells the spec keeps, a level's ways off it
+  // the cell a way out runs into, with its name
+  for (const o of outs) {
+    const c = index.byId.get(o.a).cell;
+    taken.add(`${c.x + STEP[o.dir][0]}:${c.y + STEP[o.dir][1]}`);
+  }
   // the cells a long way runs through
   for (const l of links) {
     const [p, q] = [index.byId.get(l.a).cell, index.byId.get(l.b).cell];
@@ -660,11 +705,11 @@ function hitsBox(p, q, r) {
 /**
  * Where a street's name goes: east of it if nothing leaves that way, else west, else under it,
  * else over it, else just over the way out east. A climb counts as leaving the way it goes on the
- * plan, and a diagonal both its ways. A name that would lie on the river or across the tram's
+ * plan, a diagonal both its ways, and a way out onto another area too. A name that would lie on the river or across the tram's
  * line goes on to the next.
  */
-function streetLabel(b, links, river, tram) {
-  const ways = new Set(links.flatMap((l) => waysOut(l, b.room.id)));
+function streetLabel(b, links, river, tram, outs = []) {
+  const ways = new Set([...links.flatMap((l) => waysOut(l, b.room.id)), ...outs.filter((o) => o.a === b.room.id).flatMap((o) => outWays(o.dir))]);
   const name = b.room.name ?? "";
   const words = name.split(" ");
   const half = Math.ceil(words.length / 2);

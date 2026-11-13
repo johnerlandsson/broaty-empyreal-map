@@ -1,6 +1,6 @@
 # Towns
 
-*Status: built for Zennor, the city. Last updated 2026-11-09.*
+*Status: built for Zennor, the city. Last updated 2026-11-13.*
 
 ## What it is and when it shows
 
@@ -21,7 +21,8 @@ landed there: while landed, Ship.Status `location` is the port's id,
 
 `ui/data/zennor.js`, generated from `content/areas/zennor.yaml` in the Empyreal
 source: each room's id, name, district, flags and exits as the YAML has them
-(an exit `via: steps` as `{ to, via, seconds }`), the area's name, gravity
+(an exit `via: steps` as `{ to, via, seconds }`, a way onto the land as
+`{ to, via, area, areaName }`, below), the area's name, gravity
 and districts (id, name, entrance), and the tram car's stops bottom to top in
 `cars`. The car itself is a room that moves, so it isn't one of the rooms and
 isn't placed: riding it, the band shows the car instead (cars.md). Nothing
@@ -321,6 +322,29 @@ seen from above, not a deck: Ground instead of stars and a Plate.
   high in it with its wellhead low in the middle. On Market Station the mark is
   inside the stop's Glass edge. It zooms with the plan and doesn't fade with
   the names.
+- **Ways out onto the land.** Since empyreal b6728d0 three rooms have an
+  exit onto the generated land of Tamsin: Carn Bridge west, the Port Road
+  east and Terrace Road southeast, each to a `surface.tamsin.join.<name>`
+  room the plan doesn't have. Each is its
+  road running on from its room's edge its compass way for 92 units, Earth
+  between dashed Stone edges, solid for the first third and then fading out,
+  and the area's name past its end in Dim italic, letter-spaced, as the
+  river is named: "Tamsin". Only the area, never the place past the edge
+  (empyreal `docs/gmcp.md` §10.2, decision 12): the game names it the same
+  way, as `areaName` on the exit in mudstd.room.info. Hovering over the road
+  says "Out onto the land of Tamsin" (for an area that isn't a world's land
+  it would be "Out to …"). The name comes from the data, not the code:
+  build:data gives each exit to `surface.<body>…` the body's area,
+  `surface.<body>`, and its name from `system.yaml`
+  (`scripts/source/beyond.mjs`), as the game's `surface-rooms.ts` does, so
+  `ui/data/zennor.js` has the Port Road's as
+  `{ "to": "surface.tamsin.join.downs", "via": "route", "area": "surface.tamsin", "areaName": "Tamsin" }`.
+  An exit with no `areaName`, to a room on the plan, or by `up`, `down`,
+  `in` or `out` draws nothing. A way out counts as a way for a street's
+  name (the Port Road, with a way every side, has its name just over its
+  road east) and keeps a district's name out of the cell it runs into, and
+  the plan's frame takes in its end and name. Out on the land itself the
+  panel is blank, as agreed.
 - **Names**: rooms with boxes are named inside them. A street's name, in Dim,
   goes east of it if no way leaves that way, else west, else under it, else
   over it, else just over its way out east; never on the river or across the
@@ -347,9 +371,9 @@ scale each time the view changes, and asks the plan's `frame(where)` for
 
 All 46 rooms are rooms. The washes, the river, the scarp, the Steps, the
 tram line, the gate's arch, the pads and blast walls, footings, terrace
-walls, wellheads, bins, switchbacks and the bench are compartments: never
-lit. The
-river, the Steps and the tram line have tooltips.
+walls, wellheads, bins, switchbacks, the bench and the roads out are
+compartments: never lit. The river, the Steps, the tram line and the roads
+out have tooltips.
 
 Lit: a building's or the field's box, a square or the garden, a terrace, the
 Overlook's circle, or for a street or path its stretch: a cross from its
@@ -370,8 +394,10 @@ address, so the district and the town stand where an address would. In the
 
 - `ui/data/zennor.js`: the rooms, districts and the tram's stops, from the YAML.
 - `ui/lib/town.js`: specs, `placeRooms()`, the index, `locateTown()`,
-  `townInfo()`, the plan's layout (links, districts, river, scarp, gate,
-  tram, labels), `townFrame()` and the highlight shapes.
+  `townInfo()`, the plan's layout (links, ways out, districts, river, scarp,
+  gate, tram, labels), `townFrame()` and the highlight shapes.
+- `scripts/source/beyond.mjs`: the area and its name on an exit onto a
+  world's land, for build:data.
 - `ui/town-deck.js`: the plan's drawing, and its names by zoom; `townPlan()`,
   which Dolcoath's levels are each drawn as too (dolcoath.md).
 - `ui/deck-view.js`: a plan's optional `frame(where)`, `maxW` and `onView()`.
@@ -441,6 +467,9 @@ share a cell; check the plan.
   Senara's bands, though the scene is otherwise always dark (§4). The tints
   stay dark, dusty blue-greys, so the band still reads as night-dark
   chrome.
+- **A road out fades.** Nothing else on a plan fades along its length. The
+  road out isn't drawn to its end because the plan doesn't know where it
+  goes, only into what area.
 - **Open rooms are named in Dim**, beside their band, rather than in Text
   inside a box (§8.2). They aren't boxes, and in Text they'd compete with the
   buildings.

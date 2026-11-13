@@ -83,6 +83,12 @@ figures: no greenhouse or gases. `planet.climate` is read, so it's no longer
 in the report, and of a port's `surface.site` only `coast` is read, so
 `surface.site.height` and `.setting` still are. See
 [space-scenes.md](space-scenes.md), "A world's face" and "Over a port's face".
+An exit onto a world's generated land, `surface.<body>…`, gets the area it
+leads into and its name, `area: "surface.<body>"` and `areaName` the body's
+name from `system.yaml`, as the game's mudstd.room.info has them (empyreal
+`docs/gmcp.md` §10.2); the room past it is never named. Zennor's roads out
+are drawn from it ([town.md](town.md)). A body the source doesn't have gives
+nothing, and the exit is left as the YAML has it.
 `ui/data/frames.js` has the heavy frame's width, from `frames.yaml`, which the
 plans compare with an opening's `clear`: on a hatch exit, a plan's airlock
 room, or a planless hull's `airlock.clear`, which the build puts on her

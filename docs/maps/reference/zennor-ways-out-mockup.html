@@ -1,0 +1,140 @@
+<!doctype html>
+<!-- Zennor's ways out onto the land, 2026-11-13: three looks for the stub off Carn Bridge (west),
+     the Port Road (east) and Terrace Road (southeast), each named only "Tamsin", the area the
+     game's mudstd.room.info names (empyreal gmcp.md §10.2, decision 12). The plan under them is
+     the plugin's own, so this needs serving over http from the repo root. A throwaway: take its
+     look, not its code.
+     John picked A, 2026-11-13, and it's built (town.md, "Ways out onto the land"), so the plan
+     here now draws the built roads under each option's. -->
+<html><head><meta charset="utf-8"><title>Zennor: ways out</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:18px; width:1230px; }
+  h2 { color:#e3eaf2; font-size:15px; font-weight:600; margin:6px 0 4px; }
+  p.note { margin:0 0 10px; max-width:1180px; line-height:1.4; }
+  .row { display:flex; gap:22px; margin-bottom:22px; }
+  figure { margin:0; }
+  figcaption { margin:6px 0 0; font-size:12px; }
+  .frame { position:relative; width:380px; height:250px; background:#04060c; border:1px solid #2b3646; border-radius:6px; overflow:hidden; }
+  svg { display:block; }
+  .tip { position:absolute; font:12px Inter, system-ui, sans-serif; color:#e3eaf2; background:#0b1018ee; border:1px solid #2b3646; border-radius:4px; padding:4px 8px; }
+</style></head><body>
+<div id="out"></div>
+<script type="module">
+import zennor from "../../../ui/data/zennor.js";
+import { townSpec, townData } from "../../../ui/lib/look.js";
+import { indexTown, townLayout, STEP, STREET } from "../../../ui/lib/town.js";
+import { townPlan } from "../../../ui/town-deck.js";
+import { el } from "../../../ui/lib/svg.js";
+import { label, DIM } from "../../../ui/deck-view.js";
+
+const EARTH = "#332b22", STONE = "#4b4338", GROUND = "#110e0b";
+const spec = townSpec(zennor);
+const index = indexTown(townData(zennor), spec);
+const layout = townLayout(index, spec);
+
+// each way out: its room, its compass way, the area past the edge
+const OUT = [];
+for (const r of index.byId.values())
+  for (const [dir, e] of Object.entries(r.exits)) {
+    const to = typeof e === "string" ? e : e.to;
+    if (to.startsWith("surface.")) OUT.push({ room: r, dir, name: "Tamsin" });
+  }
+
+// the stub's start (the room's edge, a street's band edge) and its unit way, y down on screen
+function geom(o) {
+  const b = layout.byId.get(o.room.id);
+  const [sx, sy] = STEP[o.dir];
+  const len = Math.hypot(sx, sy);
+  const ux = sx / len, uy = -sy / len;
+  const r = b.kind === "street" || b.kind === "path" ? STREET / 2 : Math.min(ux ? b.w / 2 / Math.abs(ux) : 1e9, uy ? b.h / 2 / Math.abs(uy) : 1e9);
+  return { b, ux, uy, x0: b.cx + ux * r, y0: b.cy + uy * r };
+}
+// as the build would: a way out counts as a way, so a street's name and a district's go elsewhere
+for (const o of OUT) {
+  const t = layout.labels.find((l) => l.room.id === o.room.id);
+  const b = layout.byId.get(o.room.id);
+  if (t && (o.dir === "east" || o.dir === "west")) Object.assign(t, { x: b.cx, y: b.cy + b.h / 2 + 12, anchor: "middle" });
+}
+const terr = layout.districts.find((d) => /terraces/i.test(d.name));
+if (terr) terr.label = { x: terr.label.x + 70, y: terr.label.y + 96 };
+const anchorOf = (ux) => (ux > 0.3 ? "start" : ux < -0.3 ? "end" : "middle");
+let gid = 0;
+
+const OPTIONS = {
+  A: {
+    title: "A · the road runs on and fades",
+    note: "The street carries on past its room as Earth with its dashed Stone edge, fading out over about half a cell, and the area's name in Dim italic where it ends, as the river is named. Reads as the road going on off the plan.",
+    draw(g, o) {
+      const { ux, uy, x0, y0 } = geom(o);
+      const L = 92, x1 = x0 + ux * L, y1 = y0 + uy * L;
+      const id = `fade${gid++}`;
+      const defs = el("defs", {}, g);
+      const lg = el("linearGradient", { id, gradientUnits: "userSpaceOnUse", x1: x0, y1: y0, x2: x1, y2: y1 }, defs);
+      el("stop", { offset: 0, "stop-color": "#fff", "stop-opacity": 1 }, lg);
+      el("stop", { offset: 0.35, "stop-color": "#fff", "stop-opacity": 1 }, lg);
+      el("stop", { offset: 1, "stop-color": "#fff", "stop-opacity": 0 }, lg);
+      const m = el("mask", { id: id + "m", maskUnits: "userSpaceOnUse", x: -6000, y: -4000, width: 12000, height: 8000 }, defs);
+      el("line", { x1: x0, y1: y0, x2: x1, y2: y1, stroke: `url(#${id})`, "stroke-width": STREET + 8 }, m);
+      const s = el("g", { mask: `url(#${id}m)` }, g);
+      el("line", { x1: x0, y1: y0, x2: x1, y2: y1, stroke: STONE, "stroke-width": STREET + 4, "stroke-dasharray": "4 3" }, s);
+      el("line", { x1: x0 - ux * 2, y1: y0 - uy * 2, x2: x1, y2: y1, stroke: EARTH, "stroke-width": STREET }, s);
+      label(g, x1 + ux * 6, y1 + uy * 6 + (Math.abs(ux) < 0.9 ? uy * 6 : 0), o.name, 12, { fill: DIM, "font-style": "italic", "letter-spacing": 1.5, "text-anchor": anchorOf(ux) });
+    },
+  },
+  B: {
+    title: "B · a short road to the edge, named in caps",
+    note: "A short stub of Earth, no edge, stopped by a Stone chevron pointing out, and the area in Dim spaced caps past it, like a district's name but quieter. Reads as a sign: this way, Tamsin.",
+    draw(g, o) {
+      const { ux, uy, x0, y0 } = geom(o);
+      const L = 48, x1 = x0 + ux * L, y1 = y0 + uy * L;
+      el("line", { x1: x0 - ux * 2, y1: y0 - uy * 2, x2: x1, y2: y1, stroke: EARTH, "stroke-width": STREET - 6 }, g);
+      const a = (Math.atan2(uy, ux) * 180) / Math.PI;
+      el("path", { d: "M-6,-11L6,0L-6,11", transform: `translate(${x1 + ux * 6} ${y1 + uy * 6}) rotate(${a})`, stroke: STONE, "stroke-width": 3.5, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, g);
+      label(g, x1 + ux * 22, y1 + uy * 22 + (Math.abs(ux) < 0.9 ? uy * 4 : 0), o.name.toUpperCase(), 11, { fill: DIM, "font-weight": 600, "letter-spacing": 2.5, "text-anchor": anchorOf(ux) });
+    },
+  },
+  C: {
+    title: "C · a dashed way out, as the plan's “up”",
+    note: "A dashed Dim line off the room with an open arrowhead, as the climb up to the Overlook is drawn, and the area in Dim beside its end. Lightest: a way that leaves the plan, not more town.",
+    draw(g, o) {
+      const { ux, uy, x0, y0 } = geom(o);
+      const L = 70, x1 = x0 + ux * L, y1 = y0 + uy * L;
+      el("line", { x1: x0, y1: y0, x2: x1, y2: y1, stroke: DIM, "stroke-width": 1.5, "stroke-dasharray": "4 4" }, g);
+      const a = (Math.atan2(uy, ux) * 180) / Math.PI;
+      el("path", { d: "M-7,-5L0,0L-7,5", transform: `translate(${x1} ${y1}) rotate(${a})`, stroke: DIM, "stroke-width": 1.5, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }, g);
+      label(g, x1 + ux * 8, y1 + uy * 8 + (Math.abs(ux) < 0.9 ? uy * 5 : 0), o.name, 11, { fill: DIM, "text-anchor": anchorOf(ux) });
+    },
+  },
+};
+
+const out = document.getElementById("out");
+for (const [key, opt] of Object.entries(OPTIONS)) {
+  out.insertAdjacentHTML("beforeend", `<h2>${opt.title}</h2><p class="note">${opt.note}</p>`);
+  const row = document.createElement("div");
+  row.className = "row";
+  out.appendChild(row);
+  OUT.forEach((o, i) => {
+    const fig = document.createElement("figure");
+    fig.innerHTML = `<div class="frame"></div><figcaption>${o.room.name}, ${o.dir}</figcaption>`;
+    row.appendChild(fig);
+    const svg = el("svg", { width: 380, height: 250 }, fig.firstChild);
+    const plan = townPlan(svg, index, spec, false, { layout, draw: (g) => opt.draw(g, o) });
+    plan.g.setAttribute("display", "");
+    plan.onView(1.15, null);
+    const { b, ux, uy } = geom(o);
+    const k = 1.15, w = 380 / k, h = 250 / k;
+    const cx = b.cx + ux * 50, cy = b.cy + uy * 40;
+    svg.setAttribute("viewBox", `${cx - w / 2} ${cy - h / 2} ${w} ${h}`);
+    if (i === 1) {
+      const t = document.createElement("div");
+      t.className = "tip";
+      t.textContent = "Out onto the land of Tamsin";
+      t.style.right = "10px";
+      t.style.top = "10px";
+      fig.firstChild.appendChild(t);
+    }
+  });
+}
+document.body.dataset.ready = "1";
+</script>
+</body></html>

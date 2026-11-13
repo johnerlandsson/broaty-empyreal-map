@@ -109,8 +109,8 @@ On a town's plan (the ground, not a deck; see town.md):
 | Name | Value | Used for |
 |---|---|---|
 | Ground | `#110e0b` | the bare earth under the whole plan, in place of the stars and Plate |
-| Earth | `#332b22` | open ground you walk across: streets, a square, a path, doors and tracks, the Steps; light enough to stand out on every district's wash (about 1.25:1, against 1.0 at the first `#1c1814`) |
-| Stone | `#4b4338` | the stub of a town's old wall and its gate arch, building footings, blast walls, terrace walls, an open room's dashed edge, the Steps' treads and the scarp's hatching |
+| Earth | `#332b22` | open ground you walk across: streets, a square, a path, doors and tracks, the Steps, a road out of town fading off the plan; light enough to stand out on every district's wash (about 1.25:1, against 1.0 at the first `#1c1814`) |
+| Stone | `#4b4338` | the stub of a town's old wall and its gate arch, building footings, blast walls, terrace walls, an open room's dashed edge (and a road out of town's, fading with it), the Steps' treads and the scarp's hatching |
 | Water | `#22384c`, its dashed middle `#2e4a63` | a river (the Carn) |
 | District wash | a district's colour (§4.4) at .085 | the ground under each district's rooms, so the districts read as areas |
 | Glass | `#cfe3ff` (§4.3) at .75 | the tram's line through its stops, and a faint inner edge on each stop's box |

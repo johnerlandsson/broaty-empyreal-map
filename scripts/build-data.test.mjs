@@ -263,6 +263,19 @@ describe("build", () => {
     expect(report.knownDroppedFlags).toEqual(["charger", "shop", "vault"]);
   });
 
+  it("gives an exit onto a world's land its area, named for the body, and leaves the others as they were", async () => {
+    const opts = setup();
+    editArea(opts.source, "mini.yaml", (doc) => {
+      const hall = doc.rooms.find((r) => r.id === "mini.hall");
+      hall.exits.northwest = { to: "surface.rock.join.hall", via: "route" };
+      hall.exits.southwest = "surface.nowhere.join.hall";
+    });
+    await build(opts);
+    const hall = (await load(join(opts.outDir, "mini.js"))).rooms.find((r) => r.id === "mini.hall");
+    expect(hall.exits.northwest).toEqual({ to: "surface.rock.join.hall", via: "route", area: "surface.rock", areaName: "Rock" });
+    expect(hall.exits.southwest).toBe("surface.nowhere.join.hall");
+  });
+
   it("names a nested field new to the source once, by dotted name, and leaves it out", async () => {
     const opts = setup();
     await build(opts);

@@ -102,7 +102,9 @@ export default {
         "west": "zennor.steps-head",
         "east": {
           "to": "surface.tamsin.join.downs",
-          "via": "route"
+          "via": "route",
+          "area": "surface.tamsin",
+          "areaName": "Tamsin"
         }
       },
       "gravity": 1,
@@ -578,7 +580,9 @@ export default {
         "east": "zennor.mill-lane",
         "west": {
           "to": "surface.tamsin.join.carn-bridge",
-          "via": "route"
+          "via": "route",
+          "area": "surface.tamsin",
+          "areaName": "Tamsin"
         }
       },
       "gravity": 1,
@@ -635,7 +639,9 @@ export default {
         "south": "zennor.terraces",
         "southeast": {
           "to": "surface.tamsin.join.terrace-road",
-          "via": "route"
+          "via": "route",
+          "area": "surface.tamsin",
+          "areaName": "Tamsin"
         }
       },
       "gravity": 1,

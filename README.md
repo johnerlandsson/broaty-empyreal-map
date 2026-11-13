@@ -215,7 +215,10 @@ one, and stays when she stops, unless you've turned that off. The belt map,
   Bridge, the Steps are a flight of stone between the scarp's two rooms, and
   the tram is a pale line through its four stops, Riverside, Market, Uptown
   and the Downs. Buildings are boxes on stone footings, and the streets are
-  packed earth. On a street, its stretch of the street lights. ⌂ frames your
+  packed earth. Three roads leave the city for the land of Tamsin, off Carn
+  Bridge west, the Port Road east and Terrace Road southeast: each runs on
+  past its room and fades out, named only "Tamsin", and hovering over one
+  says "Out onto the land of Tamsin". On a street, its stretch of the street lights. ⌂ frames your
   district; zoomed out, the rooms' names fade and the districts' stay
   readable.
 - **Dolcoath:** a plan a level, from the Pit at the surface down through

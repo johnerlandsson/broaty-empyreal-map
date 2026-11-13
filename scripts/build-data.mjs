@@ -20,6 +20,7 @@ import { diffRooms, droppedOf, emptyReport, formatReport, sortReport } from "./s
 import { loadTweaks, originOf, resolveLook, resolveTweak, via } from "./source/tweaks.mjs";
 import { skyOf } from "./source/sky.mjs";
 import { worldsOf } from "./source/worlds.mjs";
+import { exitsBeyond } from "./source/beyond.mjs";
 import { RINGS } from "./source/wheel.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -281,7 +282,7 @@ function checkIds(areas, plans, ships) {
  * no builder draws goes under noBuilder and gets none. A plan's report entries carry kind plan.
  * @returns {Promise<{builder: string} | null>}
  */
-async function placeFile({ commit, tweaks, report, files, clashes }, { kind, file, area, raw, path, hulls, synthesised }) {
+async function placeFile({ commit, tweaks, report, files, clashes, bodyNames }, { kind, file, area, raw, path, hulls, synthesised }) {
   const id = area.id;
   const tagged = (entry) => (kind === "plan" ? { ...entry, kind } : entry);
   const kept = keepArea(area).area;
@@ -311,7 +312,9 @@ async function placeFile({ commit, tweaks, report, files, clashes }, { kind, fil
   // In the source's order, not sorted: the builders draw rooms in the order they come, and a
   // tie (which cell a district's label takes) goes to the first, so the order is on screen. A
   // synthesised room has only kept fields already.
-  const rooms = placed.map(({ at, terrain, ...rest }) => ordered({ ...(synthesised ? rest : keepRoom(rest).room), at, terrain }, ROOM_KEYS));
+  // An exit onto another area carries that area and its name, as the game's room frame has them.
+  const beyond = (room) => (room.exits ? { ...room, exits: exitsBeyond(room.exits, bodyNames) } : room);
+  const rooms = placed.map(({ at, terrain, ...rest }) => ordered({ ...beyond(synthesised ? rest : keepRoom(rest).room), at, terrain }, ROOM_KEYS));
 
   const { look, orphans } = resolveLook(id, placed, layout.kind, tweaks, kind);
   report.orphans.push(...orphans.map((key) => ({ place: id, key })));
@@ -396,7 +399,8 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   ];
   Object.assign(report, droppedOf(dropped, previous));
 
-  const ctx = { commit: src.commit, tweaks, report, files, clashes };
+  const bodyNames = new Map(src.bodies.map((b) => [b.id, b.name]));
+  const ctx = { commit: src.commit, tweaks, report, files, clashes, bodyNames };
   for (const { file, area, rooms: raw } of src.areas) {
     const id = area.id;
     const built = await placeFile(ctx, { kind: "area", file: `content/areas/${file}`, area, raw, path: join(outDir, `${id}.js`) });

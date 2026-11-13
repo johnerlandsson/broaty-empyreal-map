@@ -4,8 +4,9 @@
 // and the open rooms (street, square, path) as packed earth with a dashed edge, named in Dim. The
 // tram is a line in Glass through its stops; the landing field sits in its blast walls, the
 // terraces step down each held up by a dry stone wall, and the overlook is up the ridge path's
-// switchbacks. A room with a refuse bin has the mark in its south-east corner. Zoomed out, the
-// rooms' names fade and the districts' stay readable. Layout maths lives in lib/town.js.
+// switchbacks. A room with a refuse bin has the mark in its south-east corner. A way out onto
+// another area (the land of Tamsin) is its road running on and fading, named only by the area.
+// Zoomed out, the rooms' names fade and the districts' stay readable. Layout maths lives in lib/town.js.
 
 import { DISTRICT_COLOURS as DC } from "./lib/geometry.js";
 import { MAX_W, RIVER, townFrame, townLayout, townShape } from "./lib/town.js";
@@ -44,6 +45,7 @@ export function townPlans(spec) {
 export function townPlan(svg, index, spec, pick, opts = {}) {
   const layout = opts.layout ?? townLayout(index, spec);
   const { boxes, links, labels, bounds, districts, river, scarp, gate, tram } = layout;
+  const outs = layout.outs ?? [];
   const g = el("g", { display: "none" }, svg);
   // the ground covers the stars the view draws under every plan
   el("rect", { x: -6000, y: -4000, width: 12000, height: 8000, fill: GROUND }, g);
@@ -81,8 +83,10 @@ export function townPlan(svg, index, spec, pick, opts = {}) {
     el("rect", { x: b.cx - b.w / 2, y: b.cy - b.h / 2, width: b.w, height: b.h, rx: b.kind === "square" || b.kind === "garden" ? 10 : 2, ...attrs, ...NONE }, g);
   for (const l of links) if (isOpen(l)) band(l, null, true);
   for (const b of openBoxes) boxRect(b, { fill: "none", stroke: STONE, "stroke-width": 2, ...DASH });
+  for (const o of outs) wayOut(g, o, true);
   for (const l of links) if (isOpen(l)) band(l, EARTH);
   for (const b of openBoxes) boxRect(b, { fill: EARTH });
+  for (const o of outs) wayOut(g, o, false);
   // doors into buildings and tracks out to the terraces: earth, no edge
   for (const l of links) if (l.kind === "door" || l.kind === "track") band(l, EARTH);
   // the bridge: the way over the river, with a parapet each side
@@ -134,6 +138,8 @@ export function townPlan(svg, index, spec, pick, opts = {}) {
     if (b.kind !== "building") hit(g, townShape(layout, { kind: "room", id: b.room.id }), b.room, pick);
   }
 
+  for (const o of outs) hover(el("line", { x1: o.x1, y1: o.y1, x2: o.x2, y2: o.y2, stroke: "transparent", "stroke-width": o.width }, g), { name: o.title });
+
   opts.draw?.(g, layout);
 
   for (const t of labels) {
@@ -141,6 +147,8 @@ export function townPlan(svg, index, spec, pick, opts = {}) {
       label(g, t.x, t.y + (i - (t.lines.length - 1) / 2) * 13, s, 11, { fill: DIM, "text-anchor": t.anchor }),
     );
   }
+  // a way out is named only by its area, past its end, as the river is
+  for (const o of outs) label(g, o.label.x, o.label.y, o.name, 12, { fill: DIM, "font-style": "italic", "letter-spacing": 1.5, "text-anchor": o.label.anchor });
   if (river) label(g, river.label.x, river.label.y, river.name, 12, { fill: DIM, "font-style": "italic", "letter-spacing": 3, transform: `rotate(-90 ${river.label.x} ${river.label.y})` });
 
   // what stays readable however far out: the districts' names, and N ▲ in the corner
@@ -192,6 +200,32 @@ export function townPlan(svg, index, spec, pick, opts = {}) {
       }
     },
   };
+}
+
+/**
+ * A way out onto another area: the road running on from its room, Earth between dashed Stone
+ * edges, solid for a third of the way and then fading out. With `edges`, its edges (drawn under
+ * the open ground, as a street's are); else its Earth, which starts a little inside the room so
+ * the room's own edge doesn't cross it. The fades are gradients along it, named by its room and
+ * way so the drawing is the same each time.
+ */
+function wayOut(g, o, edges) {
+  const [dx, dy] = [o.x2 - o.x1, o.y2 - o.y1];
+  const len = Math.hypot(dx, dy) || 1;
+  const [ux, uy] = [dx / len, dy / len];
+  const id = `way-out-${o.a}-${o.dir}-${edges ? "edge" : "earth"}`.replace(/[^\w-]/g, "-");
+  const grad = el("linearGradient", { id, gradientUnits: "userSpaceOnUse", x1: o.x1, y1: o.y1, x2: o.x2, y2: o.y2 }, el("defs", {}, g));
+  const colour = edges ? STONE : EARTH;
+  for (const [offset, opacity] of [[0, 1], [0.35, 1], [1, 0]]) el("stop", { offset, "stop-color": colour, "stop-opacity": opacity }, grad);
+  if (!edges) {
+    el("line", { x1: o.x1 - ux * 2, y1: o.y1 - uy * 2, x2: o.x2, y2: o.y2, stroke: `url(#${id})`, "stroke-width": o.width, ...NONE }, g);
+    return;
+  }
+  const side = o.width / 2 + 1;
+  for (const s of [-side, side]) {
+    const [ox, oy] = [-uy * s, ux * s];
+    el("line", { x1: o.x1 + ox, y1: o.y1 + oy, x2: o.x2 + ox, y2: o.y2 + oy, stroke: `url(#${id})`, "stroke-width": 2, ...DASH, ...NONE }, g);
+  }
 }
 
 /** A transparent copy of a room's lit shape, for its tooltip (and, with pick, picking). */

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 // Zennor as generated on the day the town moved to generated data, frozen so a sync can't move it.
 import generated from "../../tests/fixtures/generated/zennor.js";
 import { townData, townSpec } from "./look.js";
-import { CELL, STEP, exitTo, indexTown, locateTown, placeRooms, townFrame, townInfo, townLayout, townShape } from "./town.js";
+import { CELL, OUT_LEN, STEP, STREET, exitTo, indexTown, locateTown, placeRooms, townFrame, townInfo, townLayout, townShape } from "./town.js";
 
 const zennor = townData(generated);
 const spec = townSpec(generated);
@@ -290,6 +290,60 @@ describe("townLayout", () => {
     expect(bounds.x0).toBeLessThan(Math.min(...layout.river.points.map((p) => p[0])) - 18);
     expect(extent.w).toBe(bounds.x1 - bounds.x0);
     expect(home).toEqual([(bounds.x0 + bounds.x1) / 2, (bounds.y0 + bounds.y1) / 2]);
+  });
+});
+
+describe("ways out onto the land", () => {
+  // the fixture, with Zennor's three ways onto Tamsin as build:data gives them since empyreal b6728d0
+  const land = (name) => ({ to: `surface.tamsin.join.${name}`, via: "route", area: "surface.tamsin", areaName: "Tamsin" });
+  const WAYS = { "port-road": ["east", land("downs")], "carn-bridge": ["west", land("carn-bridge")], "terrace-road": ["southeast", land("terrace-road")] };
+  const withWays = (ways = WAYS) => {
+    const data = structuredClone(generated);
+    for (const [id, [dir, e]] of Object.entries(ways)) data.rooms.find((r) => r.id === `zennor.${id}`).exits[dir] = e;
+    const idx = indexTown(townData(data), spec);
+    return townLayout(idx, spec);
+  };
+  const out = withWays();
+  const way = (id) => out.outs.find((o) => o.a === `zennor.${id}`);
+
+  it("runs each on from its room's edge its compass way, named only by the area", () => {
+    expect(out.outs.map((o) => [o.a, o.dir, o.name, o.title])).toEqual([
+      ["zennor.port-road", "east", "Tamsin", "Out onto the land of Tamsin"],
+      ["zennor.carn-bridge", "west", "Tamsin", "Out onto the land of Tamsin"],
+      ["zennor.terrace-road", "southeast", "Tamsin", "Out onto the land of Tamsin"],
+    ].sort((a, b) => out.outs.findIndex((o) => o.a === a[0]) - out.outs.findIndex((o) => o.a === b[0])));
+    // never the place past the edge
+    expect(JSON.stringify(out.outs)).not.toMatch(/join|downs/);
+    const p = way("port-road");
+    const b = out.byId.get("zennor.port-road");
+    expect(p).toMatchObject({ x1: b.cx + STREET / 2, y1: b.cy, x2: b.cx + STREET / 2 + OUT_LEN, y2: b.cy, width: STREET, label: { anchor: "start" } });
+    expect(way("carn-bridge").x2).toBeLessThan(way("carn-bridge").x1);
+    expect(way("carn-bridge").label.anchor).toBe("end");
+    const t = way("terrace-road");
+    expect(t.x2 - t.x1).toBeCloseTo(OUT_LEN / Math.SQRT2);
+    expect(t.y2 - t.y1).toBeCloseTo(OUT_LEN / Math.SQRT2); // south is down
+    expect(t.label.anchor).toBe("start");
+  });
+
+  it("counts as a way for the street's name and the districts' names, and is in the frame", () => {
+    const at = (id) => out.labels.find((l) => l.room.id === `zennor.${id}`);
+    // the Port Road has a way every side, so its name goes over its way out east, off the road
+    expect(at("port-road").y).toBeLessThan(way("port-road").y1 - STREET / 2);
+    expect(at("carn-bridge").anchor).not.toBe("end");
+    for (const o of out.outs) {
+      for (const d of out.districts) expect(Math.hypot(d.label.x - o.x2, d.label.y - o.y2), `${d.id} by ${o.a}`).toBeGreaterThan(40);
+      expect(o.x2).toBeGreaterThan(out.bounds.x0);
+      expect(o.x2).toBeLessThan(out.bounds.x1);
+      expect(o.y2).toBeLessThan(out.bounds.y1);
+    }
+  });
+
+  it("draws none without the area's name, or to a room on the plan, or by a way with no compass", () => {
+    const bare = withWays({ "port-road": ["east", { to: "surface.tamsin.join.downs", via: "route" }], "carn-bridge": ["west", "surface.tamsin.join.carn-bridge"] });
+    expect(bare.outs).toEqual([]);
+    const odd = withWays({ "port-road": ["in", land("downs")], "carn-bridge": ["west", { to: "zennor.mill-lane", areaName: "Tamsin" }] });
+    expect(odd.outs).toEqual([]);
+    expect(layout.outs).toEqual([]);
   });
 });
 
