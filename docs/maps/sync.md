@@ -96,6 +96,12 @@ outline (km east and north of it) and each road end's spot and Zennor room
 (`joins`). Nothing else of land.yaml is written: its heights, valleys and
 tracks would show land the player hasn't walked. The land map draws Zennor's
 block and roads from it.
+When the game check in `ui/lib/land-kinds.test.js` ("the game's titles")
+fails, the game has a new place title: put it in a ground group in
+`ui/lib/land-kinds.js`'s table, and tell John if none fits. Also look in
+`content/game/land.yaml` for land on a new world: its area,
+`surface.<world>`, maps with no change, and the build adds its `town` and
+`joins` to `ui/data/land.js` (see [land.md](land.md)).
 An exit onto a world's generated land, `surface.<body>…`, gets the area it
 leads into and its name, `area: "surface.<body>"` and `areaName` the body's
 name from `system.yaml`, as the game's mudstd.room.info has them (empyreal

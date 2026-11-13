@@ -15,6 +15,10 @@
 // shows; the overview is left as it is.
 // Until the game says where you are, both bands show an unknown location (unknown-view.js), and no
 // station is built till one is picked.
+// Out on generated land (an area "surface.<world>"), the bands are the walked land's: Tamsin from
+// above (land-globe.js) and the board of the places you've walked (land-deck.js), built on the first
+// land location. The walked places are kept in a LandStore, fed "land-room" frames and the saved map
+// ("land-load"), and posted back debounced ("land-save") for the Lua side to keep per character.
 
 import { CornerCard } from "./corner-card.js";
 import { clearanceCard } from "./lib/clearance.js";
@@ -27,6 +31,12 @@ import { LanesView } from "./lanes-view.js";
 import { carInfo, carKind, carName, stopNames } from "./lib/cars.js";
 import { isShipRoom, planFor, shipInfo } from "./lib/ships.js";
 import { infoLine, locate } from "./lib/locate.js";
+import { landShown, landWorld } from "./lib/land-choose.js";
+import { LandStore } from "./lib/land-store.js";
+import land from "./data/land.js";
+import sky from "./data/sky.js";
+import { LandDeck } from "./land-deck.js";
+import { LandGlobe } from "./land-globe.js";
 import { moveCard } from "./lib/space.js";
 import { noPlanLine, pickStation, stationOfDock } from "./lib/stations.js";
 import { SpaceView } from "./space-view.js";
@@ -215,7 +225,63 @@ function carView(kind) {
   return cars[kind];
 }
 
+// The walked land: one store, and its board and globe once a land location has come.
+const landStore = new LandStore();
+let landViews = null; // { deck, globe }, built on the first land location
+const LAND_SAVE_MS = 1000; // as the automapper's
+let landSaveTimer = 0;
+
+landStore.onChange(() => {
+  clearTimeout(landSaveTimer);
+  landSaveTimer = setTimeout(() => {
+    landSaveTimer = 0;
+    if (landStore.who === null) return; // no character yet: the map waits for land-load
+    panel.post("land-save", { who: landStore.who, record: landStore.record() });
+  }, LAND_SAVE_MS);
+});
+
+/** The land's board and globe, built on first use, for the land of area `surface.<body>`. */
+function landBuilt(area) {
+  if (!landViews) {
+    const deck = new LandDeck(deckEl, landWorld(area, land));
+    const globe = new LandGlobe(modelEl, { latitude: sky.zennor.latitude });
+    deck.show(false);
+    globe.show(false);
+    deck.onNote((id, text) => {
+      landStore.setNote(id, text);
+      deck.draw(landStore);
+    });
+    deck.onForget(() => {
+      landStore.forget();
+      deck.draw(landStore);
+    });
+    deck.draw(landStore);
+    landViews = { deck, globe };
+  }
+  return landViews;
+}
+
+/** Show the land's views, or hide them (there are none till the first land location). */
+function showLand(on) {
+  landViews?.deck.show(on);
+  landViews?.globe.show(on);
+}
+
 function render() {
+  if (landShown(last)) {
+    show(undefined);
+    showDeck(null);
+    if (unknown) {
+      unknown.remove();
+      unknown = null;
+    }
+    landBuilt(last.area);
+    showLand(true);
+    runShip();
+    info.textContent = last.name ?? "";
+    return;
+  }
+  showLand(false);
   show(pickStation(last, docked ?? approaching, current));
   if (unknown && (current !== undefined || last)) {
     unknown.remove(); // placed, or a location came that places you on no station: it never shows again
@@ -354,6 +420,22 @@ panel.on("location", (msg) => {
   last = msg;
   render();
   runSky();
+});
+
+// A frame of the walked land, after its location: on the board and the globe.
+panel.on("land-room", (msg) => {
+  if (!landStore.ingest(msg)) return;
+  if (!landViews) return; // drawn from the store once the land is built
+  landViews.deck.draw(landStore);
+  landViews.deck.follow();
+  landViews.globe.set(msg.coords);
+});
+
+// The character's saved map, when she becomes known: merged with what she's walked meanwhile.
+panel.on("land-load", (msg) => {
+  if (typeof msg?.who !== "string") return;
+  landStore.load(msg?.who, msg?.record);
+  landViews?.deck.draw(landStore);
 });
 
 info.textContent = UNKNOWN_LINE;
