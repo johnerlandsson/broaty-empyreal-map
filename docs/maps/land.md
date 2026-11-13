@@ -49,11 +49,18 @@ octagon, so a reload gives the same board). Routes run on a copy of the Mallard 
 and route finder in `ui/lib/automap/` (see its README for the commit and our changes).
 
 The panel posts the store's record as `land-save` `{ who, record }`, debounced 1 s, and never while
-no character is known. The Lua side writes it under `land:<character>` in Mallard's storage, only
-when `who` is the character she is now, so a late save from the one before is dropped. When the
-character becomes known, and when the panel opens, Lua sends it back as `land-load`; places walked
-before that (a room frame can come before `Char.Status`) are merged in, the newer winning. A
-missing or bad stored value loads as an empty map.
+no character is known; the waiting save is also flushed when the panel is hidden or closed. The Lua
+side writes it under `land:<who>` in Mallard's storage, for whichever character it's sent for (the
+panel only ever sends a character's own map).
+
+Lua keeps whose map the panel has (`land_who`, apart from the lanes' character). When `Char.Status`
+names someone else, or anyone at all after a disconnect, Lua sends her map as `land-load`
+`{ who, record }`, then the last land frame again: on login the room frame comes before the status,
+so it was walked into no one's map. The panel first saves the one before's waiting change under her
+name, then loads; places walked while no one's map was loaded are merged in, the newer winning. A
+disconnect sends `land-load` with no `who`: the panel saves what's waiting and clears the map, its
+notes and where you are. When the panel opens, Lua replays the map's `land-load` and the last frame.
+A missing or bad stored value loads as an empty map.
 
 ## Drawing the board
 

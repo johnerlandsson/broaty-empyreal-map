@@ -20,7 +20,7 @@
 // land location. The walked places are kept in a LandStore, fed "land-room" frames and the saved map
 // ("land-load"), and posted back debounced ("land-save") for the Lua side to keep per character.
 
-import { landSaver } from "./lib/land-save.js";
+import { landLoad, landSaver } from "./lib/land-save.js";
 import { CornerCard } from "./corner-card.js";
 import { clearanceCard } from "./lib/clearance.js";
 import { BeltView } from "./belt-view.js";
@@ -232,8 +232,11 @@ let landViews = null; // { deck, globe }, built on the first land location
 const landSaver_ = landSaver(landStore, (who, record) => panel.post("land-save", { who, record }), 1000); // as the automapper's
 
 landStore.onChange(() => landSaver_.soon());
-// A panel closed within the debounce would lose the last change.
+// A panel closed or hidden within the debounce would lose the last change.
 addEventListener("pagehide", () => landSaver_.flush());
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) landSaver_.flush();
+});
 
 /** The land's board and globe, built on first use, for the land of area `surface.<body>`. */
 function landBuilt(area) {
@@ -428,10 +431,10 @@ panel.on("land-room", (msg) => {
   landViews.globe.set(msg.coords);
 });
 
-// The character's saved map, when she becomes known: merged with what she's walked meanwhile.
+// The character's saved map, when she becomes known: merged with what she's walked meanwhile. No one
+// (a disconnect) clears it; either way the one before's waiting change is saved under her name first.
 panel.on("land-load", (msg) => {
-  if (typeof msg?.who !== "string") return;
-  landStore.load(msg?.who, msg?.record);
+  if (!landLoad(landStore, landSaver_, msg)) return;
   landViews?.deck.draw(landStore);
 });
 

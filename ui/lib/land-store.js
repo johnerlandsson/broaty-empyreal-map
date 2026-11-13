@@ -148,6 +148,14 @@ export class LandStore {
     this._changed();
   }
 
+  /** No one's map: every place, its notes, where you are and whose it was. */
+  clear() {
+    this.who = null;
+    this.here = null;
+    this._places = new Map();
+    this._changed();
+  }
+
   forget() {
     const here = this.here && this._places.get(this.here);
     this._places = new Map();

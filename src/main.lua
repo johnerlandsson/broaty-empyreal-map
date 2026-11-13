@@ -34,6 +34,9 @@ local course = K.new()
 local belt = B.new()
 local notes = F.new()
 local last_land = nil -- the last land-room posted, for a panel that mounts later
+-- Whose walked land the panel has: set by Char.Status, nil before it and again after a disconnect, so the
+-- first status after a login loads her map even when she's the same character as before.
+local land_who = nil
 
 -- storage is per plugin and world, but charts are per character, so the lanes' sightings are kept under
 -- `lanes:<name>`, loaded when Char.Status names her. `lanes` alone is the old record, before charts were per
@@ -76,6 +79,15 @@ end
 
 local function post_land_load(who)
   panel:post('land-load', { who = who, record = stored_land(who) })
+end
+
+-- Her map, when the status names someone the panel's map isn't for; then the frame she's in again, which
+-- came before the status on login (and was walked into the map before it was hers).
+local function land_status(who)
+  if not who or who == land_who then return end
+  land_who = who
+  post_land_load(who)
+  if last_land then panel:post('land-room', last_land) end
 end
 
 local function save_belts()
@@ -268,8 +280,8 @@ local function char_status(data)
     local was, record = N.become(lanes, who, stored_lanes(who), os.time())
     store_lanes(was, record)
     changed = true
-    post_land_load(who)
   end
+  land_status(who)
   -- Whether her account can be reached here, once the status above is hers.
   if N.char_status(lanes, data, os.time()) then changed = true end
   if changed then
@@ -332,7 +344,10 @@ for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle
 end
 
 world.on('disconnect', function()
+  -- No one's map: the panel saves what's waiting and clears it (only if it has had a map or a frame).
+  if land_who or last_land then panel:post('land-load', { who = nil }) end
   last_land = nil
+  land_who = nil
   F.reset(notes)
   L.reset(state)
   post_location()
@@ -373,16 +388,16 @@ panel:on_message('ready', function()
   if B.on(belt) then post_belt_on() end
   if next(W.message(work)) then post_work() end
   if K.message(course).course then post_course() end
-  if N.who(lanes) then post_land_load(N.who(lanes)) end
+  if land_who then post_land_load(land_who) end
   if last_land then panel:post('land-room', last_land) end
 end)
 
--- Only the character she is now has her map written: a late save from the one before is dropped.
+-- A map is written under the name it's sent for: the panel only sends a character's own, and the one
+-- before's last change is flushed under hers as the next one's map loads.
 panel:on_message('land-save', function(data)
   if type(data) ~= 'table' or type(data.record) ~= 'table' then return end
-  local who = N.who(lanes)
-  if not who or data.who ~= who then return end
-  if storage then pcall(storage.set, 'land:' .. who, data.record) end
+  if type(data.who) ~= 'string' or data.who == '' then return end
+  if storage then pcall(storage.set, 'land:' .. data.who, data.record) end
 end)
 
 panel:on_message('chart', function(data)

@@ -498,15 +498,19 @@ test('naming a character posts her land-load', function()
   eq(post_named(env, 'land-load').data, { who = 'ada', record = { places = {} } })
 end)
 
-test('land-save writes under her name only while she is the current one', function()
+-- The panel only ever sends a character's own record, so a late flush for the one before lands under her name.
+test('land-save writes under the name it is sent for', function()
   local env = boot()
   login(env, 'Ada')
   env.panel_handlers['land-save']({ who = 'ada', record = { n = 1 } })
   eq(env.stored['land:ada'], { n = 1 })
   env.panel_handlers['land-save']({ who = 'bea', record = { n = 2 } })
-  eq(env.stored['land:bea'], nil)
+  eq(env.stored['land:bea'], { n = 2 })
   env.panel_handlers['land-save']({ who = 'ada', record = 'junk' })
   eq(env.stored['land:ada'], { n = 1 })
+  env.panel_handlers['land-save']({ who = '', record = { n = 3 } })
+  eq(env.stored['land:'], nil)
+  env.panel_handlers['land-save']({ record = { n = 3 } })
   env.panel_handlers['land-save']('junk')
 end)
 
@@ -520,7 +524,44 @@ test('ready replays land-load, then the last land-room; disconnect drops it', fu
   env.world_handlers.disconnect()
   env.posts = {}
   env.panel_handlers.ready({})
-  eq(names(env), { 'settings', 'land-load' })
+  eq(names(env), { 'settings' }) -- no one's until the next status names her
+end)
+
+test('disconnect posts land-load with no one', function()
+  local env = boot()
+  login(env, 'Ada')
+  env.posts = {}
+  env.world_handlers.disconnect()
+  local p = post_named(env, 'land-load')
+  eq(p ~= nil, true)
+  eq(p.data.who, nil)
+  eq(p.data.record, nil)
+end)
+
+test('after a disconnect, a status for the same name posts her land-load again', function()
+  local env = boot({ stored = { ['land:ada'] = { n = 1 } } })
+  login(env, 'Ada')
+  env.world_handlers.disconnect()
+  env.posts = {}
+  login(env, 'Ada')
+  eq(post_named(env, 'land-load').data, { who = 'ada', record = { n = 1 } })
+  env.posts = {}
+  login(env, 'Ada') -- the same name again, still connected, posts nothing
+  eq(post_named(env, 'land-load'), nil)
+end)
+
+-- The room frame comes before the status on login: it's posted again once her map is loaded.
+test('a status naming her posts land-room again after her land-load', function()
+  local env = boot({ stored = { ['land:ada'] = { n = 1 } } })
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', LAND)
+  env.posts = {}
+  login(env, 'Ada')
+  local order = {}
+  for _, n in ipairs(names(env)) do
+    if n == 'land-load' or n == 'land-room' then order[#order + 1] = n end
+  end
+  eq(order, { 'land-load', 'land-room' })
+  eq(post_named(env, 'land-room').data.id, LAND.id)
 end)
 
 test('unreadable storage still posts land-load, with no record', function()
