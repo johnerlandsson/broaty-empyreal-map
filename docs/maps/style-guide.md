@@ -21,6 +21,7 @@ rules on rooms and compartments (§7) are new, written for the ship plans.
 | Decks station models and plans (Orrin Station and the thirteen halts) | top, bottom | you're on that station, or your ship is docked there | [decks-stations.md](decks-stations.md) |
 | Town sky and plan (Zennor) | top, bottom | you're in the city, or your ship is landed there | [town.md](town.md) |
 | City of levels, a plan a level (Dolcoath) | top, bottom | you're in the city, or your ship is landed there | [dolcoath.md](dolcoath.md) |
+| The walked land (Tamsin round Zennor) | top, bottom | you're out on Tamsin's land, past Zennor's edge (an area starting `surface.`) | [land.md](land.md) |
 | Space scenes | top | you're out in a ship you own or crew, undocked | [space-scenes.md](space-scenes.md) |
 | Ship plans | bottom | you're aboard any ship, docked or not | [ship-plans.md](ship-plans.md) |
 | Cars (a lift, the tram) | bottom | you're riding one | [cars.md](cars.md) |
@@ -114,6 +115,28 @@ On a town's plan (the ground, not a deck; see town.md):
 | Water | `#22384c`, its dashed middle `#2e4a63` | a river (the Carn) |
 | District wash | a district's colour (§4.4) at .085 | the ground under each district's rooms, so the districts read as areas |
 | Glass | `#cfe3ff` (§4.3) at .75 | the tram's line through its stops, and a faint inner edge on each stop's box |
+
+On the land's map (the board of octagons; see land.md). Ground, Earth, Stone,
+Dim and Fixture line are as above; the octagons' grounds and their textures are
+its own. A texture is an SVG pattern in screen pixels, so it's the same size at
+any zoom.
+
+| Name | Value | Used for |
+|---|---|---|
+| Zennor's block | `#16120f` | Zennor's ground on the land's map, under its dashed Stone edge and "ZENNOR" |
+| Corner square | `#1a1511` | the small square where four octagons meet, drawn under a diagonal way, with a Stone edge |
+| open | `#261f18` | open ground (Open Ground, On the Downs); no texture |
+| road | `#332b22` (Earth) | a road end out of Zennor; no texture |
+| waymark | `#2f2820`; ticks `#b3a58f` at .55 | a cairn or marker stone: short upright ticks |
+| high | `#3b3722`; chevrons `#c8b97e` at .55 | high ground (Hilltop, Summit, Knoll, Saddle, Low Pass, Ice Dome): ▲ chevrons |
+| slope | `#33291c`; slants `#a8977c` at .45 | a slope (Rising Ground, Hillside, Stony Slope): diagonal slants |
+| low | `#1f2619`; chevrons `#7f9c68` at .6 | low ground (Hollow, Head of a Gully): ▼ chevrons |
+| rock | `#34363a`; stones `#a4a4a8` at .55 | rock (Rock Outcrop, Bare Rock, Stony Ground, Crater Rim): scattered small stones |
+| dust | `#4a3a22`; dots `#c9a36a` at .5 and .35 | dust (Drifted Dust, Dust Plain): fine dots |
+| workings | `#4a2a1e`; heaps `#c07a5c` at .7 | old workings (Old Workings, Old Shaft, Fallen Adit): small spoil heaps |
+| water | `#1f3a52`; ripples `#5b86ad` at .75 | water (Pond, River Bank, Spring, Beach): ripples |
+| salt | `#4c4a42`; squares `#cfc9b9` at .45 | the Salt Pans: small squares |
+| ice | `#5a6878`; lines `#dbe9ff` at .45 | ice (Ice Field, Ice Slope, Frozen Shore): fine diagonal lines |
 
 ### 4.3 Models and scenes
 
