@@ -166,6 +166,8 @@ export class LandDeck {
     this.trackEdges?.setAttribute("stroke-dasharray", `${px(4)} ${px(3)}`);
     this.stubs?.setAttribute("stroke-width", px(1.6));
     this.stubs?.setAttribute("stroke-dasharray", `${px(0.1)} ${px(3.4)}`);
+    // Zennor's edge is dashed, so it's all in km (no non-scaling-stroke: its dashes would be in px)
+    this.edge?.setAttribute("stroke-width", px(1));
     this.edge?.setAttribute("stroke-dasharray", `${px(4)} ${px(3)}`);
     for (const { node, x, y, angle } of this.fixed ?? []) {
       node.setAttribute("transform", `translate(${f(x)} ${f(y)})${angle ? ` rotate(${f(angle)})` : ""} scale(${px(1)})`);
@@ -206,7 +208,7 @@ export class LandDeck {
     const town = L.zennor.outline;
     if (town.length) {
       const zg = g({});
-      this.edge = el("polygon", { points: town.map((p) => `${f(p.x)},${f(p.y)}`).join(" "), fill: ZENNOR, stroke: STONE, "stroke-width": 1, "vector-effect": "non-scaling-stroke" }, zg);
+      this.edge = el("polygon", { points: town.map((p) => `${f(p.x)},${f(p.y)}`).join(" "), fill: ZENNOR, stroke: STONE, "data-zennor": "" }, zg);
       const xs = town.map((p) => p.x), ys = town.map((p) => p.y);
       const name = this.pinned(zg, (Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2);
       label(name, 0, 0, "ZENNOR", 12, { fill: DIM, "letter-spacing": 1.5 });

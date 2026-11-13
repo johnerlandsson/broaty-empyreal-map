@@ -86,6 +86,24 @@ describe("LandDeck.draw", () => {
     expect(names).toContain("ZENNOR");
   });
 
+  it("dashes Zennor's edge 4/3 px over a 1 px line, all in km so the dashes scale with it", () => {
+    const deck = make();
+    deck.draw(walk());
+    deck.rescale(20);
+    const edge = deck.svg.querySelector("[data-zennor]");
+    expect(edge.getAttribute("vector-effect")).toBe(null);
+    expect(+edge.getAttribute("stroke-width")).toBeCloseTo(1 / 20, 6);
+    expect(edge.getAttribute("stroke-dasharray").split(" ").map(Number)).toEqual([4 / 20, 3 / 20]);
+  });
+
+  it("never pairs non-scaling-stroke with a dash", () => {
+    const deck = make();
+    deck.draw(walk());
+    for (const n of deck.svg.querySelectorAll("[vector-effect]")) {
+      for (let p = n; p && p !== deck.svg; p = p.parentNode) expect(p.getAttribute("stroke-dasharray")).toBe(null);
+    }
+  });
+
   it("has N ▲ and the zoom buttons as chrome", () => {
     const deck = make();
     expect(deck.div.querySelector(".north").textContent).toBe("N ▲");
