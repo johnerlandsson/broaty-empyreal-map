@@ -5,6 +5,7 @@
 //               the mockup's own WALK
 //   ?cx=&cy=&k= centre the view on (cx, cy) km, north-up, at k px a km (the mockup's: 8.4, -2.6, 24);
 //               without them, home(): on you at 26 px a km
+//   ?target=NAME light the route to the first place with that name (or id), as a click does
 //   ?note=NAME  put a note on the first place with that name (default: the mockup's, the Old Shaft
 //               on the Terrace Track)
 
@@ -52,5 +53,14 @@ if (q.has("k")) {
   deck.measure();
   deck.centre(+q.get("cx"), -q.get("cy"), +q.get("k"));
 } else deck.home();
+deck.onNote((id, text) => {
+  store.setNote(id, text);
+  deck.draw(store);
+});
+deck.onForget(() => {
+  store.forget();
+  deck.draw(store);
+});
+if (q.get("target")) deck.setTarget(store.places().find((p) => p.name === q.get("target") || p.id === q.get("target"))?.id ?? null);
 window.deck = deck;
 document.body.dataset.ready = "1";

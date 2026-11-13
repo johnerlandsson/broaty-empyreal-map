@@ -245,6 +245,56 @@ body {
 .sweep-card .item { display: flex; gap: 6px; align-items: center; white-space: nowrap; color: #c3ccd8; font-size: 10px; line-height: 14px; }
 .sweep-card .cls { margin-left: auto; padding-left: 12px; color: #7d8a9a; font-size: 9px; }
 
+/* The walked land's cards (ui/land-deck.js), the sweep card's look: the place you clicked with its
+ * steps, or its note being written, beside its octagon; the right-click menu and the one confirm for
+ * forgetting the land; and "← Zennor" on the view's edge toward it. */
+.land-card, .land-menu, .land-confirm, .land-edge {
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  border-radius: 4px;
+  background: rgba(14, 19, 26, .92);
+  border: 1px solid #2b3646;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .65);
+  font: 400 12px Inter, system-ui, sans-serif;
+  color: #e3eaf2;
+  cursor: default;
+}
+.land-card { width: 160px; padding: 4px 8px 5px; pointer-events: none; }
+.land-card.note { width: 190px; pointer-events: auto; }
+.land-card .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.land-card .detail { margin-top: 1px; font-size: 10.5px; color: #7d8a9a; }
+.land-card input, .land-confirm button, .land-menu button, .land-edge {
+  font: inherit;
+  color: inherit;
+}
+.land-card input {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 4px;
+  padding: 2px 4px;
+  border: 1px solid #2b3646;
+  border-radius: 3px;
+  background: #0e131a;
+  font-size: 11px;
+}
+.land-menu { display: flex; flex-direction: column; padding: 3px; }
+.land-menu button, .land-confirm button {
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.land-menu button:hover, .land-confirm button:hover { background: #2b3646; }
+.land-confirm { width: 190px; padding: 6px 8px; }
+.land-confirm .detail { margin-top: 2px; font-size: 10.5px; color: #7d8a9a; }
+.land-confirm .buttons { display: flex; justify-content: flex-end; gap: 4px; margin-top: 6px; }
+.land-edge { padding: 3px 8px; font-size: 11px; white-space: nowrap; cursor: pointer; }
+.land-edge:hover { background: #2b3646; }
+
 /* The plan's legend (legend.js): a sheet over the plan, the symbols in columns, closed by any click. */
 .plan-legend {
   position: absolute;
