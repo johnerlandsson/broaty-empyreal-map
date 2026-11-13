@@ -61,13 +61,25 @@ describe("octagon and faceMid", () => {
 });
 
 describe("layoutLand", () => {
-  it("gives a block of nine 20 ways, each a straight line from middle to middle", () => {
+  it("gives a block of nine 20 ways, each square out of both faces its exits name and straight between", () => {
     const out = layoutLand(nine(), world);
     expect(out.ways).toHaveLength(20);
     expect(out.ways.every((w) => !w.oneWay && !w.chevron && w.track === null)).toBe(true);
     for (const w of out.ways) {
       const A = out.spots.get(w.a), B = out.spots.get(w.b);
-      expect(w.path).toBe(`M${A.x},${-A.y || 0} L${B.x},${-B.y || 0}`);
+      // places 1.2 apart: the faces are 0.24 apart (0.24 * √2 corner to corner), so each end is a third of that
+      expect(w.points).toHaveLength(6);
+      expect(w.points[0]).toEqual({ x: A.x, y: -A.y || 0 });
+      expect(w.points[5]).toEqual({ x: B.x, y: -B.y || 0 });
+      const dx = Math.sign(B.x - A.x), dy = Math.sign(B.y - A.y), u = Math.hypot(dx, dy);
+      const [f1, e1, e2, f2] = w.points.slice(1, 5);
+      expect(f1.x).toBeCloseTo(A.x + (dx / u) * (OCT / 2));
+      expect(-f1.y).toBeCloseTo(A.y + (dy / u) * (OCT / 2));
+      const gap = 1.2 * Math.hypot(dx, dy) - OCT;
+      expect(Math.hypot(e1.x - f1.x, e1.y - f1.y)).toBeCloseTo(gap / 3);
+      expect(Math.hypot(e2.x - f2.x, e2.y - f2.y)).toBeCloseTo(gap / 3);
+      expect(w.path.startsWith(`M${+f1.x.toFixed(4)},`)).toBe(true); // a plain way starts at the face
+      expect(w.path.split(" L")).toHaveLength(4);
     }
     expect(out.stubs).toEqual([]);
     expect(out.spots.get(nid(1, 1))).toEqual({ x: 1.2, y: 1.2 });
@@ -82,7 +94,16 @@ describe("layoutLand", () => {
     expect(out.spots.get(b.id)).toEqual({ x: -0.8, y: -1.2 });
     expect(out.ways).toHaveLength(1);
     const [w] = out.ways;
-    expect(w).toMatchObject({ a: a.id, b: b.id, oneWay: false, path: "M0,0 L-0.8,1.2" });
+    expect(w).toMatchObject({ a: a.id, b: b.id, oneWay: false });
+    // out of a's southwest face and into b's northeast face, square out of each: the faces are only
+    // about 0.54 apart, so each end is a third of that, not the full 0.3
+    const [, f1, e1, e2, f2] = w.points;
+    const h = OCT / 2 / Math.SQRT2, s = Math.hypot(f2.x - f1.x, f2.y - f1.y) / 3 / Math.SQRT2;
+    expect(s * Math.SQRT2).toBeLessThan(0.3);
+    expect(f1.x).toBeCloseTo(-h); expect(f1.y).toBeCloseTo(h);
+    expect(e1.x).toBeCloseTo(-h - s); expect(e1.y).toBeCloseTo(h + s);
+    expect(f2.x).toBeCloseTo(-0.8 + h); expect(f2.y).toBeCloseTo(1.2 - h);
+    expect(e2.x).toBeCloseTo(-0.8 + h + s); expect(e2.y).toBeCloseTo(1.2 - h - s);
     expect(faceLeft(out.spots.get(a.id), out.spots.get(b.id))).toBe("sw");
     expect(faceLeft(out.spots.get(b.id), out.spots.get(a.id))).toBe("ne");
   });
@@ -100,6 +121,12 @@ describe("layoutLand", () => {
     const out = layoutLand([mid, ...ring], world);
     expect(out.ways).toHaveLength(8);
     for (const [d, e] of Object.entries(mid.exits)) expect(faceLeft(out.spots.get(mid.id), out.spots.get(e.to))).toBe(d);
+    // 2.2 km apart: room for the full 0.3 square out of each face
+    for (const w of out.ways) {
+      const [, f1, e1, e2, f2] = w.points;
+      expect(Math.hypot(e1.x - f1.x, e1.y - f1.y)).toBeCloseTo(0.3);
+      expect(Math.hypot(e2.x - f2.x, e2.y - f2.y)).toBeCloseTo(0.3);
+    }
   });
 
   it("lays a walk out the same after a reload", () => {
@@ -114,7 +141,7 @@ describe("layoutLand", () => {
     expect(first.spots.get(b.id)).toEqual({ x: 1.2, y: 1.2 });
   });
 
-  it("marks a way with no exit back one-way, a to b, with a chevron at its middle", () => {
+  it("marks a way with no exit back one-way, a to b, with a chevron between its end and b's middle", () => {
     const a = place("surface.tamsin.1.1.1", "Rising Ground", 0, 0, { e: { to: "surface.tamsin.1.1.2" } });
     const b = place("surface.tamsin.1.1.2", "Hollow", 1.2, 0);
     // b is walked first, so a's being the place with the exit is what makes it a
@@ -122,7 +149,9 @@ describe("layoutLand", () => {
     expect(out.ways).toHaveLength(1);
     const [w] = out.ways;
     expect(w).toMatchObject({ a: a.id, b: b.id, oneWay: true });
-    expect(w.chevron.x).toBeCloseTo(0.6);
+    // out of a's east face (0.48), a third of the 0.72 to b's middle on to 0.72 (under the full 0.3), then on to 1.2
+    expect(w.points.map((p) => p.x)).toEqual([0, 0.48, 0.72, 1.2].map((x) => expect.closeTo(x)));
+    expect(w.chevron.x).toBeCloseTo(0.96);
     expect(w.chevron.y).toBeCloseTo(0);
     expect(w.chevron.angle).toBeCloseTo(0); // pointing east
   });

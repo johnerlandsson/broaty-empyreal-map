@@ -1,5 +1,5 @@
 // The layout of the walked land's map (docs/maps/land.md): each walked place's octagon at its true
-// spot, the ways between them as straight lines, the dotted stubs of ways not taken, Zennor's block
+// spot, the ways between them (square out of each exit's face, then straight), the dotted stubs of ways not taken, Zennor's block
 // and roads, and the names of regions and tracks. Pure (no DOM).
 //
 // Places sit where the game says they are, so a way's line leaves its octagon by the side the exit
@@ -17,6 +17,8 @@ export const OCT = 0.96;
 const H = OCT / 2; // the apothem: centre to the middle of a face
 const SIDE = OCT / (2 * (1 + Math.SQRT2)); // half a face's length
 const STUB = 0.45;
+/** How far a walked way runs square out of its exit's face before it heads for the other place. */
+const ELBOW = 0.3;
 
 const S = Math.SQRT1_2;
 const UNIT = { n: [0, 1], ne: [S, S], e: [1, 0], se: [S, -S], s: [0, -1], sw: [-S, -S], w: [-1, 0], nw: [-S, S] };
@@ -56,7 +58,14 @@ function trackBetween(p, q) {
   return null;
 }
 
-/** One way per unordered pair of walked places with an exit between them: a straight line, middle to middle. */
+/**
+ * One way per unordered pair of walked places with an exit between them. It leaves each octagon square
+ * to the face its exit names for ELBOW (less where places are close: a third of the gap between the
+ * faces), then runs straight between those two ends, so even in walked country you can see which
+ * side a way leaves by. A one-way way runs from its end straight into the other place's middle.
+ * `points` is the whole line, middle to middle, in the SVG's frame; a plain way's `path` starts and
+ * ends at the faces, a track's runs from middle to middle.
+ */
 function layoutWays(places, spots) {
   const byId = new Map(places.map((p) => [p.id, p]));
   const pairs = new Map();
@@ -72,10 +81,18 @@ function layoutWays(places, spots) {
   for (const [p, q] of pairs.values()) {
     // a is the earlier, unless only the later has an exit: then a is the place you can leave
     const [a, b] = exitTo(p, q.id) ? [p, q] : [q, p];
-    const oneWay = !exitTo(b, a.id);
+    const leave = exitTo(a, b.id), back = exitTo(b, a.id);
+    const oneWay = !back;
     const A = spots.get(a.id), B = spots.get(b.id);
-    const way = { a: a.id, b: b.id, track: trackBetween(a, b), oneWay, path: `M${pt(A)} L${pt(B)}` };
-    if (oneWay) way.chevron = { ...flip(mid(A, B)), angle: angleOf(A, B) };
+    const f1 = faceMid(A, leave), f2 = back ? faceMid(B, back) : B;
+    const len = Math.min(ELBOW, Math.hypot(f2.x - f1.x, f2.y - f1.y) / 3);
+    const e1 = out(f1, leave, len), e2 = back ? out(f2, back, len) : B;
+    const run = oneWay ? [A, f1, e1, B] : [A, f1, e1, e2, f2, B];
+    const track = trackBetween(a, b);
+    const drawn = track || oneWay ? run : run.slice(1, -1);
+    const way = { a: a.id, b: b.id, track, oneWay, points: run.map(flip), path: `M${drawn.map(pt).join(" L")}` };
+    way.mid = { ...flip(mid(e1, e2)), angle: angleOf(e1, e2) };
+    if (oneWay) way.chevron = { ...flip(mid(e1, B)), angle: angleOf(e1, B) };
     ways.push(way);
   }
   return ways;
@@ -147,13 +164,13 @@ export function layoutLand(places, world) {
   for (const w of ways) {
     if (!w.track) continue;
     const A = spots.get(w.a), B = spots.get(w.b), len = Math.hypot(B.x - A.x, B.y - A.y);
-    if (!longest.has(w.track) || len > longest.get(w.track).len) longest.set(w.track, { A, B, len });
+    if (!longest.has(w.track) || len > longest.get(w.track).len) longest.set(w.track, { w, len });
   }
-  for (const [text, { A, B }] of longest) {
-    let angle = angleOf(A, B);
+  for (const [text, { w }] of longest) {
+    let { angle } = w.mid;
     if (angle >= 90) angle -= 180;
     else if (angle < -90) angle += 180;
-    labels.push({ text, kind: "track", ...flip(mid(A, B)), angle });
+    labels.push({ text, kind: "track", x: w.mid.x, y: w.mid.y, angle });
   }
 
   return { spots, ways, stubs, zennor: { outline: town.map(flip), roads }, labels };

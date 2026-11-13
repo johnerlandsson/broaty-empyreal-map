@@ -153,6 +153,12 @@ John picked 2: "running its engine inside our map panel."
     by the side the exit names, so there's nothing to bend. "Drawing the
     board" below describes the first build; `docs/maps/land.md` has the
     layout as built.
+18. **Ways leave square to their face** (2026-11-13, after playing true spots;
+    the longer stubs of `docs/maps/reference/land-stubs-options.png`, no
+    compass letters). Among walked places a line from middle to middle didn't
+    show which side a way left by. Each way now runs 0.3 km square out of the
+    face its exit names (a third of the gap where places are closer), and the
+    two ends are joined by a straight line. The route and tracks follow it.
 
 ## Design
 

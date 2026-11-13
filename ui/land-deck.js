@@ -1,5 +1,5 @@
 // The walked land's map (docs/maps/land.md): Tamsin's land round Zennor in the bottom band, an
-// octagon each walked place where it really is, the ways between them as straight lines, dotted
+// octagon each walked place where it really is, the ways between them out of the faces their exits name, dotted
 // stubs for the ways not taken, and Zennor's block with its roads out. Only what you've stood in is drawn
 // or named. The layout is lib/land-layout.js's; this draws it, rebuilding the board on draw() only
 // when the walked places have changed.
@@ -321,8 +321,8 @@ export class LandDeck {
     const roads = g({ stroke: EARTH, "stroke-width": 0.24, "stroke-linecap": "round" });
     for (const r of L.zennor.roads) el("line", { x1: num(r.x1), y1: num(r.y1), x2: num(r.x2), y2: num(r.y2) }, roads);
 
-    // the plain ways, under the octagons: each a straight line from middle to middle
-    const ways = g({ stroke: EARTH, "stroke-width": 0.13, fill: "none", "stroke-linecap": "round" });
+    // the plain ways, under the octagons: each square out of its exits' faces, then straight
+    const ways = g({ stroke: EARTH, "stroke-width": 0.13, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" });
     for (const w of L.ways) if (!w.track) el("path", { "data-way": "", d: w.path }, ways);
 
     // the octagons: the ground's colour, its texture over it, a Stone edge

@@ -104,7 +104,7 @@ describe("LandDeck.draw", () => {
     expect(deck.svg.querySelector(`[data-place="${A}"]`)).not.toBe(before[0]);
   });
 
-  it("draws a plain way as one straight line under the octagons, and a track over them", () => {
+  it("draws a plain way under the octagons, square out of its exit's face, and a track over them", () => {
     const C = "surface.tamsin.806.856.2000001";
     const store = walk();
     store.ingest({ id: C, name: "Hollow on the Downs", coords: { x: 8.6, y: 3.4, z: 0.41 }, exits: { sw: { id: B, inverse: "ne" } } });
@@ -114,7 +114,8 @@ describe("LandDeck.draw", () => {
     const track = deck.svg.querySelector("[data-track]");
     const oct = deck.svg.querySelector(`[data-place="${B}"]`);
     expect(deck.svg.querySelectorAll("[data-way]")).toHaveLength(1);
-    expect(way.getAttribute("d")).toBe("M8.6,-3.4 L7.4,-1.6"); // straight between the true spots
+    // one-way: from C's middle out of its southwest face, 0.3 on square, then straight into B's middle
+    expect(way.getAttribute("d")).toBe("M8.6,-3.4 L8.2606,-3.0606 L8.0485,-2.8485 L7.4,-1.6");
     expect(way.compareDocumentPosition(oct) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // the octagon's drawn after it
     expect(track.compareDocumentPosition(oct) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy(); // and before the track
     expect(deck.svg.querySelector("polygon:not([data-zennor])")).toBe(null); // no corner squares

@@ -4,7 +4,8 @@
 Tamsin from above in the top band. Last updated 2026-11-13. Design:
 `docs/superpowers/specs/2026-11-13-land-automap-design.md` (decision 17 is this layout); the picked
 looks: `reference/land-picked.png` for the octagons, grounds and tracks, and option B of
-`reference/land-ways-options.png` for where they sit and how the ways run.*
+`reference/land-ways-options.png` for where they sit, and the longer stubs of
+`reference/land-stubs-options.png` for how the ways leave them (decision 18).*
 
 ## What it is and when it shows
 
@@ -82,10 +83,13 @@ A missing or bad stored value loads as an empty map.
 - **Ground.** Each octagon has its group's colour with its texture over it, in screen pixels, so
   the texture is the same size at any zoom. The colours are in the style guide's §4.2 ("On the
   land's map").
-- **Ways.** Every way is one straight Earth line from middle to middle, drawn under the octagons.
-  The game names an exit by the true bearing to where it leads, so the line leaves an octagon by
-  the side you'd type: nothing is bent to fit. A one-way way (down a scree) gets a small
-  Fixture-line chevron at its middle, pointing the way you can go, the same size at any zoom.
+- **Ways.** Every way is an Earth line drawn under the octagons. It leaves each octagon square to
+  the face its exit names for 0.3 km (a third of the gap between the faces where places are
+  closer), then runs straight to the other place's end, so even among walked places you can see
+  which side a way leaves by. The game names an exit by the true bearing, so the straight run
+  hardly turns. A one-way way (down a scree) runs from its end into the other place's middle and
+  gets a small Fixture-line chevron there, pointing the way you can go, the same size at any zoom.
+  The route and a track follow the same line.
 - **Tracks** are drawn as Zennor's roads, over the octagons they run through: an Earth band with a
   dashed Stone edge, named in Dim italic beside the walked track, clear of its octagons. Region
   names sit in Dim italic among their walked places.

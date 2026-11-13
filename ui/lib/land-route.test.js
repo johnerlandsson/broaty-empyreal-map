@@ -11,7 +11,7 @@ const place = (id, x, y, exits = {}) => ({ id, name: "Open Ground", x, y, z: 0.4
 const points = (d) => d.match(/-?[\d.]+,-?[\d.]+/g);
 
 describe("routePath", () => {
-  it("runs through each octagon's middle: three places in a row, three points", () => {
+  it("runs from middle to middle along the ways: three places in a row", () => {
     const places = [
       place("a", 6, 0, { e: { to: "b", back: "w" } }),
       place("b", 7.2, 0, { w: { to: "a", back: "e" }, e: { to: "c", back: "w" } }),
@@ -19,14 +19,19 @@ describe("routePath", () => {
     ];
     const d = routePath(["a", "b", "c"], layoutLand(places, world));
     expect(d.startsWith("M")).toBe(true);
-    expect(points(d)).toEqual(["6,0", "7.2,0", "8.4,0"]);
+    const xs = points(d).map((p) => +p.split(",")[0]);
+    expect(xs[0]).toBe(6);
+    expect(xs).toContain(7.2);
+    expect(xs.at(-1)).toBe(8.4);
+    expect(points(d).every((p) => p.endsWith(",0"))).toBe(true);
+    expect(xs).toEqual([...xs].sort((p, q) => p - q));
   });
 
-  it("runs straight between places that aren't in line, the same either way", () => {
+  it("follows the way's line out of and into the faces its exits name, the same either way", () => {
     const places = [place("a", 6, 0, { e: { to: "b", back: "sw" } }), place("b", 7.6, 0.6, { sw: { to: "a", back: "e" } })];
     const L = layoutLand(places, world);
     const there = routePath(["a", "b"], L);
-    expect(there).toBe("M6,0 L7.6,-0.6");
+    expect(there).toBe(`M6,0 L${L.ways[0].points.slice(1).map((p) => `${+p.x.toFixed(4)},${+p.y.toFixed(4) || 0}`).join(" L")}`);
     expect(points(routePath(["b", "a"], L))).toEqual([...points(there)].reverse());
   });
 });
