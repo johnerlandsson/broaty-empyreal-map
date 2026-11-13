@@ -20,6 +20,7 @@
 // land location. The walked places are kept in a LandStore, fed "land-room" frames and the saved map
 // ("land-load"), and posted back debounced ("land-save") for the Lua side to keep per character.
 
+import { landSaver } from "./lib/land-save.js";
 import { CornerCard } from "./corner-card.js";
 import { clearanceCard } from "./lib/clearance.js";
 import { BeltView } from "./belt-view.js";
@@ -228,17 +229,11 @@ function carView(kind) {
 // The walked land: one store, and its board and globe once a land location has come.
 const landStore = new LandStore();
 let landViews = null; // { deck, globe }, built on the first land location
-const LAND_SAVE_MS = 1000; // as the automapper's
-let landSaveTimer = 0;
+const landSaver_ = landSaver(landStore, (who, record) => panel.post("land-save", { who, record }), 1000); // as the automapper's
 
-landStore.onChange(() => {
-  clearTimeout(landSaveTimer);
-  landSaveTimer = setTimeout(() => {
-    landSaveTimer = 0;
-    if (landStore.who === null) return; // no character yet: the map waits for land-load
-    panel.post("land-save", { who: landStore.who, record: landStore.record() });
-  }, LAND_SAVE_MS);
-});
+landStore.onChange(() => landSaver_.soon());
+// A panel closed within the debounce would lose the last change.
+addEventListener("pagehide", () => landSaver_.flush());
 
 /** The land's board and globe, built on first use, for the land of area `surface.<body>`. */
 function landBuilt(area) {
@@ -249,10 +244,12 @@ function landBuilt(area) {
     globe.show(false);
     deck.onNote((id, text) => {
       landStore.setNote(id, text);
+      landSaver_.now();
       deck.draw(landStore);
     });
     deck.onForget(() => {
       landStore.forget();
+      landSaver_.now();
       deck.draw(landStore);
     });
     deck.draw(landStore);

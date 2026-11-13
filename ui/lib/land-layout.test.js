@@ -144,6 +144,14 @@ describe("layoutLand", () => {
     expect(label.angle).toBeLessThanOrEqual(90);
   });
 
+  it("gives a north-south track's name the same angle whichever way it was walked", () => {
+    const south = place("surface.tamsin.1.1.1", `On ${T}`, 6, 0, { n: { to: "surface.tamsin.1.1.2", back: "s" } });
+    const north = place("surface.tamsin.1.1.2", `Bare Rock on ${T}`, 6, 1.2, { s: { to: south.id, back: "n" } });
+    const angle = (ps) => layoutLand(ps, world).labels.find((l) => l.kind === "track").angle;
+    expect(angle([south, north])).toBe(angle([north, south]));
+    expect(angle([south, north])).toBe(-90);
+  });
+
   it("names a region at the mean of its walked places", () => {
     const a = place("surface.tamsin.1.1.1", "Knoll on the Downs", 2.4, 1.2);
     const out = layoutLand([a], world);

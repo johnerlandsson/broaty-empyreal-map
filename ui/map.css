@@ -260,9 +260,9 @@ body {
   color: #e3eaf2;
   cursor: default;
 }
-.land-card { width: 160px; padding: 4px 8px 5px; pointer-events: none; }
+.land-card { width: auto; min-width: 160px; max-width: 240px; padding: 4px 8px 5px; pointer-events: none; }
 .land-card.note { width: 190px; pointer-events: auto; }
-.land-card .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.land-card .name { overflow-wrap: anywhere; }
 .land-card .detail { margin-top: 1px; font-size: 10.5px; color: #7d8a9a; }
 .land-card input, .land-confirm button, .land-menu button, .land-edge {
   font: inherit;

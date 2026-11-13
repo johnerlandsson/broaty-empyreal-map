@@ -325,3 +325,56 @@ describe("LandDeck: finding your way, notes and forgetting", () => {
     expect(card(deck).textContent).toContain("2 steps the way you know");
   });
 });
+
+describe("LandDeck: the route card and ← Zennor on a road end", () => {
+  const END = "surface.tamsin.join.downs";
+  const LONG = "Old Workings on the Tinners' Track";
+  function walked() {
+    const store = new LandStore();
+    store.ingest({ id: END, name: "The Open Downs", coords: { x: 4.8, y: 1 }, exits: { w: { id: "zennor.port-road", area: "zennor" }, e: { id: A, inverse: "w" } } });
+    store.ingest({ id: A, name: LONG, coords: { x: 6.2, y: 1.2 }, exits: { w: { id: END, inverse: "e" } } });
+    return store;
+  }
+  const press = (node, type) => node.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, buttons: type === "pointerup" ? 0 : 1, clientX: 10, clientY: 10 }));
+
+  it("lets the route card's name wrap whole, and places it by its measured width", () => {
+    const deck = make();
+    deck.div.getBoundingClientRect = () => ({ left: 0, top: 0, width: 520, height: 400, right: 520, bottom: 400 });
+    const store = walked();
+    deck.draw(store);
+    deck.home();
+    store.ingest({ id: B, name: "B", coords: { x: 8, y: 1.2 }, exits: {} });
+    store.here = END;
+    deck.draw(store);
+    const oct = deck.svg.querySelector(`[data-place="${A}"] use`);
+    press(oct, "pointerdown");
+    press(oct, "pointerup");
+    const card = deck.div.querySelector(".land-card");
+    expect(card.querySelector(".name").textContent).toBe(LONG);
+    expect(card.querySelector(".name").style.textOverflow).toBe("");
+    expect(card.querySelector(".name").style.whiteSpace).toBe("");
+    // a wide measured card does not fit on the left, so it goes to the right
+    const left = (w) => {
+      Object.defineProperty(card, "offsetWidth", { value: w, configurable: true });
+      deck.placeCards();
+      return parseInt(card.style.left, 10);
+    };
+    const narrow = left(20), wide = left(5000);
+    expect(narrow).toBeLessThan(wide);
+  });
+
+  it("shows no ← Zennor while you stand on a road end", () => {
+    const deck = make();
+    deck.div.getBoundingClientRect = () => ({ left: 0, top: 0, width: 520, height: 400, right: 520, bottom: 400 });
+    const store = walked();
+    store.here = A;
+    deck.draw(store);
+    deck.home();
+    deck.centre(40, -1.2, 26);
+    expect(deck.div.querySelector(".land-edge")).not.toBe(null);
+    store.here = END;
+    deck.draw(store);
+    deck.centre(40, -1.2, 26);
+    expect(deck.div.querySelector(".land-edge")).toBe(null);
+  });
+});

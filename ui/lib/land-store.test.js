@@ -116,8 +116,21 @@ describe("LandStore", () => {
     expect(fn).toHaveBeenCalledTimes(3);
     s.forget();
     expect(fn).toHaveBeenCalledTimes(4);
-    expect(s.places()).toEqual([]);
-    expect(s.here).toBeNull();
+    expect(s.places().map((p) => p.id)).toEqual(["a"]); // where you stand stays
+    expect(s.here).toBe("a");
     expect(s.who).toBe("ada");
+  });
+
+  it("keeps the place you stand in, without its note, when forgetting", () => {
+    const s = new LandStore();
+    s.ingest(frame("a", 0, 0));
+    s.ingest(frame("b", 1, 0));
+    s.setNote("b", "mine");
+    s.setNote("a", "other");
+    s.forget();
+    expect(s.here).toBe("b");
+    expect(s.places().map((p) => p.id)).toEqual(["b"]);
+    expect(s.place("b").note).toBeUndefined();
+    expect(s.route("b", "b")).toEqual(["b"]);
   });
 });

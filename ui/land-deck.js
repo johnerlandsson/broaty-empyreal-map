@@ -35,7 +35,6 @@ const SQ = CELL / 2 - CELL / (2 * (1 + Math.SQRT2)); // centre to corner of a co
 const NOTE = "M0,0 h5.2 v5.2 l-1.7,1.7 h-3.5 Z"; // a folded corner, px
 const NOTE_AT = { x: 0.3, y: -0.4 }; // its top left from the octagon's middle, km (svg y)
 const NS = "http://www.w3.org/2000/svg";
-const CARD_W = 160; // px, the route card's width (map.css)
 const ARROW = { left: "←", right: "→", top: "↑", bottom: "↓" };
 
 /** "N steps the way you know", for a route of place ids (both ends included). */
@@ -456,7 +455,7 @@ export class LandDeck {
       const c = this.L.cells.get(id);
       const [x, y] = this.toPx(c.x, -c.y);
       const half = (CELL / 2) * (this.k ?? HOME_K);
-      const w = editing ? 190 : CARD_W;
+      const w = this.card.offsetWidth || (editing ? 190 : 160); // measured: the card grows to fit its name
       const left = x - half - 8 - w >= 6 ? x - half - 8 - w : x + half + 8;
       Object.assign(this.card.style, { left: `${Math.round(left)}px`, top: `${Math.round(y - 19)}px` });
     } else if (this.card) {
@@ -468,7 +467,7 @@ export class LandDeck {
 
   /** "← Zennor" on the view's edge toward it, while none of Zennor's block is in view. */
   placeEdge() {
-    const ends = this.store.places().some((p) => p.id.includes(".join."));
+    const ends = this.store.places().some((p) => p.id.includes(".join.")) && !this.store.here?.includes(".join.");
     const at = ends && this.zbox && this.store.here ? edgeCard({ x: this.cur[0], y: this.cur[1], w: this.cur[2], h: this.cur[3] }, this.zbox) : null;
     if (!at) {
       this.zennorCard?.remove();

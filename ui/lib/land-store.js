@@ -149,8 +149,13 @@ export class LandStore {
   }
 
   forget() {
+    const here = this.here && this._places.get(this.here);
     this._places = new Map();
-    this.here = null;
+    this._map = null;
+    if (here) {
+      delete here.note; // you stay lit on the board, as a place you've walked
+      this._places.set(here.id, here);
+    } else this.here = null;
     this._changed();
   }
 }

@@ -242,7 +242,7 @@ export function layoutLand(places, world) {
   }
   for (const [text, { A, B }] of longest) {
     let angle = angleOf(A, B);
-    if (angle > 90) angle -= 180;
+    if (angle >= 90) angle -= 180;
     else if (angle < -90) angle += 180;
     labels.push({ text, kind: "track", ...flip(mid(A, B)), angle });
   }
