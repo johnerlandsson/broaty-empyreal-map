@@ -36,6 +36,8 @@ const POINTS = 120;
 const LIMB = 30;
 
 const DEG = Math.PI / 180;
+/** A world with no face in data/worlds.js: plain grey ground, no seas. */
+const PLAIN = { ground: [110, 106, 100], seas: [], rim: [150, 150, 150] };
 let ids = 0;
 
 /** Bowyer-Watson Delaunay, small n, as the mockup's: the triangles of P as index triples. */
@@ -114,9 +116,10 @@ export function globeFacets(face, rnd) {
 export class LandGlobe {
   /**
    * @param {HTMLElement} modelEl the top band
-   * @param {{ latitude: number }} opts Zennor's latitude, degrees north (data/sky.js)
+   * @param {{ latitude: number, body?: string }} opts the land's port's latitude, degrees north
+   *   (data/sky.js), and the world whose face it is (Tamsin's by default)
    */
-  constructor(modelEl, { latitude }) {
+  constructor(modelEl, { latitude, body = "tamsin" }) {
     this.lat = latitude * DEG;
     this.lat0 = this.lat - NORTH; // the globe's middle: your spot is NORTH above it
     const n = ++ids;
@@ -135,7 +138,7 @@ export class LandGlobe {
 
     const svg = layer("meet");
     const defs = el("defs", {}, svg);
-    const face = faceOf("tamsin");
+    const face = faceOf(body) ?? PLAIN;
     const rim = `land-globe-rim-${n}`;
     const glow = `land-globe-glow-${n}`;
     const grad = el("radialGradient", { id: rim, cx: "50%", cy: "50%", r: "50%" }, defs);
@@ -145,7 +148,7 @@ export class LandGlobe {
 
     el("circle", { cx: CX, cy: CY, r: R + 6, fill: `url(#${rim})` }, svg);
     el("circle", { cx: CX, cy: CY, r: R, fill: hex(face.ground.map((v) => v * 0.4)), "data-globe": "" }, svg);
-    for (const f of globeFacets(face, seedOf("tamsin"))) {
+    for (const f of globeFacets(face, seedOf(body))) {
       const fill = hex(f.fill);
       const points = f.pts.map(([x, y]) => `${(CX + x * R).toFixed(1)},${(CY + y * R).toFixed(1)}`).join(" ");
       el("polygon", { points, fill, stroke: fill, "stroke-width": 0.6 }, svg);

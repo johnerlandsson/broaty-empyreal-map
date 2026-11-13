@@ -38,8 +38,9 @@ is a route's "N steps the way you know".
   road end's spot and Zennor room (`joins`). Nothing else of land.yaml is written, since its
   heights, valleys and tracks would show land you haven't walked. A world with land but no entry
   still draws its walked places, with no town (`landWorld`).
-- **The globe** is Tamsin's face (`faceOf("tamsin")`, `ui/lib/worlds.js`) turned to Zennor's
-  latitude from `ui/data/sky.js`.
+- **The globe** is the world's face (`faceOf(<body>)`, `ui/lib/worlds.js`; plain grey for a world
+  with none) turned to the latitude of its land's port (`from`) in `ui/data/sky.js`, else 0
+  (`landLatitude`).
 
 ## What's kept
 
@@ -102,7 +103,8 @@ A missing or bad stored value loads as an empty map.
 ## Notes and forgetting
 
 Right-click a walked place for **Note…** and **Remove note**. Right-click empty ground for
-**Forget this land…**, which asks once, then clears this character's map. Notes are kept with the
+**Forget this land…**, which asks once, then clears this character's map of this world's land
+(the place you stand in stays). Notes are kept with the
 map.
 
 ## The top band
@@ -114,11 +116,13 @@ its ring and the glow, a little north of the middle at Zennor's latitude, moved 
 
 ## Wiring
 
-`ui/main.js` builds one `LandStore`, and the `LandDeck` and `LandGlobe` on the first land location.
-`land-room` goes into the store, then the board redraws and follows you and the globe moves your
-spot; `land-load` loads the store and redraws. `render()` takes the land branch before the
-stations': it hides the station model and every deck, shows the land's views and sets the info
-line; leaving the land hides them again.
+`ui/main.js` builds one `LandStore` for every world's land (a place's id carries its body,
+`surface.<body>.…`), and a `LandDeck` and `LandGlobe` for each world on its first land location
+(`landBody`). Each deck draws only its own world's places. `land-room` goes into the store, then
+that world's board redraws and follows you and its globe moves your spot; `land-load` loads the
+store and redraws. `render()` takes the land branch before the stations': it hides the station
+model and every deck, shows the current world's views (hiding every other world's) and sets the
+info line; leaving the land hides them again.
 
 ## Keeping up with the game
 

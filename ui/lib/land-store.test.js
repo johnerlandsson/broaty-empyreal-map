@@ -133,4 +133,18 @@ describe("LandStore", () => {
     expect(s.place("b").note).toBeUndefined();
     expect(s.route("b", "b")).toEqual(["b"]);
   });
+
+  it("forgets only the places under a prefix, the land you're forgetting", () => {
+    const s = new LandStore();
+    s.ingest(frame("surface.kerris.1", 0, 0));
+    s.setNote("surface.kerris.1", "salt");
+    s.ingest(frame("surface.tamsin.1", 0, 0));
+    s.ingest(frame("surface.tamsin.2", 1, 0));
+    s.forget("surface.tamsin.");
+    expect(s.places().map((p) => p.id)).toEqual(["surface.kerris.1", "surface.tamsin.2"]);
+    expect(s.place("surface.kerris.1").note).toBe("salt");
+    s.forget("surface.kerris.");
+    expect(s.places().map((p) => p.id)).toEqual(["surface.tamsin.2"]); // where you stand stays
+    expect(s.here).toBe("surface.tamsin.2");
+  });
 });

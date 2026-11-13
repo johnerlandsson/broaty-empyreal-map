@@ -48,10 +48,13 @@ export class LandDeck {
   /**
    * @param {HTMLElement} deckEl element the board fills
    * @param {{town: {e: number, n: number}[], joins: object}} world the land's entry in ui/data/land.js
+   * @param {string} body the world whose land this is (area `surface.<body>`): only its places are drawn
    */
-  constructor(deckEl, world) {
+  constructor(deckEl, world, body) {
     const n = ++instances;
     this.world = world;
+    this.prefix = `surface.${body}.`;
+    this.places = []; // this land's walked places, as last drawn
     const div = document.createElement("div");
     div.className = "deck land";
     Object.assign(div.style, {
@@ -122,7 +125,7 @@ export class LandDeck {
     div.addEventListener("contextmenu", (e) => {
       if (e.target.closest?.("input")) return; // the note's input keeps its own menu
       e.preventDefault();
-      if (!this.svg.contains(e.target) || !this.store?.places().length) return;
+      if (!this.svg.contains(e.target) || !this.places.length) return;
       this.closeAll();
       const id = e.target.closest?.("[data-pick]")?.getAttribute("data-pick");
       const r = div.getBoundingClientRect();
@@ -244,9 +247,10 @@ export class LandDeck {
     return g;
   }
 
-  /** Redraw the whole board from the store's walked places and where you are. */
+  /** Redraw the whole board from the store's walked places on this land and where you are. */
   draw(store) {
-    const places = store.places();
+    const places = store.places().filter((p) => p.id.startsWith(this.prefix));
+    this.places = places;
     const L = layoutLand(places, this.world);
     this.store = store;
     this.L = L;
@@ -467,7 +471,7 @@ export class LandDeck {
 
   /** "← Zennor" on the view's edge toward it, while none of Zennor's block is in view. */
   placeEdge() {
-    const ends = this.store.places().some((p) => p.id.includes(".join.")) && !this.store.here?.includes(".join.");
+    const ends = this.places.some((p) => p.id.includes(".join.")) && !this.store.here?.includes(".join.");
     const at = ends && this.zbox && this.store.here ? edgeCard({ x: this.cur[0], y: this.cur[1], w: this.cur[2], h: this.cur[3] }, this.zbox) : null;
     if (!at) {
       this.zennorCard?.remove();
@@ -479,7 +483,7 @@ export class LandDeck {
       this.zennorCard.type = "button";
       this.zennorCard.addEventListener("click", () => {
         const s = this.store;
-        const end = nearestRoadEnd(s, s.here) ?? s.places().find((p) => p.id.includes(".join."))?.id;
+        const end = nearestRoadEnd(s, s.here) ?? this.places.find((p) => p.id.includes(".join."))?.id;
         if (end && end !== s.here) this.setTarget(end);
       });
     }

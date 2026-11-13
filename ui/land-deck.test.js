@@ -32,10 +32,10 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-function make(world = land.tamsin) {
+function make(world = land.tamsin, body = "tamsin") {
   const host = document.createElement("div");
   document.body.appendChild(host);
-  const deck = new LandDeck(host, world);
+  const deck = new LandDeck(host, world, body);
   return deck;
 }
 
@@ -116,6 +116,23 @@ describe("LandDeck.draw", () => {
     const deck = make();
     expect(deck.div.querySelector(".north").textContent).toBe("N ▲");
     expect(deck.div.querySelectorAll(".zoom button").length).toBe(3);
+  });
+
+  it("draws only its own body's places, from one store of every world's", () => {
+    const store = walk();
+    const K = "surface.kerris.1.2.3";
+    store.ingest({ id: K, name: "Salt Flat", coords: { x: 0, y: 0 }, exits: { e: { id: "surface.kerris.9", inverse: "w" } } });
+    const tamsin = make();
+    const kerris = make({ town: [], joins: {} }, "kerris");
+    tamsin.draw(store);
+    kerris.draw(store);
+    const ids = (deck) => [...deck.svg.querySelectorAll("[data-place]")].map((n) => n.getAttribute("data-place")).sort();
+    expect(ids(tamsin)).toEqual([A, B].sort());
+    expect(ids(kerris)).toEqual([K]);
+    expect(tamsin.svg.querySelectorAll("[data-stub]").length).toBe(1);
+    expect(kerris.svg.querySelectorAll("[data-stub]").length).toBe(1);
+    expect(kerris.svg.querySelector("[data-here]").getAttribute("data-here")).toBe(K);
+    expect(tamsin.svg.querySelector("[data-here]")).toBe(null); // you're on Kerris
   });
 
   it("shows and hides", () => {

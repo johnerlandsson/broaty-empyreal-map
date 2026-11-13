@@ -32,7 +32,7 @@ import { LanesView } from "./lanes-view.js";
 import { carInfo, carKind, carName, stopNames } from "./lib/cars.js";
 import { isShipRoom, planFor, shipInfo } from "./lib/ships.js";
 import { infoLine, locate } from "./lib/locate.js";
-import { landShown, landWorld } from "./lib/land-choose.js";
+import { landBody, landLatitude, landShown, landWorld } from "./lib/land-choose.js";
 import { LandStore } from "./lib/land-store.js";
 import land from "./data/land.js";
 import sky from "./data/sky.js";
@@ -226,9 +226,10 @@ function carView(kind) {
   return cars[kind];
 }
 
-// The walked land: one store, and its board and globe once a land location has come.
+// The walked land: one store for every world's (a place's id carries its body, surface.<body>.…), and
+// a board and globe for each world, built on its first land location.
 const landStore = new LandStore();
-let landViews = null; // { deck, globe }, built on the first land location
+const landViews = new Map(); // body -> { deck, globe }
 const landSaver_ = landSaver(landStore, (who, record) => panel.post("land-save", { who, record }), 1000); // as the automapper's
 
 landStore.onChange(() => landSaver_.soon());
@@ -238,11 +239,13 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden) landSaver_.flush();
 });
 
-/** The land's board and globe, built on first use, for the land of area `surface.<body>`. */
+/** The board and globe for the land of area `surface.<body>`, built on first use. */
 function landBuilt(area) {
-  if (!landViews) {
-    const deck = new LandDeck(deckEl, landWorld(area, land));
-    const globe = new LandGlobe(modelEl, { latitude: sky.zennor.latitude });
+  const body = landBody(area) ?? "";
+  if (!landViews.has(body)) {
+    const world = landWorld(area, land);
+    const deck = new LandDeck(deckEl, world, body);
+    const globe = new LandGlobe(modelEl, { latitude: landLatitude(world, sky), body });
     deck.show(false);
     globe.show(false);
     deck.onNote((id, text) => {
@@ -251,20 +254,23 @@ function landBuilt(area) {
       deck.draw(landStore);
     });
     deck.onForget(() => {
-      landStore.forget();
+      landStore.forget(`surface.${body}.`);
       landSaver_.now();
       deck.draw(landStore);
     });
-    deck.draw(landStore);
-    landViews = { deck, globe };
+    landViews.set(body, { deck, globe });
   }
-  return landViews;
+  return landViews.get(body);
 }
 
-/** Show the land's views, or hide them (there are none till the first land location). */
-function showLand(on) {
-  landViews?.deck.show(on);
-  landViews?.globe.show(on);
+/** Show the views of the land of `area` (none for null), hiding every other world's. */
+function showLand(area) {
+  const on = area == null ? null : landBuilt(area);
+  for (const v of landViews.values()) {
+    v.deck.show(v === on);
+    v.globe.show(v === on);
+  }
+  on?.deck.draw(landStore); // only redrawn while shown: catch up with what's changed
 }
 
 function render() {
@@ -275,13 +281,12 @@ function render() {
       unknown.remove();
       unknown = null;
     }
-    landBuilt(last.area);
-    showLand(true);
+    showLand(last.area);
     runShip();
     info.textContent = last.name ?? "";
     return;
   }
-  showLand(false);
+  showLand(null);
   show(pickStation(last, docked ?? approaching, current));
   if (unknown && (current !== undefined || last)) {
     unknown.remove(); // placed, or a location came that places you on no station: it never shows again
@@ -425,17 +430,18 @@ panel.on("location", (msg) => {
 // A frame of the walked land, after its location: on the board and the globe.
 panel.on("land-room", (msg) => {
   if (!landStore.ingest(msg)) return;
-  if (!landViews) return; // drawn from the store once the land is built
-  landViews.deck.draw(landStore);
-  landViews.deck.follow();
-  landViews.globe.set(msg.coords);
+  const v = landViews.get(landBody(msg.area) ?? ""); // drawn from the store once its land is built
+  if (!v) return;
+  v.deck.draw(landStore);
+  v.deck.follow();
+  v.globe.set(msg.coords);
 });
 
 // The character's saved map, when she becomes known: merged with what she's walked meanwhile. No one
 // (a disconnect) clears it; either way the one before's waiting change is saved under her name first.
 panel.on("land-load", (msg) => {
   if (!landLoad(landStore, landSaver_, msg)) return;
-  landViews?.deck.draw(landStore);
+  for (const v of landViews.values()) v.deck.draw(landStore);
 });
 
 info.textContent = UNKNOWN_LINE;

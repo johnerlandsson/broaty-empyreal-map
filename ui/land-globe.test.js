@@ -81,4 +81,14 @@ describe("LandGlobe", () => {
     globe.show(true);
     expect(globe.div.style.display).not.toBe("none");
   });
+
+  it("wears its own world's face, and a plain one for a world with none", () => {
+    const fills = (body) => {
+      const host = document.createElement("div");
+      new LandGlobe(host, { latitude: 0, body });
+      return [...host.querySelectorAll("polygon")].map((p) => p.getAttribute("fill")).join();
+    };
+    expect(fills("tamsin")).not.toBe(fills("bolventor"));
+    expect(() => fills("no-such-world")).not.toThrow();
+  });
 });

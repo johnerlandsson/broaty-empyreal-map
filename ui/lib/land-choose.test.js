@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { landShown, landWorld } from "./land-choose.js";
+import { landBody, landLatitude, landShown, landWorld } from "./land-choose.js";
 
 describe("landShown", () => {
   it("is true on generated land, a surface.* area", () => {
@@ -23,5 +23,29 @@ describe("landWorld", () => {
   it("is an empty land for a body there's no entry for", () => {
     expect(landWorld("surface.kerris", land)).toEqual({ town: [], joins: {} });
     expect(landWorld(undefined, land)).toEqual({ town: [], joins: {} });
+  });
+});
+
+describe("landBody", () => {
+  it("is the body of a surface.<body> area, else null", () => {
+    expect(landBody("surface.tamsin")).toBe("tamsin");
+    expect(landBody("surface.kerris")).toBe("kerris");
+    expect(landBody("zennor")).toBe(null);
+    expect(landBody("surface.")).toBe(null);
+    expect(landBody(undefined)).toBe(null);
+  });
+});
+
+describe("landLatitude", () => {
+  const sky = { zennor: { latitude: 12.5 } };
+
+  it("is the latitude of the port the land's measured from", () => {
+    expect(landLatitude({ from: "zennor" }, sky)).toBe(12.5);
+  });
+
+  it("is 0 with no port, or a port with no sky", () => {
+    expect(landLatitude({ town: [], joins: {} }, sky)).toBe(0);
+    expect(landLatitude({ from: "nowhere" }, sky)).toBe(0);
+    expect(landLatitude({ from: "toString" }, sky)).toBe(0);
   });
 });

@@ -156,14 +156,20 @@ export class LandStore {
     this._changed();
   }
 
-  forget() {
+  /** Forget the walked places whose ids start with prefix (all of them by default), and their notes;
+   *  the place you stand in stays, without its note. */
+  forget(prefix = "") {
     const here = this.here && this._places.get(this.here);
-    this._places = new Map();
-    this._map = null;
-    if (here) {
-      delete here.note; // you stay lit on the board, as a place you've walked
-      this._places.set(here.id, here);
-    } else this.here = null;
+    const kept = new Map();
+    for (const [id, p] of this._places) {
+      if (!id.startsWith(prefix)) kept.set(id, p);
+      else if (p === here) {
+        delete here.note; // you stay lit on the board, as a place you've walked
+        kept.set(id, p);
+      }
+    }
+    this._places = kept;
+    if (!here) this.here = null;
     this._changed();
   }
 }
