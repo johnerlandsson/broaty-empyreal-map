@@ -1,0 +1,446 @@
+<!doctype html>
+<!-- The walked land round Zennor (surface.tamsin), 2026-11-13: three looks for the land map the
+     automapper's engine feeds, each over the same real walk, 29 places the game's own generator
+     makes (empyreal b6728d0), plus three looks for a way not taken yet and Zennor's edge card.
+     Self-contained, opens from disk. A throwaway: take its look, not its code. -->
+<html><head><meta charset="utf-8"><title>Land automap: looks</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:22px; width:940px; }
+  h1 { color:#e3eaf2; font-size:17px; font-weight:600; margin:0 0 6px; }
+  h2 { color:#e3eaf2; font-size:15px; font-weight:600; margin:4px 0 4px; }
+  p.note { margin:0 0 12px; max-width:930px; line-height:1.45; }
+  .row { display:flex; gap:22px; margin-bottom:26px; align-items:flex-start; }
+  figure { margin:0; width:292px; } #q3 figure, #q1c figure { width:442px; }
+  figcaption { margin:8px 0 0; font-size:12.5px; line-height:1.45; }
+  figcaption b { color:#e3eaf2; font-weight:600; }
+  .frame { position:relative; border:1px solid #2b3646; border-radius:6px; overflow:hidden; background:#04060c; }
+  svg { display:block; }
+  .small figure { width:333px; }
+</style></head><body>
+<h1>Three open questions, drawn</h1>
+<p class="note">All on the picked board, with real places from the game. Pink is only for pointing things out in this mockup; it never goes in the plugin.</p>
+<h2>1 · When a doorway and the game&apos;s exit disagree</h2>
+<p class="note">A place takes the octagon its true spot rounds to. About one way in four then crosses a side or corner the game&apos;s exit doesn&apos;t point through.</p>
+<div class="row" id="q1"></div>
+<div class="row" id="q1b"></div>
+<div class="row" id="q1c"></div>
+<h2>2 · Hachures for steep ways</h2>
+<p class="note">The Terrace Road&apos;s end and the drop to the Carn, where the land really is steep.</p>
+<div class="row" id="q2"></div>
+<h2>3 · A way you can&apos;t come back by</h2>
+<div class="row" id="q3"></div>
+<script>
+const WALK = {"places":[{"id":"surface.tamsin.join.downs","name":"The Open Downs","x":4.8,"y":1,"z":0.415,"region":"the Downs","tracks":["the Tinners' Track","the Terrace Track"],"exits":{"north":{"to":"surface.tamsin.806.856.2490380","word":"over the upland","x":5,"y":2.4},"east":{"to":"surface.tamsin.806.856.2293775","word":"along the Tinners' Track","x":6.2,"y":1.2},"south":{"to":"surface.tamsin.806.856.2031628","word":"along the Terrace Track","x":5,"y":-0.4},"west":{"to":"zennor.port-road","word":"back to the Port Road"}}},{"id":"surface.tamsin.806.856.2293775","name":"On the Tinners' Track","x":6.2,"y":1.2,"z":0.414,"region":"the Downs","tracks":["the Tinners' Track"],"exits":{"east":{"to":"surface.tamsin.806.856.2359314","word":"along the Tinners' Track","x":7.4,"y":1.6},"southeast":{"to":"surface.tamsin.806.856.2031633","word":"over the upland","x":7,"y":-0.4},"west":{"to":"surface.tamsin.join.downs","word":"along the Tinners' Track","x":4.8,"y":1},"northwest":{"to":"surface.tamsin.806.856.2490380","word":"over the upland","x":5,"y":2.4}}},{"id":"surface.tamsin.806.856.2359314","name":"Bare Rock on the Tinners' Track","x":7.4,"y":1.6,"z":0.417,"region":"the Downs","tracks":["the Tinners' Track"],"exits":{"east":{"to":"surface.tamsin.806.856.2424854","word":"along the Tinners' Track","x":9,"y":2},"south":{"to":"surface.tamsin.806.856.2031633","word":"over the upland","x":7,"y":-0.4},"west":{"to":"surface.tamsin.806.856.2293775","word":"along the Tinners' Track","x":6.2,"y":1.2},"northwest":{"to":"surface.tamsin.806.856.2818063","word":"over the upland","x":6.2,"y":4.4}}},{"id":"surface.tamsin.806.856.2424854","name":"Old Workings on the Tinners' Track","x":9,"y":2,"z":0.416,"region":"the Downs","tracks":["the Tinners' Track"],"exits":{"north":{"to":"surface.tamsin.806.856.2686997","word":"over the upland","x":8.6,"y":3.6},"east":{"to":"surface.tamsin.806.856.2490393","word":"along the Tinners' Track","x":10.2,"y":2.4},"southeast":{"to":"surface.tamsin.806.856.2097178","word":"down into the hollow","x":10.6,"y":0},"west":{"to":"surface.tamsin.806.856.2359314","word":"along the Tinners' Track","x":7.4,"y":1.6}}},{"id":"surface.tamsin.806.856.2490393","name":"Marker Stone on the Tinners' Track","x":10.2,"y":2.4,"z":0.417,"region":"the Downs","tracks":["the Tinners' Track"],"exits":{"east":{"to":"surface.tamsin.806.856.2555932","word":"along the Tinners' Track","x":11.4,"y":2.8},"south":{"to":"surface.tamsin.806.856.2097178","word":"down into the hollow","x":10.6,"y":0},"west":{"to":"surface.tamsin.806.856.2424854","word":"along the Tinners' Track","x":9,"y":2},"northwest":{"to":"surface.tamsin.806.856.2686997","word":"over the upland","x":8.6,"y":3.6}}},{"id":"surface.tamsin.806.856.2555932","name":"Stony Ground on the Tinners' Track","x":11.4,"y":2.8,"z":0.418,"region":"the Downs","tracks":["the Tinners' Track"],"exits":{"north":{"to":"surface.tamsin.806.856.2883613","word":"over the upland","x":11.8,"y":4.8},"east":{"to":"surface.tamsin.806.856.2621471","word":"along the Tinners' Track","x":12.6,"y":3.2},"southeast":{"to":"surface.tamsin.806.856.2162719","word":"down into the hollow","x":12.6,"y":0.4},"west":{"to":"surface.tamsin.806.856.2490393","word":"along the Tinners' Track","x":10.2,"y":2.4}}},{"id":"surface.tamsin.806.856.2621471","name":"Cairn on the Tinners' Track","x":12.6,"y":3.2,"z":0.416,"region":"the Downs","tracks":["the Tinners' Track"],"exits":{"northeast":{"to":"surface.tamsin.806.856.2818082","word":"up onto the knoll","x":13.8,"y":4.4},"east":{"to":"surface.tamsin.806.856.2621475","word":"along the Tinners' Track","x":14.2,"y":3.2},"south":{"to":"surface.tamsin.806.856.2162719","word":"down into the hollow","x":12.6,"y":0.4},"west":{"to":"surface.tamsin.806.856.2555932","word":"along the Tinners' Track","x":11.4,"y":2.8},"northwest":{"to":"surface.tamsin.806.856.2883613","word":"over the upland","x":11.8,"y":4.8}}},{"id":"surface.tamsin.806.856.2818082","name":"Knoll on the Downs","x":13.8,"y":4.4,"z":0.43,"region":"the Downs","exits":{"north":{"to":"surface.tamsin.807.854.131107","word":"down into the hollow","x":14.2,"y":6},"south":{"to":"surface.tamsin.806.856.2621475","word":"down off the knoll","x":14.2,"y":3.2},"southwest":{"to":"surface.tamsin.806.856.2621471","word":"down off the knoll","x":12.6,"y":3.2},"west":{"to":"surface.tamsin.806.856.2883613","word":"down off the knoll","x":11.8,"y":4.8}}},{"id":"surface.tamsin.806.856.2162719","name":"Pond on the Downs","x":12.6,"y":0.4,"z":0.403,"region":"the Downs","exits":{"north":{"to":"surface.tamsin.806.856.2621471","word":"up out of the hollow","x":12.6,"y":3.2},"east":{"to":"surface.tamsin.806.856.2228264","word":"up out of the hollow","x":16.2,"y":0.8},"south":{"to":"surface.tamsin.806.856.1966111","word":"up out of the hollow","x":12.6,"y":-0.8},"west":{"to":"surface.tamsin.806.856.2097178","word":"over into the next hollow","x":10.6,"y":0},"northwest":{"to":"surface.tamsin.806.856.2555932","word":"up out of the hollow","x":11.4,"y":2.8}}},{"id":"surface.tamsin.806.856.2031628","name":"On the Terrace Track","x":5,"y":-0.4,"z":0.42,"region":"the Downs","tracks":["the Terrace Track"],"exits":{"north":{"to":"surface.tamsin.join.downs","word":"along the Terrace Track","x":4.8,"y":1},"east":{"to":"surface.tamsin.806.856.2031633","word":"over the upland","x":7,"y":-0.4},"south":{"to":"surface.tamsin.806.856.1835021","word":"along the Terrace Track","x":5.4,"y":-1.6}}},{"id":"surface.tamsin.806.856.1835021","name":"Old Shaft on the Terrace Track","x":5.4,"y":-1.6,"z":0.419,"region":"the Downs","tracks":["the Terrace Track"],"exits":{"north":{"to":"surface.tamsin.806.856.2031628","word":"along the Terrace Track","x":5,"y":-0.4},"northeast":{"to":"surface.tamsin.806.856.2031633","word":"over the upland","x":7,"y":-0.4},"east":{"to":"surface.tamsin.806.856.1769489","word":"over the upland","x":7,"y":-2},"south":{"to":"surface.tamsin.806.856.1572877","word":"along the Terrace Track","x":5.4,"y":-3.2},"west":{"to":"surface.tamsin.806.856.1769482","word":"over the upland","x":4.2,"y":-2}}},{"id":"surface.tamsin.806.856.1572877","name":"Old Workings on the Terrace Track","x":5.4,"y":-3.2,"z":0.42,"region":"the Downs","tracks":["the Terrace Track"],"exits":{"north":{"to":"surface.tamsin.806.856.1835021","word":"along the Terrace Track","x":5.4,"y":-1.6},"northeast":{"to":"surface.tamsin.806.856.1769489","word":"over the upland","x":7,"y":-2},"east":{"to":"surface.tamsin.806.856.1572881","word":"down into the hollow","x":7,"y":-3.2},"south":{"to":"surface.tamsin.806.856.1376269","word":"along the Terrace Track","x":5.4,"y":-4.4},"northwest":{"to":"surface.tamsin.806.856.1769482","word":"over the upland","x":4.2,"y":-2}}},{"id":"surface.tamsin.806.856.1376269","name":"Drifted Dust on the Terrace Track","x":5.4,"y":-4.4,"z":0.419,"region":"the Downs","tracks":["the Terrace Track"],"exits":{"north":{"to":"surface.tamsin.806.856.1572877","word":"along the Terrace Track","x":5.4,"y":-3.2},"east":{"to":"surface.tamsin.806.856.1245204","word":"over the upland","x":8.2,"y":-5.2},"south":{"to":"surface.tamsin.806.856.1179661","word":"along the Terrace Track","x":5.4,"y":-5.6}}},{"id":"surface.tamsin.806.856.1179661","name":"On the Terrace Track","x":5.4,"y":-5.6,"z":0.418,"region":"the Downs","tracks":["the Terrace Track"],"exits":{"north":{"to":"surface.tamsin.806.856.1376269","word":"along the Terrace Track","x":5.4,"y":-4.4},"southeast":{"to":"surface.tamsin.806.856.1048593","word":"down into the hollow","x":7,"y":-6.4},"south":{"to":"surface.tamsin.806.856.983052","word":"along the Terrace Track","x":5,"y":-6.8}}},{"id":"surface.tamsin.806.856.983052","name":"Cairn on the Terrace Track","x":5,"y":-6.8,"z":0.418,"region":"the Downs","tracks":["the Terrace Track"],"exits":{"north":{"to":"surface.tamsin.806.856.1179661","word":"along the Terrace Track","x":5.4,"y":-5.6},"east":{"to":"surface.tamsin.806.856.1048593","word":"down into the hollow","x":7,"y":-6.4},"southwest":{"to":"surface.tamsin.806.856.720906","word":"along the Terrace Track","x":4.2,"y":-8.4}}},{"id":"surface.tamsin.806.856.720906","name":"Cairn on the Terrace Track","x":4.2,"y":-8.4,"z":0.411,"region":"the Downs","tracks":["the Terrace Track"],"exits":{"northeast":{"to":"surface.tamsin.806.856.983052","word":"along the Terrace Track","x":5,"y":-6.8},"southeast":{"to":"surface.tamsin.806.856.524301","word":"down into the hollow","x":5.4,"y":-9.6},"south":{"to":"surface.tamsin.806.856.393227","word":"up onto the knoll","x":4.6,"y":-10.4},"southwest":{"to":"surface.tamsin.806.856.655368","word":"along the Terrace Track","x":3.4,"y":-8.8}}},{"id":"surface.tamsin.806.856.655368","name":"Old Workings on the Terrace Track","x":3.4,"y":-8.8,"z":0.384,"region":"the Downs","tracks":["the Terrace Track"],"exits":{"northeast":{"to":"surface.tamsin.806.856.720906","word":"along the Terrace Track","x":4.2,"y":-8.4},"south":{"to":"surface.tamsin.806.856.458760","word":"up to the saddle","x":3.4,"y":-10},"west":{"to":"surface.tamsin.806.856.655364","word":"along the Terrace Track","x":1.8,"y":-8.8},"northwest":{"to":"surface.tamsin.806.856.851973","word":"over the upland","x":2.2,"y":-7.6}}},{"id":"surface.tamsin.806.856.655364","name":"Old Shaft on the Terrace Track","x":1.8,"y":-8.8,"z":0.467,"tracks":["the Terrace Track"],"exits":{"north":{"to":"surface.tamsin.806.856.851973","word":"down the slope","x":2.2,"y":-7.6},"east":{"to":"surface.tamsin.806.856.655368","word":"along the Terrace Track","x":3.4,"y":-8.8},"south":{"to":"surface.tamsin.806.856.196611","word":"down the gully","x":1.4,"y":-11.6},"northwest":{"to":"surface.tamsin.join.terrace-road","word":"along the Terrace Track","x":0.9,"y":-7.8}}},{"id":"surface.tamsin.join.terrace-road","name":"Past the Last Walls","x":0.9,"y":-7.8,"z":0.46,"region":"the Carn","tracks":["the Terrace Track"],"exits":{"east":{"to":"surface.tamsin.806.856.851973","word":"down the scree","x":2.2,"y":-7.6},"southeast":{"to":"surface.tamsin.806.856.655364","word":"along the Terrace Track","x":1.8,"y":-8.8},"southwest":{"to":"surface.tamsin.806.855.655403","word":"down the slope","x":-0.6,"y":-8.8},"west":{"to":"surface.tamsin.806.855.917547","word":"down the slope","x":-0.6,"y":-7.2},"northwest":{"to":"zennor.terrace-road","word":"back to the Terrace Road"}}},{"id":"surface.tamsin.806.856.524301","name":"Pond on the Downs","x":5.4,"y":-9.6,"z":0.405,"region":"the Downs","exits":{"east":{"to":"surface.tamsin.806.856.655380","word":"up out of the hollow","x":8.2,"y":-8.8},"southeast":{"to":"surface.tamsin.806.856.327699","word":"over into the next hollow","x":7.8,"y":-10.8},"southwest":{"to":"surface.tamsin.806.856.393227","word":"up out of the hollow","x":4.6,"y":-10.4},"northwest":{"to":"surface.tamsin.806.856.720906","word":"up out of the hollow","x":4.2,"y":-8.4}}},{"id":"surface.tamsin.806.855.917547","name":"River Bank by the Carn","x":-0.6,"y":-7.2,"z":0.164,"region":"the Carn","exits":{"east":{"to":"surface.tamsin.join.terrace-road","word":"up the slope","x":0.9,"y":-7.8},"south":{"to":"surface.tamsin.806.855.655403","word":"along the river","x":-0.6,"y":-8.8}}},{"id":"surface.tamsin.806.855.655403","name":"Old Workings by the Carn","x":-0.6,"y":-8.8,"z":0.149,"region":"the Carn","exits":{"north":{"to":"surface.tamsin.806.855.917547","word":"along the river","x":-0.6,"y":-7.2},"northeast":{"to":"surface.tamsin.join.terrace-road","word":"up the slope","x":0.9,"y":-7.8},"south":{"to":"surface.tamsin.806.855.327723","word":"down the gully","x":-0.6,"y":-10.8}}},{"id":"surface.tamsin.806.855.327723","name":"Head of a Gully by the Carn","x":-0.6,"y":-10.8,"z":0.134,"region":"the Carn","exits":{"north":{"to":"surface.tamsin.806.855.655403","word":"up the gully","x":-0.6,"y":-8.8},"east":{"to":"surface.tamsin.806.856.196611","word":"up the gully","x":1.4,"y":-11.6},"south":{"to":"surface.tamsin.806.855.65580","word":"down the gully","x":-0.2,"y":-12.4}}},{"id":"surface.tamsin.join.carn-bridge","name":"Beyond the West Bank","x":-4.5,"y":0.2,"z":0.465,"exits":{"north":{"to":"surface.tamsin.806.855.2424864","word":"across open ground","x":-5,"y":2},"east":{"to":"zennor.carn-bridge","word":"back along the west bank road"},"south":{"to":"surface.tamsin.806.855.1835041","word":"across open ground","x":-4.6,"y":-1.6},"west":{"to":"surface.tamsin.806.855.1966106","word":"over rough ground","x":-7.4,"y":-0.8}}},{"id":"surface.tamsin.806.855.1966106","name":"Old Workings","x":-7.4,"y":-0.8,"z":0.379,"exits":{"north":{"to":"surface.tamsin.806.855.2228249","word":"across open ground","x":-7.8,"y":0.8},"east":{"to":"surface.tamsin.join.carn-bridge","word":"over rough ground","x":-4.5,"y":0.2},"southeast":{"to":"surface.tamsin.806.855.1769502","word":"across open ground","x":-5.8,"y":-2},"south":{"to":"surface.tamsin.806.855.1769498","word":"across open ground","x":-7.4,"y":-2}}},{"id":"surface.tamsin.806.855.2228249","name":"Old Workings","x":-7.8,"y":0.8,"z":0.387,"exits":{"north":{"to":"surface.tamsin.806.855.2424858","word":"up to the saddle","x":-7.4,"y":2},"south":{"to":"surface.tamsin.806.855.1966106","word":"across open ground","x":-7.4,"y":-0.8},"southwest":{"to":"surface.tamsin.806.855.1966096","word":"down the gully","x":-11.4,"y":-0.8},"west":{"to":"surface.tamsin.806.855.2359312","word":"up to the saddle","x":-11.4,"y":1.6}}},{"id":"surface.tamsin.806.855.1966096","name":"Head of a Gully","x":-11.4,"y":-0.8,"z":0.325,"exits":{"north":{"to":"surface.tamsin.806.855.2359312","word":"up the gully","x":-11.4,"y":1.6},"northeast":{"to":"surface.tamsin.806.855.2228249","word":"up the gully","x":-7.8,"y":0.8},"southeast":{"to":"surface.tamsin.806.855.1769491","word":"down the gully","x":-10.2,"y":-2},"southwest":{"to":"surface.tamsin.806.855.1835021","word":"down the gully","x":-12.6,"y":-1.6},"west":{"to":"surface.tamsin.806.855.2031628","word":"up the gully","x":-13,"y":-0.4}}},{"id":"surface.tamsin.806.855.2424864","name":"Rising Ground","x":-5,"y":2,"z":0.448,"exits":{"north":{"to":"surface.tamsin.806.855.2883618","word":"across open ground","x":-4.2,"y":4.8},"south":{"to":"surface.tamsin.join.carn-bridge","word":"across open ground","x":-4.5,"y":0.2},"west":{"to":"surface.tamsin.806.855.2424858","word":"up to the saddle","x":-7.4,"y":2},"northwest":{"to":"surface.tamsin.806.855.2687005","word":"across open ground","x":-6.2,"y":3.6}}},{"id":"surface.tamsin.806.855.2883618","name":"Rock Outcrop","x":-4.2,"y":4.8,"z":0.517,"exits":{"north":{"to":"surface.tamsin.807.853.131106","word":"across open ground","x":-4.2,"y":6},"south":{"to":"surface.tamsin.806.855.2424864","word":"across open ground","x":-5,"y":2},"southwest":{"to":"surface.tamsin.806.855.2687005","word":"over rough ground","x":-6.2,"y":3.6}}},{"id":"surface.tamsin.806.856.851973","name":"Fallen Adit on the Downs","x":2.2,"y":-7.6,"z":0.339,"region":"the Downs","exits":{"southeast":{"to":"surface.tamsin.806.856.655368","word":"over the upland"},"south":{"to":"surface.tamsin.806.856.655364","word":"up the slope"}}}],"here":"surface.tamsin.806.856.2621471","target":"surface.tamsin.806.856.524301","route":["surface.tamsin.806.856.2621471","surface.tamsin.806.856.2555932","surface.tamsin.806.856.2490393","surface.tamsin.806.856.2424854","surface.tamsin.806.856.2359314","surface.tamsin.806.856.2293775","surface.tamsin.join.downs","surface.tamsin.806.856.2031628","surface.tamsin.806.856.1835021","surface.tamsin.806.856.1572877","surface.tamsin.806.856.1376269","surface.tamsin.806.856.1179661","surface.tamsin.806.856.983052","surface.tamsin.806.856.720906","surface.tamsin.806.856.524301"],"steps":["surface.tamsin.join.downs>surface.tamsin.806.856.2293775","surface.tamsin.806.856.2293775>surface.tamsin.806.856.2359314","surface.tamsin.806.856.2359314>surface.tamsin.806.856.2424854","surface.tamsin.806.856.2424854>surface.tamsin.806.856.2490393","surface.tamsin.806.856.2490393>surface.tamsin.806.856.2555932","surface.tamsin.806.856.2555932>surface.tamsin.806.856.2621471","surface.tamsin.806.856.2621471>surface.tamsin.806.856.2818082","surface.tamsin.806.856.2621471>surface.tamsin.806.856.2162719","surface.tamsin.806.856.2162719>surface.tamsin.806.856.2621471","surface.tamsin.join.downs>surface.tamsin.806.856.2031628","surface.tamsin.806.856.2031628>surface.tamsin.806.856.1835021","surface.tamsin.806.856.1835021>surface.tamsin.806.856.1572877","surface.tamsin.806.856.1572877>surface.tamsin.806.856.1376269","surface.tamsin.806.856.1376269>surface.tamsin.806.856.1179661","surface.tamsin.806.856.1179661>surface.tamsin.806.856.983052","surface.tamsin.806.856.983052>surface.tamsin.806.856.720906","surface.tamsin.806.856.720906>surface.tamsin.806.856.655368","surface.tamsin.806.856.655368>surface.tamsin.806.856.655364","surface.tamsin.806.856.655364>surface.tamsin.join.terrace-road","surface.tamsin.806.856.720906>surface.tamsin.806.856.524301","surface.tamsin.join.terrace-road>surface.tamsin.806.855.917547","surface.tamsin.806.855.917547>surface.tamsin.806.855.655403","surface.tamsin.806.855.655403>surface.tamsin.806.855.327723","surface.tamsin.join.carn-bridge>surface.tamsin.806.855.1966106","surface.tamsin.806.855.1966106>surface.tamsin.806.855.2228249","surface.tamsin.806.855.2228249>surface.tamsin.806.855.1966096","surface.tamsin.join.carn-bridge>surface.tamsin.806.855.2424864","surface.tamsin.806.855.2424864>surface.tamsin.806.855.2883618"]};
+const GROUND = "#110e0b", EARTH = "#332b22", STONE = "#4b4338", DIM = "#7d8a9a", TEXT = "#e3eaf2", AMBER = "#ffb347";
+const WATER = "#22384c", WATER2 = "#2e4a63", MARK = "#9c8c76", PATH = "#8c7a62";
+const byId = Object.fromEntries(WALK.places.map((p) => [p.id, p]));
+const DIRS = { north:[0,1], northeast:[.7071,.7071], east:[1,0], southeast:[.7071,-.7071], south:[0,-1], southwest:[-.7071,-.7071], west:[-1,0], northwest:[-.7071,.7071] };
+
+// what a place is, from its name as the game builds it (surface-words.ts placeTitle)
+function kindOf(p) {
+  if (p.id.includes(".join.")) return "roadend";
+  if (p.name.startsWith("On ")) return "open";
+  const base = p.name.replace(/ (on|by) .*$/, "");
+  return ({ "Pond":"pond", "River Bank":"river", "Spring":"spring", "Hilltop":"rise", "Summit":"rise", "Knoll":"rise",
+    "Hollow":"hollow", "Head of a Gully":"gully", "Low Pass":"pass", "Saddle":"pass", "Rock Outcrop":"rock", "Bare Rock":"rock",
+    "Stony Ground":"rock", "Drifted Dust":"dust", "Old Workings":"workings", "Old Shaft":"shaft", "Fallen Adit":"shaft",
+    "Cairn":"cairn", "Marker Stone":"marker", "The Salt Pans":"salt", "Rising Ground":"slope", "Hillside":"slope",
+    "Steep Hillside":"slope", "Open Ground":"open", "Ice Field":"ice", "Ice Slope":"ice", "Ice Dome":"ice", "Frozen Shore":"ice", "Beach":"pond" })[base] ?? "open";
+}
+const sameTrack = (a, b) => (a.tracks ?? []).some((t) => (b.tracks ?? []).includes(t));
+// routes between walked places, once each pair
+const routes = [];
+const seenPair = new Set();
+const stubs = [];
+for (const p of WALK.places) for (const [dir, e] of Object.entries(p.exits)) {
+  const q = byId[e.to];
+  if (!e.to) continue; // a way back into Zennor: drawn as its road
+  if (!q) { stubs.push({ p, dir }); continue; }
+  const key = [p.id, q.id].sort().join("|");
+  if (seenPair.has(key)) continue;
+  seenPair.add(key);
+  const len = Math.hypot(q.x - p.x, q.y - p.y);
+  const track = /^along the/.test(e.word) && (sameTrack(p, q) || p.id.includes(".join.") || q.id.includes(".join."));
+  routes.push({ a: p, b: q, track, steep: Math.abs(q.z - p.z) / len >= 0.045 });
+}
+const here = byId[WALK.here], target = byId[WALK.target];
+const NOTED = WALK.places.find((p) => p.name === "Old Shaft on the Terrace Track");
+// Zennor's ground (land.yaml's town outline) and its three roads out to the road ends
+const TOWN = [[-4,6],[4,6],[4,-7],[-4,-7]];
+const ROADS = [[[4,1],[4.8,1]], [[-4,0.2],[-4.5,0.2]], [[0.9,-7],[0.9,-7.8]]];
+
+function view(w, h, cx, cy, k) {
+  return { w, h, k, X: (x) => w / 2 + (x - cx) * k, Y: (y) => h / 2 - (y - cy) * k };
+}
+const pts = (v, arr) => arr.map(([x, y]) => `${v.X(x).toFixed(1)},${v.Y(y).toFixed(1)}`).join(" ");
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+// --- a seeded random, so every draw is the same
+function rnd(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+
+// --- Delaunay (Bowyer-Watson), small n
+function delaunay(P) {
+  const big = 1e4;
+  const pts = P.concat([[-big, -big], [big, -big], [0, big]]);
+  const n = P.length;
+  let tris = [[n, n + 1, n + 2]];
+  const circ = (t) => {
+    const [a, b, c] = t.map((i) => pts[i]);
+    const d = 2 * (a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]));
+    const ux = ((a[0]**2 + a[1]**2) * (b[1] - c[1]) + (b[0]**2 + b[1]**2) * (c[1] - a[1]) + (c[0]**2 + c[1]**2) * (a[1] - b[1])) / d;
+    const uy = ((a[0]**2 + a[1]**2) * (c[0] - b[0]) + (b[0]**2 + b[1]**2) * (a[0] - c[0]) + (c[0]**2 + c[1]**2) * (b[0] - a[0])) / d;
+    return [ux, uy, (a[0] - ux)**2 + (a[1] - uy)**2];
+  };
+  for (let i = 0; i < n; i++) {
+    const p = pts[i];
+    const bad = tris.filter((t) => { const [x, y, r] = circ(t); return (p[0] - x)**2 + (p[1] - y)**2 < r; });
+    const edges = [];
+    for (const t of bad) for (const [u, v] of [[t[0], t[1]], [t[1], t[2]], [t[2], t[0]]]) {
+      const j = edges.findIndex(([a, b]) => (a === v && b === u) || (a === u && b === v));
+      if (j >= 0) edges.splice(j, 1); else edges.push([u, v]);
+    }
+    tris = tris.filter((t) => !bad.includes(t));
+    for (const [u, v] of edges) tris.push([u, v, i]);
+  }
+  return tris.filter((t) => t.every((i) => i < n));
+}
+
+// --- glyphs: what a place is, small, in Mark
+function glyph(kind, x, y, s = 1) {
+  const m = MARK, w = 1.3 * s;
+  switch (kind) {
+    case "rise": return `<path d="M${x-4*s},${y+3*s} L${x},${y-4*s} L${x+4*s},${y+3*s} Z" fill="${m}" fill-opacity=".85"/>`;
+    case "hollow": return `<circle cx="${x}" cy="${y}" r="${3.4*s}" fill="none" stroke="${m}" stroke-width="${w}"/>`;
+    case "pond": return `<circle cx="${x}" cy="${y}" r="${4*s}" fill="${WATER2}" stroke="#4d7194" stroke-width="${w*.8}"/>`;
+    case "river": return `<path d="M${x-5*s},${y-1*s} q${2.5*s},${-3*s} ${5*s},0 t${5*s},0" fill="none" stroke="#4d7194" stroke-width="${w*1.5}"/>`;
+    case "spring": return `<circle cx="${x}" cy="${y}" r="${2*s}" fill="#4d7194"/><circle cx="${x}" cy="${y}" r="${4*s}" fill="none" stroke="#4d7194" stroke-width="${w*.7}"/>`;
+    case "gully": return `<path d="M${x-3.5*s},${y-3*s} L${x},${y+3*s} L${x+3.5*s},${y-3*s}" fill="none" stroke="${m}" stroke-width="${w}"/>`;
+    case "pass": return `<path d="M${x-3.5*s},${y-3.5*s} q${2.5*s},${3.5*s} 0,${7*s} M${x+3.5*s},${y-3.5*s} q${-2.5*s},${3.5*s} 0,${7*s}" fill="none" stroke="${m}" stroke-width="${w}"/>`;
+    case "rock": return `<path d="M${x-3.5*s},${y+2.5*s} L${x-2*s},${y-3*s} L${x+1.5*s},${y-3.5*s} L${x+3.8*s},${y+.5*s} L${x+1.5*s},${y+3*s} Z" fill="#5c564e" stroke="${m}" stroke-width="${w*.6}"/>`;
+    case "dust": return `<path d="M${x-4*s},${y+1*s} q${2*s},${-3*s} ${4*s},0 q${2*s},${3*s} ${4*s},0" fill="none" stroke="${m}" stroke-width="${w}" stroke-dasharray="${1.5*s} ${1.2*s}"/>`;
+    case "workings": return `<path d="M${x-5*s},${y+2.5*s} q${2.5*s},${-6*s} ${5*s},0 q${2.5*s},${-5*s} ${5*s},0" fill="${STONE}" stroke="${m}" stroke-width="${w*.8}"/>`;
+    case "shaft": return `<rect x="${x-3.2*s}" y="${y-3.2*s}" width="${6.4*s}" height="${6.4*s}" fill="#0b0907" stroke="${m}" stroke-width="${w}"/><path d="M${x-3.2*s},${y-3.2*s} L${x+3.2*s},${y+3.2*s} M${x+3.2*s},${y-3.2*s} L${x-3.2*s},${y+3.2*s}" stroke="${m}" stroke-width="${w*.7}"/>`;
+    case "cairn": return `<path d="M${x-3.8*s},${y+3.5*s} L${x},${y-4.5*s} L${x+3.8*s},${y+3.5*s} Z" fill="none" stroke="${m}" stroke-width="${w}"/><path d="M${x-2*s},${y+.5*s} H${x+2*s}" stroke="${m}" stroke-width="${w*.7}"/>`;
+    case "marker": return `<rect x="${x-1.4*s}" y="${y-4.5*s}" width="${2.8*s}" height="${8*s}" rx="${.8*s}" fill="${m}"/>`;
+    case "salt": return `<rect x="${x-3.5*s}" y="${y-3.5*s}" width="${7*s}" height="${7*s}" fill="#9a958a" fill-opacity=".6" stroke="${m}" stroke-width="${w*.6}"/>`;
+    case "slope": return `<path d="M${x-3.5*s},${y+2.5*s} L${x+3.5*s},${y-2.5*s}" stroke="${m}" stroke-width="${w}"/>`;
+    default: return `<circle cx="${x}" cy="${y}" r="${2.4*s}" fill="${m}" fill-opacity=".7"/>`;
+  }
+}
+const noteMark = (x, y, s = 1) => `<path d="M${x+5*s},${y-9*s} h${4.5*s} v${4.5*s} l${-1.5*s},${1.5*s} h${-3*s} Z" fill="${DIM}" fill-opacity=".9"/>`;
+
+function glowDefs(id) {
+  return `<filter id="${id}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+}
+
+// --- the facets for B and C: the walked places' own triangles where they're close, and a fan round each place
+const EX = 14; // heights shown nine times over, or the Downs read flat
+function facets() {
+  const P = WALK.places.map((p) => [p.x, p.y]);
+  const out = [];
+  for (const t of delaunay(P)) {
+    const [a, b, c] = t.map((i) => WALK.places[i]);
+    const long = Math.max(Math.hypot(a.x - b.x, a.y - b.y), Math.hypot(b.x - c.x, b.y - c.y), Math.hypot(c.x - a.x, c.y - a.y));
+    if (long <= 3.1) out.push([[a.x, a.y, a.z], [b.x, b.y, b.z], [c.x, c.y, c.z]]);
+  }
+  const r = rnd(7);
+  for (const p of WALK.places) {
+    const n = 6, rad = 0.95, off = r() * Math.PI;
+    const ring = [];
+    for (let i = 0; i < n; i++) {
+      const ang = off + (i * 2 * Math.PI) / n;
+      const vx = p.x + Math.cos(ang) * rad * (0.85 + r() * 0.3), vy = p.y + Math.sin(ang) * rad * (0.85 + r() * 0.3);
+      // lean toward a walked neighbour that way, else the place's own height with a little give
+      let z = p.z + (r() - 0.5) * 0.012, best = 0;
+      for (const e of Object.values(p.exits)) {
+        const q = byId[e.to];
+        if (!q) continue;
+        const d = Math.hypot(q.x - p.x, q.y - p.y);
+        const dot = ((q.x - p.x) * Math.cos(ang) + (q.y - p.y) * Math.sin(ang)) / d;
+        if (dot > 0.6 && dot > best) { best = dot; z = p.z + (q.z - p.z) * (rad / d); }
+      }
+      ring.push([vx, vy, z]);
+    }
+    for (let i = 0; i < n; i++) out.push([[p.x, p.y, p.z], ring[i], ring[(i + 1) % n]]);
+  }
+  return out;
+}
+const FACETS = facets();
+function shade(f) {
+  const [a, b, c] = f;
+  const u = [b[0] - a[0], b[1] - a[1], (b[2] - a[2]) * EX], w = [c[0] - a[0], c[1] - a[1], (c[2] - a[2]) * EX];
+  let n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+  if (n[2] < 0) n = n.map((v) => -v);
+  const l = Math.hypot(...n); n = n.map((v) => v / l);
+  const L = [-0.55, 0.5, 0.67]; const ll = Math.hypot(...L);
+  return (n[0] * L[0] + n[1] * L[1] + n[2] * L[2]) / ll;
+}
+const mixHex = (a, b, t) => {
+  const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16)), pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
+  return "#" + pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, "0")).join("");
+};
+
+// --- the top band: Tamsin from above (faceOf("tamsin"): ground 90,65,44 in an orange star's light, 15% sea), your spot lit
+function planet(w, h) {
+  const R = 92, cx = w / 2, cy = h / 2 + 4;
+  const r = rnd(3);
+  let s = `<rect width="${w}" height="${h}" fill="#04060c"/>`;
+  for (let i = 0; i < 70; i++) s += `<circle cx="${(r() * w).toFixed(1)}" cy="${(r() * h).toFixed(1)}" r="${(0.4 + r() * 0.7).toFixed(2)}" fill="#fff" opacity="${(0.12 + r() * 0.6).toFixed(2)}"/>`;
+  const P = [];
+  const N = 120;
+  for (let i = 0; i < N; i++) {
+    const zz = 1 - (i + 0.5) / N; const rr = Math.sqrt(1 - zz * zz) ; const th = i * 2.39996;
+    P.push([Math.cos(th) * rr, Math.sin(th) * rr]);
+  }
+  for (let i = 0; i < 30; i++) { const th = (i / 30) * 2 * Math.PI; P.push([Math.cos(th), Math.sin(th)]); }
+  const noise = (x, y) => Math.sin(x * 3.1 + 1.3) * Math.cos(y * 2.7 - 0.4) + 0.6 * Math.sin(x * 5.3 - y * 4.1 + 2);
+  s += `<defs><radialGradient id="rim" cx="50%" cy="50%" r="50%"><stop offset="86%" stop-color="#cfc9c6" stop-opacity="0"/><stop offset="100%" stop-color="#cfc9c6" stop-opacity=".26"/></radialGradient>${glowDefs("pg")}</defs>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R + 6}" fill="url(#rim)"/>`;
+  for (const t of delaunay(P)) {
+    const [a, b, c] = t.map((i) => P[i]);
+    const mx = (a[0] + b[0] + c[0]) / 3, my = (a[1] + b[1] + c[1]) / 3;
+    const nz = Math.sqrt(Math.max(0, 1 - mx * mx - my * my));
+    const L = [-0.55, -0.45, 0.7]; const ll = Math.hypot(...L);
+    const lit = Math.max(0.12, (mx * L[0] + my * L[1] + nz * L[2]) / ll);
+    const sea = noise(mx, my) < -0.95;
+    const base = sea ? [38, 62, 87] : [90, 65, 44];
+    const k = 0.35 + lit * 0.95 + (r() - 0.5) * 0.08;
+    const col = `rgb(${base.map((v) => Math.min(255, Math.round(v * k))).join(",")})`;
+    s += `<polygon points="${[a, b, c].map(([x, y]) => `${(cx + x * R).toFixed(1)},${(cy + y * R).toFixed(1)}`).join(" ")}" fill="${col}" stroke="${col}" stroke-width=".6"/>`;
+  }
+  // you, a little north of the middle (Zennor's 40° north), turned to face you
+  s += `<circle cx="${cx + 4}" cy="${cy - 22}" r="4.5" fill="${AMBER}" fill-opacity=".3" stroke="${AMBER}" stroke-width="2.4" filter="url(#pg)"/>`;
+  return s;
+}
+
+
+// --- octagons: a tiling of 1.2 km, three lattice cells of the game's 0.4 km, each place in the one its true spot falls in
+const P = 1.2, R2 = Math.SQRT2;
+const snap = (p, snapped) => snapped ? [Math.round(p.x / P) * P, Math.round(p.y / P) * P] : [p.x, p.y];
+function octagon(cx, cy, W) {
+  const h = W / 2, a = W / (2 * (1 + R2));
+  return [[a, -h], [h, -a], [h, a], [a, h], [-a, h], [-h, a], [-h, -a], [-a, -h]].map(([x, y]) => `${(cx + x).toFixed(1)},${(cy + y).toFixed(1)}`).join(" ");
+}
+
+// the kind of ground, grouped: what an octagon's background says
+const GROUP = { open: "open", roadend: "road", pond: "water", river: "water", spring: "water", ice: "ice", salt: "salt", rock: "rock",
+  dust: "dust", workings: "workings", shaft: "workings", cairn: "waymark", marker: "waymark", rise: "high", pass: "high",
+  hollow: "low", gully: "low", slope: "slope" };
+const GROUPS = [
+  ["open", "Open ground", "Open Ground, On the Downs"], ["waymark", "Cairn, marker", "Cairn, Marker Stone"], ["high", "High ground", "Hilltop, Summit, Knoll, Saddle, Low Pass"],
+  ["slope", "Slope", "Rising Ground, Hillside"], ["low", "Low ground", "Hollow, Head of a Gully"], ["rock", "Rock", "Rock Outcrop, Bare Rock, Stony Ground"],
+  ["dust", "Dust", "Drifted Dust"], ["workings", "Old workings", "Old Workings, Old Shaft, Fallen Adit"], ["water", "Water", "Pond, River Bank, Spring, Beach"],
+  ["salt", "Salt", "The Salt Pans"], ["ice", "Ice", "Ice Field, Ice Slope, Frozen Shore"],
+];
+const COLOUR = { open: "#261f18", road: "#332b22", waymark: "#2f2820", high: "#3b3722", slope: "#33291c", low: "#1f2619", rock: "#34363a",
+  dust: "#4a3a22", workings: "#4a2a1e", water: "#1f3a52", salt: "#4c4a42", ice: "#5a6878" };
+const PLAIN = "#221c16";
+// textures, in px so they're the same at any zoom
+function patterns(sfx) {
+  const p = (id, w, h, body) => `<pattern id="${id}${sfx}" width="${w}" height="${h}" patternUnits="userSpaceOnUse">${body}</pattern>`;
+  return p("water", 12, 6, `<path d="M0,3 q3,-2.4 6,0 t6,0" fill="none" stroke="#5b86ad" stroke-width=".9" stroke-opacity=".75"/>`)
+    + p("ice", 6, 6, `<path d="M0,6 L6,0" stroke="#dbe9ff" stroke-width=".7" stroke-opacity=".45"/>`)
+    + p("salt", 7, 7, `<rect x="1.5" y="1.5" width="4" height="4" fill="none" stroke="#cfc9b9" stroke-width=".6" stroke-opacity=".45"/>`)
+    + p("rock", 11, 10, `<path d="M2,3 l2,-1.6 l1.4,2 Z M7.5,7.5 l2,-1.2 l.6,2.2 Z M8,1.5 l1.2,.8 l-1.6,.8 Z" fill="#a4a4a8" fill-opacity=".55"/>`)
+    + p("dust", 5, 5, `<circle cx="1.2" cy="1.2" r=".75" fill="#c9a36a" fill-opacity=".5"/><circle cx="3.7" cy="3.7" r=".6" fill="#c9a36a" fill-opacity=".35"/>`)
+    + p("workings", 12, 9, `<path d="M1,7 q3,-6 6,0 M7,3.5 q2.2,-4 4.4,0" fill="none" stroke="#c07a5c" stroke-width=".9" stroke-opacity=".7"/>`)
+    + p("waymark", 8, 8, `<rect x="3.4" y="1.5" width="1.4" height="5" fill="#b3a58f" fill-opacity=".55"/>`)
+    + p("high", 9, 7, `<path d="M1.5,5.5 L4.5,1.8 L7.5,5.5" fill="none" stroke="#c8b97e" stroke-width=".85" stroke-opacity=".55"/>`)
+    + p("slope", 5, 5, `<path d="M0,5 L5,0" stroke="#a8977c" stroke-width=".8" stroke-opacity=".45"/>`)
+    + p("low", 9, 7, `<path d="M1.5,1.8 L4.5,5.5 L7.5,1.8" fill="none" stroke="#7f9c68" stroke-width=".85" stroke-opacity=".6"/>`);
+}
+const TEXTURED = new Set(["water", "ice", "salt", "rock", "dust", "workings", "waymark", "high", "slope", "low"]);
+
+const NUDGED = {"surface.tamsin.join.downs":[4,1],"surface.tamsin.806.856.2293775":[5,1],"surface.tamsin.806.856.2031628":[4,0],"surface.tamsin.806.856.2359314":[6,1],"surface.tamsin.806.856.1835021":[4,-1],"surface.tamsin.806.856.2424854":[7,1],"surface.tamsin.806.856.1572877":[4,-2],"surface.tamsin.806.856.2490393":[8,1],"surface.tamsin.806.856.1376269":[4,-3],"surface.tamsin.806.856.2555932":[9,1],"surface.tamsin.806.856.1179661":[4,-4],"surface.tamsin.806.856.2621471":[10,3],"surface.tamsin.806.856.2162719":[10,0],"surface.tamsin.806.856.983052":[4,-5],"surface.tamsin.806.856.2818082":[11,4],"surface.tamsin.806.856.720906":[3,-6],"surface.tamsin.806.856.524301":[4,-7],"surface.tamsin.806.856.655368":[2,-7],"surface.tamsin.806.856.655364":[1,-7],"surface.tamsin.806.856.851973":[1,-6],"surface.tamsin.join.terrace-road":[0,-6],"surface.tamsin.806.855.655403":[-1,-7],"surface.tamsin.806.855.917547":[-1,-6],"surface.tamsin.806.855.327723":[-1,-8],"surface.tamsin.join.carn-bridge":[-4,0],"surface.tamsin.806.855.2424864":[-4,1],"surface.tamsin.806.855.1966106":[-5,0],"surface.tamsin.806.855.2883618":[-4,4],"surface.tamsin.806.855.2228249":[-5,1],"surface.tamsin.806.855.1966096":[-10,-1]};
+// --- the three open questions, drawn on the board as picked
+const ANNOT = "#e070d0"; // mockup-only annotation colour: never in the plugin
+const gameZ = (p) => Math.round(p.z * 10) / 10; // the game sends height to 0.1 km (surface-rooms.ts tenth())
+const oneWay = (a, b) => !Object.values(b.exits).some((e) => e.to === a.id);
+const DIRNAME = { north: "N", northeast: "NE", east: "E", southeast: "SE", south: "S", southwest: "SW", west: "W", northwest: "NW" };
+const deltaDir = { "0,1": "north", "1,1": "northeast", "1,0": "east", "1,-1": "southeast", "0,-1": "south", "-1,-1": "southwest", "-1,0": "west", "-1,1": "northwest" };
+
+function landX(w, h, cx, cy, k, opts = {}) {
+  const v = view(w, h, cx, cy, k);
+  const id = "x" + (opts.tag ?? "");
+  const W = P * k, ap = W / 2, sq = W / 2 - W / (2 * (1 + R2));
+  const grid = (p) => opts.cells ? opts.cells[p.id] : [Math.round(p.x / P), Math.round(p.y / P)];
+  const at = (p) => { const [gx, gy] = grid(p); return [v.X(gx * P), v.Y(gy * P)]; };
+  const face = (p, dir) => { const [x, y] = at(p); const [dx, dy] = DIRS[dir]; return [x + dx * ap, y - dy * ap]; };
+  const unit = (dir) => { const [dx, dy] = DIRS[dir]; return [dx, -dy]; };
+  const dirTo = (p, q) => Object.entries(p.exits).find(([, e]) => e.to === q.id)?.[0];
+  const follow = opts.follow ?? "tiles";
+  let s = `<defs>${glowDefs("g" + id)}${patterns(id)}<marker id="ah${id}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="${ANNOT}"/></marker></defs><rect width="${w}" height="${h}" fill="${GROUND}"/>`;
+  s += `<polygon points="${pts(v, TOWN)}" fill="#16120f" stroke="${STONE}" stroke-width="1" stroke-dasharray="4 3"/>`;
+  const ends = { "join.downs": [4, 1], "join.carn-bridge": [-4, 0.2], "join.terrace-road": [0.9, -7] };
+  for (const p of WALK.places) for (const [j, [x, y]] of Object.entries(ends)) if (p.id.endsWith(j)) {
+    const [px, py] = at(p); s += `<line x1="${v.X(x)}" y1="${v.Y(y)}" x2="${px}" y2="${py}" stroke="${EARTH}" stroke-width="${0.24 * k}" stroke-linecap="round"/>`;
+  }
+  const link = routes.map((r) => {
+    const [ax, ay] = grid(r.a), [bx, by] = grid(r.b);
+    const gx = bx - ax, gy = by - ay;
+    const touch = Math.max(Math.abs(gx), Math.abs(gy)) === 1;
+    const da = dirTo(r.a, r.b), db = dirTo(r.b, r.a);
+    const tileDir = deltaDir[`${gx},${gy}`], backDir = deltaDir[`${-gx},${-gy}`];
+    const off = touch && ((da && da !== tileDir) || (db && db !== backDir));
+    return { ...r, touch, diag: Math.abs(gx) === 1 && Math.abs(gy) === 1, da, db, off, one: !db || !da };
+  });
+  // where a way is drawn: [start, c1, c2, end] for a curve, or [a, b] for a line
+  const curveOf = (r) => {
+    const a = r.da ?? Object.keys(DIRS).find((d) => deltaDir[d] === d);
+    const [x1, y1] = face(r.a, r.da), [x2, y2] = r.db ? face(r.b, r.db) : at(r.b);
+    const [u1x, u1y] = unit(r.da), [u2x, u2y] = r.db ? unit(r.db) : [0, 0];
+    const c = ap * 0.85;
+    return [[x1, y1], [x1 + u1x * c, y1 + u1y * c], [x2 + u2x * c, y2 + u2y * c], [x2, y2]];
+  };
+  const curvePath = ([a, b, c, d]) => `M${a[0]},${a[1]} C${b[0]},${b[1]} ${c[0]},${c[1]} ${d[0]},${d[1]}`;
+  const roadOn = (d, track, under) => track
+    ? `<path d="${d}" fill="none" stroke="${STONE}" stroke-width="${0.22 * k + 4}" stroke-dasharray="4 3"/><path d="${d}" fill="none" stroke="${EARTH}" stroke-width="${0.22 * k}" stroke-linecap="round"/>`
+    : `<path d="${d}" fill="none" stroke="${EARTH}" stroke-width="${0.13 * k}" stroke-linecap="round"/>`;
+  // longer ways, under the octagons
+  for (const r of link) if (!r.touch) {
+    const [x1, y1] = r.da ? face(r.a, r.da) : at(r.a), [x2, y2] = r.db ? face(r.b, r.db) : at(r.b);
+    s += roadOn(`M${x1},${y1} L${x2},${y2}`, r.track);
+  }
+  const diamond = (r) => { const [ax, ay] = at(r.a), [bx, by] = at(r.b), mx = (ax + bx) / 2, my = (ay + by) / 2; return `${mx},${my - sq} ${mx + sq},${my} ${mx},${my + sq} ${mx - sq},${my}`; };
+  const drawn = new Set();
+  for (const r of link) if (r.diag && !((follow === "exit" || follow === "straight") && r.off)) { const d = diamond(r); if (!drawn.has(d)) { drawn.add(d); s += `<polygon points="${d}" fill="#1a1511" stroke="${STONE}" stroke-width="1"/>`; } }
+  // curved ways go under the octagons too, so only their ends show at the faces
+  const curved = [];
+  if (follow === "exit") for (const r of link) if (r.off) { curved.push(r); s += roadOn(curvePath(curveOf(r)), r.track); }
+  for (const p of WALK.places) {
+    const [x, y] = at(p), g = GROUP[kindOf(p)], oct = octagon(x, y, W - 2);
+    s += `<polygon points="${oct}" fill="${COLOUR[g]}" stroke="${STONE}" stroke-width="1.2"/>`;
+    if (TEXTURED.has(g)) s += `<polygon points="${oct}" fill="url(#${g}${id})"/>`;
+  }
+  // ways between neighbours
+  for (const r of link) if (r.touch) {
+    if (follow === "straight" && r.off) {
+      // a straight road from the face the exit leaves by to the face the way arrives by
+      const [ax, ay] = at(r.a), [bx, by] = at(r.b);
+      const [f1x, f1y] = r.da ? face(r.a, r.da) : [ax, ay], [f2x, f2y] = r.db ? face(r.b, r.db) : [bx, by];
+      if (r.track) s += roadOn(`M${ax},${ay} L${f1x},${f1y} L${f2x},${f2y} L${bx},${by}`, true);
+      else s += `<path d="M${f1x - (f1x - ax) * 0.3},${f1y - (f1y - ay) * 0.3} L${f1x},${f1y} L${f2x},${f2y} L${f2x + (bx - f2x) * 0.3},${f2y + (by - f2y) * 0.3}" fill="none" stroke="${EARTH}" stroke-width="${0.1 * k}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      continue;
+    }
+    if (follow === "exit" && r.off) {
+      // over the octagons: from the middle out of the exit's own face, round to the neighbour's
+      const [a, , , d] = curveOf(r);
+      const [ax, ay] = at(r.a), [bx, by] = at(r.b);
+      const path = `M${ax},${ay} L${a[0]},${a[1]} ${curvePath(curveOf(r)).replace(/^M[^C]*/, "")} L${bx},${by}`;
+      s += r.track ? roadOn(path, true) : roadOn(`M${a[0] - (a[0] - ax) * 0.25},${a[1] - (a[1] - ay) * 0.25} L${a[0]},${a[1]} ${curvePath(curveOf(r)).replace(/^M[^C]*/, "")} L${d[0] + (bx - d[0]) * 0.25},${d[1] + (by - d[1]) * 0.25}`, false);
+      continue;
+    }
+    const [ax, ay] = at(r.a), [bx, by] = at(r.b);
+    if (r.track) s += roadOn(`M${ax},${ay} L${bx},${by}`, true);
+    else {
+      const mx = (ax + bx) / 2, my = (ay + by) / 2, dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+      const d = r.diag ? sq + 3 : 0.12 * k;
+      s += `<line x1="${mx - ux * d}" y1="${my - uy * d}" x2="${mx + ux * d}" y2="${my + uy * d}" stroke="${EARTH}" stroke-width="${r.diag ? 0.1 * k : 0.2 * k}" stroke-linecap="${r.diag ? "round" : "butt"}"/>`;
+    }
+  }
+  // one-way: a Dim chevron where the way crosses between the two, pointing the way you can go
+  if (opts.oneWay) for (const r of link) if (r.one) {
+    const from = r.da ? r.a : r.b, to = r.da ? r.b : r.a;
+    const [ax, ay] = at(from), [bx, by] = at(to), mx = (ax + bx) / 2, my = (ay + by) / 2;
+    const ang = Math.atan2(by - ay, bx - ax) * 180 / Math.PI, c = 0.11 * k;
+    s += `<path d="M${-c},${-c} L${c * 0.4},0 L${-c},${c}" transform="translate(${mx} ${my}) rotate(${ang})" fill="none" stroke="#c9d2dc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  // hachures, by the heights given
+  if (opts.hach && opts.hach !== "none") {
+    for (const r of link) {
+      const len = Math.hypot(r.b.x - r.a.x, r.b.y - r.a.y);
+      const exact = Math.abs(r.b.z - r.a.z) / len >= 0.045;
+      const game = Math.abs(gameZ(r.b) - gameZ(r.a)) / len >= 0.045;
+      const shown = opts.hach === "exact" ? exact : game;
+      const [ax, ay] = at(r.a), [bx, by] = at(r.b);
+      const hiA = (opts.hach === "exact" ? r.a.z - r.b.z : gameZ(r.a) - gameZ(r.b)) > 0;
+      const hi = hiA ? [ax, ay, bx, by] : [bx, by, ax, ay];
+      const dx = hi[2] - hi[0], dy = hi[3] - hi[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+      if (shown) for (let i = 1; i <= 5; i++) { const t = 0.2 + i * 0.1, mx = hi[0] + dx * t, my = hi[1] + dy * t, l = 7 - i;
+        s += `<line x1="${mx - uy * l}" y1="${my + ux * l}" x2="${mx + uy * l}" y2="${my - ux * l}" stroke="#d8c8a8" stroke-width="1.4"/>`; }
+      if (opts.annot && opts.hach === "game" && shown !== exact) {
+        const mx = (ax + bx) / 2, my = (ay + by) / 2;
+        s += `<circle cx="${mx}" cy="${my}" r="${0.3 * k}" fill="none" stroke="${ANNOT}" stroke-width="2" ${shown ? "" : 'stroke-dasharray="4 3"'}/>`;
+        s += `<text x="${mx + 0.32 * k}" y="${my - 0.22 * k}" fill="${ANNOT}" font-size="11">${shown ? "not steep" : "missed"}</text>`;
+      }
+    }
+  }
+  // stubs
+  for (const { p, dir } of stubs) {
+    const [dx, dy] = DIRS[dir]; const [x0, y0] = face(p, dir), sl = 0.45 * k;
+    s += `<line x1="${x0 + dx * 2}" y1="${y0 - dy * 2}" x2="${x0 + dx * sl}" y2="${y0 - dy * sl}" stroke="${DIM}" stroke-width="1.6" stroke-dasharray="0.1 3.4" stroke-linecap="round"/>`;
+  }
+  // annotate: what the game's exit says, where the doorway disagrees
+  if (opts.annot && (opts.follow ?? "tiles") === "tiles" && !opts.cells && !opts.hach) for (const r of link) if (r.off) {
+    for (const [p, q, d] of [[r.a, r.b, r.da], [r.b, r.a, r.db]]) {
+      if (!d) continue;
+      const [gx, gy] = grid(p), [hx, hy] = grid(q), td = deltaDir[`${hx - gx},${hy - gy}`];
+      if (td === d) continue;
+      const [fx, fy] = face(p, d), [ux, uy] = unit(d);
+      s += `<line x1="${fx - ux * 0.2 * k}" y1="${fy - uy * 0.2 * k}" x2="${fx + ux * 0.32 * k}" y2="${fy + uy * 0.32 * k}" stroke="${ANNOT}" stroke-width="2" marker-end="url(#ah${id})"/>`;
+      s += `<text x="${fx + ux * 0.42 * k}" y="${fy + uy * 0.42 * k + 4}" fill="${ANNOT}" font-size="11" text-anchor="middle">${DIRNAME[d]}</text>`;
+    }
+  }
+  if (opts.annot && (opts.follow === "exit" || opts.follow === "straight")) for (const r of link.filter((r) => r.off)) for (const [p, d] of [[r.a, r.da], [r.b, r.db]]) {
+    if (!d) continue; const [fx, fy] = face(p, d), [ux, uy] = unit(d);
+    s += `<text x="${fx + ux * 0.3 * k}" y="${fy + uy * 0.3 * k + 4}" fill="${DIM}" font-size="10.5" text-anchor="middle">${DIRNAME[d]}</text>`;
+  }
+  if (opts.labels) for (const [pid, txt, dx, dy] of opts.labels) {
+    const p = byId[pid]; if (!p) continue; const [x, y] = at(p);
+    s += `<text x="${x + dx}" y="${y + dy}" fill="${TEXT}" font-size="11" text-anchor="middle" paint-order="stroke" stroke="#04060c" stroke-width="3">${txt}</text>`;
+  }
+  if (opts.here !== false) { const [x, y] = at(here); s += `<g filter="url(#g${id})"><polygon points="${octagon(x, y, W - 2)}" fill="${AMBER}" fill-opacity=".3" stroke="${AMBER}" stroke-width="3"/></g>`; }
+  return s;
+}
+
+const fig = (title, desc, svg) => `<figure><div class="frame">${svg}</div><figcaption><b>${title}</b><br>${desc}</figcaption></figure>`;
+const box = (w, h, inner) => `<svg width="${w}" height="${h}">${inner}</svg>`;
+const ID = (s) => WALK.places.find((p) => p.name === s[0] && p.x === s[1] && p.y === s[2])?.id;
+const T1 = ID(["Cairn on the Terrace Track", 5, -6.8]), T2 = ID(["Cairn on the Terrace Track", 4.2, -8.4]), T3 = ID(["Old Workings on the Terrace Track", 3.4, -8.8]);
+
+const N3 = (o) => ({ ...o, cells: NUDGED, follow: "tiles" });
+document.getElementById("q1").innerHTML =
+  fig("A · Now: follow the octagons", "The Terrace Track's lower end. Pink arrows: the face each of the game's exits really leaves by. Three times in a row the track goes through a side or corner the game doesn't use, so the map shows the wrong direction to type.",
+    box(290, 300, landX(290, 300, 3.6, -7.9, 60, { follow: "tiles", annot: true, here: false, tag: "q1a" })))
+  + fig("B · Bend to the exit", "Each way that disagrees leaves by the face its exit names and curves round to the face it arrives by (the game's directions lettered). Always right, but where the game says south-west and the octagons sit straight south, the curve has to snake.",
+    box(290, 300, landX(290, 300, 3.6, -7.9, 60, { follow: "exit", annot: true, here: false, tag: "q1b" })))
+  + fig("C · Straight from face to face (my pick)", "The same idea with no curves: a way that disagrees runs straight from the face its exit names to the face it arrives by, over the shared edge. Always right, and reads as a road that cuts across; ways that agree (three in four) stay plain doorways.",
+    box(290, 300, landX(290, 300, 3.6, -7.9, 60, { follow: "straight", annot: true, here: false, tag: "q1s" })));
+
+document.getElementById("q1b").innerHTML =
+  fig("A · At the cairn where you stand", "You came along the Tinners' Track by its exit east, but the octagons put the cairn north-east of the last place.",
+    box(290, 220, landX(290, 220, 11.8, 2.6, 60, { follow: "tiles", annot: true, tag: "q1c" })))
+  + fig("B · Bend", "The track leaves east and curves up into the cairn's west face.",
+    box(290, 220, landX(290, 220, 11.8, 2.6, 60, { follow: "exit", annot: true, tag: "q1d" })))
+  + fig("C · Straight", "The track leaves east and runs straight up into the cairn's west face.",
+    box(290, 220, landX(290, 220, 11.8, 2.6, 60, { follow: "straight", annot: true, tag: "q1t" })));
+
+document.getElementById("q1c").innerHTML =
+  fig("D · Nudge the places (tried, not recommended)", "Move a new place up to one octagon so its exits come out right. Fine on a thin walk, but it drifts: here the cairn ended up two octagons off, back to the wrong direction. Over all 500 places of the land it still leaves 18% wrong, with places up to 2.4 km from their true spot.",
+    box(290, 260, landX(290, 260, 9.6, 1.4, 34, N3({ tag: "q1g" }))))
+  + `<figure><div class="frame" style="padding:14px 16px;color:#e3eaf2;font-size:12.5px;line-height:1.7;height:232px">
+      <b>How often a way points wrong</b><br>
+      <span style="color:#7d8a9a">Ways drawn in a different compass direction from the game's exit, on this walk / on all 500 places within 30 km, as if walked:</span><br>
+      At their true spots: 0% / 0.2%<br>
+      Rounded to the octagons (A): 22% / 23%<br>
+      Nudged up to one octagon (D): 6% / 18%<br>
+      Nudged up to two: 3% / 22%<br>
+      Bend or straight (B, C): 0% / 0%, the rest drawn as now
+    </div><figcaption><b>The numbers</b><br>The board itself is the cause: the game's places aren't on a 1.2 km grid. B and C keep the board and draw the disagreeing ways by the game's exits.</figcaption></figure>`;
+
+document.getElementById("q2").innerHTML =
+  fig("What the mockups drew", "Hachures from the exact heights, which the game doesn't send: steep down from the Terrace Road's end into the Carn's valley, level along the Downs.",
+    box(290, 300, landX(290, 300, 1.2, -8.4, 54, { hach: "exact", here: false, tag: "q2a" })))
+  + fig("What the game's heights give", "The game sends height to 0.1 km (100 m). Pink circles: hachures that would be wrong (solid: drawn but not steep; dashed: steep but missed).",
+    box(290, 300, landX(290, 300, 1.2, -8.4, 54, { hach: "game", annot: true, here: false, tag: "q2b" })))
+  + fig("Suggested: no hachures", "The ground backgrounds already carry the lie of the land: ▼ for the gully heads down the Carn, the water bank, ▲ for high ground, slants for slopes.",
+    box(290, 300, landX(290, 300, 1.2, -8.4, 54, { hach: "none", here: false, tag: "q2c" })));
+
+document.getElementById("q3").innerHTML =
+  fig("Now: nothing marks it", "From the Terrace Road's end a route goes east “down the scree” to a fallen adit, and there's no way back up. Drawn as any way, it looks two-way.",
+    box(440, 240, landX(440, 240, 1.6, -7.6, 80, { here: false, tag: "q3a", labels: [] })))
+  + fig("Suggested: a small chevron", "A light chevron where the way crosses between the two, pointing the way you can go. Rare: about 1 way in 100.",
+    box(440, 240, landX(440, 240, 1.6, -7.6, 80, { oneWay: true, here: false, tag: "q3b" })));
+
+</script>
+</body></html>
