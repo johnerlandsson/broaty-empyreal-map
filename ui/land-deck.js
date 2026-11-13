@@ -1,7 +1,7 @@
 // The walked land's map (docs/maps/land.md): Tamsin's land round Zennor in the bottom band, an
-// octagon each walked place where it really is, the ways between them out of the faces their exits name, dotted
-// stubs for the ways not taken, and Zennor's block with its roads out. Only what you've stood in is drawn
-// or named. The layout is lib/land-layout.js's; this draws it, rebuilding the board on draw() only
+// octagon each walked place where it really is, the ways between them curving out of the faces
+// their exits name (the ones out of your place lit), dotted stubs for the ways not taken, and
+// Zennor's block with its roads out. Only what you've stood in is drawn or named. The layout is lib/land-layout.js's; this draws it, rebuilding the board on draw() only
 // when the walked places have changed.
 //
 // The board is in km (the viewBox); what's given in screen pixels (edges, textures, labels, the
@@ -25,6 +25,7 @@ const HL = "#ffb347";
 const GROUND = "#110e0b";
 const EARTH = "#332b22";
 const STONE = "#4b4338";
+const LIT = "#7d6b55"; // the ways out of the place you stand in: Earth, lightened
 const FIXTURE = "#cfd8e3";
 const ZENNOR = "#16120f";
 const HOME_K = 26; // px a km when centred on you
@@ -270,6 +271,23 @@ export class LandDeck {
       const lit = el("use", { href: `#${this.octId}`, fill: HL, "fill-opacity": 0.3, stroke: HL, "stroke-width": 3, "pointer-events": "none" }, this.hl);
       pulse(lit); // its breath starts from full
     }
+    // the ways out of your place, lit: the same curves, lighter and at a road's weight, drawn last
+    const litFor = here ? store.here : null;
+    if (litFor !== this.litFor) {
+      for (const path of this.wayEls.get(this.litFor) ?? []) {
+        path.removeAttribute("stroke");
+        path.removeAttribute("stroke-width");
+        path.removeAttribute("data-lit");
+      }
+      for (const path of this.wayEls.get(litFor) ?? []) {
+        path.setAttribute("stroke", LIT);
+        path.setAttribute("stroke-width", 0.13);
+        path.setAttribute("data-lit", "");
+        path.parentNode.appendChild(path);
+      }
+      this.litFor = litFor;
+    }
+
     // a walked road end to show the way home to, unless you stand on one
     this.ends = this.hasEnd && !!here && !store.here.includes(".join.");
 
@@ -319,9 +337,19 @@ export class LandDeck {
     const roads = g({ stroke: EARTH, "stroke-width": 0.24, "stroke-linecap": "round" });
     for (const r of L.zennor.roads) el("line", { x1: num(r.x1), y1: num(r.y1), x2: num(r.x2), y2: num(r.y2) }, roads);
 
-    // the plain ways, under the octagons: each square out of its exits' faces, then straight
-    const ways = g({ stroke: EARTH, "stroke-width": 0.13, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" });
-    for (const w of L.ways) if (!w.track) el("path", { "data-way": "", d: w.path }, ways);
+    // the plain ways, under the octagons: thin curves square out of their exits' faces (draw()
+    // lights the ones out of your place)
+    const ways = g({ stroke: EARTH, "stroke-width": 0.08, fill: "none", "stroke-linecap": "round" });
+    this.wayEls = new Map(); // place id -> the paths of the plain ways you can leave it by
+    this.litFor = null;
+    for (const w of L.ways) {
+      if (w.track) continue;
+      const path = el("path", { "data-way": "", d: w.path }, ways);
+      for (const id of w.oneWay ? [w.a] : [w.a, w.b]) {
+        if (!this.wayEls.has(id)) this.wayEls.set(id, []);
+        this.wayEls.get(id).push(path);
+      }
+    }
 
     // the octagons: the ground's colour, its texture over it, a Stone edge
     const octs = g({});

@@ -124,6 +124,7 @@ any zoom.
 | Name | Value | Used for |
 |---|---|---|
 | Zennor's block | `#16120f` | Zennor's ground on the land's map, under its dashed Stone edge and "ZENNOR" |
+| lit way | `#7d6b55` | the ways out of the place you stand in: Earth, lightened; no glow |
 | open | `#261f18` | open ground (Open Ground, On the Downs); no texture |
 | road | `#332b22` (Earth) | a road end out of Zennor; no texture |
 | waymark | `#2f2820`; ticks `#b3a58f` at .55 | a cairn or marker stone: short upright ticks |

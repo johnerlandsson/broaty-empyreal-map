@@ -122,7 +122,7 @@ describe("LandDeck.draw", () => {
     expect(deck.svg.querySelector(`[data-place="${A}"]`)).not.toBe(before[0]);
   });
 
-  it("draws a plain way under the octagons, square out of its exit's face, and a track over them", () => {
+  it("draws a plain way under the octagons, a curve out of its exit's face, and a track over them", () => {
     const C = "surface.tamsin.806.856.2000001";
     const store = walk();
     store.ingest({ id: C, name: "Hollow on the Downs", coords: { x: 8.6, y: 3.4, z: 0.41 }, exits: { sw: { id: B, inverse: "ne" } } });
@@ -132,11 +132,48 @@ describe("LandDeck.draw", () => {
     const track = deck.svg.querySelector("[data-track]");
     const oct = deck.svg.querySelector(`[data-place="${B}"]`);
     expect(deck.svg.querySelectorAll("[data-way]")).toHaveLength(1);
-    // one-way: from C's middle out of its southwest face, 0.3 on square, then straight into B's middle
-    expect(way.getAttribute("d")).toBe("M8.6,-3.4 L8.2606,-3.0606 L8.0485,-2.8485 L7.4,-1.6");
+    // one-way: a curve from C's southwest face into B's middle
+    expect(way.getAttribute("d")).toMatch(/^M8\.2606,-3\.0606 Q\S+ 7\.4,-1\.6$/);
+    expect(track.getAttribute("d")).toBe("M6.2,-1.2 L7.4,-1.6"); // the track: straight, middle to middle
     expect(way.compareDocumentPosition(oct) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // the octagon's drawn after it
     expect(track.compareDocumentPosition(oct) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy(); // and before the track
     expect(deck.svg.querySelector("polygon:not([data-zennor])")).toBe(null); // no corner squares
+  });
+
+  it("lights the ways out of the place you stand in: the same curves, lighter and heavier, no others", () => {
+    const C = "surface.tamsin.806.856.2000001", D = "surface.tamsin.806.856.2000002", E = "surface.tamsin.806.856.2000003";
+    const store = walk();
+    // C north of B, joined both ways; D beyond C, joined both ways; E with a one-way way down into C
+    store.ingest({ id: B, name: "Bare Rock on the Tinners' Track", coords: { x: 7.4, y: 1.6, z: 0.417 }, exits: { w: { id: A, inverse: "e" }, n: { id: C, inverse: "s" } } });
+    store.ingest({ id: D, name: "Hollow on the Downs", coords: { x: 7.4, y: 6, z: 0.41 }, exits: { s: { id: C, inverse: "n" } } });
+    store.ingest({ id: E, name: "Rising Ground on the Downs", coords: { x: 9.6, y: 3.8, z: 0.5 }, exits: { w: { id: C } } });
+    store.ingest({ id: C, name: "Cairn on the Downs", coords: { x: 7.4, y: 3.8, z: 0.41 }, exits: { s: { id: B, inverse: "n" }, n: { id: D, inverse: "s" } } });
+    const deck = make();
+    deck.draw(store); // you stand in C
+    const ways = [...deck.svg.querySelectorAll("[data-way]")];
+    expect(ways).toHaveLength(3);
+    const lit = () => [...deck.svg.querySelectorAll("[data-way][data-lit]")];
+    // C's two ways out are lit; the one-way way into it from E isn't a way out
+    expect(lit()).toHaveLength(2);
+    for (const n of lit()) {
+      expect(n.getAttribute("stroke")).toBe("#7d6b55");
+      expect(n.getAttribute("stroke-width")).toBe("0.13");
+    }
+    const dim = ways.find((n) => !n.hasAttribute("data-lit"));
+    expect(dim.getAttribute("stroke")).toBe(null); // the group's Earth, thin
+    expect(dim.parentNode.getAttribute("stroke-width")).toBe("0.08");
+    expect(dim.compareDocumentPosition(lit()[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // lit ways are drawn last
+    // a step to D (walked before): the same paths, only relit
+    store.ingest({ id: D, name: "Hollow on the Downs", coords: { x: 7.4, y: 6, z: 0.41 }, exits: { s: { id: C, inverse: "n" } } });
+    deck.draw(store);
+    expect(new Set(deck.svg.querySelectorAll("[data-way]"))).toEqual(new Set(ways));
+    expect(lit()).toHaveLength(1);
+    expect(deck.svg.querySelectorAll("[data-way][stroke]")).toHaveLength(1);
+    // a step to E: its only way is one you can leave by
+    store.ingest({ id: E, name: "Rising Ground on the Downs", coords: { x: 9.6, y: 3.8, z: 0.5 }, exits: { w: { id: C } } });
+    deck.draw(store);
+    expect(lit()).toHaveLength(1);
+    expect(lit()[0].getAttribute("d")).toMatch(/^M\S+ Q/);
   });
 
   it("keeps a one-way way's chevron one size, and a track's name clear of its octagons, at any zoom", () => {

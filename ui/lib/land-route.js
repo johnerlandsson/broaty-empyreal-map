@@ -8,21 +8,23 @@ import { num } from "./land-layout.js";
 
 /**
  * The SVG path of a route (place ids, both ends included): from each octagon's middle to the next
- * along the way between them, out of and into the faces its exits name, as the ways run.
+ * along the way between them, as the ways run.
  * @param {string[]} ids
- * @param {{spots: Map<string, {x: number, y: number}>, ways: {a: string, b: string, points: {x: number, y: number}[]}[]}} layout layoutLand's
+ * @param {{spots: Map<string, {x: number, y: number}>, ways: {a: string, b: string, there: string, back: string}[]}} layout layoutLand's
  */
 export function routePath(ids, layout) {
   if (!ids?.length) return "";
   const byPair = new Map(layout.ways.map((w) => [`${w.a}\n${w.b}`, w]));
-  const c = layout.spots.get(ids[0]);
-  const pts = [{ x: c.x, y: -c.y }];
+  const at = (id) => {
+    const c = layout.spots.get(id);
+    return `${num(c.x)},${num(-c.y)}`;
+  };
+  const steps = [`M${at(ids[0])}`];
   for (let i = 1; i < ids.length; i++) {
     const there = byPair.get(`${ids[i - 1]}\n${ids[i]}`), back = byPair.get(`${ids[i]}\n${ids[i - 1]}`);
-    const q = layout.spots.get(ids[i]);
-    pts.push(...(there ? there.points.slice(1) : back ? back.points.slice(0, -1).reverse() : [{ x: q.x, y: -q.y }]));
+    steps.push(there ? there.there : back ? back.back : `L${at(ids[i])}`);
   }
-  return pts.map((p, i) => `${i ? "L" : "M"}${num(p.x)},${num(p.y)}`).join(" ");
+  return steps.join(" ");
 }
 
 /** The walked road end (a `.join.` place) fewest steps from fromId, by the ways you know; null if none. */

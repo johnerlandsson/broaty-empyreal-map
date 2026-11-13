@@ -159,6 +159,14 @@ John picked 2: "running its engine inside our map panel."
     show which side a way left by. Each way now runs 0.3 km square out of the
     face its exit names (a third of the gap where places are closer), and the
     two ends are joined by a straight line. The route and tracks follow it.
+19. **Thin curves, your exits lit** (2026-11-13, after playing decision 18; E
+    of `docs/maps/reference/land-curves-lit-options.png`, from the options in
+    `land-calm-options.png`). The square stubs made tracks climb like stairs
+    and close neighbours squiggle. Every plain way is now one thin curve from
+    face to face, square to both; tracks run straight from middle to middle;
+    a one-way chevron sits in the gap between the octagons. The ways you can
+    leave your place by are the same curves drawn lighter and heavier, with
+    nothing laid over them. This replaces decision 18.
 
 ## Design
 
