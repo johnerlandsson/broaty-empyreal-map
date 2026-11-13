@@ -149,4 +149,11 @@ describe("layoutLand", () => {
     const out = layoutLand([a], world);
     expect(out.labels).toEqual([{ text: "the Downs", kind: "region", x: 2.4, y: -1.2, angle: 0 }]);
   });
+
+  it("stands a region's name upright only when its walked spread is at least twice as tall as wide", () => {
+    const spread = (name, w, h) => [place("surface.tamsin.2.2.1", name, 0, 0), place("surface.tamsin.2.2.2", name, w, h)];
+    const angle = (ps) => layoutLand(ps, world).labels.find((l) => l.kind === "region").angle;
+    expect(angle(spread("Knoll on the Downs", 9.6, 14.4))).toBe(0); // about 9 by 14 km: level
+    expect(angle(spread("River Bank by the Carn", 2.4, 6))).toBe(-90); // about 2 by 6 km: upright
+  });
 });

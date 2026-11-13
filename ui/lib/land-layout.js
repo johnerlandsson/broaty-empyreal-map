@@ -228,7 +228,9 @@ export function layoutLand(places, world) {
   }
   for (const [text, cs] of regions) {
     const xs = cs.map((c) => c.x), ys = cs.map((c) => c.y);
-    const tall = Math.max(...ys) - Math.min(...ys) > Math.max(...xs) - Math.min(...xs);
+    // upright only when at least twice as tall as wide, so a broad region like the Downs stays level
+    const high = Math.max(...ys) - Math.min(...ys), wide = Math.max(...xs) - Math.min(...xs);
+    const tall = high > 0 && high >= 2 * wide;
     const at = { x: xs.reduce((s, v) => s + v, 0) / cs.length, y: ys.reduce((s, v) => s + v, 0) / cs.length };
     labels.push({ text, kind: "region", ...flip(at), angle: tall ? -90 : 0 });
   }
