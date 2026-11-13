@@ -6,48 +6,20 @@
 
 import { num } from "./land-layout.js";
 
-const PT = /-?[\d.]+,-?[\d.]+/g;
-const BEND = /(-?[\d.]+,-?[\d.]+) C(-?[\d.]+,-?[\d.]+) (-?[\d.]+,-?[\d.]+) (-?[\d.]+,-?[\d.]+)/;
-
 /**
- * What a way adds between its two octagons' middles, going from a to b: nothing for a doorway or
- * a corner square (the straight line middle to middle crosses it), a line face to face for a longer
- * way, and its own curve for a bend.
- */
-function between(way, forward) {
-  if (way.kind === "bend") {
-    const [, f1, c1, c2, f2] = way.path.match(BEND);
-    return forward ? [`L${f1}`, `C${c1} ${c2} ${f2}`] : [`L${f2}`, `C${c2} ${c1} ${f1}`];
-  }
-  if (way.kind === "long") {
-    const [f1, f2] = way.path.match(PT);
-    return forward ? [`L${f1}`, `L${f2}`] : [`L${f2}`, `L${f1}`];
-  }
-  return [];
-}
-
-/**
- * The SVG path of a route (place ids, both ends included) through each octagon's middle, following
- * the ways' own paths where they don't run straight between the middles.
+ * The SVG path of a route (place ids, both ends included): straight from each octagon's middle to
+ * the next, as the ways run.
  * @param {string[]} ids
- * @param {{cells: Map<string, {x: number, y: number}>, ways: object[]}} layout layoutLand's
+ * @param {{spots: Map<string, {x: number, y: number}>}} layout layoutLand's
  */
 export function routePath(ids, layout) {
   if (!ids?.length) return "";
-  const ways = new Map(layout.ways.map((w) => [`${w.a}\n${w.b}`, w]));
-  const mid = (id) => {
-    const c = layout.cells.get(id);
-    return `${num(c.x)},${num(-c.y)}`;
-  };
-  const d = [`M${mid(ids[0])}`];
-  for (let i = 1; i < ids.length; i++) {
-    const a = ids[i - 1], b = ids[i];
-    const there = ways.get(`${a}\n${b}`);
-    const back = ways.get(`${b}\n${a}`);
-    if (there || back) d.push(...between(there ?? back, !!there));
-    d.push(`L${mid(b)}`);
-  }
-  return d.join(" ");
+  return ids
+    .map((id, i) => {
+      const c = layout.spots.get(id);
+      return `${i ? "L" : "M"}${num(c.x)},${num(-c.y)}`;
+    })
+    .join(" ");
 }
 
 /** The walked road end (a `.join.` place) fewest steps from fromId, by the ways you know; null if none. */

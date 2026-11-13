@@ -1,8 +1,10 @@
 # The walked land
 
-*Status: built. The board of octagons, routes, notes and forgetting, and Tamsin from above in the
-top band. Last updated 2026-11-13. Design: `docs/superpowers/specs/2026-11-13-land-automap-design.md`;
-the picked look: `reference/land-picked.png` (`land-picked-mockup.html`).*
+*Status: built. An octagon each walked place at its true spot, routes, notes and forgetting, and
+Tamsin from above in the top band. Last updated 2026-11-13. Design:
+`docs/superpowers/specs/2026-11-13-land-automap-design.md` (decision 17 is this layout); the picked
+looks: `reference/land-picked.png` for the octagons, grounds and tracks, and option B of
+`reference/land-ways-options.png` for where they sit and how the ways run.*
 
 ## What it is and when it shows
 
@@ -45,8 +47,7 @@ is a route's "N steps the way you know".
 ## What's kept
 
 `ui/lib/land-store.js` (`LandStore`) keeps the walked places: each one's `name`, `x`, `y`, `z`,
-exits and `note`, in the order first walked (which decides who wins when two places round to one
-octagon, so a reload gives the same board). Routes run on a copy of the Mallard automapper's graph
+exits and `note`, in the order first walked. Routes run on a copy of the Mallard automapper's graph
 and route finder in `ui/lib/automap/` (see its README for the commit and our changes). A step into a place walked before, just as it was, only moves where you are: the store's
 `version` (which counts changes to the places, exits and notes) stays, nothing is saved, the routing
 graph is kept, and the board moves only your light, the route and the cards.
@@ -72,20 +73,22 @@ A missing or bad stored value loads as an empty map.
 
 `ui/land-deck.js` draws the bottom band; `ui/lib/land-layout.js` works out the layout.
 
-- **The tiling.** Regular octagons, 1.2 km flat to flat, faces to the eight compass points, on a
-  1.2 km square tiling centred on Zennor's point. A place takes the octagon its spot rounds to; if
-  that's taken, the later one takes the nearest free octagon.
+- **True spots.** A regular octagon, 0.96 km flat to flat with its faces to the eight compass
+  points, sits where each walked place really is (its `x`, `y`, km east and north of Zennor's
+  point). The game puts places at least 1.1 km apart, so no two touch. Nothing is snapped to a
+  grid: the first build put each place in a tile of a 1.2 km board, but off the tracks places sit
+  about 2.2 km apart, so most ways joined octagons that weren't neighbours, and one in four
+  neighbours had snapped to the wrong side of its exit (`reference/land-ways-options.png`).
 - **Ground.** Each octagon has its group's colour with its texture over it, in screen pixels, so
   the texture is the same size at any zoom. The colours are in the style guide's §4.2 ("On the
   land's map").
-- **Ways.** Side by side, a way is an Earth doorway across the shared face; diagonally, an Earth
-  line across the corner square where four octagons meet. When the game's exit names a different
-  compass point from the neighbour's octagon, the way leaves by the face the exit names and bends
-  round to the face it arrives by, so the map never shows a wrong direction to type. A way to a
-  place further off runs over open ground. A one-way way (down a scree) gets a small Fixture-line
-  chevron pointing the way you can go.
-- **Tracks** are drawn as Zennor's roads: an Earth band with a dashed Stone edge, named in Dim
-  italic along the walked track. Region names sit in Dim italic among their walked places.
+- **Ways.** Every way is one straight Earth line from middle to middle, drawn under the octagons.
+  The game names an exit by the true bearing to where it leads, so the line leaves an octagon by
+  the side you'd type: nothing is bent to fit. A one-way way (down a scree) gets a small
+  Fixture-line chevron at its middle, pointing the way you can go, the same size at any zoom.
+- **Tracks** are drawn as Zennor's roads, over the octagons they run through: an Earth band with a
+  dashed Stone edge, named in Dim italic beside the walked track, clear of its octagons. Region
+  names sit in Dim italic among their walked places.
 - **Zennor** is a dark block with a dashed Stone edge and "ZENNOR", with an Earth road to each road
   end you've walked. An exit into Zennor is that road, never a stub.
 - **Ways not taken** are short dotted Dim stubs out of the face they leave by.

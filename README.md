@@ -230,8 +230,9 @@ one, and stays when she stops, unless you've turned that off. The belt map,
   engine's slot beside it with its seconds, the Great Stair's treads, and a
   plain way down as a small well. Hover over one for where it goes and how
   long it takes.
-- **Tamsin's land:** out past Zennor's edge, a board of octagons of every
-  place you've walked, coloured by the kind of ground, with Tamsin from above
+- **Tamsin's land:** out past Zennor's edge, an octagon for every place
+  you've walked, where it really is and coloured by the kind of ground, with
+  the ways between them as straight lines and Tamsin from above
   in the top band; click a place for the walked way there
   ([docs/maps/land.md](docs/maps/land.md)).
 

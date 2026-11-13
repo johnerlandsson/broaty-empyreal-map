@@ -144,6 +144,15 @@ John picked 2: "running its engine inside our map panel."
     the face its exit names, round to the face it arrives by.
 15. **No hachures.** The game's heights are too coarse.
 16. **One-way ways get a small chevron** pointing the way you can go.
+17. **True spots, straight ways** (2026-11-13, after playing the first build;
+    option B of `docs/maps/reference/land-ways-options.png`). Each octagon sits
+    at its place's true spot, 0.96 km across so none touch, and every way is a
+    straight line from middle to middle, under the octagons. This replaces
+    decisions 9, 13 and 14: off the tracks places are about 2.2 km apart, so
+    the board was mostly long lines and bends. At true spots the line leaves
+    by the side the exit names, so there's nothing to bend. "Drawing the
+    board" below describes the first build; `docs/maps/land.md` has the
+    layout as built.
 
 ## Design
 

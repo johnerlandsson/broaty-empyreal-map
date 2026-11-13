@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { CELL, faceMid, layoutLand, octagon } from "./land-layout.js";
+import { faceMid, layoutLand, OCT, octagon } from "./land-layout.js";
 import { LandStore } from "./land-store.js";
 
 const T = "the Tinners' Track";
 const world = { town: [{ e: -4, n: 6 }, { e: 4, n: 6 }, { e: 4, n: -7 }, { e: -4, n: -7 }], joins: { downs: { at: { e: 4.8, n: 1 }, room: "zennor.port-road" } } };
 const OPP = { n: "s", ne: "sw", e: "w", se: "nw", s: "n", sw: "ne", w: "e", nw: "se" };
+const UNIT = { n: [0, 1], ne: [1, 1], e: [1, 0], se: [1, -1], s: [0, -1], sw: [-1, -1], w: [-1, 0], nw: [-1, 1] };
 const place = (id, name, x, y, exits = {}) => ({ id, name, x, y, z: 0.4, exits });
-/** The path's first point, as numbers. */
-const start = (path) => path.match(/^M(-?[\d.e-]+),(-?[\d.e-]+)/).slice(1).map(Number);
+/** The compass point whose face of a's octagon the straight line from a to b leaves by (north-up spots). */
+function faceLeft(a, b) {
+  const ang = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+  return ["e", "ne", "n", "nw", "w", "sw", "s", "se"][((Math.round(ang / 45) % 8) + 8) % 8];
+}
 
 // The nine-place grid of /tmp/land-scripts/nine-data.mjs make(false), centred on (0, 0): each
 // place joined to all eight neighbours both ways with agreeing dirs (its off-grid stubs left out).
@@ -33,67 +37,81 @@ function nine() {
 }
 
 describe("octagon and faceMid", () => {
-  it("draws a regular octagon flat to flat CELL across, with y flipped", () => {
+  it("draws a regular octagon flat to flat OCT across, with y flipped", () => {
     const pts = octagon(0, 0).match(/-?[\d.]+(e-?\d+)?,-?[\d.]+(e-?\d+)?/g).map((p) => p.split(",").map(Number));
     expect(pts).toHaveLength(8);
-    expect(Math.max(...pts.map(([x]) => x))).toBeCloseTo(CELL / 2);
-    expect(Math.max(...pts.map(([, y]) => y))).toBeCloseTo(CELL / 2);
+    expect(Math.max(...pts.map(([x]) => x))).toBeCloseTo(OCT / 2);
+    expect(Math.max(...pts.map(([, y]) => y))).toBeCloseTo(OCT / 2);
     const [x, y] = octagon(2.4, 1.2).match(/^M(-?[\d.]+),(-?[\d.]+)/).slice(1).map(Number);
     expect(y).toBeLessThan(0); // flipped: north is up the screen
-    expect(Math.abs(x - 2.4)).toBeLessThan(CELL / 2 + 1e-9);
+    expect(Math.abs(x - 2.4)).toBeLessThan(OCT / 2 + 1e-9);
   });
 
-  it("puts each face's middle half a cell out, toward its compass point", () => {
-    const c = { i: 1, j: 0, x: 1.2, y: 0 };
-    expect(faceMid(c, "n")).toEqual({ x: 1.2, y: 0.6 });
-    const ne = faceMid(c, "sw");
-    expect(ne.x).toBeCloseTo(1.2 - 0.6 / Math.SQRT2);
-    expect(ne.y).toBeCloseTo(-0.6 / Math.SQRT2);
+  it("is small enough that two places as close as the game puts them (1.1 km) don't touch", () => {
+    expect(OCT).toBeLessThan(1.1);
+  });
+
+  it("puts each face's middle half an octagon out, toward its compass point", () => {
+    const c = { x: 1.2, y: 0 };
+    expect(faceMid(c, "n")).toEqual({ x: 1.2, y: OCT / 2 });
+    const sw = faceMid(c, "sw");
+    expect(sw.x).toBeCloseTo(1.2 - OCT / 2 / Math.SQRT2);
+    expect(sw.y).toBeCloseTo(-OCT / 2 / Math.SQRT2);
   });
 });
 
 describe("layoutLand", () => {
-  it("gives a block of nine 20 ways: 12 doors, 8 diagonals, 4 corner squares and no bends", () => {
+  it("gives a block of nine 20 ways, each a straight line from middle to middle", () => {
     const out = layoutLand(nine(), world);
     expect(out.ways).toHaveLength(20);
-    expect(out.ways.filter((w) => w.kind === "door")).toHaveLength(12);
-    expect(out.ways.filter((w) => w.kind === "diagonal")).toHaveLength(8);
-    expect(out.ways.filter((w) => w.kind === "bend")).toHaveLength(0);
-    expect(out.corners).toHaveLength(4);
     expect(out.ways.every((w) => !w.oneWay && !w.chevron && w.track === null)).toBe(true);
+    for (const w of out.ways) {
+      const A = out.spots.get(w.a), B = out.spots.get(w.b);
+      expect(w.path).toBe(`M${A.x},${-A.y || 0} L${B.x},${-B.y || 0}`);
+    }
     expect(out.stubs).toEqual([]);
-    expect(out.cells.get(nid(1, 1))).toEqual({ i: 1, j: 1, x: CELL, y: CELL });
+    expect(out.spots.get(nid(1, 1))).toEqual({ x: 1.2, y: 1.2 });
   });
 
-  it("bends a southwest exit to the octagon straight south, leaving by the southwest face", () => {
+  it("puts each place at its true spot, off any grid, so a way leaves by the side its exit names", () => {
+    // on a 1.2 km tiling b would sit straight south of a, against a's southwest exit
     const a = place("surface.tamsin.1.1.1", "Cairn", 0, 0, { sw: { to: "surface.tamsin.1.1.2", back: "ne" } });
-    const b = place("surface.tamsin.1.1.2", "Hollow", 0.3, -1.3, { ne: { to: a.id, back: "sw" } });
+    const b = place("surface.tamsin.1.1.2", "Hollow", -0.8, -1.2, { ne: { to: a.id, back: "sw" } });
     const out = layoutLand([a, b], world);
+    expect(out.spots.get(a.id)).toEqual({ x: 0, y: 0 });
+    expect(out.spots.get(b.id)).toEqual({ x: -0.8, y: -1.2 });
     expect(out.ways).toHaveLength(1);
     const [w] = out.ways;
-    expect(w).toMatchObject({ a: a.id, b: b.id, kind: "bend", oneWay: false });
-    const f = faceMid(out.cells.get(a.id), "sw");
-    const [x, y] = start(w.path);
-    expect(x).toBeCloseTo(f.x);
-    expect(y).toBeCloseTo(-f.y);
-    expect(w.path).toContain("C");
-    expect(out.corners).toEqual([]);
+    expect(w).toMatchObject({ a: a.id, b: b.id, oneWay: false, path: "M0,0 L-0.8,1.2" });
+    expect(faceLeft(out.spots.get(a.id), out.spots.get(b.id))).toBe("sw");
+    expect(faceLeft(out.spots.get(b.id), out.spots.get(a.id))).toBe("ne");
   });
 
-  it("gives the later of two places in one octagon the nearest free one, the same after a reload", () => {
-    const a = place("surface.tamsin.1.1.1", "Cairn", 0.1, 0.1);
-    const b = place("surface.tamsin.1.1.2", "Hollow", 0.5, 0.2); // rounds to (0, 0) too, nearer east
-    const out = layoutLand([a, b], world);
-    expect(out.cells.get(a.id)).toMatchObject({ i: 0, j: 0 });
-    expect(out.cells.get(b.id)).toMatchObject({ i: 1, j: 0 });
+  it("gives every way of a walk a line out of the face its exit names", () => {
+    // a ring of eight round a middle place, each a little off its compass point
+    const mid = place("surface.tamsin.3.3.0", "Open Ground", 10, 10);
+    const ring = Object.entries(UNIT).map(([d, [dx, dy]], k) => {
+      const len = Math.hypot(dx, dy), turn = ((k % 2 ? 1 : -1) * 15 * Math.PI) / 180;
+      const x = (dx / len) * 2.2, y = (dy / len) * 2.2;
+      const p = place(`surface.tamsin.3.3.${k + 1}`, "Hollow", 10 + x * Math.cos(turn) - y * Math.sin(turn), 10 + x * Math.sin(turn) + y * Math.cos(turn), { [OPP[d]]: { to: mid.id, back: d } });
+      mid.exits[d] = { to: p.id, back: OPP[d] };
+      return p;
+    });
+    const out = layoutLand([mid, ...ring], world);
+    expect(out.ways).toHaveLength(8);
+    for (const [d, e] of Object.entries(mid.exits)) expect(faceLeft(out.spots.get(mid.id), out.spots.get(e.to))).toBe(d);
+  });
 
+  it("lays a walk out the same after a reload", () => {
+    const a = place("surface.tamsin.1.1.1", "Cairn", 0.4, 0.4);
+    const b = place("surface.tamsin.1.1.2", "Hollow", 1.2, 1.2, { sw: { to: a.id } });
     const store = new LandStore();
     store.load("Ann", { v: 1, places: [a, b] });
-    const first = layoutLand(store.places(), world).cells;
+    const first = layoutLand(store.places(), world);
     const again = new LandStore();
     again.load("Ann", store.record());
-    expect(layoutLand(again.places(), world).cells).toEqual(first);
-    expect(first.get(b.id)).toMatchObject({ i: 1, j: 0 });
+    expect(layoutLand(again.places(), world)).toEqual(first);
+    expect(first.spots.get(b.id)).toEqual({ x: 1.2, y: 1.2 });
   });
 
   it("marks a way with no exit back one-way, a to b, with a chevron at its middle", () => {
@@ -103,7 +121,7 @@ describe("layoutLand", () => {
     const out = layoutLand([b, a], world);
     expect(out.ways).toHaveLength(1);
     const [w] = out.ways;
-    expect(w).toMatchObject({ a: a.id, b: b.id, kind: "door", oneWay: true });
+    expect(w).toMatchObject({ a: a.id, b: b.id, oneWay: true });
     expect(w.chevron.x).toBeCloseTo(0.6);
     expect(w.chevron.y).toBeCloseTo(0);
     expect(w.chevron.angle).toBeCloseTo(0); // pointing east
@@ -119,13 +137,13 @@ describe("layoutLand", () => {
     expect(out.stubs.map((s) => s.dir).sort()).toEqual(["e", "n"]);
     for (const s of out.stubs) expect(Math.hypot(s.x2 - s.x1, s.y2 - s.y1)).toBeCloseTo(0.45);
     const n = out.stubs.find((s) => s.dir === "n");
-    const f = faceMid(out.cells.get(end.id), "n");
+    const f = faceMid(out.spots.get(end.id), "n");
     expect([n.x1, n.y1]).toEqual([f.x, -f.y]);
     expect(n.y2).toBeLessThan(n.y1); // out to the north, up the screen
     expect(out.zennor.outline).toEqual([{ x: -4, y: -6 }, { x: 4, y: -6 }, { x: 4, y: 7 }, { x: -4, y: 7 }]);
     expect(out.zennor.roads).toHaveLength(1);
     const road = out.zennor.roads[0];
-    const w = faceMid(out.cells.get(end.id), "w");
+    const w = faceMid(out.spots.get(end.id), "w");
     expect(road).toMatchObject({ id: end.id, x1: w.x, y1: -w.y, x2: 4 });
     expect(road.y2).toBeCloseTo(-w.y);
   });

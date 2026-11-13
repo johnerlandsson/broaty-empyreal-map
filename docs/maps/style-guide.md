@@ -116,7 +116,7 @@ On a town's plan (the ground, not a deck; see town.md):
 | District wash | a district's colour (§4.4) at .085 | the ground under each district's rooms, so the districts read as areas |
 | Glass | `#cfe3ff` (§4.3) at .75 | the tram's line through its stops, and a faint inner edge on each stop's box |
 
-On the land's map (the board of octagons; see land.md). Ground, Earth, Stone,
+On the land's map (an octagon each walked place; see land.md). Ground, Earth, Stone,
 Dim and Fixture line are as above; the octagons' grounds and their textures are
 its own. A texture is an SVG pattern in screen pixels, so it's the same size at
 any zoom.
@@ -124,7 +124,6 @@ any zoom.
 | Name | Value | Used for |
 |---|---|---|
 | Zennor's block | `#16120f` | Zennor's ground on the land's map, under its dashed Stone edge and "ZENNOR" |
-| Corner square | `#1a1511` | the small square where four octagons meet, drawn under a diagonal way, with a Stone edge |
 | open | `#261f18` | open ground (Open Ground, On the Downs); no texture |
 | road | `#332b22` (Earth) | a road end out of Zennor; no texture |
 | waymark | `#2f2820`; ticks `#b3a58f` at .55 | a cairn or marker stone: short upright ticks |

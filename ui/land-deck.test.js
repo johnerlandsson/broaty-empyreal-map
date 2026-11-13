@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-// The walked land's board (spec, "Drawing the board"): an octagon a walked place, a dotted stub a
+// The walked land's map (docs/maps/land.md): an octagon a walked place at its true spot, a dotted stub a
 // way not taken, Zennor's block, and only your octagon lit. Nothing unwalked is ever named, and
 // no number is printed on the board (Global Constraints).
 
@@ -104,6 +104,36 @@ describe("LandDeck.draw", () => {
     expect(deck.svg.querySelector(`[data-place="${A}"]`)).not.toBe(before[0]);
   });
 
+  it("draws a plain way as one straight line under the octagons, and a track over them", () => {
+    const C = "surface.tamsin.806.856.2000001";
+    const store = walk();
+    store.ingest({ id: C, name: "Hollow on the Downs", coords: { x: 8.6, y: 3.4, z: 0.41 }, exits: { sw: { id: B, inverse: "ne" } } });
+    const deck = make();
+    deck.draw(store);
+    const way = deck.svg.querySelector("[data-way]");
+    const track = deck.svg.querySelector("[data-track]");
+    const oct = deck.svg.querySelector(`[data-place="${B}"]`);
+    expect(deck.svg.querySelectorAll("[data-way]")).toHaveLength(1);
+    expect(way.getAttribute("d")).toBe("M8.6,-3.4 L7.4,-1.6"); // straight between the true spots
+    expect(way.compareDocumentPosition(oct) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // the octagon's drawn after it
+    expect(track.compareDocumentPosition(oct) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy(); // and before the track
+    expect(deck.svg.querySelector("polygon:not([data-zennor])")).toBe(null); // no corner squares
+  });
+
+  it("keeps a one-way way's chevron one size, and a track's name clear of its octagons, at any zoom", () => {
+    const store = walk();
+    store.ingest({ id: "surface.tamsin.806.856.2000002", name: "Hollow on the Downs", coords: { x: 6.2, y: 3.4, z: 0.41 }, exits: { s: { id: A } } });
+    const deck = make();
+    deck.draw(store);
+    const chevron = deck.svg.querySelector("[data-chevron]");
+    const name = [...deck.svg.querySelectorAll("text")].find((t) => t.textContent === "the Tinners' Track");
+    for (const k of [10, 40]) {
+      deck.rescale(k);
+      expect(chevron.parentNode.getAttribute("transform")).toContain(`scale(${1 / k})`);
+      expect(+name.getAttribute("y")).toBeCloseTo(-(0.48 * k + 9));
+    }
+  });
+
   it("draws Zennor's block and its name", () => {
     const deck = make();
     deck.draw(walk());
@@ -175,9 +205,9 @@ describe("LandDeck's view", () => {
     const [x, y, w, h] = view(deck);
     expect(520 / w).toBeCloseTo(26, 5);
     expect(h / w).toBeCloseTo(400 / 520, 5);
-    // B rounds to cell (6, 1): x 7.2, svg y −1.2
-    expect(x + w / 2).toBeCloseTo(7.2, 5);
-    expect(y + h / 2).toBeCloseTo(-1.2, 5);
+    // B's true spot: x 7.4, svg y −1.6
+    expect(x + w / 2).toBeCloseTo(7.4, 5);
+    expect(y + h / 2).toBeCloseTo(-1.6, 5);
   });
 
   it("follow() re-centres only when you leave the middle half of the view", () => {

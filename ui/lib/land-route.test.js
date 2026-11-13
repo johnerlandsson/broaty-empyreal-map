@@ -22,17 +22,12 @@ describe("routePath", () => {
     expect(points(d)).toEqual(["6,0", "7.2,0", "8.4,0"]);
   });
 
-  it("follows a bend's own curve, out of the faces the exits leave by, either way along it", () => {
-    // a's east exit reaches b, which lies north-east: the way bends out of a's east face
-    const places = [place("a", 6, 0, { e: { to: "b", back: "s" } }), place("b", 7.2, 1.2, { s: { to: "a", back: "e" } })];
+  it("runs straight between places that aren't in line, the same either way", () => {
+    const places = [place("a", 6, 0, { e: { to: "b", back: "sw" } }), place("b", 7.6, 0.6, { sw: { to: "a", back: "e" } })];
     const L = layoutLand(places, world);
     const there = routePath(["a", "b"], L);
-    expect(there).toContain("C");
-    expect(points(there)[0]).toBe("6,0");
-    expect(points(there).at(-1)).toBe("7.2,-1.2");
-    expect(points(there)[1]).toBe("6.6,0"); // a's east face
-    const back = routePath(["b", "a"], L);
-    expect(points(back)).toEqual([...points(there)].reverse());
+    expect(there).toBe("M6,0 L7.6,-0.6");
+    expect(points(routePath(["b", "a"], L))).toEqual([...points(there)].reverse());
   });
 });
 

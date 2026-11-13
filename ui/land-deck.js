@@ -1,6 +1,6 @@
-// The walked land's board (spec, "Drawing the board"): Tamsin's land round Zennor in the bottom
-// band, an octagon each walked place on a 1.2 km tiling, the ways between them, dotted stubs for
-// the ways not taken, and Zennor's block with its roads out. Only what you've stood in is drawn
+// The walked land's map (docs/maps/land.md): Tamsin's land round Zennor in the bottom band, an
+// octagon each walked place where it really is, the ways between them as straight lines, dotted
+// stubs for the ways not taken, and Zennor's block with its roads out. Only what you've stood in is drawn
 // or named. The layout is lib/land-layout.js's; this draws it, rebuilding the board on draw() only
 // when the walked places have changed.
 //
@@ -16,7 +16,7 @@
 
 import { DIM, label } from "./deck-view.js";
 import { groupOf } from "./lib/land-kinds.js";
-import { CELL, layoutLand, num, octagon, SQ } from "./lib/land-layout.js";
+import { layoutLand, num, OCT, octagon } from "./lib/land-layout.js";
 import { groundStyle } from "./lib/land-patterns.js";
 import { edgeCard, nearestRoadEnd, routePath } from "./lib/land-route.js";
 import { attachPanZoom, attachPick, el, glowFilter, pulse, zoomButtons } from "./lib/svg.js";
@@ -27,13 +27,13 @@ const EARTH = "#332b22";
 const STONE = "#4b4338";
 const FIXTURE = "#cfd8e3";
 const ZENNOR = "#16120f";
-const CORNER = "#1a1511";
 const HOME_K = 26; // px a km when centred on you
 const MIN_W = 2; // km across the view, zoomed in
 const MAX_W = 160; // km across, zoomed out
 const BASE = [600, 520]; // px assumed before the band has been measured
+const CHEVRON = "M-3.5,-3.5 L2.5,0 L-3.5,3.5"; // px, pointing along +x: narrow enough to read as an arrow at any turn
 const NOTE = "M0,0 h5.2 v5.2 l-1.7,1.7 h-3.5 Z"; // a folded corner, px
-const NOTE_AT = { x: 0.3, y: -0.4 }; // its top left from the octagon's middle, km (svg y)
+const NOTE_AT = { x: 0.24, y: -0.32 }; // its top left from the octagon's middle, km (svg y)
 const NS = "http://www.w3.org/2000/svg";
 const ARROW = { left: "←", right: "→", top: "↑", bottom: "↓" };
 
@@ -75,7 +75,7 @@ export class LandDeck {
     const glowId = `glow-land-${n}`;
     glowFilter(defs, glowId);
     this.glow = `url(#${glowId})`;
-    // every octagon is a use of this one path, drawn 2 px under full size by rescale()
+    // every octagon is a use of this one path
     this.octId = `land-oct-${n}`;
     this.oct = el("path", { id: this.octId, d: octagon(0, 0), "vector-effect": "non-scaling-stroke" }, defs);
     this.patterns = new Map(); // group -> its pattern element
@@ -200,9 +200,6 @@ export class LandDeck {
   /** Keep what's sized in screen pixels that size at k px a km. */
   rescale(k) {
     this.k = k;
-    const full = CELL * k;
-    const shrink = Math.max(0.5, (full - 2) / full);
-    this.oct.setAttribute("transform", `scale(${num(shrink)})`);
     for (const p of this.patterns.values()) p.setAttribute("patternTransform", `scale(${num(1 / k)})`);
     const px = (v) => num(v / k);
     this.trackEdges?.setAttribute("stroke-width", num(0.22 + 4 / k));
@@ -212,15 +209,15 @@ export class LandDeck {
     // Zennor's edge is dashed, so it's all in km (no non-scaling-stroke: its dashes would be in px)
     this.edge?.setAttribute("stroke-width", px(1));
     this.edge?.setAttribute("stroke-dasharray", `${px(4)} ${px(3)}`);
-    // the route and the target's outline: dashed, so in km too (the outline's shrunk with the octagon)
+    // the route and the target's outline: dashed, so in km too
     this.routeLine?.setAttribute("stroke-width", px(1.5));
     this.routeLine?.setAttribute("stroke-dasharray", `${px(5)} ${px(4)}`);
     if (this.targetLine) {
-      const { node, x, y } = this.targetLine;
-      node.setAttribute("transform", `translate(${num(x)} ${num(y)}) scale(${num(shrink)})`);
-      node.setAttribute("stroke-width", num(1.5 / k / shrink));
-      node.setAttribute("stroke-dasharray", `${num(4 / k / shrink)} ${num(3 / k / shrink)}`);
+      this.targetLine.setAttribute("stroke-width", px(1.5));
+      this.targetLine.setAttribute("stroke-dasharray", `${px(4)} ${px(3)}`);
     }
+    // a track's name stands clear of the octagons along it: half an octagon and 9 px off its line
+    for (const t of this.trackNames ?? []) t.setAttribute("y", num(-((OCT / 2) * k + 9)));
     for (const { node, x, y, angle } of this.fixed ?? []) {
       node.setAttribute("transform", `translate(${num(x)} ${num(y)})${angle ? ` rotate(${num(angle)})` : ""} scale(${px(1)})`);
     }
@@ -259,7 +256,7 @@ export class LandDeck {
     }
 
     // your octagon, lit
-    const here = store.here ? this.L.cells.get(store.here) ?? null : null;
+    const here = store.here ? this.L.spots.get(store.here) ?? null : null;
     this.focus = here ? [here.x, -here.y] : null;
     if (!here) {
       this.hl?.remove();
@@ -324,16 +321,14 @@ export class LandDeck {
     const roads = g({ stroke: EARTH, "stroke-width": 0.24, "stroke-linecap": "round" });
     for (const r of L.zennor.roads) el("line", { x1: num(r.x1), y1: num(r.y1), x2: num(r.x2), y2: num(r.y2) }, roads);
 
-    // the corner squares under diagonal ways
-    const corners = g({ fill: CORNER, stroke: STONE, "stroke-width": 1, "vector-effect": "non-scaling-stroke" });
-    for (const c of L.corners) {
-      el("polygon", { points: [[c.x, c.y - SQ], [c.x + SQ, c.y], [c.x, c.y + SQ], [c.x - SQ, c.y]].map(([x, y]) => `${num(x)},${num(y)}`).join(" ") }, corners);
-    }
+    // the plain ways, under the octagons: each a straight line from middle to middle
+    const ways = g({ stroke: EARTH, "stroke-width": 0.13, fill: "none", "stroke-linecap": "round" });
+    for (const w of L.ways) if (!w.track) el("path", { "data-way": "", d: w.path }, ways);
 
     // the octagons: the ground's colour, its texture over it, a Stone edge
     const octs = g({});
     for (const p of places) {
-      const c = L.cells.get(p.id);
+      const c = L.spots.get(p.id);
       const group = groupOf(p.id, p.name);
       const og = el("g", { "data-place": p.id, "data-pick": p.id, transform: `translate(${num(c.x)} ${num(-c.y)})` }, octs);
       og.addEventListener("mouseenter", () => {
@@ -346,48 +341,40 @@ export class LandDeck {
       if (pat) use(og, { fill: pat, stroke: "none", "pointer-events": "none" });
     }
 
-    // the ways: tracks (a dashed Stone edge under an Earth band), then doors, diagonals, bends and longer ways
+    // the tracks, over the octagons they run through: a dashed Stone edge under an Earth band
     const tracks = L.ways.filter((w) => w.track);
     this.trackEdges = g({ stroke: STONE, fill: "none" });
     for (const w of tracks) el("path", { d: w.path }, this.trackEdges);
     const bands = g({ stroke: EARTH, "stroke-width": 0.22, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" });
-    for (const w of tracks) el("path", { d: w.path }, bands);
-    const ways = g({ stroke: EARTH, fill: "none", "stroke-linejoin": "round" });
-    for (const w of L.ways) {
-      if (w.track) continue;
-      const attrs = { door: { "stroke-width": 0.2, "stroke-linecap": "butt" }, diagonal: { "stroke-width": 0.1, "stroke-linecap": "round" } }[w.kind] ?? {
-        "stroke-width": 0.13,
-        "stroke-linecap": "round",
-      };
-      el("path", { d: w.path, ...attrs }, ways);
-    }
+    for (const w of tracks) el("path", { "data-track": "", d: w.path }, bands);
 
     // the ways not taken
     this.stubs = g({ stroke: DIM, "stroke-linecap": "round" });
     for (const s of L.stubs) el("line", { "data-stub": "", x1: num(s.x1), y1: num(s.y1), x2: num(s.x2), y2: num(s.y2) }, this.stubs);
 
-    // one-way ways: a chevron pointing the way you can go
-    const chevrons = g({ stroke: FIXTURE, "stroke-width": 2.2, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" });
+    // one-way ways: a chevron pointing the way you can go, the same size at any zoom
+    const chevrons = g({ stroke: FIXTURE, "stroke-width": 2, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" });
     for (const w of L.ways) {
       if (!w.chevron) continue;
       const { x, y, angle } = w.chevron;
-      el("path", { d: "M-0.06,-0.11 L0.06,0 L-0.06,0.11", "vector-effect": "non-scaling-stroke", transform: `translate(${num(x)} ${num(y)}) rotate(${num(angle)})` }, chevrons);
+      el("path", { "data-chevron": "", d: CHEVRON }, this.pinned(chevrons, x, y, angle));
     }
 
     // notes: a folded corner at the octagon's top right
     const notes = g({ fill: DIM, "fill-opacity": 0.9 });
     for (const p of places) {
       if (!p.note) continue;
-      const c = L.cells.get(p.id);
+      const c = L.spots.get(p.id);
       el("path", { d: NOTE }, this.pinned(notes, c.x + NOTE_AT.x, -c.y + NOTE_AT.y));
     }
 
-    // names: regions, and tracks along the track
+    // names: regions, and tracks along the track (rescale() keeps a track's clear of its octagons)
     const names = g({});
+    this.trackNames = [];
     for (const l of L.labels) {
       const at = this.pinned(names, l.x, l.y, l.angle);
       if (l.kind === "region") label(at, 0, 0, l.text, 12, { fill: DIM, "font-style": "italic", "letter-spacing": 2 });
-      else label(at, 0, -17, l.text, 10.5, { fill: DIM, "font-style": "italic", "letter-spacing": 1 });
+      else this.trackNames.push(label(at, 0, -17, l.text, 10.5, { fill: DIM, "font-style": "italic", "letter-spacing": 1 }));
     }
 
     // the route to the place you clicked, under your light; then your light (draw() sets it)
@@ -446,9 +433,8 @@ export class LandDeck {
         this.routeG,
       );
     }
-    const c = this.L.cells.get(t);
-    const node = el("path", { "data-target": t, d: octagon(0, 0), fill: "none", stroke: HL, "stroke-opacity": 0.75 }, this.routeG);
-    this.targetLine = { node, x: c.x, y: -c.y };
+    const c = this.L.spots.get(t);
+    this.targetLine = el("path", { "data-target": t, d: octagon(c.x, c.y), fill: "none", stroke: HL, "stroke-opacity": 0.75 }, this.routeG);
   }
 
   /** A km point on the board, in px from the band's top left. */
@@ -492,9 +478,9 @@ export class LandDeck {
       }
       if (!editing) this.card.querySelector(".detail").textContent = this.route ? stepsText(this.route) : "No way back you know";
       // beside the octagon: to its left, else its right where the left's off the band
-      const c = this.L.cells.get(id);
+      const c = this.L.spots.get(id);
       const [x, y] = this.toPx(c.x, -c.y);
-      const half = (CELL / 2) * (this.k ?? HOME_K);
+      const half = (OCT / 2) * (this.k ?? HOME_K);
       const w = this.card.offsetWidth || (editing ? 190 : 160); // measured: the card grows to fit its name
       const left = x - half - 8 - w >= 6 ? x - half - 8 - w : x + half + 8;
       Object.assign(this.card.style, { left: `${Math.round(left)}px`, top: `${Math.round(y - 19)}px` });

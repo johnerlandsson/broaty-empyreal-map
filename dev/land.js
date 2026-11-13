@@ -1,4 +1,4 @@
-// Land board preview: draws a walk on the board of octagons (ui/land-deck.js) under Tamsin from
+// Land board preview: draws a walk as the land's map does (ui/land-deck.js) under Tamsin from
 // above (ui/land-globe.js), for comparing with the picked mockup (docs/maps/reference/land-picked-mockup.html).
 //
 //   ?walk=URL   a walk as the mockup's WALK ({places, here}, exits keyed by full words); without it,
