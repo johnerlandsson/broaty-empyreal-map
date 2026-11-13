@@ -90,6 +90,12 @@ neither a climate nor an envelope (a source from before b6728d0) is written
 as a bare `giant` and drawn in the old ochre. See
 [space-scenes.md](space-scenes.md), "A world's face", "A giant's face" and
 "Over a port's face".
+`ui/data/land.js` has, for each world with drawn land in
+`content/game/land.yaml`, the port it's measured `from`, the `town` stroke's
+outline (km east and north of it) and each road end's spot and Zennor room
+(`joins`). Nothing else of land.yaml is written: its heights, valleys and
+tracks would show land the player hasn't walked. The land map draws Zennor's
+block and roads from it.
 An exit onto a world's generated land, `surface.<body>…`, gets the area it
 leads into and its name, `area: "surface.<body>"` and `areaName` the body's
 name from `system.yaml`, as the game's mudstd.room.info has them (empyreal

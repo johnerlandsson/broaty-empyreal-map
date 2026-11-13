@@ -3,7 +3,7 @@
 // each area with a builder, ui/data/places.js, ui/data/plans/<plan>.js for each ship plan (and a
 // one-room plan for each hull without one), ui/data/ships.js, ui/data/frames.js, ui/data/sky.js
 // (each port's tilt, latitude and sky words), ui/data/worlds.js (each star's colour and each
-// planet's face from orbit), and the sync report. Reads the source, never writes it.
+// planet's face from orbit), ui/data/land.js (each land's town outline and road ends), and the sync report. Reads the source, never writes it.
 // Usage: node scripts/build-data.mjs [--source DIR] [--tweaks DIR] [--out DIR] [--report PATH]
 
 import { execFileSync } from "node:child_process";
@@ -20,6 +20,7 @@ import { diffRooms, droppedOf, emptyReport, formatReport, sortReport } from "./s
 import { loadTweaks, originOf, resolveLook, resolveTweak, via } from "./source/tweaks.mjs";
 import { skyOf } from "./source/sky.mjs";
 import { worldsOf } from "./source/worlds.mjs";
+import { landData } from "./source/land.mjs";
 import { exitsBeyond } from "./source/beyond.mjs";
 import { RINGS } from "./source/wheel.mjs";
 
@@ -36,6 +37,8 @@ const PORT_WORDS = "packages/game/src/systems/port-words.ts";
 const CLIMATE = "packages/game/src/systems/climate.ts";
 const STARS = "packages/game/src/systems/stars.ts";
 const TIDES = "packages/game/src/systems/tides.ts";
+/** The land drawn on each world (land.mjs). */
+const LAND = "content/game/land.yaml";
 /** What a checkout must have; loadSource reads each, and build() imports the game's code. */
 const SOURCE_PATHS = [
   "content/areas",
@@ -45,6 +48,7 @@ const SOURCE_PATHS = [
   "content/game/frames.yaml",
   "content/game/system.yaml",
   "content/game/substances.yaml",
+  LAND,
   PORT_WORDS,
   CLIMATE,
   STARS,
@@ -171,7 +175,7 @@ function shipsText(commit, hulls, planIds) {
 }
 
 /** The out dir's index files, which are generated but no place's. */
-const INDEXES = ["places.js", "ships.js", "frames.js", "sky.js", "worlds.js"];
+const INDEXES = ["places.js", "ships.js", "frames.js", "sky.js", "worlds.js", "land.js"];
 
 /** The ids of the generated place files (stamped; hand-made files aren't) among the names, each read by `read`. */
 function generatedIds(outDir, names, read) {
@@ -372,6 +376,13 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   const { starColour } = await import(pathToFileURL(join(source, STARS)).href);
   const { lockTime, QUALITY } = await import(pathToFileURL(join(source, TIDES)).href);
   const worlds = worldsOf(src.bodies, src.substances, { ...climate, starColour, lockTime, QUALITY });
+  const land = (() => {
+    try {
+      return landData(readFileSync(join(source, LAND), "utf8"));
+    } catch (err) {
+      throw new Error(`${join(source, LAND)}: ${err.message}`);
+    }
+  })();
   const tweaks = loadTweaks(tweaksDir, { shownAs: tweaksShownAs });
   const previous = previousReport(reportPath);
   const report = emptyReport(src.commit);
@@ -454,6 +465,7 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   files.set(join(outDir, "frames.js"), moduleText(src.commit, { heavyWidth: src.heavyWidth }));
   files.set(join(outDir, "sky.js"), moduleText(src.commit, sky.ports));
   files.set(join(outDir, "worlds.js"), moduleText(src.commit, worlds));
+  files.set(join(outDir, "land.js"), moduleText(src.commit, land));
   sortReport(report);
   files.set(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 

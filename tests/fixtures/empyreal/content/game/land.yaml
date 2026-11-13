@@ -1,0 +1,28 @@
+# A made-up land: the town's outline and one road end out of it.
+lands:
+  - world: tamsin
+    from: zennor
+    strokes:
+      - kind: upland
+        name: the Downs
+        height: 410
+        outline:
+          - { e: 2, n: 70 }
+          - { e: 90, n: 70 }
+          - { e: 90, n: -20 }
+      - kind: town
+        name: Zennor
+        outline:
+          - { e: -4, n: 6 }
+          - { e: 4, n: 6 }
+          - { e: 4, n: -7 }
+          - { e: -4, n: -7 }
+    joins:
+      - id: downs
+        room: zennor.port-road
+        dir: east
+        at: { e: 4.8, n: 1.0 }
+        name: The Open Downs
+        km: 2.6
+        out: out over the open Downs
+        word: back to the Port Road
