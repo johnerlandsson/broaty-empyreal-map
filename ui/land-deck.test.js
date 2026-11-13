@@ -3,7 +3,7 @@
 // way not taken, Zennor's block, and only your octagon lit. Nothing unwalked is ever named, and
 // no number is printed on the board (Global Constraints).
 
-import { describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import land from "./data/land.js";
 import { LandDeck } from "./land-deck.js";
 import { LandStore } from "./lib/land-store.js";
@@ -23,6 +23,14 @@ function walk() {
   });
   return store;
 }
+
+// The "here" octagon pulses (ui/lib/svg.js), which starts a module-level interval that outlives
+// the test; fake it so a tick never lands after the happy-dom window is gone.
+beforeAll(() => vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] }));
+afterAll(() => vi.useRealTimers());
+afterEach(() => {
+  document.body.replaceChildren();
+});
 
 function make(world = land.tamsin) {
   const host = document.createElement("div");
