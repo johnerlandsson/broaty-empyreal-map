@@ -261,16 +261,14 @@ export class LandDeck {
     if (!here) {
       this.hl?.remove();
       this.hl = null;
-    } else {
-      if (!this.hl) {
-        this.hl = el("g", { filter: this.glow }, this.hereG);
-        el("use", { href: `#${this.octId}`, fill: HL, "fill-opacity": 0.3, stroke: HL, "stroke-width": 3, "pointer-events": "none" }, this.hl);
-      }
-      if (this.hl.getAttribute("data-here") !== store.here) {
-        this.hl.setAttribute("data-here", store.here);
-        this.hl.setAttribute("transform", `translate(${num(here.x)} ${num(-here.y)})`);
-        pulse(this.hl.firstChild); // a new place's light starts its breath from full
-      }
+    } else if (this.hl?.getAttribute("data-here") !== store.here) {
+      // a new light for each place, never the old one moved: WebKitGTK doesn't repaint a glowing
+      // group whose transform changes, so a moved light vanished until the window was redrawn
+      this.hl?.remove();
+      const at = `translate(${num(here.x)} ${num(-here.y)})`;
+      this.hl = el("g", { filter: this.glow, "data-here": store.here, transform: at }, this.hereG);
+      const lit = el("use", { href: `#${this.octId}`, fill: HL, "fill-opacity": 0.3, stroke: HL, "stroke-width": 3, "pointer-events": "none" }, this.hl);
+      pulse(lit); // its breath starts from full
     }
     // a walked road end to show the way home to, unless you stand on one
     this.ends = this.hasEnd && !!here && !store.here.includes(".join.");

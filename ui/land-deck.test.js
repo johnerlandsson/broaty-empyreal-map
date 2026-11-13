@@ -87,6 +87,24 @@ describe("LandDeck.draw", () => {
     expect(again[0].getAttribute("data-here")).toBe(A);
   });
 
+  it("draws a new light for a step into a place already walked, not the old one moved", () => {
+    // WebKitGTK didn't repaint a filtered light whose transform changed: it vanished until the window
+    // was redrawn (seen in Mallard 2026-11-13). A new element is painted where it lands.
+    const deck = make();
+    const store = walk();
+    deck.draw(store);
+    const first = deck.svg.querySelector("[data-here]");
+    store.ingest({ id: A, name: "On the Tinners' Track", coords: { x: 6.2, y: 1.2, z: 0.414 }, exits: { e: { id: B, inverse: "w" } } });
+    deck.draw(store);
+    const lit = deck.svg.querySelectorAll("[data-here]");
+    expect(lit).toHaveLength(1);
+    expect(lit[0]).not.toBe(first);
+    expect(first.isConnected).toBe(false);
+    expect(lit[0].getAttribute("transform")).toBe("translate(6.2 -1.2)");
+    deck.draw(store); // drawn again where you already are: the light stays as it is
+    expect(deck.svg.querySelector("[data-here]")).toBe(lit[0]);
+  });
+
   it("a step into a place already walked moves only your light, not the board", () => {
     const deck = make();
     const store = walk();
