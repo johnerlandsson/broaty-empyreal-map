@@ -12,7 +12,8 @@ export const CELL = 1.2;
 
 const H = CELL / 2; // the apothem: centre to the middle of a face
 const SIDE = CELL / (2 * (1 + Math.SQRT2)); // half a face's length
-const SQ = H - SIDE; // centre to corner of the small square where four octagons meet
+/** Centre to corner of the small square where four octagons meet, km. */
+export const SQ = H - SIDE;
 const BAR = 0.12; // half a doorway's length
 const PULL = 0.85 * H; // a bend's control points, out from their faces
 const STUB = 0.45;
@@ -24,7 +25,8 @@ const OPP = { n: "s", ne: "sw", e: "w", se: "nw", s: "n", sw: "ne", w: "e", nw: 
 const BY_STEP = { "0,1": "n", "1,1": "ne", "1,0": "e", "1,-1": "se", "0,-1": "s", "-1,-1": "sw", "-1,0": "w", "-1,1": "nw" };
 
 const fy = (y) => (y === 0 ? 0 : -y);
-const num = (v) => String(+v.toFixed(4) || 0);
+/** A number for an SVG attribute or path: to 4 decimals, and never "-0". */
+export const num = (v) => String(+v.toFixed(4) || 0);
 const pt = (p) => `${num(p.x)},${num(fy(p.y))}`;
 const flip = (p) => ({ x: p.x, y: fy(p.y) });
 const mid = (p, q) => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });

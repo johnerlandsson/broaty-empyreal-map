@@ -292,6 +292,29 @@ describe("LandDeck: finding your way, notes and forgetting", () => {
     delete window.panel;
   });
 
+  it("takes down its tooltip when the board under it is rebuilt, or the board is hidden", () => {
+    let up = 0;
+    window.panel = { tooltip: { show: () => (up = 1), hide: () => (up = 0) } };
+    const deck = make();
+    const store = three();
+    deck.draw(store);
+    deck.svg.querySelector(`[data-place="${A}"]`).dispatchEvent(new MouseEvent("mouseenter"));
+    expect(up).toBe(1);
+    store.setNote(A, "tin"); // the octagons are replaced, so no mouseleave comes
+    deck.draw(store);
+    expect(up).toBe(0);
+    deck.svg.querySelector(`[data-place="${A}"]`).dispatchEvent(new MouseEvent("mouseenter"));
+    deck.show(false);
+    expect(up).toBe(0);
+    up = 1; // another view's tooltip: not this deck's to take down
+    deck.draw(store);
+    deck.show(false);
+    store.setNote(A, "copper");
+    deck.draw(store);
+    expect(up).toBe(1);
+    delete window.panel;
+  });
+
   it("right-click Note… takes a note inline and calls onNote; Remove note only with a note", () => {
     const deck = make();
     const store = three();
@@ -403,6 +426,26 @@ describe("LandDeck: the route card and ← Zennor on a road end", () => {
     };
     const narrow = left(20), wide = left(5000);
     expect(narrow).toBeLessThan(wide);
+  });
+
+  it("keeps ← Zennor wholly inside a short band", () => {
+    const deck = make();
+    const W = 520, H = 80;
+    deck.div.getBoundingClientRect = () => ({ left: 0, top: 0, width: W, height: H, right: W, bottom: H });
+    const store = walked();
+    store.here = A;
+    deck.draw(store);
+    deck.home();
+    deck.centre(-40, -1.2, 26); // Zennor off to the east: the card's on the right edge
+    const edge = deck.div.querySelector(".land-edge");
+    expect(edge.style.right).toBe("8px");
+    const top = parseInt(edge.style.top, 10);
+    expect(top).toBeGreaterThanOrEqual(0);
+    expect(top + 22).toBeLessThanOrEqual(H);
+    deck.centre(40, -1.2, 26); // and on the left
+    const left = deck.div.querySelector(".land-edge");
+    expect(left.style.left).toBe("8px");
+    expect(parseInt(left.style.top, 10) + 22).toBeLessThanOrEqual(H);
   });
 
   it("shows no ← Zennor while you stand on a road end", () => {

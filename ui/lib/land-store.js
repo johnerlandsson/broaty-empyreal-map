@@ -10,36 +10,34 @@ export const DIRS = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
 const isStr = (v) => typeof v === "string" && v !== "";
 const isNum = (v) => typeof v === "number" && Number.isFinite(v);
 
-function cleanExits(raw) {
+/** One exit as the store keeps it, { to, area?, back? }, or null for none. */
+function cleanExit(e) {
+  if (!e || !isStr(e.to)) return null;
+  const exit = { to: e.to };
+  if (isStr(e.area)) exit.area = e.area;
+  if (DIRS.includes(e.back)) exit.back = e.back;
+  return exit;
+}
+
+/** The compass exits of `raw` keyed by dir, each through cleanExit after `as` (which reads one as given). */
+function cleanExits(raw, as = (e) => e) {
   const out = {};
   if (!raw || typeof raw !== "object") return out;
   for (const k of Object.keys(raw)) {
     const dir = String(k).toLowerCase();
     if (!DIRS.includes(dir)) continue;
-    const e = raw[k];
-    if (!e || !isStr(e.id)) continue;
-    const exit = { to: e.id };
-    if (isStr(e.area)) exit.area = e.area;
-    const back = typeof e.inverse === "string" ? e.inverse.toLowerCase() : "";
-    if (DIRS.includes(back)) exit.back = back;
-    out[dir] = exit;
+    const exit = cleanExit(raw[k] && as(raw[k]));
+    if (exit) out[dir] = exit;
   }
   return out;
 }
 
+/** A frame's exit (the game's `{ id, area, inverse }`, dirs in any case) as the store's. */
+const frameExit = (e) => ({ to: e.id, area: e.area, back: typeof e.inverse === "string" ? e.inverse.toLowerCase() : undefined });
+
 function cleanStored(p) {
   if (!p || !isStr(p.id) || !isNum(p.x) || !isNum(p.y)) return null;
-  const exits = {};
-  if (p.exits && typeof p.exits === "object") {
-    for (const dir of DIRS) {
-      const e = p.exits[dir];
-      if (!e || !isStr(e.to)) continue;
-      const exit = { to: e.to };
-      if (isStr(e.area)) exit.area = e.area;
-      if (DIRS.includes(e.back)) exit.back = e.back;
-      exits[dir] = exit;
-    }
-  }
+  const exits = cleanExits(p.exits);
   const place = { id: p.id, name: typeof p.name === "string" ? p.name : "", x: p.x, y: p.y, z: isNum(p.z) ? p.z : 0, exits };
   if (isStr(p.note)) place.note = p.note;
   return place;
@@ -89,7 +87,7 @@ export class LandStore {
       x: frame.coords.x,
       y: frame.coords.y,
       z: isNum(frame.coords.z) ? frame.coords.z : 0,
-      exits: cleanExits(frame.exits),
+      exits: cleanExits(frame.exits, frameExit),
     };
     this.here = frame.id;
     if (old && samePlace(old, place)) return false;

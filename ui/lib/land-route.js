@@ -4,7 +4,8 @@
 //
 // Units are km, in the SVG's frame (y flipped), as layoutLand's ways are.
 
-const f = (v) => String(+v.toFixed(4) || 0);
+import { num } from "./land-layout.js";
+
 const PT = /-?[\d.]+,-?[\d.]+/g;
 const BEND = /(-?[\d.]+,-?[\d.]+) C(-?[\d.]+,-?[\d.]+) (-?[\d.]+,-?[\d.]+) (-?[\d.]+,-?[\d.]+)/;
 
@@ -36,7 +37,7 @@ export function routePath(ids, layout) {
   const ways = new Map(layout.ways.map((w) => [`${w.a}\n${w.b}`, w]));
   const mid = (id) => {
     const c = layout.cells.get(id);
-    return `${f(c.x)},${f(-c.y)}`;
+    return `${num(c.x)},${num(-c.y)}`;
   };
   const d = [`M${mid(ids[0])}`];
   for (let i = 1; i < ids.length; i++) {

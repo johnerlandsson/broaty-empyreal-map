@@ -16,7 +16,7 @@
 
 import { DIM, label } from "./deck-view.js";
 import { groupOf } from "./lib/land-kinds.js";
-import { CELL, layoutLand, octagon } from "./lib/land-layout.js";
+import { CELL, layoutLand, num, octagon, SQ } from "./lib/land-layout.js";
 import { groundStyle } from "./lib/land-patterns.js";
 import { edgeCard, nearestRoadEnd, routePath } from "./lib/land-route.js";
 import { attachPanZoom, attachPick, el, glowFilter, pulse, zoomButtons } from "./lib/svg.js";
@@ -32,7 +32,6 @@ const HOME_K = 26; // px a km when centred on you
 const MIN_W = 2; // km across the view, zoomed in
 const MAX_W = 160; // km across, zoomed out
 const BASE = [600, 520]; // px assumed before the band has been measured
-const SQ = CELL / 2 - CELL / (2 * (1 + Math.SQRT2)); // centre to corner of a corner square
 const NOTE = "M0,0 h5.2 v5.2 l-1.7,1.7 h-3.5 Z"; // a folded corner, px
 const NOTE_AT = { x: 0.3, y: -0.4 }; // its top left from the octagon's middle, km (svg y)
 const NS = "http://www.w3.org/2000/svg";
@@ -42,8 +41,6 @@ const ARROW = { left: "←", right: "→", top: "↑", bottom: "↓" };
 export const stepsText = (route) => (route.length === 2 ? "1 step the way you know" : `${route.length - 1} steps the way you know`);
 
 let instances = 0;
-
-const f = (v) => +v.toFixed(4);
 
 export class LandDeck {
   /**
@@ -185,6 +182,7 @@ export class LandDeck {
   }
 
   show(on) {
+    if (!on) this.hideTip();
     this.div.style.display = on ? "" : "none";
   }
 
@@ -194,7 +192,7 @@ export class LandDeck {
   }
 
   apply() {
-    this.svg.setAttribute("viewBox", this.cur.map((v) => +v.toFixed(4)).join(" "));
+    this.svg.setAttribute("viewBox", this.cur.map(num).join(" "));
     this.rescale((this.px || BASE[0]) / this.cur[2]);
     this.placeCards?.();
   }
@@ -204,10 +202,10 @@ export class LandDeck {
     this.k = k;
     const full = CELL * k;
     const shrink = Math.max(0.5, (full - 2) / full);
-    this.oct.setAttribute("transform", `scale(${f(shrink)})`);
-    for (const p of this.patterns.values()) p.setAttribute("patternTransform", `scale(${f(1 / k)})`);
-    const px = (v) => f(v / k);
-    this.trackEdges?.setAttribute("stroke-width", f(0.22 + 4 / k));
+    this.oct.setAttribute("transform", `scale(${num(shrink)})`);
+    for (const p of this.patterns.values()) p.setAttribute("patternTransform", `scale(${num(1 / k)})`);
+    const px = (v) => num(v / k);
+    this.trackEdges?.setAttribute("stroke-width", num(0.22 + 4 / k));
     this.trackEdges?.setAttribute("stroke-dasharray", `${px(4)} ${px(3)}`);
     this.stubs?.setAttribute("stroke-width", px(1.6));
     this.stubs?.setAttribute("stroke-dasharray", `${px(0.1)} ${px(3.4)}`);
@@ -219,12 +217,12 @@ export class LandDeck {
     this.routeLine?.setAttribute("stroke-dasharray", `${px(5)} ${px(4)}`);
     if (this.targetLine) {
       const { node, x, y } = this.targetLine;
-      node.setAttribute("transform", `translate(${f(x)} ${f(y)}) scale(${f(shrink)})`);
-      node.setAttribute("stroke-width", f(1.5 / k / shrink));
-      node.setAttribute("stroke-dasharray", `${f(4 / k / shrink)} ${f(3 / k / shrink)}`);
+      node.setAttribute("transform", `translate(${num(x)} ${num(y)}) scale(${num(shrink)})`);
+      node.setAttribute("stroke-width", num(1.5 / k / shrink));
+      node.setAttribute("stroke-dasharray", `${num(4 / k / shrink)} ${num(3 / k / shrink)}`);
     }
     for (const { node, x, y, angle } of this.fixed ?? []) {
-      node.setAttribute("transform", `translate(${f(x)} ${f(y)})${angle ? ` rotate(${f(angle)})` : ""} scale(${px(1)})`);
+      node.setAttribute("transform", `translate(${num(x)} ${num(y)})${angle ? ` rotate(${num(angle)})` : ""} scale(${px(1)})`);
     }
   }
 
@@ -273,7 +271,7 @@ export class LandDeck {
       }
       if (this.hl.getAttribute("data-here") !== store.here) {
         this.hl.setAttribute("data-here", store.here);
-        this.hl.setAttribute("transform", `translate(${f(here.x)} ${f(-here.y)})`);
+        this.hl.setAttribute("transform", `translate(${num(here.x)} ${num(-here.y)})`);
         pulse(this.hl.firstChild); // a new place's light starts its breath from full
       }
     }
@@ -290,8 +288,16 @@ export class LandDeck {
     this.placeCards();
   }
 
+  /** Take down the panel's tooltip if this board put it up. */
+  hideTip() {
+    if (!this.tipFor) return;
+    this.tipFor = null;
+    window.panel?.tooltip?.hide?.();
+  }
+
   /** Rebuild the board from the store's walked places on this land. */
   build(store) {
+    this.hideTip(); // its octagon is replaced, so no mouseleave would come
     const places = store.places().filter((p) => p.id.startsWith(this.prefix));
     this.places = places;
     this.hasEnd = places.some((p) => p.id.includes(".join."));
@@ -306,7 +312,7 @@ export class LandDeck {
     const town = L.zennor.outline;
     if (town.length) {
       const zg = g({});
-      this.edge = el("polygon", { points: town.map((p) => `${f(p.x)},${f(p.y)}`).join(" "), fill: ZENNOR, stroke: STONE, "data-zennor": "" }, zg);
+      this.edge = el("polygon", { points: town.map((p) => `${num(p.x)},${num(p.y)}`).join(" "), fill: ZENNOR, stroke: STONE, "data-zennor": "" }, zg);
       const xs = town.map((p) => p.x), ys = town.map((p) => p.y);
       this.zbox = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
       const name = this.pinned(zg, (Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2);
@@ -316,12 +322,12 @@ export class LandDeck {
       this.zbox = null;
     }
     const roads = g({ stroke: EARTH, "stroke-width": 0.24, "stroke-linecap": "round" });
-    for (const r of L.zennor.roads) el("line", { x1: f(r.x1), y1: f(r.y1), x2: f(r.x2), y2: f(r.y2) }, roads);
+    for (const r of L.zennor.roads) el("line", { x1: num(r.x1), y1: num(r.y1), x2: num(r.x2), y2: num(r.y2) }, roads);
 
     // the corner squares under diagonal ways
     const corners = g({ fill: CORNER, stroke: STONE, "stroke-width": 1, "vector-effect": "non-scaling-stroke" });
     for (const c of L.corners) {
-      el("polygon", { points: [[c.x, c.y - SQ], [c.x + SQ, c.y], [c.x, c.y + SQ], [c.x - SQ, c.y]].map(([x, y]) => `${f(x)},${f(y)}`).join(" ") }, corners);
+      el("polygon", { points: [[c.x, c.y - SQ], [c.x + SQ, c.y], [c.x, c.y + SQ], [c.x - SQ, c.y]].map(([x, y]) => `${num(x)},${num(y)}`).join(" ") }, corners);
     }
 
     // the octagons: the ground's colour, its texture over it, a Stone edge
@@ -329,9 +335,12 @@ export class LandDeck {
     for (const p of places) {
       const c = L.cells.get(p.id);
       const group = groupOf(p.id, p.name);
-      const og = el("g", { "data-place": p.id, "data-pick": p.id, transform: `translate(${f(c.x)} ${f(-c.y)})` }, octs);
-      og.addEventListener("mouseenter", () => window.panel?.tooltip?.show(og.getBoundingClientRect(), { title: p.name, body: p.note ?? "" }));
-      og.addEventListener("mouseleave", () => window.panel?.tooltip?.hide?.());
+      const og = el("g", { "data-place": p.id, "data-pick": p.id, transform: `translate(${num(c.x)} ${num(-c.y)})` }, octs);
+      og.addEventListener("mouseenter", () => {
+        this.tipFor = p.id;
+        window.panel?.tooltip?.show(og.getBoundingClientRect(), { title: p.name, body: p.note ?? "" });
+      });
+      og.addEventListener("mouseleave", () => this.hideTip());
       use(og, { fill: groundStyle(group).fill, stroke: STONE, "stroke-width": 1.2 });
       const pat = this.pattern(group);
       if (pat) use(og, { fill: pat, stroke: "none", "pointer-events": "none" });
@@ -355,14 +364,14 @@ export class LandDeck {
 
     // the ways not taken
     this.stubs = g({ stroke: DIM, "stroke-linecap": "round" });
-    for (const s of L.stubs) el("line", { "data-stub": "", x1: f(s.x1), y1: f(s.y1), x2: f(s.x2), y2: f(s.y2) }, this.stubs);
+    for (const s of L.stubs) el("line", { "data-stub": "", x1: num(s.x1), y1: num(s.y1), x2: num(s.x2), y2: num(s.y2) }, this.stubs);
 
     // one-way ways: a chevron pointing the way you can go
     const chevrons = g({ stroke: FIXTURE, "stroke-width": 2.2, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" });
     for (const w of L.ways) {
       if (!w.chevron) continue;
       const { x, y, angle } = w.chevron;
-      el("path", { d: "M-0.06,-0.11 L0.06,0 L-0.06,0.11", "vector-effect": "non-scaling-stroke", transform: `translate(${f(x)} ${f(y)}) rotate(${f(angle)})` }, chevrons);
+      el("path", { d: "M-0.06,-0.11 L0.06,0 L-0.06,0.11", "vector-effect": "non-scaling-stroke", transform: `translate(${num(x)} ${num(y)}) rotate(${num(angle)})` }, chevrons);
     }
 
     // notes: a folded corner at the octagon's top right
@@ -516,12 +525,17 @@ export class LandDeck {
     this.zennorCard.textContent = `${ARROW[at.side]} Zennor`;
     const [x, y] = this.toPx(at.x, at.y);
     const W = this.px || BASE[0], H = W * this.aspect;
-    const clamp = (v, lo, hi) => Math.round(Math.max(lo, Math.min(hi, v)));
+    // kept wholly in the band: on a band too short for the clear space wanted, the band wins
+    const clamp = (v, lo, hi) => {
+      hi = Math.max(0, hi);
+      return Math.round(Math.max(Math.min(lo, hi), Math.min(hi, v)));
+    };
+    const cardH = this.zennorCard.offsetHeight || 22;
     const st = this.zennorCard.style;
     st.left = st.right = st.top = st.bottom = "";
     // clear of N ▲ in the top left and the zoom buttons in the top right
-    if (at.side === "left") Object.assign(st, { left: "8px", top: `${clamp(y - 11, 28, H - 30)}px` });
-    else if (at.side === "right") Object.assign(st, { right: "8px", top: `${clamp(y - 11, 96, H - 30)}px` });
+    if (at.side === "left") Object.assign(st, { left: "8px", top: `${clamp(y - 11, 28, H - cardH - 8)}px` });
+    else if (at.side === "right") Object.assign(st, { right: "8px", top: `${clamp(y - 11, 96, H - cardH - 8)}px` });
     else if (at.side === "top") Object.assign(st, { top: "8px", left: `${clamp(x - 34, 48, W - 120)}px` });
     else Object.assign(st, { bottom: "8px", left: `${clamp(x - 34, 8, W - 76)}px` });
   }
