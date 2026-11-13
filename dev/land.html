@@ -5,12 +5,14 @@
   <title>Land board preview</title>
   <link rel="stylesheet" href="../ui/map.css">
   <style>
-    /* the bottom band alone, at the picked mockup's size (450 × 480) */
+    /* the two bands at the picked mockup's sizes: the globe 450 × 200 over the board 450 × 480 */
     body { display: block; padding: 0; }
+    #model { position: relative; width: 450px; height: 200px; border-bottom: 1px solid #2b3646; }
     #deck { position: relative; width: 450px; height: 480px; }
   </style>
 </head>
 <body>
+  <div id="model"></div>
   <div id="deck"></div>
   <script type="module" src="land.js"></script>
 </body>

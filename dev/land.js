@@ -1,5 +1,5 @@
-// Land board preview: draws a walk on the board of octagons (ui/land-deck.js), for comparing with
-// the picked mockup (docs/maps/reference/land-picked-mockup.html).
+// Land board preview: draws a walk on the board of octagons (ui/land-deck.js) under Tamsin from
+// above (ui/land-globe.js), for comparing with the picked mockup (docs/maps/reference/land-picked-mockup.html).
 //
 //   ?walk=URL   a walk as the mockup's WALK ({places, here}, exits keyed by full words); without it,
 //               the mockup's own WALK
@@ -10,7 +10,9 @@
 //               on the Terrace Track)
 
 import land from "../ui/data/land.js";
+import sky from "../ui/data/sky.js";
 import { LandDeck } from "../ui/land-deck.js";
+import { LandGlobe } from "../ui/land-globe.js";
 import { LandStore } from "../ui/lib/land-store.js";
 
 const SHORT = { north: "n", northeast: "ne", east: "e", southeast: "se", south: "s", southwest: "sw", west: "w", northwest: "nw" };
@@ -46,6 +48,9 @@ for (const fr of frames(walk)) store.ingest(fr);
 store.ingest(frames(walk).find((fr) => fr.id === walk.here));
 const noted = store.places().find((p) => p.name === (q.get("note") ?? "Old Shaft on the Terrace Track"));
 if (noted) store.setNote(noted.id, "a note");
+
+const here = walk.places.find((p) => p.id === walk.here);
+new LandGlobe(document.getElementById("model"), { latitude: sky.zennor.latitude }).set({ x: here?.x ?? 0, y: here?.y ?? 0 });
 
 const deck = new LandDeck(document.getElementById("deck"), land.tamsin);
 deck.draw(store);
