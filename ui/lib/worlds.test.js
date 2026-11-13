@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import WORLDS from "../data/worlds.js";
-import { COLS, GIANT, PORT_CELL, RINGS, SEA_REACH, STARLESS, STAR_RGB, VEIL_PLAIN, VEIL_WORDS, airGlow, faceOf, facets, hex, lightBy, portFace, portFacets, seedOf, starFill, starRgb, veilRgb } from "./worlds.js";
+import { COLS, DECKS, GIANT, GIANT_BANDS, PORT_CELL, RINGS, SEA_REACH, STARLESS, STAR_RGB, VEIL_PLAIN, VEIL_WORDS, airGlow, emberFacets, emberRgb, envelopeRgb, faceOf, facets, hex, lightBy, portFace, portFacets, seedOf, starFill, starRgb, veilRgb } from "./worlds.js";
 
 const worlds = {
   stars: { sun: { colour: "red" }, pulsar: { colour: null } },
   ports: { shore: { planet: "dry", coast: 0.5 }, harbour: { planet: "wet", coast: 0.2 }, inland: { planet: "wet", coast: 0 }, camp: { planet: "frosty", coast: 0.4 }, gas: { planet: "big", coast: 0 } },
   planets: {
     big: { star: "sun", giant: true },
+    jove: { star: "sun", giant: true, albedo: 0.34, clouds: "ammonia", methane: 0.1, embers: 0 },
+    ice: { star: "sun", giant: true, albedo: 0.3, clouds: null, methane: 1, embers: 0 },
+    misty: { star: "sun", giant: true, albedo: 0.3, clouds: "water", methane: 1, embers: 0 },
+    hot: { star: "sun", giant: true, albedo: 0.1, clouds: null, methane: 0, embers: 0.29 },
     bare: { star: "sun", air: 0, albedo: 0.1, ground: "rock", frost: false, seas: [], veil: null },
     wet: { star: "sun", air: 1, albedo: 0.3, ground: "rock", frost: false, seas: [{ of: "water", share: 0.3 }], veil: null },
     dry: { star: "sun", air: 1, albedo: 0.3, ground: "rock", frost: false, seas: [{ of: "water", share: 0 }], veil: null },
@@ -40,6 +44,51 @@ describe("faceOf", () => {
   it("knows nothing of a planet the data hasn't, and keeps a giant's bands", () => {
     expect(faceOf("nowhere", worlds)).toBe(null);
     expect(faceOf("big", worlds)).toMatchObject({ giant: true, light: STAR_RGB.red, ground: lightBy(GIANT, STAR_RGB.red), seas: [], frost: null, glow: 1 });
+  });
+
+  it("draws a giant whose envelope the data doesn't know in the old ochre and cream bands, with no embers", () => {
+    expect(faceOf("big", worlds)).toMatchObject({ bands: lightBy(GIANT_BANDS, STAR_RGB.red), embers: null });
+  });
+
+  it("colours a giant by its envelope: a Jupiter's cream and tan, an ice giant blue-green, a hot Jupiter dark", () => {
+    const blueGreen = ([r, g, b]) => g > r * 1.4 && b > r * 1.4;
+    expect(envelopeRgb(worlds.planets.jove).zone[0]).toBeGreaterThan(envelopeRgb(worlds.planets.jove).zone[2]); // warm
+    expect(blueGreen(envelopeRgb(worlds.planets.ice).zone)).toBe(true);
+    expect(lum(envelopeRgb(worlds.planets.hot).zone)).toBeLessThan(lum(envelopeRgb(worlds.planets.jove).zone) * 0.5);
+    // methane tints a deck half as much as clear gas: its light comes back from higher up
+    const misty = envelopeRgb(worlds.planets.misty).zone;
+    expect(misty[0] / misty[1]).toBeGreaterThan(envelopeRgb(worlds.planets.ice).zone[0] / envelopeRgb(worlds.planets.ice).zone[1]);
+    expect(envelopeRgb({ albedo: 0.3, clouds: "argon", methane: 0 }).zone).not.toEqual(DECKS.clear.zone); // any other deck, plain
+  });
+
+  it("gives a giant its envelope's face, bands and air in its star's light, and embers only where its night glows", () => {
+    const f = faceOf("jove", worlds);
+    const { zone, belt } = envelopeRgb(worlds.planets.jove);
+    expect(f.ground).toEqual(lightBy(zone.map((v, i) => (v + belt[i]) / 2), STAR_RGB.red));
+    expect(lum(f.bands)).toBeGreaterThan(lum(f.ground));
+    expect(f).toMatchObject({ giant: true, glow: 1, seas: [], frost: null, embers: null });
+    expect(faceOf("hot", worlds).embers).toEqual(emberRgb(0.29));
+    const [r, g, b] = emberRgb(0.29);
+    expect(r).toBeGreaterThan(g * 2.5);
+    expect(r).toBeGreaterThan(b * 2.5);
+  });
+
+  it("knows every gaseous world the game has today by its envelope, and only Caradon 1 glows at night", () => {
+    const giants = Object.entries(WORLDS.planets).filter(([, p]) => p.giant);
+    expect(giants.length).toBe(20);
+    for (const [id, p] of giants) expect("clouds" in p, id).toBe(true);
+    expect(giants.filter(([id]) => faceOf(id).embers).map(([id]) => id)).toEqual(["caradon_1"]);
+    expect(WORLDS.planets.morvah.clouds).toBe("ammonia");
+  });
+
+  it("gives a glowing night side's facets the day facets' shapes in the embers' colour, and none without embers", () => {
+    const face = faceOf("hot", worlds);
+    const cells = facets(face, seedOf("hot"));
+    const night = emberFacets(face, cells, seedOf("hot:night"));
+    expect(night).toHaveLength(cells.length);
+    expect(night.map((f) => f.pts)).toEqual(cells.map((f) => f.pts));
+    for (const f of night) expect(lum(f.fill)).toBeLessThanOrEqual(lum(face.embers) * 1.15 + 1e-9);
+    expect(emberFacets(faceOf("jove", worlds), cells, seedOf("x"))).toBe(null);
   });
 
   it("gives an airless world no glow, and air more as it thickens", () => {

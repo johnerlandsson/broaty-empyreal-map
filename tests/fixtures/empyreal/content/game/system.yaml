@@ -1,10 +1,14 @@
-# A star, a tilted planet with a port on it and a climate, a station over it, a hazy world and a giant.
+# A star, a tilted planet with a port on it and a climate, a station over it, a hazy world, a giant
+# from before envelopes, a cold gaseous world with water cloud and a locked hot one.
 bodies:
   - id: sol
     name: Sol
     kind: star
     radius: 800
     temperature: 5800
+    mass: 1
+    age: 5
+    stage: main
     frame: { a: 6000, period: 2592000 }
   - id: rock
     name: Rock
@@ -37,6 +41,21 @@ bodies:
     kind: planet
     orbit: { parent: sol, a: 20000 }
     radius: 5000
+  - id: puff
+    name: Puff
+    kind: planet
+    orbit: { parent: sol, a: 30000 }
+    radius: 4000
+    gravity: 1.1
+    day: 9000
+    envelope: { albedo: 0.3, heat: 5, gases: { hydrogen: 0.9, methane: 0.01, water: 0.09 } }
+  - id: hot
+    name: Hot
+    kind: planet
+    orbit: { parent: sol, a: 3000 }
+    radius: 6000
+    gravity: 1.5
+    envelope: { albedo: 0.1, heat: 460, gases: { hydrogen: 0.99, water: 0.01 } }
   - id: mini
     name: Mini Outpost
     kind: station

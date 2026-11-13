@@ -82,6 +82,24 @@ describe("a world's face in the space scenes", () => {
     expect(off.sets.some(([k]) => k === "globalAlpha")).toBe(false); // at full alpha
   });
 
+  it("glows a hot Jupiter's night side by its own light as the day fades, and no other giant's", async () => {
+    const v = await view();
+    v.set("orbit", null, "caradon_1");
+    const blits = (lit) => {
+      v.lit = lit;
+      v.g.calls.length = 0;
+      v.drawOrbit();
+      return v.g.calls.filter(([k]) => k === "drawImage").length;
+    };
+    expect(v.embers).toHaveLength(v.facets.length);
+    expect(blits(1)).toBe(1); // the day facets only
+    expect(blits(0.5)).toBe(2); // a dusk: both
+    expect(blits(0)).toBe(1); // the night's embers only
+    v.set("orbit", null, "morvah");
+    expect(v.embers).toBe(null);
+    expect(blits(0)).toBe(0);
+  });
+
   it("gives an airless world's port a hard grey limb and no glow, as high orbit does", async () => {
     const v = await view();
     v.set("port", "zennor");

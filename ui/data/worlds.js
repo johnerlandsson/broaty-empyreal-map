@@ -101,15 +101,27 @@ export default {
     },
     "breage_4": {
       "star": "breage",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": "water",
+      "methane": 1,
+      "embers": 0
     },
     "caradon_1": {
       "star": "caradon",
-      "giant": true
+      "giant": true,
+      "albedo": 0.1,
+      "clouds": null,
+      "methane": 0,
+      "embers": 0.29
     },
     "caradon_3": {
       "star": "caradon",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": null,
+      "methane": 1,
+      "embers": 0
     },
     "carclaze": {
       "star": "hensbarrow",
@@ -140,7 +152,11 @@ export default {
     },
     "elowen_2": {
       "star": "elowen",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": null,
+      "methane": 1,
+      "embers": 0
     },
     "euny_1": {
       "star": "euny",
@@ -153,7 +169,11 @@ export default {
     },
     "euny_3": {
       "star": "euny",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": null,
+      "methane": 1,
+      "embers": 0
     },
     "feock_1": {
       "star": "feock",
@@ -193,7 +213,11 @@ export default {
     },
     "garrow_2": {
       "star": "garrow",
-      "giant": true
+      "giant": true,
+      "albedo": 0.34,
+      "clouds": null,
+      "methane": 0.1,
+      "embers": 0
     },
     "germoe_1": {
       "star": "germoe",
@@ -206,7 +230,11 @@ export default {
     },
     "germoe_3": {
       "star": "germoe",
-      "giant": true
+      "giant": true,
+      "albedo": 0.34,
+      "clouds": "ammonia",
+      "methane": 0.1,
+      "embers": 0
     },
     "goonhilly_1": {
       "star": "goonhilly",
@@ -219,7 +247,11 @@ export default {
     },
     "goonhilly_3": {
       "star": "goonhilly",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": "carbon_dioxide",
+      "methane": 1,
+      "embers": 0
     },
     "gwithian": {
       "star": "keyne",
@@ -264,15 +296,27 @@ export default {
     },
     "keyne_2": {
       "star": "keyne",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": null,
+      "methane": 1,
+      "embers": 0
     },
     "keyne_4": {
       "star": "keyne",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": null,
+      "methane": 1,
+      "embers": 0
     },
     "keyne_5": {
       "star": "keyne",
-      "giant": true
+      "giant": true,
+      "albedo": 0.34,
+      "clouds": "ammonia",
+      "methane": 0.1,
+      "embers": 0
     },
     "kilmar_1": {
       "star": "kilmar",
@@ -285,11 +329,19 @@ export default {
     },
     "kilmar_2": {
       "star": "kilmar",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": null,
+      "methane": 1,
+      "embers": 0
     },
     "kilmar_4": {
       "star": "kilmar",
-      "giant": true
+      "giant": true,
+      "albedo": 0.34,
+      "clouds": "ammonia",
+      "methane": 0.1,
+      "embers": 0
     },
     "kynance": {
       "star": "piran",
@@ -343,7 +395,11 @@ export default {
     },
     "mabyn_2": {
       "star": "mabyn",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": null,
+      "methane": 1,
+      "embers": 0
     },
     "madron_1": {
       "star": "madron",
@@ -356,7 +412,11 @@ export default {
     },
     "madron_3": {
       "star": "madron",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": null,
+      "methane": 1,
+      "embers": 0
     },
     "maelor_1": {
       "star": "maelor",
@@ -369,7 +429,11 @@ export default {
     },
     "maelor_2": {
       "star": "maelor",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": "water",
+      "methane": 1,
+      "embers": 0
     },
     "marazion": {
       "star": "breage",
@@ -387,7 +451,11 @@ export default {
     },
     "morvah": {
       "star": "petroc",
-      "giant": true
+      "giant": true,
+      "albedo": 0.34,
+      "clouds": "ammonia",
+      "methane": 0.1,
+      "embers": 0
     },
     "orrin": {
       "star": "senara",
@@ -427,7 +495,11 @@ export default {
     },
     "petroc_2": {
       "star": "petroc",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": "water",
+      "methane": 1,
+      "embers": 0
     },
     "polperro": {
       "star": "germoe",
@@ -463,7 +535,11 @@ export default {
     },
     "senara_4": {
       "star": "senara",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": null,
+      "methane": 1,
+      "embers": 0
     },
     "tamsin": {
       "star": "senara",
@@ -508,7 +584,11 @@ export default {
     },
     "trencrom_3": {
       "star": "trencrom",
-      "giant": true
+      "giant": true,
+      "albedo": 0.3,
+      "clouds": "water",
+      "methane": 1,
+      "embers": 0
     },
     "wenna": {
       "star": "maelor",

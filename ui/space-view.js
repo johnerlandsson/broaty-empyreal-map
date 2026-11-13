@@ -4,7 +4,7 @@
 // the rock to cut, out from the core up the view), over a port the town on its planet's face below, lit or dark as
 // its star is up or not, or in high orbit the planet's face, rounder from up there, with cloud on it, lit
 // or dark as her side faces its star (a dusk between when that's not known), drawn by its climate as
-// low-poly facets in its star's light (lib/worlds.js), a giant with its bands over them, and a port's
+// low-poly facets in its star's light (lib/worlds.js), a giant by its envelope with its bands over them, and a port's
 // planet below it in the same facets, its sea far off; no controls. It fades in over the model (hiding its zoom buttons),
 // eases the stars' speed and cross-fades stars and rocks; the frame loop runs only while
 // something is on screen, and pauses while the panel is hidden or the system chart covers it.
@@ -17,7 +17,7 @@
 import { daylit, orbitLit } from "./lib/orbits.js";
 import { Belt, Pit, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, groundOf, heading, litFor, rockFaces, targets, work, workLines } from "./lib/space.js";
 import { sunAlt } from "./lib/sky.js";
-import { RIM as GLASS_RIM, faceOf, facets, lightBy, portFace, portFacets, rgbText, seedOf } from "./lib/worlds.js";
+import { GIANT_BANDS, RIM as GLASS_RIM, emberFacets, faceOf, facets, portFace, portFacets, rgbText, seedOf } from "./lib/worlds.js";
 import { rng } from "./lib/svg.js";
 
 const BG = "#04060c";
@@ -47,7 +47,6 @@ const RIM = rgbText(GLASS_RIM); // Glass: the thin air at the limb
 const SENSE = "89,209,138"; // the ok status light: the sensors' sweep and assay
 const BEAM = "207,227,255"; // Glass, the laser's beam, round a white core
 const DIM = "#7d8a9a"; // the seconds left, bottom right
-const CLOUD = [232, 220, 200]; // a giant's bands from high orbit, in its star's light
 const BANDS_OVER_FACETS = 1.6; // a giant's bands this much stronger over its facets, to read over them
 const HAZE = 16; // px of thin air glowing over the limb from high orbit, by day
 const AIRLESS = "120,130,145"; // an airless world's limb, from high orbit or over a port: a hard grey edge, no glow
@@ -90,6 +89,7 @@ export class SpaceView {
     this.shownPlanet = null;
     this.face = null; // the shown planet's face by its climate (faceOf), or null when the data doesn't know it
     this.facets = null; // that face's facets, worked out once a planet
+    this.embers = null; // its night side's glowing facets, where it's hot enough to glow (emberFacets)
     this.shownPort = null;
     this.below = null; // the shown port's face (portFace), or null when the data doesn't know it
     this.images = new Map(); // "orbit" | "port" -> { key, canvas }: a face's facets drawn once at full alpha
@@ -135,6 +135,7 @@ export class SpaceView {
         this.shownPlanet = planet;
         this.face = faceOf(planet);
         this.facets = this.face ? facets(this.face, seedOf(planet)) : null;
+        this.embers = emberFacets(this.face, this.facets, seedOf(`${planet}:night`));
       }
       if (port && port !== this.shownPort) {
         this.shownPort = port;
@@ -694,8 +695,8 @@ export class SpaceView {
    * darkening toward its edge, and its air glowing over the limb by day; day and night cross-faded,
    * a dusk between when her side isn't known. No town. Every planet data/worlds.js knows is low-poly
    * facets in its star's light, with no glow when it's airless; a giant has its bands over them, in
-   * the same light. A planet the data doesn't know is the old ochre with bands. The last planet
-   * shown, through a fade-out.
+   * the same light, and a night side hot enough to glow does, by its own light, as the day fades. A
+   * planet the data doesn't know is the old ochre with bands. The last planet shown, through a fade-out.
    */
   drawOrbit() {
     const { g, w, h, lit, face } = this;
@@ -724,14 +725,14 @@ export class SpaceView {
     g.fillStyle = grad(NIGHT);
     g.fillRect(0, top, w, h - top);
     const deep = h - top + 20; // the face reaches a little past the band's foot
+    // the facets on the curve, the top ring reaching past the limb, which the clip trims
+    const at = ([d, a]) => {
+      const r = R + 2 - d * deep;
+      return [cx + Math.sin(a) * r, cy - Math.cos(a) * r];
+    };
     if (lit > 0) {
       g.globalAlpha = this.high * lit;
       if (known) {
-        // the facets on the curve, the top ring reaching past the limb, which the clip trims
-        const at = ([d, a]) => {
-          const r = R + 2 - d * deep;
-          return [cx + Math.sin(a) * r, cy - Math.cos(a) * r];
-        };
         const img = this.faceImage("orbit", `${this.shownPlanet}:${w}x${h}`, () => this.facets.map((f) => ({ pts: f.pts.map(at), fill: f.fill })));
         if (img) g.drawImage(img, 0, 0, w, h);
       } else {
@@ -739,10 +740,16 @@ export class SpaceView {
         g.fillRect(0, top, w, h - top);
       }
     }
+    if (this.embers && lit < 1) {
+      // a night side hot enough glows by its own light, as the day face fades
+      g.globalAlpha = this.high * (1 - lit);
+      const img = this.faceImage("embers", `${this.shownPlanet}:${w}x${h}`, () => this.embers.map((f) => ({ pts: f.pts.map(at), fill: f.fill })));
+      if (img) g.drawImage(img, 0, 0, w, h);
+    }
     g.globalAlpha = this.high;
     if (bands) {
-      // a giant's bands, in its star's light and a little stronger over its facets
-      const band = rgbText(known ? lightBy(CLOUD, face.light) : CLOUD);
+      // a giant's bands, its envelope's colour in its star's light, a little stronger over its facets
+      const band = rgbText(known ? face.bands : GIANT_BANDS);
       const strength = known ? BANDS_OVER_FACETS : 1;
       g.lineCap = "round";
       for (const c of this.clouds) {

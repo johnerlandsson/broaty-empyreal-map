@@ -14,7 +14,7 @@ again when you dock.
 | travelling | on the way somewhere | the stars streaming past as streaks |
 | belt | at an asteroid belt | low-poly rocks tumbling past on a faint backdrop, with the ship's sensors sweeping, an assay held on a rock or the laser cutting one while she's at it, and the rocks flowing past the other way while she moves across the belt |
 | port | parked over a port (Zennor, Dolcoath), not landed | the planet's face across the lower band in its low-poly facets, the sea far off where it has one, with the port on it as its hull describes it, Zennor's town or Dolcoath's pit, lit or dark, under the still stars |
-| orbit | in high orbit over a planet (`travel tamsin`) | the planet's face, rounder than over a port, drawn by its climate in its star's light (a giant with its bands) and no town, lit or dark as her side faces the star, or a dusk between when that isn't known, under the still stars |
+| orbit | in high orbit over a planet (`travel tamsin`) | the planet's face, rounder than over a port, drawn by its climate in its star's light (a giant by its envelope, with its bands) and no town, lit or dark as her side faces the star, or a dusk between when that isn't known, under the still stars |
 | station | docked at a station, or not aboard a ship you own or crew | nothing: the station model shows |
 
 ## Where its data comes from
@@ -320,13 +320,13 @@ out, so every planet looks the same size from there.
 ### A world's face
 
 (Option B of `docs/maps/reference/world-looks-mockup.html`, rendered in
-`world-looks-options.png`, picked 2026-11-09.) Empyreal gives every world but
-a giant a `climate` in system.yaml (albedo, air in bar, greenhouse, gases,
-volatiles) and every star a temperature and stage (worlds.md, atmospheres.md
+`world-looks-options.png`, picked 2026-11-09.) Empyreal gives every solid world
+a `climate` in system.yaml (albedo, air in bar, greenhouse, gases,
+volatiles), every gaseous one an `envelope` (below) and every star a temperature and stage (worlds.md, atmospheres.md
 and stars.md in `~/dev/empyreal`). The build reads them and writes
 `ui/data/worlds.js` (sync.md): each star's colour, and each planet's face as
-the game's own physics has it. It imports the game's `climate.ts` and
-`stars.ts`, as it does `port-words.ts`, so what's ice, sea or haze is the
+the game's own physics has it. It imports the game's `climate.ts`,
+`stars.ts` and `tides.ts`, as it does `port-words.ts`, so what's ice, sea or haze is the
 game's answer, not a copy of its formulas:
 
 | `worlds.js` | From the game | Drawn |
@@ -339,7 +339,7 @@ game's answer, not a copy of its formulas:
 | `frost` | a trace whose `phaseOf` is ice, on rock | about one facet in seven half-way to white |
 | `seas` | each volatile whose `surfaceOf` is seas, with its `sea` share | clumps of facets over about that share: water deep blue, anything else (methane, ethane) near black |
 | `veil` | `veilOf`, the substance's `veil` words that `look` from orbit says | the whole face in the colour its words name (`VEIL_WORDS`, "rust-brown" at Lamorna, "pale yellow" at Lelant), nearly flat, with nothing under it shown |
-| `giant: true` | no `climate`: a giant | the old ochre (`GIANT`) in facets in its star's light, its 22 bands over them in that light and 1.6 times as strong, and clear air's glow (option B of `port-giant-looks-mockup.html`, picked 2026-11-09) |
+| `giant: true` | an `envelope` instead of a `climate`: a gaseous world | its envelope's colour in facets in its star's light, its 22 bands over them, 1.6 times as strong (option B of `port-giant-looks-mockup.html`, picked 2026-11-09); see "A giant's face" below |
 | `ports.<id>` | its `surface.parent` and `site.coast` (0 where none) | the face below it and its far sea (above) |
 
 Drawn as low-poly facets, as the station model and Dolcoath's benches are:
@@ -362,6 +362,45 @@ Tamsin's ochre with bands. `dev/worlds.html`, served over http, draws every
 port from above and every planet from high orbit in the data, by day
 (`?night`, `?dusk`, `?only=a,b`), for checking a sync at a glance.
 
+### A giant's face
+
+(Option A of `docs/maps/reference/giant-envelopes-mockup.html`, rendered in
+`giant-envelopes-options.png`, picked 2026-11-13.) Since empyreal b6728d0
+every gaseous world authors an `envelope` in place of a climate: its gases
+and their shares, its albedo and its heat from inside in W/m² (planets.md
+§3.1–3.2). The game's site shows them on each planet's card, so they're no
+spoiler. The build reads them with the game's own code and writes only what
+the face needs (`envelopeOf` in `scripts/source/worlds.mjs`):
+
+| `worlds.js` | From the game | Drawn |
+|---|---|---|
+| `albedo` | `envelope.albedo` | how bright the face is: full at a Jupiter's .34, Caradon 1's .1 about half (`envelopeBright`) |
+| `clouds` | the gas of its cloud deck: of its gases, those climate.ts's `phaseOf` has ice or liquid at 1 bar and its 1-bar mean (`envelopeTemperatures`, with `specificHeat` of its gases), the one with the lowest boiling point, as it lies highest; null where none condenses | the deck's zones and belts (`DECKS`): ammonia Jupiter's cream and tan, water and carbon dioxide white, any other gas a plain pale grey; null is clear hydrogen seen deep, a pale sky blue |
+| `methane` | its methane share over 2% (about Uranus's and Neptune's), at most 1 | takes red, a little green and less blue out (`METHANE_PULL`), so a clear world goes blue-green; over a deck half as much (`OVER_DECK`), the light coming back from higher up |
+| `embers` | its night side's 1-bar temperature from `envelopeTemperatures`, 0 at the Draper point (798 K) to 1 at 1,500 K; the world is locked by the loader's rule (`lockTime` from tides.ts at an envelope's tidal quality, round a main-sequence, subgiant or giant star, with no `day` of its own) | by night, its facets dull red by their own light (`emberRgb`), each a little different and dimmer down the face, cross-faded with the day face as she passes the terminator; none at 0 |
+
+Today that gives the four cold Jupiters (Morvah, Keyne 5, Germoe 3,
+Kilmar 4) ammonia cloud, the cool sub-Neptunes (Maelor 2, Petroc 2,
+Breage 4, Trencrom 3) water and Goonhilly 3 carbon dioxide, white tinted a
+little blue-green; the ice giants, the warm sub-Neptunes and Garrow 2, a
+warm Jupiter too hot for ammonia, are clear: blue-green, Garrow 2 a paler
+blue with its tenth of the methane. Caradon 1, a locked hot Jupiter, is
+clear and dark by day, and its 1,000 K night side glows. No other night
+side is hot enough.
+
+The facets are one colour, the deck's zones and belts half and half, shaded
+as a rocky world's are. Its bands go over them as before, in its zones'
+colour a quarter of the way to white, in its star's light, and its air glows
+over the limb in clear air's colour a third of the way (a half, on a clear
+world) to its zones'. Nothing records what tints Jupiter's belts, so a cold
+Jupiter's tan is the map's, after Jupiter's, not the game's. The temperatures
+at 1 bar are where the deck is taken, not where real clouds lie, which is a
+little higher and colder: Jupiter's ammonia cloud is near 0.7 bar.
+
+A giant whose envelope `worlds.js` doesn't know (a planet written as a bare
+`giant`) is the old ochre (`GIANT`) under the old cream bands (`GIANT_BANDS`),
+with clear air's glow.
+
 **Drawing it.** A face's facets are drawn once, at full alpha, onto a canvas
 of the band's size, each triangle filled and edged in its own colour, and kept
 while the planet or port and the band's size hold (`faceImage`). The scene
@@ -376,8 +415,10 @@ whatever it orbits that orbits the star, as the game's loader does
 (`lightOn`): a moon at its planet's distance, not its own from the planet.
 
 **The report.** Of a planet's `climate` the build reads the five fields in
-`CLIMATE_FIELDS` (worlds.mjs), and reports any other, as `planet.climate.<field>`,
-so a new one isn't missed.
+`CLIMATE_FIELDS` (worlds.mjs), of its `envelope` the three in
+`ENVELOPE_FIELDS`, and its `gravity`, and reports any other, as
+`planet.climate.<field>` or `planet.envelope.<field>`, so a new one isn't
+missed.
 
 **At a belt, the ship's work** (style guide §12) is drawn over the rocks, and
 fades with them:
@@ -436,7 +477,7 @@ Unchanged: it says where you are aboard.
 `ui/lib/space.js` (scene targets, easing, starfield, belt, rocks, the held
 rock and the flow while she moves, `work()`, `heading()`, `moveCard()` and
 `workLines()`, the town's layout and the Pit's (`Town`, `Pit`, `groundOf()`), a dock's or an undock's
-distance, a giant's bands and `litFor`), `ui/lib/worlds.js` (stars' colours, `faceOf`, `facets`, `portFace`, `portFacets`), `ui/lib/orbits.js` (`daylit`, `orbitLit`), `ui/model-view.js` (`setAway`),
+distance, a giant's bands and `litFor`), `ui/lib/worlds.js` (stars' colours, `faceOf`, `envelopeRgb`, `facets`, `emberFacets`, `portFace`, `portFacets`), `ui/lib/orbits.js` (`daylit`, `orbitLit`), `ui/model-view.js` (`setAway`),
 `src/station_map/scene.lua`, `src/station_map/work.lua`,
 `src/station_map/manoeuvre.lua`. The preview's `?scene=port-day` and
 `?scene=port-night` put Zennor's town on the day or night side, `?scene=pit-day`

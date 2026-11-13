@@ -1,15 +1,16 @@
 // The sky over each port, from system.yaml and world.yaml: what Space.Charts doesn't carry and
 // the game's ground.ts reads (planetside.md §4, calendar.md §8.2). Pure; build-data.mjs writes it.
 
-import { CLIMATE_FIELDS } from "./worlds.mjs";
+import { CLIMATE_FIELDS, ENVELOPE_FIELDS } from "./worlds.mjs";
 
 /**
  * A planet's fields the map reads: those Space.Charts carries (`day` as its ports' orbit period),
- * its `tilt` and `equinox`, which the sky reads from here, and of its `climate` the fields
- * worlds.mjs reads for its face from orbit. Any other is dropped by dotted name ("planet.gravity",
+ * its `tilt` and `equinox`, which the sky reads from here, its `gravity`, which worlds.mjs passes
+ * to the game's temperatures and tides, and of its `climate` and `envelope` the
+ * fields worlds.mjs reads for its face from orbit. Any other is dropped by dotted name ("planet.reach",
  * "planet.climate.clouds").
  */
-export const PLANET_FIELDS = ["id", "name", "kind", "orbit", "radius", "day", "tilt", "equinox", ...CLIMATE_FIELDS.map((f) => `climate.${f}`)];
+export const PLANET_FIELDS = ["id", "name", "kind", "orbit", "radius", "gravity", "day", "tilt", "equinox", ...CLIMATE_FIELDS.map((f) => `climate.${f}`), ...ENVELOPE_FIELDS.map((f) => `envelope.${f}`)];
 /**
  * A port's `surface` fields the map reads: `parent` and `bearing` as its orbit in the charts, its
  * `latitude`, and of its `site` only `coast`, which worlds.mjs reads for the sea seen over it. A

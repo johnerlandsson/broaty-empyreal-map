@@ -32,9 +32,10 @@ const LOOK_KEYS = ["paint", "fixtures", "footprints", "hull", "profile", "surfac
 /** What a checkout must have; loadSource reads each. */
 /** The game's port words (Zennor's, under each port's own in world.yaml), which build() imports and runs. */
 const PORT_WORDS = "packages/game/src/systems/port-words.ts";
-/** The game's climate and stars, whose physics says what a world and a star look like (worlds.mjs). */
+/** The game's climate, stars and tides, whose physics says what a world and a star look like (worlds.mjs). */
 const CLIMATE = "packages/game/src/systems/climate.ts";
 const STARS = "packages/game/src/systems/stars.ts";
+const TIDES = "packages/game/src/systems/tides.ts";
 /** What a checkout must have; loadSource reads each, and build() imports the game's code. */
 const SOURCE_PATHS = [
   "content/areas",
@@ -47,6 +48,7 @@ const SOURCE_PATHS = [
   PORT_WORDS,
   CLIMATE,
   STARS,
+  TIDES,
 ];
 
 function ordered(obj, keys) {
@@ -368,7 +370,8 @@ export async function build({ source, tweaksDir, outDir, reportPath, tweaksShown
   const sky = skyOf(src.bodies, src.stations, portWords);
   const climate = await import(pathToFileURL(join(source, CLIMATE)).href);
   const { starColour } = await import(pathToFileURL(join(source, STARS)).href);
-  const worlds = worldsOf(src.bodies, src.substances, { ...climate, starColour });
+  const { lockTime, QUALITY } = await import(pathToFileURL(join(source, TIDES)).href);
+  const worlds = worldsOf(src.bodies, src.substances, { ...climate, starColour, lockTime, QUALITY });
   const tweaks = loadTweaks(tweaksDir, { shownAs: tweaksShownAs });
   const previous = previousReport(reportPath);
   const report = emptyReport(src.commit);

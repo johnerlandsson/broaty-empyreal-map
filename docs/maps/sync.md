@@ -75,14 +75,21 @@ plugin can't know. When the game's sky changes, re-record `dev/sky-cases.json`
 report names a planet or surface field it doesn't read as `planet.<field>`
 or `surface.<field>`.
 `ui/data/worlds.js` has each star's colour and each planet's face from high
-orbit: its star, air, albedo, ground (rock or ice), frost, seas and veil, or
-`giant` for a planet with no `climate`, and each port's planet and `coast`. The build works them out with the
-game's own `climate.ts` and `stars.ts`, imported from the checkout, and
-`content/game/substances.yaml`, and writes none of the climate's other
-figures: no greenhouse or gases. `planet.climate` is read, so it's no longer
-in the report, and of a port's `surface.site` only `coast` is read, so
-`surface.site.height` and `.setting` still are. See
-[space-scenes.md](space-scenes.md), "A world's face" and "Over a port's face".
+orbit: its star, air, albedo, ground (rock or ice), frost, seas and veil; or,
+for a gaseous world (one with an `envelope`), `giant` with its albedo, its
+cloud deck (`clouds`), how much `methane` tints it and how much its night
+side glows (`embers`); and each port's planet and `coast`. The build works
+them out with the game's own `climate.ts`, `stars.ts` and `tides.ts`,
+imported from the checkout, and `content/game/substances.yaml`, and writes
+none of the climate's or envelope's other figures: no greenhouse, gases,
+heat or temperatures. `planet.climate`, `planet.envelope` and
+`planet.gravity` (which the game's temperatures and tides take) are read, so
+they're no longer in the report, and of a port's `surface.site` only `coast`
+is read, so `surface.site.height` and `.setting` still are. A planet with
+neither a climate nor an envelope (a source from before b6728d0) is written
+as a bare `giant` and drawn in the old ochre. See
+[space-scenes.md](space-scenes.md), "A world's face", "A giant's face" and
+"Over a port's face".
 An exit onto a world's generated land, `surface.<body>…`, gets the area it
 leads into and its name, `area: "surface.<body>"` and `areaName` the body's
 name from `system.yaml`, as the game's mudstd.room.info has them (empyreal

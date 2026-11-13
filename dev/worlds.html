@@ -37,7 +37,7 @@ for (const [id, p] of Object.entries(WORLDS.planets)) {
   band.className = "band";
   fig.appendChild(band);
   const cap = document.createElement("figcaption");
-  const what = p.giant ? "giant" : [p.air ? `${p.air} bar` : "airless", p.ground, p.frost && "frost", p.seas.map((s) => `${s.of} ${s.share}`).join(" "), p.veil && "veiled"].filter(Boolean).join(" · ");
+  const what = p.giant ? ["giant", "clouds" in p && (p.clouds ?? "clear"), p.methane && `methane ${p.methane}`, p.embers && `embers ${p.embers}`].filter(Boolean).join(" · ") : [p.air ? `${p.air} bar` : "airless", p.ground, p.frost && "frost", p.seas.map((s) => `${s.of} ${s.share}`).join(" "), p.veil && "veiled"].filter(Boolean).join(" · ");
   cap.innerHTML = `<b>${id}</b> · ${p.star} (${WORLDS.stars[p.star]?.colour}) · ${what}`;
   fig.appendChild(cap);
   document.body.appendChild(fig);

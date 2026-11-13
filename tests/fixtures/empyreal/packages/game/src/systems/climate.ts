@@ -29,3 +29,14 @@ export function veilOf(c: Climate, _t: T, subs: ReadonlyMap<string, Sub>): strin
   for (const gas of Object.keys(c.gases ?? {})) if (subs.get(gas)?.veil) return subs.get(gas)!.veil;
   return undefined;
 }
+
+// A gaseous world, cut down: its 1-bar mean is its sunlight's plus its heat, and a locked one's night is 1,000 K.
+type Envelope = { albedo: number; heat: number };
+export function envelopeTemperatures(light: number, e: Envelope, _g: number, _day: number, locked: boolean, _cp: number) {
+  const mean = 280 * (light * (1 - e.albedo)) ** 0.25 + e.heat;
+  return { mean, noon: mean, night: locked ? 1000 : mean };
+}
+
+export function specificHeat(): number {
+  return 14000;
+}

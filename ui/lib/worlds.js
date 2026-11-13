@@ -3,7 +3,9 @@
 // face from high orbit as low-poly facets from what data/worlds.js says of it: its ground, rock or
 // ice, as bright as its albedo; its seas, by their share; frost where a trace of ice lies; a veil
 // where the game says one hides it; and glowing air over its limb as thick as its air. A giant is
-// its old ochre in facets, under its bands. Over a port the same face is facets at the port's scale,
+// its envelope's colour in facets, under its bands: its cloud deck's, or its clear gas's, tinted
+// blue-green by its methane and as bright as its albedo, and a night side hot enough glows dull red.
+// Over a port the same face is facets at the port's scale,
 // with the sea far off where its planet has seas and its site a coast. All of it is seen by its
 // star's light. No weather: cloud that comes and goes isn't sent, so none is drawn.
 
@@ -88,20 +90,76 @@ export const airGlow = (air) => (air > 0 ? Math.min(1, 0.15 + 0.35 * Math.log10(
 /** Clear air's glow over the limb: Glass (style guide §4.2), the colour it's always been. The space view's too. */
 export const RIM = [207, 227, 255];
 
-/** A giant's face under its bands, the ochre every planet had before its climate was known. */
+/** A giant's face under its bands where its envelope isn't known, the ochre every planet had before its climate was known. */
 export const GIANT = [138, 112, 82];
+/** That giant's bands, a pale cream. */
+export const GIANT_BANDS = [232, 220, 200];
+
+/**
+ * A cloud deck's colours, by the gas it's of, before methane, albedo and the star: its bright
+ * zones and its darker belts. Ammonia is Jupiter's cream and tan; water and carbon dioxide cloud
+ * white. `clear` is no deck: hydrogen seen deep, a pale sky blue. A deck of any other gas is
+ * drawn as DECK_PLAIN.
+ */
+export const DECKS = {
+  ammonia: { zone: [238, 226, 202], belt: [178, 132, 90] },
+  water: { zone: [238, 241, 245], belt: [200, 208, 218] },
+  carbon_dioxide: { zone: [238, 241, 245], belt: [200, 208, 218] },
+  clear: { zone: [180, 210, 220], belt: [164, 196, 210] },
+};
+export const DECK_PLAIN = { zone: [226, 226, 224], belt: [196, 196, 194] };
+/** How much methane takes out of red, green and blue at full strength (2%, Uranus's and Neptune's): blue-green is what's left. */
+export const METHANE_PULL = [0.5, 0.1, 0.08];
+/** Over a cloud deck the light comes back from higher up, through less methane: this much of its pull. */
+export const OVER_DECK = 0.5;
+/** An envelope's brightness by its albedo: full at a Jupiter's .34, Caradon 1's .1 about half dark. */
+export const envelopeBright = (albedo) => Math.min(1.05, 0.3 + (albedo / 0.34) * 0.7);
+
+/**
+ * An envelope's own colours, `{ zone, belt }`, before its star: its deck's (or clear gas's), with
+ * methane's pull taken out and as bright as its albedo.
+ */
+export function envelopeRgb(p) {
+  const deck = p.clouds ? (DECKS[p.clouds] ?? DECK_PLAIN) : DECKS.clear;
+  const pull = (p.methane ?? 0) * (p.clouds ? OVER_DECK : 1);
+  const k = envelopeBright(p.albedo);
+  const of = (c) => c.map((v, i) => v * (1 - METHANE_PULL[i] * pull) * k);
+  return { zone: of(deck.zone), belt: of(deck.belt) };
+}
+
+/** A night side's glow, by `embers` 0..1: dull red just past the Draper point, brighter and redder hotter. Its own light, not its star's. */
+export const emberRgb = (embers) => mix([20, 8, 8], [150, 40, 20], 0.35 + 0.65 * embers);
 
 /**
  * What the orbit scene draws of a planet, by its id: null for one the data doesn't know; else the
  * colours its facets take, all in its star's light, `glow` its air's (0 airless) and `rim` that
- * air's colour, its veil's where it has one. A giant (`giant: true`) is GIANT with clear air's glow,
- * and its bands go over it.
+ * air's colour, its veil's where it has one. A giant (`giant: true`) is its envelope's colour, its
+ * zones and belts half and half, with `bands` the colour its bands go over it in, its zones' a
+ * little whiter, its air's glow that colour too, and `embers` its night side's glow or null; one
+ * whose envelope the data doesn't know (no `clouds`) is GIANT under GIANT_BANDS with clear air's glow.
  */
 export function faceOf(id, worlds = WORLDS) {
   const p = worlds?.planets?.[id];
   if (!p) return null;
   const light = starRgb(p.star, worlds);
-  if (p.giant) return { giant: true, light, ground: lightBy(GIANT, light), frost: null, seas: [], veiled: false, glow: 1, rim: lightBy(RIM, light) };
+  if (p.giant && !("clouds" in p)) {
+    return { giant: true, light, ground: lightBy(GIANT, light), bands: lightBy(GIANT_BANDS, light), frost: null, seas: [], veiled: false, glow: 1, rim: lightBy(RIM, light), embers: null };
+  }
+  if (p.giant) {
+    const { zone, belt } = envelopeRgb(p);
+    return {
+      giant: true,
+      light,
+      ground: lightBy(mix(zone, belt, 0.5), light),
+      bands: lightBy(mix(zone, [255, 255, 255], 0.25), light),
+      frost: null,
+      seas: [],
+      veiled: false,
+      glow: 1,
+      rim: lightBy(mix(RIM, zone, p.clouds ? 0.3 : 0.5), light),
+      embers: p.embers > 0 ? emberRgb(p.embers) : null,
+    };
+  }
   const veil = p.veil ? veilRgb(p.veil) : null;
   const rock = groundRgb(p);
   return {
@@ -179,6 +237,20 @@ export function facets(face, rnd) {
     }
   }
   return out;
+}
+
+/**
+ * A glowing night side's facets, from the face's day facets: each the face's `embers` colour, a
+ * little different facet to facet and dimmer further down the face, as the day facets are.
+ * Its own light, so no star tints it. Null where the face has no embers.
+ */
+export function emberFacets(face, cells, rnd) {
+  if (!face?.embers) return null;
+  return cells.map((f) => {
+    const d = (f.pts[0][0] + f.pts[1][0] + f.pts[2][0]) / 3;
+    const k = (0.75 + rnd() * 0.4) * (1 - Math.min(1, d) * 0.25);
+    return { pts: f.pts, fill: face.embers.map((v) => v * k) };
+  });
 }
 
 /**
