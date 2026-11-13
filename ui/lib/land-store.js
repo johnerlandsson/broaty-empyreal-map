@@ -45,6 +45,17 @@ function cleanStored(p) {
   return place;
 }
 
+/** Two places alike in all a frame brings: name, spot and exits. */
+function samePlace(a, b) {
+  if (a.name !== b.name || a.x !== b.x || a.y !== b.y || a.z !== b.z) return false;
+  for (const dir of DIRS) {
+    const e = a.exits[dir], f = b.exits[dir];
+    if (!e !== !f) return false;
+    if (e && (e.to !== f.to || e.area !== f.area || e.back !== f.back)) return false;
+  }
+  return true;
+}
+
 export class LandStore {
   constructor() {
     this.who = null;
@@ -52,10 +63,13 @@ export class LandStore {
     this._places = new Map();
     this._listeners = [];
     this._map = null;
+    /** Counts changes to the places, their exits and notes (not a step that only moves `here`). */
+    this.version = 0;
   }
 
   _changed() {
-    this._map = null;
+    this.version++;
+    this._map = null; // the routing graph is rebuilt from the places when next needed
     for (const fn of this._listeners) fn();
   }
 
@@ -63,6 +77,9 @@ export class LandStore {
     this._listeners.push(fn);
   }
 
+  /** A room frame: the place, and you in it. True when the places changed; false for a bad frame,
+   *  and for a step into a place walked before just as it is now, which only moves `here` (no
+   *  onChange, so nothing is saved or rebuilt). */
   ingest(frame) {
     if (!frame || !isStr(frame.id) || !frame.coords || !isNum(frame.coords.x) || !isNum(frame.coords.y)) return false;
     const old = this._places.get(frame.id);
@@ -74,9 +91,10 @@ export class LandStore {
       z: isNum(frame.coords.z) ? frame.coords.z : 0,
       exits: cleanExits(frame.exits),
     };
+    this.here = frame.id;
+    if (old && samePlace(old, place)) return false;
     if (old && old.note !== undefined) place.note = old.note;
     this._places.set(frame.id, place); // Map keeps first-walked order on replace
-    this.here = frame.id;
     this._changed();
     return true;
   }

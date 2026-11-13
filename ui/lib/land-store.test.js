@@ -147,4 +147,43 @@ describe("LandStore", () => {
     expect(s.places().map((p) => p.id)).toEqual(["surface.tamsin.2"]); // where you stand stays
     expect(s.here).toBe("surface.tamsin.2");
   });
+
+  it("a step into a place already walked as it was only moves where you are", () => {
+    const s = new LandStore();
+    const fn = vi.fn();
+    s.ingest(frame("a", 0, 0, { E: { id: "b", inverse: "W" } }));
+    s.ingest(frame("b", 1, 0, { W: { id: "a", inverse: "E" } }));
+    s.onChange(fn);
+    const v = s.version;
+    expect(s.route("b", "a")).toEqual(["b", "a"]);
+    const graph = s._map;
+    expect(s.ingest(frame("a", 0, 0, { E: { id: "b", inverse: "W" } }))).toBe(false);
+    expect(s.here).toBe("a");
+    expect(s.version).toBe(v);
+    expect(fn).not.toHaveBeenCalled();
+    s.route("a", "b");
+    expect(s._map).toBe(graph); // the routing graph is kept
+    expect(s.ingest(frame("a", 0, 0, { N: { id: "c" } }))).toBe(true); // its exits changed
+    expect(s.version).toBe(v + 1);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts a change to the places, a note, a forget or a load in version", () => {
+    const s = new LandStore();
+    let v = s.version;
+    const bumped = () => {
+      expect(s.version).toBeGreaterThan(v);
+      v = s.version;
+    };
+    s.ingest(frame("a", 0, 0));
+    bumped();
+    s.setNote("a", "x");
+    bumped();
+    s.load("ada", null);
+    bumped();
+    s.forget();
+    bumped();
+    s.clear();
+    bumped();
+  });
 });

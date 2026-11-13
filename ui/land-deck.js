@@ -1,7 +1,8 @@
 // The walked land's board (spec, "Drawing the board"): Tamsin's land round Zennor in the bottom
 // band, an octagon each walked place on a 1.2 km tiling, the ways between them, dotted stubs for
 // the ways not taken, and Zennor's block with its roads out. Only what you've stood in is drawn
-// or named. The layout is lib/land-layout.js's; this draws it, redrawing everything on draw().
+// or named. The layout is lib/land-layout.js's; this draws it, rebuilding the board on draw() only
+// when the walked places have changed.
 //
 // The board is in km (the viewBox); what's given in screen pixels (edges, textures, labels, the
 // track edges' and stubs' dashes) is kept that size at any zoom by rescale(), on every view change.
@@ -247,14 +248,55 @@ export class LandDeck {
     return g;
   }
 
-  /** Redraw the whole board from the store's walked places on this land and where you are. */
+  /**
+   * Draw the store's walked places on this land and where you are. The board is rebuilt only when
+   * the places have changed since the last draw (the store's version); a step into a place walked
+   * before only moves your light, the route and the cards.
+   */
   draw(store) {
+    if (store !== this.store || store.version !== this.drawn) {
+      this.store = store;
+      this.drawn = store.version;
+      this.build(store);
+    }
+
+    // your octagon, lit
+    const here = store.here ? this.L.cells.get(store.here) ?? null : null;
+    this.focus = here ? [here.x, -here.y] : null;
+    if (!here) {
+      this.hl?.remove();
+      this.hl = null;
+    } else {
+      if (!this.hl) {
+        this.hl = el("g", { filter: this.glow }, this.hereG);
+        el("use", { href: `#${this.octId}`, fill: HL, "fill-opacity": 0.3, stroke: HL, "stroke-width": 3, "pointer-events": "none" }, this.hl);
+      }
+      if (this.hl.getAttribute("data-here") !== store.here) {
+        this.hl.setAttribute("data-here", store.here);
+        this.hl.setAttribute("transform", `translate(${f(here.x)} ${f(-here.y)})`);
+        pulse(this.hl.firstChild); // a new place's light starts its breath from full
+      }
+    }
+    // a walked road end to show the way home to, unless you stand on one
+    this.ends = this.hasEnd && !!here && !store.here.includes(".join.");
+
+    // a target forgotten, or reached, is done with
+    if (this.target && (!store.walked(this.target) || this.target === store.here)) this.setTarget(null);
+    else this.drawRoute();
+    if (this.editing && !store.walked(this.editing)) this.closeAll();
+
+    this.rescale(this.k ?? HOME_K);
+    if (here && !this.homed) this.home();
+    this.placeCards();
+  }
+
+  /** Rebuild the board from the store's walked places on this land. */
+  build(store) {
     const places = store.places().filter((p) => p.id.startsWith(this.prefix));
     this.places = places;
+    this.hasEnd = places.some((p) => p.id.includes(".join."));
     const L = layoutLand(places, this.world);
-    this.store = store;
     this.L = L;
-    const byId = new Map(places.map((p) => [p.id, p]));
     this.board.replaceChildren();
     this.fixed = [];
     const g = (attrs) => el("g", attrs, this.board);
@@ -339,25 +381,10 @@ export class LandDeck {
       else label(at, 0, -17, l.text, 10.5, { fill: DIM, "font-style": "italic", "letter-spacing": 1 });
     }
 
-    // the route to the place you clicked, under your light
+    // the route to the place you clicked, under your light; then your light (draw() sets it)
     this.routeG = g({ "pointer-events": "none" });
-
-    // your octagon, lit
-    const here = store.here && byId.has(store.here) ? L.cells.get(store.here) : null;
-    this.focus = here ? [here.x, -here.y] : null;
-    if (here) {
-      const hl = g({ "data-here": store.here, filter: this.glow, transform: `translate(${f(here.x)} ${f(-here.y)})` });
-      pulse(use(hl, { fill: HL, "fill-opacity": 0.3, stroke: HL, "stroke-width": 3, "pointer-events": "none" }));
-    }
-
-    // a target forgotten, or reached, is done with
-    if (this.target && (!store.walked(this.target) || this.target === store.here)) this.setTarget(null);
-    else this.drawRoute();
-    if (this.editing && !store.walked(this.editing)) this.closeAll();
-
-    this.rescale(this.k ?? HOME_K);
-    if (here && !this.homed) this.home();
-    this.placeCards();
+    this.hereG = g({});
+    this.hl = null;
   }
 
   /** Call fn(id, text) for a note written (text) or removed (null). */
@@ -471,8 +498,7 @@ export class LandDeck {
 
   /** "← Zennor" on the view's edge toward it, while none of Zennor's block is in view. */
   placeEdge() {
-    const ends = this.places.some((p) => p.id.includes(".join.")) && !this.store.here?.includes(".join.");
-    const at = ends && this.zbox && this.store.here ? edgeCard({ x: this.cur[0], y: this.cur[1], w: this.cur[2], h: this.cur[3] }, this.zbox) : null;
+    const at = this.ends && this.zbox ? edgeCard({ x: this.cur[0], y: this.cur[1], w: this.cur[2], h: this.cur[3] }, this.zbox) : null;
     if (!at) {
       this.zennorCard?.remove();
       this.zennorCard = null;

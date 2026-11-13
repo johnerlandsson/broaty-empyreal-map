@@ -118,3 +118,23 @@ describe("landLoad", () => {
     expect(store.who).toBe("ada");
   });
 });
+
+describe("saving and walking", () => {
+  it("a step into a place already walked as it was saves nothing", () => {
+    vi.useFakeTimers();
+    const post = vi.fn();
+    const store = new LandStore();
+    const saver = landSaver(store, post, 1000);
+    store.onChange(() => saver.soon());
+    landLoad(store, saver, { who: "ada", record: null });
+    store.ingest(frame("a1"));
+    store.ingest(frame("a2"));
+    vi.advanceTimersByTime(2000);
+    post.mockClear();
+    store.ingest(frame("a1"));
+    vi.advanceTimersByTime(2000);
+    expect(store.here).toBe("a1");
+    expect(post).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+});

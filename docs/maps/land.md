@@ -47,7 +47,9 @@ is a route's "N steps the way you know".
 `ui/lib/land-store.js` (`LandStore`) keeps the walked places: each one's `name`, `x`, `y`, `z`,
 exits and `note`, in the order first walked (which decides who wins when two places round to one
 octagon, so a reload gives the same board). Routes run on a copy of the Mallard automapper's graph
-and route finder in `ui/lib/automap/` (see its README for the commit and our changes).
+and route finder in `ui/lib/automap/` (see its README for the commit and our changes). A step into a place walked before, just as it was, only moves where you are: the store's
+`version` (which counts changes to the places, exits and notes) stays, nothing is saved, the routing
+graph is kept, and the board moves only your light, the route and the cards.
 
 The panel posts the store's record as `land-save` `{ who, record }`, debounced 1 s, and never while
 no character is known; the waiting save is also flushed when the panel is hidden or closed. The Lua

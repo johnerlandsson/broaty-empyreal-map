@@ -429,7 +429,8 @@ panel.on("location", (msg) => {
 
 // A frame of the walked land, after its location: on the board and the globe.
 panel.on("land-room", (msg) => {
-  if (!landStore.ingest(msg)) return;
+  // false too for a step into a place walked before just as it is, which only moves where you are
+  if (!landStore.ingest(msg) && landStore.here !== msg?.id) return;
   const v = landViews.get(landBody(msg.area) ?? ""); // drawn from the store once its land is built
   if (!v) return;
   v.deck.draw(landStore);

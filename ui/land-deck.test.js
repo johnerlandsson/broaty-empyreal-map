@@ -87,6 +87,23 @@ describe("LandDeck.draw", () => {
     expect(again[0].getAttribute("data-here")).toBe(A);
   });
 
+  it("a step into a place already walked moves only your light, not the board", () => {
+    const deck = make();
+    const store = walk();
+    deck.draw(store);
+    const before = [...deck.svg.querySelectorAll("[data-place]")];
+    store.ingest({ id: A, name: "On the Tinners' Track", coords: { x: 6.2, y: 1.2, z: 0.414 }, exits: { e: { id: B, inverse: "w" } } });
+    deck.draw(store);
+    const after = [...deck.svg.querySelectorAll("[data-place]")];
+    expect(after.length).toBe(before.length);
+    after.forEach((n, i) => expect(n).toBe(before[i]));
+    expect(deck.svg.querySelectorAll("[data-here]").length).toBe(1);
+    expect(deck.svg.querySelector("[data-here]").getAttribute("data-here")).toBe(A);
+    store.setNote(A, "tin"); // a note changes the board: it's rebuilt
+    deck.draw(store);
+    expect(deck.svg.querySelector(`[data-place="${A}"]`)).not.toBe(before[0]);
+  });
+
   it("draws Zennor's block and its name", () => {
     const deck = make();
     deck.draw(walk());
