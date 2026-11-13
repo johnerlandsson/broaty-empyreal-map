@@ -45,13 +45,14 @@ local function boot(opts)
   package.loaded['station_map.course'] = nil
   package.loaded['station_map.belt'] = nil
   package.loaded['station_map.note'] = nil
+  package.loaded['station_map.land'] = nil
   local real_require = require
   _G.require = function(name)
     if name == 'station_map.location' or name == 'station_map.scene'
         or name == 'station_map.charts' or name == 'station_map.lanes' or name == 'station_map.work'
         or name == 'station_map.manoeuvre' or name == 'station_map.clearance'
         or name == 'station_map.course' or name == 'station_map.belt'
-        or name == 'station_map.note' then
+        or name == 'station_map.note' or name == 'station_map.land' then
       env.requires[#env.requires + 1] = name
       package.loaded[name] = nil
     end
@@ -87,7 +88,7 @@ test('wires panel and requires each module once', function()
   local env = boot()
   eq(env.panel_id, 'map')
   eq(env.requires, { 'station_map.location', 'station_map.scene', 'station_map.charts', 'station_map.lanes',
-    'station_map.work', 'station_map.manoeuvre', 'station_map.clearance', 'station_map.course', 'station_map.belt', 'station_map.note' })
+    'station_map.work', 'station_map.manoeuvre', 'station_map.clearance', 'station_map.course', 'station_map.belt', 'station_map.note', 'station_map.land' })
   eq(type(env.gmcp_handlers['mudstd.room.info']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Room']), 'function')
   eq(type(env.gmcp_handlers['Empyreal.Vehicle']), 'function')
@@ -435,7 +436,7 @@ test('her stored sightings are loaded as she is named, and replayed on ready', f
   login(env, 'Ann') -- the same name again changes nothing
   eq(#env.posts, 0)
   env.panel_handlers.ready({})
-  eq(names(env), { 'settings', 'lanes' })
+  eq(names(env), { 'settings', 'lanes', 'land-load' })
 end)
 
 test('another character gets her own sightings, and the one before\'s are kept', function()
@@ -474,7 +475,58 @@ test('storage that fails to read is no sightings', function()
   login(env, 'Ann')
   env.posts = {}
   env.panel_handlers.ready({})
-  eq(names(env), { 'settings' })
+  eq(names(env), { 'settings', 'land-load' })
+end)
+
+local LAND = { id = 'surface.tamsin.1.2.3', name = 'Heath', area = 'surface.tamsin', areaName = 'Tamsin',
+  coords = { x = 1, y = 2, z = 3 }, exits = { N = { id = 'surface.tamsin.1.3.3', inverse = 'S' } } }
+
+test('a land frame posts land-room after location', function()
+  local env = boot()
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', LAND)
+  eq(names(env), { 'location', 'land-room' })
+  eq(env.posts[2].data.coords, { x = 1, y = 2, z = 3 })
+  env.posts = {}
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', { id = 'tiss.market', name = 'Market Hall' })
+  eq(names(env), { 'location' })
+end)
+
+-- who is the lowercased name, as the lanes' key is
+test('naming a character posts her land-load', function()
+  local env = boot({ stored = { ['land:ada'] = { places = {} } } })
+  login(env, 'Ada')
+  eq(post_named(env, 'land-load').data, { who = 'ada', record = { places = {} } })
+end)
+
+test('land-save writes under her name only while she is the current one', function()
+  local env = boot()
+  login(env, 'Ada')
+  env.panel_handlers['land-save']({ who = 'ada', record = { n = 1 } })
+  eq(env.stored['land:ada'], { n = 1 })
+  env.panel_handlers['land-save']({ who = 'bea', record = { n = 2 } })
+  eq(env.stored['land:bea'], nil)
+  env.panel_handlers['land-save']({ who = 'ada', record = 'junk' })
+  eq(env.stored['land:ada'], { n = 1 })
+  env.panel_handlers['land-save']('junk')
+end)
+
+test('ready replays land-load, then the last land-room; disconnect drops it', function()
+  local env = boot({ stored = { ['land:ada'] = { n = 1 } } })
+  login(env, 'Ada')
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', LAND)
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings', 'location', 'land-load', 'land-room' })
+  env.world_handlers.disconnect()
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings', 'land-load' })
+end)
+
+test('unreadable storage still posts land-load, with no record', function()
+  local env = boot({ bad_storage = true })
+  login(env, 'Ada')
+  eq(post_named(env, 'land-load').data, { who = 'ada', record = nil })
 end)
 
 test('a jump posts the lane she is in', function()

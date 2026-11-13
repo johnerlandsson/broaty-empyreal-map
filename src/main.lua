@@ -20,6 +20,7 @@ local Q = require('station_map.clearance')
 local K = require('station_map.course')
 local B = require('station_map.belt')
 local F = require('station_map.note')
+local G = require('station_map.land')
 
 local panel = mud.panel('map')
 local state = L.new()
@@ -32,6 +33,7 @@ local clearance = Q.new()
 local course = K.new()
 local belt = B.new()
 local notes = F.new()
+local last_land = nil -- the last land-room posted, for a panel that mounts later
 
 -- storage is per plugin and world, but charts are per character, so the lanes' sightings are kept under
 -- `lanes:<name>`, loaded when Char.Status names her. `lanes` alone is the old record, before charts were per
@@ -62,6 +64,18 @@ local function stored_lanes(who)
     pcall(storage.set, 'lanes', nil)
   end
   return saved
+end
+
+-- Her walked land map as the panel last saved it, or nil: none, a bad value, or storage that won't read.
+local function stored_land(who)
+  if not storage then return nil end
+  local ok, saved = pcall(storage.get, 'land:' .. who)
+  if not ok then return nil end
+  return G.record(saved)
+end
+
+local function post_land_load(who)
+  panel:post('land-load', { who = who, record = stored_land(who) })
 end
 
 local function save_belts()
@@ -254,6 +268,7 @@ local function char_status(data)
     local was, record = N.become(lanes, who, stored_lanes(who), os.time())
     store_lanes(was, record)
     changed = true
+    post_land_load(who)
   end
   -- Whether her account can be reached here, once the status above is hers.
   if N.char_status(lanes, data, os.time()) then changed = true end
@@ -282,6 +297,13 @@ local function on_gmcp(package, data)
   local reduce = reducers[name]
   if reduce then
     if reduce(state, data) then post_location() end
+    if name == 'mudstd.room.info' then
+      local land = G.frame(data)
+      if land then
+        last_land = land
+        panel:post('land-room', land)
+      end
+    end
     return
   end
   if name == 'char.status' then
@@ -310,6 +332,7 @@ for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle
 end
 
 world.on('disconnect', function()
+  last_land = nil
   F.reset(notes)
   L.reset(state)
   post_location()
@@ -350,6 +373,16 @@ panel:on_message('ready', function()
   if B.on(belt) then post_belt_on() end
   if next(W.message(work)) then post_work() end
   if K.message(course).course then post_course() end
+  if N.who(lanes) then post_land_load(N.who(lanes)) end
+  if last_land then panel:post('land-room', last_land) end
+end)
+
+-- Only the character she is now has her map written: a late save from the one before is dropped.
+panel:on_message('land-save', function(data)
+  if type(data) ~= 'table' or type(data.record) ~= 'table' then return end
+  local who = N.who(lanes)
+  if not who or data.who ~= who then return end
+  if storage then pcall(storage.set, 'land:' .. who, data.record) end
 end)
 
 panel:on_message('chart', function(data)
