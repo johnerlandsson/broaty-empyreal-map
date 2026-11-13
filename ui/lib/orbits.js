@@ -2,17 +2,29 @@
 // wall-clock time, worked out when asked; nothing is stepped or stored.
 
 // The furthest out a lane mouth can be, in km: each system's own comes in its mouths' `edge.r`,
-// where its star's well has thinned out, 464 million km at Senara and "600 million at most"
+// where its star's well has thinned out, 6.50 TU at Senara and "8.40 at most"
 // (content/help/lanes.md in the Empyreal source, true-size.md §6). The edge is drawn here when the
 // charts have a mouth and none with a bearing.
 export const MOUTH_MAX_KM = 600_000_000;
 
-/** A distance in the game's words, as its kmText (systems/space.ts) has it: "140 km", "1,900 km",
- *  "21.4 million km": km to the hundred from a thousand, and millions to a tenth from a million. */
-export function kmText(km) {
+/** One Tamsin Unit in km, Tamsin's orbit round Senara (TU in systems/space.ts, docs/tamsin-units.md). */
+export const TU = 71_400_000;
+
+/** A distance in the game's words, as its distanceText (systems/space.ts) has it: "140 km", "1,900 km",
+ *  "3,750,000 km", and from a tenth of a TU, "1.81 TU", always to two places. Under the seam, km to
+ *  the hundred from a thousand and to ten thousand from a million, written in full. */
+export function distanceText(km) {
   const n = Math.max(Number(km) || 0, 0);
-  if (n >= 999_950) return `${Number((n / 1e6).toFixed(1)).toLocaleString("en-US")} million km`;
-  return `${(n >= 1000 ? Math.round(n / 100) * 100 : Math.round(n)).toLocaleString("en-US")} km`;
+  const tu = Number((n / TU).toFixed(2));
+  if (tu >= 0.1) return `${tu.toFixed(2)} TU`;
+  const step = n >= 999_950 ? 10_000 : n >= 1000 ? 100 : 1;
+  return `${(Math.round(n / step) * step).toLocaleString("en-US")} km`;
+}
+
+/** The scale bar's span, always in km written in full ("50,000,000 km"), as the game's site keeps its
+ *  map's scale bar in km at every zoom (docs/tamsin-units.md §3). */
+export function scaleText(km) {
+  return `${Math.round(Math.max(Number(km) || 0, 0)).toLocaleString("en-US")} km`;
 }
 
 // How far out high orbit is over a planet, in its radii (Empyreal's HIGH_ORBIT, navigation.md §6).

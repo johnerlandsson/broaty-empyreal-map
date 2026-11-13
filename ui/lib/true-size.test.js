@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { chartCase } from "../../dev/charts-cases.js";
-import { MOUTH_MAX_KM, errorAt, fitBox, folded, homeBox, indexCharts, isLost, kmText, levelOf, levelPlanets, planetBox, positionOf, scaleKm, shipFix, systemBox, systemRadius } from "./orbits.js";
+import { MOUTH_MAX_KM, distanceText, errorAt, fitBox, folded, homeBox, indexCharts, isLost, levelOf, levelPlanets, planetBox, positionOf, scaleKm, scaleText, shipFix, systemBox, systemRadius } from "./orbits.js";
 
 // The chart at the game's true sizes (true-size.md in the Empyreal source), from its own charts as
-// dev/charts-cases.ts recorded them: Tamsin 6,400 km across 71.4 million km from Senara, T.I.S.S.
-// 22,950 km round it, the mouths 464 million km out.
+// dev/charts-cases.ts recorded them: Tamsin 6,400 km across 1.00 TU from Senara, T.I.S.S.
+// 22,950 km round it, the mouths 6.50 TU out.
 
 const at = (name) => {
   const c = chartCase(name);
@@ -27,7 +27,7 @@ describe("the game's true sizes", () => {
     expect(systemRadius(at("docked-wenna-halt").index)).toBeCloseTo(462_307_826, -3);
   });
 
-  it("put the edge no further than help lanes' 600 million km where no mouth has a bearing", () => {
+  it("put the edge no further than help lanes' 8.40 TU where no mouth has a bearing", () => {
     const charts = structuredClone(docked.charts);
     for (const p of charts.places) if (p.kind === "mouth") delete p.edge;
     expect(MOUTH_MAX_KM).toBe(600_000_000);
@@ -35,27 +35,36 @@ describe("the game's true sizes", () => {
   });
 });
 
-describe("kmText", () => {
-  // the game's own words for a distance (kmText in systems/space.ts)
-  it("says km under a million, to the hundred from a thousand", () => {
-    expect(kmText(140)).toBe("140 km");
-    expect(kmText(999.4)).toBe("999 km");
-    expect(kmText(1949)).toBe("1,900 km");
-    expect(kmText(22_950)).toBe("23,000 km");
-    expect(kmText(999_949)).toBe("999,900 km");
+describe("distanceText", () => {
+  // the game's own words for a distance (distanceText in systems/space.ts, docs/tamsin-units.md)
+  it("says km under a tenth of a TU, to the hundred from a thousand", () => {
+    expect(distanceText(140)).toBe("140 km");
+    expect(distanceText(999.4)).toBe("999 km");
+    expect(distanceText(1949)).toBe("1,900 km");
+    expect(distanceText(22_950)).toBe("23,000 km");
+    expect(distanceText(999_949)).toBe("999,900 km");
   });
-  it("says millions to a tenth above", () => {
-    expect(kmText(999_950)).toBe("1 million km");
-    expect(kmText(71_400_000)).toBe("71.4 million km");
-    expect(kmText(262_555_380.5)).toBe("262.6 million km");
-    expect(kmText(1_500_000_000)).toBe("1,500 million km");
+  it("writes km in full to ten thousand from a million, never millions", () => {
+    expect(distanceText(999_950)).toBe("1,000,000 km");
+    expect(distanceText(3_750_000)).toBe("3,750,000 km");
+    expect(distanceText(4_000_000)).toBe("4,000,000 km");
+    expect(distanceText(6_782_999)).toBe("6,780,000 km");
+  });
+  it("says TU to two places from 0.10 TU", () => {
+    expect(distanceText(6_783_000)).toBe("0.10 TU");
+    expect(distanceText(71_400_000)).toBe("1.00 TU");
+    expect(distanceText(129_234_000)).toBe("1.81 TU");
+    expect(distanceText(262_555_380.5)).toBe("3.68 TU");
+    expect(distanceText(464_100_000)).toBe("6.50 TU");
+    expect(distanceText(1_500_000_000)).toBe("21.01 TU");
   });
 });
 
 describe("the scale bar at true sizes", () => {
-  it("reads in the game's words at a planet's zoom and a system's", () => {
-    expect(kmText(scaleKm(200, 90))).toBe("10,000 km");
-    expect(kmText(scaleKm(1_000_000, 90))).toBe("50 million km");
+  // stays in km at every zoom, as the game's site keeps its map's scale bar
+  it("reads in km written in full at a planet's zoom and a system's", () => {
+    expect(scaleText(scaleKm(200, 90))).toBe("10,000 km");
+    expect(scaleText(scaleKm(1_000_000, 90))).toBe("50,000,000 km");
   });
 });
 

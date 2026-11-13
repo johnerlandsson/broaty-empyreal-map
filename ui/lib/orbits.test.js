@@ -28,7 +28,7 @@ const idx = indexCharts(charts({ r: 15000, bearing: 90, at: "senara" }));
 const T = 123456789;
 
 describe("MOUTH_MAX_KM", () => {
-  it("is help lanes' 600 million km", () => expect(MOUTH_MAX_KM).toBe(600_000_000));
+  it("is help lanes' 8.40 TU at most, 600,000,000 km", () => expect(MOUTH_MAX_KM).toBe(600_000_000));
 });
 
 describe("indexCharts", () => {

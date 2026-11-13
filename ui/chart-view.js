@@ -12,6 +12,7 @@ import {
   ago,
   clusters,
   courseLine,
+  distanceText,
   edgeMarker,
   errorAt,
   fitBox,
@@ -21,7 +22,6 @@ import {
   indexCharts,
   isClosed,
   isLost,
-  kmText,
   levelOf,
   levelPlanets,
   markOf,
@@ -33,6 +33,7 @@ import {
   planetBox,
   positionOf,
   scaleKm,
+  scaleText,
   shipFix,
   spreadOnEdge,
   systemBox,
@@ -567,7 +568,7 @@ export class ChartView {
         if (across) {
           const hit = el("circle", { cx: c[0], cy: c[1], r, fill: "none", stroke: "transparent", "stroke-width": 8, "pointer-events": "stroke" }, marks);
           if (loose.length) tip(hit, "edge", loose[0], loose.slice(1).join("\n"));
-          else tip(hit, "edge", "The edge", `${kmText(R)} out`);
+          else tip(hit, "edge", "The edge", `${distanceText(R)} out`);
         }
       });
     }
@@ -590,10 +591,10 @@ export class ChartView {
         const ox = c[0] - b[0];
         const oy = c[1] - b[1];
         const n = Math.hypot(ox, oy) || 1;
-        const text = `${it.name} ${lost ? "· lost" : `±${kmText(err)}`}`;
+        const text = `${it.name} ${lost ? "· lost" : `±${distanceText(err)}`}`;
         if (!crowded(it)) label(c[0] + (ox / n) * 12, c[1] + (oy / n) * 12 + 3, text, ox < 0 ? "end" : "start", [c[0], c[1] - 10]);
         const seen = Number.isFinite(it.fit?.seen) ? `, seen ${ago(t - it.fit.seen)} ago` : "";
-        tip(g, `belt:${it.id}`, it.name, `±${kmText(err)}${seen}`);
+        tip(g, `belt:${it.id}`, it.name, `±${distanceText(err)}${seen}`);
         if (!lost) offView.push([it.name, here]); // a lost belt is its whole ring: no one place to point at
       });
     }
@@ -856,7 +857,7 @@ export class ChartView {
         const m = edgeMarker(inner, [p[0], -p[1]], MARKER_INSET * s);
         if (!m) return;
         const km = Math.hypot(p[0] - from[0], p[1] - from[1]);
-        shown.push({ at: P([m.x, -m.y]), angle: m.angle, text: `${name} ${kmText(km)}`, closed });
+        shown.push({ at: P([m.x, -m.y]), angle: m.angle, text: `${name} ${distanceText(km)}`, closed });
       });
     }
     // a chevron a cluster; then the names of nearby clusters whose names would overlap stacked as one
@@ -946,7 +947,7 @@ export class ChartView {
       el("line", { x1: x, y1: y, x2: x + L, y2: y, stroke: DIM, "stroke-width": 1 }, over);
       for (const xx of [x, x + L]) el("line", { x1: xx, y1: y - 3, x2: xx, y2: y + 3, stroke: DIM, "stroke-width": 1 }, over);
       const tx = el("text", { x: x + L / 2, y: y - 6, "font-size": 9, fill: DIM, "text-anchor": "middle", "font-family": FONT });
-      tx.textContent = kmText(km);
+      tx.textContent = scaleText(km);
       over.appendChild(tx);
     });
     this.drawChip(level, levels.size > 0, 30 + below);

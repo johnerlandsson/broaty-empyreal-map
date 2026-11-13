@@ -34,9 +34,9 @@ describe("courseCard", () => {
     });
   });
 
-  it("words the game's own course to Orrin Station in millions, as the game does", () => {
+  it("words the game's own course to Orrin Station in TU, as the game does", () => {
     const { course, ship, now } = chartCase("course-orrin");
-    expect(courseCard(course, ship, now).figures).toBe("262.6 million km · 20m 8s · 589 fuel");
+    expect(courseCard(course, ship, now).figures).toBe("3.68 TU · 20m 8s · 589 fuel");
   });
 
   it("says a ragged course is ragged", () => {

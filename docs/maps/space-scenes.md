@@ -106,7 +106,7 @@ the star is above the town's horizon. A port's `orbit` is round its planet at
 the planet's radius with its period the planet's day, so `daylit` in
 `ui/lib/orbits.js` works it out from Space.Charts at the wall clock: the way
 straight up from the planet's centre through the town, against the way to the
-star. At true size the star is 71.4 million km off and Tamsin 6,400 km in radius, so
+star. At true size the star is 1.00 TU (71,400,000 km) off and Tamsin 6,400 km in radius, so
 the terminator falls a two-hundredth of a degree past the quarter turn: in
 effect at it, as in the game. The view
 asks once a second and cross-fades (1 per second) when the answer changes;

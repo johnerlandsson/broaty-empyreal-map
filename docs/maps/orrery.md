@@ -137,9 +137,9 @@ A belt is drawn as an arc along its fit, reaching the error either way. After
 90% of half way round it is **lost**: the whole orbit, dashed.
 
 **Lane mouths.** A mouth has no orbit, only a distance from its star, `edge.r`,
-where the star's well has thinned out: 464 million km at Senara, 185 million at a
-small star like Feock and 600 million at most, as `help lanes` tells every
-player. A mouth with no `edge` puts the edge at 600 million km (`MOUTH_MAX_KM`
+where the star's well has thinned out: 6.50 TU at Senara, 2.59 at a
+small star like Feock and 8.40 at most, as `help lanes` tells every
+player. A mouth with no `edge` puts the edge at 600,000,000 km, 8.40 TU (`MOUTH_MAX_KM`
 in `ui/lib/orbits.js`), as that's all a player knows of it. Since 2026-10-22 the game sends where a
 stable lane's mouth faces, as `edge {r, bearing, at}`: the bearing in degrees,
 counterclockwise from +x as orbit angles are, as of `at`. It creeps round as
@@ -207,13 +207,14 @@ Everything the style guide's §13 draws:
   she's under way her route takes over, and the line goes.
 - **The course card**, top left over the chart, while she's at rest with a
   course: "Course for The Cinders", then "51,000 km · 3m 51s · 9 fuel" as the
-  game words them (a million km and over in millions to a tenth, "262.6 million km"), then "plotted 4m ago" ("just now" under a minute), with
+  game words them (`distanceText`: from 0.10 TU in Tamsin Units to two places, "3.68 TU", and
+  under that km in full, "3,750,000 km"; 1 TU is Tamsin's orbit, 71,400,000 km), then "plotted 4m ago" ("just now" under a minute), with
   "ragged" in amber before it for a failed plot. The scale bar moves down
   under it. It goes once she's under way.
 
   ```
   ┌ Course for Orrin Station       ┐
-  │ 262.6 million km · 20m 8s · 589 fuel │
+  │ 3.68 TU · 20m 8s · 589 fuel    │
   └ ragged · plotted 1h 12m ago    ┘
   ```
 - **Names** are small and Dim. A planet's satellite is named only once its
@@ -222,19 +223,20 @@ Everything the style guide's §13 draws:
   is bound.
 - **Off the view**, a body, a mouth with a bearing or a belt that isn't lost
   gets a small chevron at the band's edge, with its name and its distance from
-  your ship in the game's words, km under a million and millions to a tenth
-  above ("Orrin 262.5 million km", "The Cinders 63,000 km"), or from the middle of the view
+  your ship in the game's words, km under 0.10 TU and TU to two places
+  above ("Orrin 3.68 TU", "The Cinders 63,000 km"), or from the middle of the view
   when she can't be placed. A lost belt gets none, and nor does a body whose
   disc (the star's bright glow) still reaches into the band. A closed mouth's
-  is named "Petroc · closed 657.6 million km", its chevron dashed. Markers within 12 px of
+  is named "Petroc · closed 9.21 TU", its chevron dashed. Markers within 12 px of
   each other share one chevron (dashed only if all of them are closed mouths),
   and markers within 48 px whose names would overlap stack them as one, a line
   each. A name that still overlaps one already placed goes on the other side of
   its own chevron if there's room, and with no room either side steps in from
 the band's edge a line at a time; bigger stacks are placed first. The names
 keep clear of the chart's own labels as well as of each other.
-- **A scale bar**, top left, under the course card when there is one, in the
-  game's words: "20,000 km", "50 million km".
+- **A scale bar**, top left, under the course card when there is one, always
+  in km written in full, as the game's site keeps its map's scale bar: "20,000 km",
+  "50,000,000 km".
 - **The levels' chip** under the scale bar: the star, and the planet the view
   is at when it's at one, "Senara ▸ Tamsin", the one you're at outlined
   brighter. A click on the star shows the whole system; on the planet, its
@@ -263,8 +265,8 @@ chip or a planet's ring frames that level, no narrower than the zoom's
 1,000 km, and the view is then yours, as a pan makes it.
 
 **True size** (2026-11-09). The game's systems are their real size now: Tamsin
-6,400 km across 71.4 million km from Senara, T.I.S.S. 22,950 km round it,
-Gannet 68,800 km, the mouths 464 million km out. Nothing in the payload's shape
+6,400 km across 1.00 TU (71,400,000 km) from Senara, T.I.S.S. 22,950 km round it,
+Gannet 68,800 km, the mouths 6.50 TU out. Nothing in the payload's shape
 changed, so the orbits scale on their own, and ⌂ still frames Tamsin's
 neighbourhood (about 570,000 km across in a wide band) when she's at T.I.S.S.
 and the whole trip when she's under way. What changed here: the edge's

@@ -4,7 +4,7 @@
 // A contact is where she was at the sweep plus its km and bearing, degrees clockwise from the
 // system's zero, +y (navigation.md decision 18: every frame in a system has the star's axes).
 
-import { ago, kmText } from "./orbits.js";
+import { ago, distanceText } from "./orbits.js";
 import ships from "../data/ships.js";
 
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -73,7 +73,7 @@ export function shipTip(c) {
   if (isDark(c)) return { title: c.id, body: "where the last sweep saw her" };
   const who = [hullName(c.hull), c.owner].filter(Boolean).join(", ");
   const km = num(c.km);
-  const how = [c.moving === true ? "under drive" : c.moving === false ? "at rest" : null, km !== null ? `${kmText(km)} off` : null]
+  const how = [c.moving === true ? "under drive" : c.moving === false ? "at rest" : null, km !== null ? `${distanceText(km)} off` : null]
     .filter(Boolean)
     .join(", ");
   return { title: nameOf(c), body: [who, how ? `${how} at the sweep` : "at the sweep"].filter(Boolean).join("\n") };
@@ -107,7 +107,7 @@ export function card(sweep, ship, t, body = (id) => id) {
   for (const c of [...sweep.ships].sort((a, b) => (num(a.km) ?? Infinity) - (num(b.km) ?? Infinity))) {
     const km = num(c.km);
     const what = isDark(c) ? [] : [hullName(c.hull)?.split(" ").pop(), c.moving ? "under drive" : null];
-    rows.push([nameOf(c), [...what, km !== null ? kmText(km) : null].filter(Boolean).join(" · ")]);
+    rows.push([nameOf(c), [...what, km !== null ? distanceText(km) : null].filter(Boolean).join(" · ")]);
   }
   for (const c of sweep.marks.values()) rows.push([nameOf(c), c.hidden ? `behind ${body(c.hidden)}` : "missed"]);
   return { chase: after ? `After ${nameOf(after)}` : null, head: `Last sweep · ${sweepAge(sweep, t)}`, rows };
