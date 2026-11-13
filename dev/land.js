@@ -50,9 +50,9 @@ const noted = store.places().find((p) => p.name === (q.get("note") ?? "Old Shaft
 if (noted) store.setNote(noted.id, "a note");
 
 const here = walk.places.find((p) => p.id === walk.here);
-new LandGlobe(document.getElementById("model"), { latitude: sky.zennor.latitude }).set({ x: here?.x ?? 0, y: here?.y ?? 0 });
+new LandGlobe(document.getElementById("model"), { latitude: sky.zennor.latitude, body: "tamsin" }).set({ x: here?.x ?? 0, y: here?.y ?? 0 });
 
-const deck = new LandDeck(document.getElementById("deck"), land.tamsin);
+const deck = new LandDeck(document.getElementById("deck"), land.tamsin, "tamsin");
 deck.draw(store);
 if (q.has("k")) {
   deck.measure();
@@ -63,7 +63,7 @@ deck.onNote((id, text) => {
   deck.draw(store);
 });
 deck.onForget(() => {
-  store.forget();
+  store.forget("surface.tamsin.");
   deck.draw(store);
 });
 if (q.get("target")) deck.setTarget(store.places().find((p) => p.name === q.get("target") || p.id === q.get("target"))?.id ?? null);
