@@ -83,6 +83,14 @@ end
 
 -- Her map, when the status names someone the panel's map isn't for; then the frame she's in again, which
 -- came before the status on login (and was walked into the map before it was hers).
+-- No one's map, on a disconnect or a logout back to the character menu (Char.Logout, same connection): the
+-- panel saves what's waiting and clears it (only if it has had a map or a frame).
+local function land_logout()
+  if land_who or last_land then panel:post('land-load', { who = nil }) end
+  last_land = nil
+  land_who = nil
+end
+
 local function land_status(who)
   if not who or who == land_who then return end
   land_who = who
@@ -310,16 +318,18 @@ local function on_gmcp(package, data)
   if reduce then
     if reduce(state, data) then post_location() end
     if name == 'mudstd.room.info' then
-      local land = G.frame(data)
-      if land then
-        last_land = land
-        panel:post('land-room', land)
-      end
+      -- a room off the land ends the last land frame: it's never replayed for anyone after
+      last_land = G.frame(data)
+      if last_land then panel:post('land-room', last_land) end
     end
     return
   end
   if name == 'char.status' then
     char_status(data)
+    return
+  end
+  if name == 'char.logout' then
+    land_logout()
     return
   end
   if name == 'ship.list' then
@@ -339,15 +349,12 @@ local function on_gmcp(package, data)
 end
 
 -- Subscribe with the names Mallard advertises (original casing).
-for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Ship.Course', 'Ship.List', 'Space.Contacts', 'Char.Status' }) do
+for _, prefix in ipairs({ 'mudstd.room.info', 'Empyreal.Room', 'Empyreal.Vehicle', 'Ship.Status', 'Ship.Devices', 'Space.Charts', 'Ship.Course', 'Ship.List', 'Space.Contacts', 'Char.Status', 'Char.Logout' }) do
   gmcp.on(prefix, on_gmcp)
 end
 
 world.on('disconnect', function()
-  -- No one's map: the panel saves what's waiting and clears it (only if it has had a map or a frame).
-  if land_who or last_land then panel:post('land-load', { who = nil }) end
-  last_land = nil
-  land_who = nil
+  land_logout()
   F.reset(notes)
   L.reset(state)
   post_location()

@@ -564,6 +564,73 @@ test('a status naming her posts land-room again after her land-load', function()
   eq(post_named(env, 'land-room').data.id, LAND.id)
 end)
 
+local LAND_B = { id = 'surface.tamsin.4.5.6', name = 'Moor', area = 'surface.tamsin', areaName = 'Tamsin',
+  coords = { x = 4, y = 5, z = 0 }, exits = {} }
+
+local function land_posts(env)
+  local out = {}
+  for _, p in ipairs(env.posts) do
+    if p.name == 'land-load' or p.name == 'land-room' then out[#out + 1] = p end
+  end
+  return out
+end
+
+-- logout (menu) goes back to the character menu on the same connection: Char.Logout, no disconnect
+test('Char.Logout then another character on land: no one first, her frame goes to her', function()
+  local env = boot()
+  eq(type(env.gmcp_handlers['Char.Logout']), 'function')
+  login(env, 'Ada')
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', LAND)
+  env.posts = {}
+  env.gmcp_handlers['Char.Logout']('Char.Logout', {})
+  local ps = land_posts(env)
+  eq(#ps, 1)
+  eq(ps[1].name, 'land-load')
+  eq(ps[1].data.who, nil)
+  env.posts = {}
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', LAND_B)
+  login(env, 'Bea')
+  ps = land_posts(env)
+  eq(#ps, 3)
+  eq(ps[1].name, 'land-room')
+  eq(ps[1].data.id, LAND_B.id)
+  eq(ps[2].name, 'land-load')
+  eq(ps[2].data.who, 'bea')
+  eq(ps[3].name, 'land-room')
+  eq(ps[3].data.id, LAND_B.id) -- hers, not Ada's
+end)
+
+test('Char.Logout with no map or frame posts nothing', function()
+  local env = boot()
+  env.gmcp_handlers['Char.Logout']('Char.Logout', {})
+  eq(#env.posts, 0)
+end)
+
+test('a room off the land between two statuses: no stale land-room', function()
+  local env = boot()
+  login(env, 'Ada')
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', LAND)
+  env.gmcp_handlers['Char.Logout']('Char.Logout', {})
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', { id = 'tiss.market', name = 'Market Hall' })
+  env.posts = {}
+  login(env, 'Bea')
+  local ps = land_posts(env)
+  eq(#ps, 1)
+  eq(ps[1].name, 'land-load')
+end)
+
+test('ready after walking off the land replays no land-room', function()
+  local env = boot()
+  login(env, 'Ada')
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', LAND)
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', { id = 'tiss.market', name = 'Market Hall' })
+  env.posts = {}
+  env.panel_handlers.ready({})
+  local ps = land_posts(env)
+  eq(#ps, 1)
+  eq(ps[1].name, 'land-load')
+end)
+
 test('unreadable storage still posts land-load, with no record', function()
   local env = boot({ bad_storage = true })
   login(env, 'Ada')

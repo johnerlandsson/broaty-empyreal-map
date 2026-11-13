@@ -57,12 +57,15 @@ side writes it under `land:<who>` in Mallard's storage, for whichever character 
 panel only ever sends a character's own map).
 
 Lua keeps whose map the panel has (`land_who`, apart from the lanes' character). When `Char.Status`
-names someone else, or anyone at all after a disconnect, Lua sends her map as `land-load`
+names someone else, or anyone at all after a disconnect or a logout, Lua sends her map as `land-load`
 `{ who, record }`, then the last land frame again: on login the room frame comes before the status,
 so it was walked into no one's map. The panel first saves the one before's waiting change under her
 name, then loads; places walked while no one's map was loaded are merged in, the newer winning. A
-disconnect sends `land-load` with no `who`: the panel saves what's waiting and clears the map, its
-notes and where you are. When the panel opens, Lua replays the map's `land-load` and the last frame.
+disconnect, or `Char.Logout` (`logout`/`menu` goes back to the character menu on the same
+connection, with no disconnect), sends `land-load` with no `who`: the panel saves what's waiting and
+clears the map, its notes and where you are. The last land frame is forgotten then, and whenever a
+room frame off the land comes, so it's never replayed for anyone after. When the panel opens, Lua
+replays the map's `land-load` and the last land frame, if you're still on the land.
 A missing or bad stored value loads as an empty map.
 
 ## Drawing the board
