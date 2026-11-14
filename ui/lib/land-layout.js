@@ -1,9 +1,10 @@
-// The layout of the walked land's map (docs/maps/land.md): each walked place's octagon at its true
-// spot, the ways between them (a curve square out of each exit's face; a track straight), the dotted stubs of ways not taken, Zennor's block
-// and roads, and the names of regions and tracks. Pure (no DOM).
+// The layout of the walked land's map (docs/maps/land.md): each walked place's octagon on the cell
+// of a 1.2 km grid nearest where it really is, the ways between them (a curve square out of each
+// exit's face; a track straight), the dotted stubs of ways not taken, Zennor's block and roads, and
+// the names of regions and tracks. Pure (no DOM).
 //
-// Places sit where the game says they are, and the game picks an exit's compass point from the true
-// bearing, so a way's curve out of the face its exit names hardly has to turn.
+// The game picks an exit's compass point from the true bearing, and no place is more than about
+// 0.6 km off its true spot, so a way's curve out of the face its exit names seldom has to turn far.
 //
 // Units are km. `spots` and faceMid() are north-up (x east, y north), as the places are; every
 // other point in a Layout, and every path, is ready for the SVG: y flipped (svg y = −north). Angles
@@ -11,8 +12,11 @@
 
 import { regionOf, trackOf } from "./land-kinds.js";
 
-/** An octagon's width, flat to flat, km: places are at least 1.1 km apart, so none touch. */
+/** An octagon's width, flat to flat, km: a gap of 0.24 km between neighbours on the grid. */
 export const OCT = 0.96;
+
+/** The grid places are snapped to, km: the smallest gap the game leaves between places (1.1 km on its 0.4 km lattice). */
+export const GRID = 1.2;
 
 const H = OCT / 2; // the apothem: centre to the middle of a face
 const SIDE = OCT / (2 * (1 + Math.SQRT2)); // half a face's length
@@ -130,6 +134,31 @@ function layoutWays(places, spots) {
   return ways;
 }
 
+/**
+ * Each place on the nearest free cell of a GRID km square grid, in first-walked order, so close
+ * neighbours line up in rows and columns. A place walked later whose nearest cell is taken gets the
+ * nearest free one (the cells three round it are searched; places are ≥ 1.1 km apart, so it never
+ * gets that far). North-up, km.
+ */
+export function snapToGrid(places) {
+  const taken = new Set(), spots = new Map();
+  for (const p of places) {
+    const gx = p.x / GRID, gy = p.y / GRID, rx = Math.round(gx), ry = Math.round(gy);
+    let best = null;
+    for (let dy = -3; dy <= 3; dy++) {
+      for (let dx = -3; dx <= 3; dx++) {
+        const cx = rx + dx, cy = ry + dy;
+        if (taken.has(`${cx},${cy}`)) continue;
+        const d = Math.hypot(cx - gx, cy - gy);
+        if (!best || d < best.d - 1e-9) best = { cx, cy, d };
+      }
+    }
+    taken.add(`${best.cx},${best.cy}`);
+    spots.set(p.id, { x: +(best.cx * GRID).toFixed(4) || 0, y: +(best.cy * GRID).toFixed(4) || 0 });
+  }
+  return spots;
+}
+
 /** The nearest point to p on a closed outline, north-up. */
 function nearestOn(outline, p) {
   let best = null;
@@ -150,7 +179,7 @@ function nearestOn(outline, p) {
  * @param {{town: {e: number, n: number}[], joins: Record<string, object>}} world  the land's entry in ui/data/land.js
  */
 export function layoutLand(places, world) {
-  const spots = new Map(places.map((p) => [p.id, { x: p.x, y: p.y }]));
+  const spots = snapToGrid(places);
   const walked = new Set(places.map((p) => p.id));
   const ways = layoutWays(places, spots);
 

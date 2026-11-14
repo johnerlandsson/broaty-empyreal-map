@@ -1,11 +1,11 @@
 # The walked land
 
-*Status: built. An octagon each walked place at its true spot, routes, notes and forgetting, and
-Tamsin from above in the top band. Last updated 2026-11-13. Design:
-`docs/superpowers/specs/2026-11-13-land-automap-design.md` (decision 17 is this layout); the picked
-looks: `reference/land-picked.png` for the octagons, grounds and tracks, and option B of
-`reference/land-ways-options.png` for where they sit, and E of
-`reference/land-curves-lit-options.png` for the ways between them (decision 19).*
+*Status: built. An octagon each walked place on a 1.2 km grid, routes, notes and forgetting, and
+Tamsin from above in the top band. Last updated 2026-11-14. Design:
+`docs/superpowers/specs/2026-11-13-land-automap-design.md` (decisions 19 and 20 are this layout);
+the picked looks: `reference/land-picked.png` for the octagons, grounds and tracks, A of
+`reference/land-grid-options.png` for where they sit, and E of
+`reference/land-curves-lit-options.png` for the ways between them.*
 
 ## What it is and when it shows
 
@@ -74,12 +74,15 @@ A missing or bad stored value loads as an empty map.
 
 `ui/land-deck.js` draws the bottom band; `ui/lib/land-layout.js` works out the layout.
 
-- **True spots.** A regular octagon, 0.96 km flat to flat with its faces to the eight compass
-  points, sits where each walked place really is (its `x`, `y`, km east and north of Zennor's
-  point). The game puts places at least 1.1 km apart, so no two touch. Nothing is snapped to a
-  grid: the first build put each place in a tile of a 1.2 km board, but off the tracks places sit
-  about 2.2 km apart, so most ways joined octagons that weren't neighbours, and one in four
-  neighbours had snapped to the wrong side of its exit (`reference/land-ways-options.png`).
+- **On a grid.** A regular octagon, 0.96 km flat to flat with its faces to the eight compass
+  points, sits on the cell of a 1.2 km square grid nearest where the place really is (its `x`,
+  `y`, km east and north of Zennor's point), so it's never more than about 0.6 km off. 1.2 km is
+  the smallest gap the game leaves between places, so close neighbours line up in rows and
+  columns with a gap between them, and the ways between them run square. Cells go in the order
+  you walked the places: one whose nearest cell is taken gets the nearest free one.
+  The first build snapped places to a 1.2 km board too, but drew bent ways with corner squares
+  (`reference/land-ways-options.png`); true spots then made close places hard to read
+  (`reference/land-grid-options.png`).
 - **Ground.** Each octagon has its group's colour with its texture over it, in screen pixels, so
   the texture is the same size at any zoom. The colours are in the style guide's §4.2 ("On the
   land's map").

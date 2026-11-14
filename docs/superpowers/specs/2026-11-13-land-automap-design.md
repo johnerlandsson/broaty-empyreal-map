@@ -167,6 +167,13 @@ John picked 2: "running its engine inside our map panel."
     a one-way chevron sits in the gap between the octagons. The ways you can
     leave your place by are the same curves drawn lighter and heavier, with
     nothing laid over them. This replaces decision 18.
+20. **Octagons on a 1.2 km grid** (2026-11-14, after playing decision 19; A of
+    `docs/maps/reference/land-grid-options.png`). Where places were close the
+    true spots left them at odd angles and it was hard to see which side a
+    way left by. Each place now sits on the nearest free cell of a 1.2 km
+    grid (the smallest gap the game leaves), octagons as before so there's
+    a gap between neighbours, and the curves of decision 19 between them.
+    This replaces decision 17's true spots.
 
 ## Design
 

@@ -231,7 +231,7 @@ one, and stays when she stops, unless you've turned that off. The belt map,
   plain way down as a small well. Hover over one for where it goes and how
   long it takes.
 - **Tamsin's land:** out past Zennor's edge, an octagon for every place
-  you've walked, where it really is and coloured by the kind of ground, with
+  you've walked, on a grid near where it really is and coloured by the kind of ground, with
   the ways between them leaving by the sides their exits name, and Tamsin from above
   in the top band; click a place for the walked way there
   ([docs/maps/land.md](docs/maps/land.md)).
