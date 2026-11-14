@@ -5,18 +5,18 @@
 export const GROUPS = ["open", "road", "waymark", "high", "slope", "low", "rock", "dust", "workings", "water", "salt", "ice"];
 
 const BY_GROUP = {
-  open: ["Open Ground", "On the Downs"],
+  open: ["Open Ground", "On the Downs", "Rolling Ground", "Top of a Slope"],
   road: ["Road End"],
   waymark: ["Cairn", "Marker Stone"],
   high: ["Hilltop", "Summit", "Knoll", "Ice Dome", "Saddle", "Low Pass", "Saddle in the Ice"],
   slope: ["Rising Ground", "Hillside", "Steep Hillside", "Stony Slope"],
-  low: ["Hollow", "Head of a Gully", "Head of an Ice Gully"],
+  low: ["Hollow", "Head of a Gully", "Head of an Ice Gully", "Channel", "Shallow Channel", "Meeting of Channels"],
   rock: ["Rock Outcrop", "Bare Rock", "Stony Ground", "Crater Rim"],
   dust: ["Drifted Dust", "Dust Plain"],
   workings: ["Old Workings", "Old Shaft", "Fallen Adit"],
   water: ["Pond", "River Bank", "Spring", "Beach"],
   salt: ["The Salt Pans"],
-  ice: ["Ice Field", "Ice Slope", "Frozen Shore"],
+  ice: ["Ice Field", "Ice Slope", "Frozen Shore", "Ice Shore"],
 };
 
 /** Every exact title the game gives, with its group. */

@@ -63,10 +63,12 @@ describe("levelRooms", () => {
     expect(["pithead", "twenty", "forty", "town-station", "smelts-station", "workings-station", "pump-gallery", "winze"].map(at)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
     // the Great Stair's three rooms on three levels
     expect(["wheal-prosper", "stair-head", "stair-foot"].map(at)).toEqual([1, 2, 3]);
-    // every compass exit stays on its level; every way up or down leaves it
+    // every compass exit within Dolcoath stays on its level; every way up or down leaves it (an
+    // exit out onto Orrin's land, surface.orrin.…, has no level)
     for (const room of rooms.filter((x) => !x.car)) {
       for (const [dir, e] of Object.entries(room.exits ?? {})) {
         const to = typeof e === "string" ? e : e.to;
+        if (!to.startsWith("dolcoath.")) continue;
         if (dir === "up" || dir === "down") expect(out.levels.get(to)).not.toBe(out.levels.get(room.id));
         else expect(out.levels.get(to)).toBe(out.levels.get(room.id));
       }

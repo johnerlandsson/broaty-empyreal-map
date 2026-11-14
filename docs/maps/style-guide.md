@@ -125,18 +125,18 @@ any zoom.
 |---|---|---|
 | Zennor's block | `#16120f` | Zennor's ground on the land's map, under its dashed Stone edge and "ZENNOR" |
 | lit way | `#7d6b55` | the ways out of the place you stand in: Earth, lightened; no glow |
-| open | `#261f18` | open ground (Open Ground, On the Downs); no texture |
+| open | `#261f18` | open ground (Open Ground, On the Downs, Rolling Ground, Top of a Slope); no texture |
 | road | `#332b22` (Earth) | a road end out of Zennor; no texture |
 | waymark | `#2f2820`; ticks `#b3a58f` at .55 | a cairn or marker stone: short upright ticks |
 | high | `#3b3722`; chevrons `#c8b97e` at .55 | high ground (Hilltop, Summit, Knoll, Saddle, Low Pass, Ice Dome): ▲ chevrons |
 | slope | `#33291c`; slants `#a8977c` at .45 | a slope (Rising Ground, Hillside, Stony Slope): diagonal slants |
-| low | `#1f2619`; chevrons `#7f9c68` at .6 | low ground (Hollow, Head of a Gully): ▼ chevrons |
+| low | `#1f2619`; chevrons `#7f9c68` at .6 | low ground (Hollow, Head of a Gully, the channels): ▼ chevrons |
 | rock | `#34363a`; stones `#a4a4a8` at .55 | rock (Rock Outcrop, Bare Rock, Stony Ground, Crater Rim): scattered small stones |
 | dust | `#4a3a22`; dots `#c9a36a` at .5 and .35 | dust (Drifted Dust, Dust Plain): fine dots |
 | workings | `#4a2a1e`; heaps `#c07a5c` at .7 | old workings (Old Workings, Old Shaft, Fallen Adit): small spoil heaps |
 | water | `#1f3a52`; ripples `#5b86ad` at .75 | water (Pond, River Bank, Spring, Beach): ripples |
 | salt | `#4c4a42`; squares `#cfc9b9` at .45 | the Salt Pans: small squares |
-| ice | `#5a6878`; lines `#dbe9ff` at .45 | ice (Ice Field, Ice Slope, Frozen Shore): fine diagonal lines |
+| ice | `#5a6878`; lines `#dbe9ff` at .45 | ice (Ice Field, Ice Slope, Frozen Shore, Ice Shore): fine diagonal lines |
 
 ### 4.3 Models and scenes
 

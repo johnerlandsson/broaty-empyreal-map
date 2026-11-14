@@ -222,17 +222,17 @@ It strips " on …" and " by …" from the name and matches the rest:
 
 | Group | Names |
 |---|---|
-| open | Open Ground, On the Downs, any "On <track>", and any name not in the table |
+| open | Open Ground, On the Downs, Rolling Ground, Top of a Slope, any "On <track>", and any name not in the table (for now Scrub, Reed Bed, Woods) |
 | waymark | Cairn, Marker Stone |
 | high | Hilltop, Summit, Knoll, Ice Dome, Saddle, Low Pass, Saddle in the Ice |
 | slope | Rising Ground, Hillside, Steep Hillside, Stony Slope |
-| low | Hollow, Head of a Gully, Head of an Ice Gully |
+| low | Hollow, Head of a Gully, Head of an Ice Gully, Channel, Shallow Channel, Meeting of Channels |
 | rock | Rock Outcrop, Bare Rock, Stony Ground, Crater Rim |
 | dust | Drifted Dust, Dust Plain |
 | workings | Old Workings, Old Shaft, Fallen Adit |
 | water | Pond, River Bank, Spring, Beach |
 | salt | The Salt Pans |
-| ice | Ice Field, Ice Slope, Frozen Shore |
+| ice | Ice Field, Ice Slope, Frozen Shore, Ice Shore |
 
 The road ends are their own group, **road**, by their `.join.` id: their names
 are written by hand and don't follow the pattern.

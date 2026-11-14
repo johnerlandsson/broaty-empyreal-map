@@ -1,26 +1,89 @@
 {
-  "commit": "b6728d0",
+  "commit": "0132490",
   "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
   "rooms": {
-    "added": [],
+    "added": [
+      {
+        "place": "zennor",
+        "id": "zennor.kittos"
+      }
+    ],
     "removed": [],
     "renamed": []
   },
   "exits": {
-    "added": [],
+    "added": [
+      {
+        "place": "dolcoath",
+        "room": "dolcoath.drops",
+        "dir": "south",
+        "to": "surface.orrin.join.south-rim"
+      },
+      {
+        "place": "dolcoath",
+        "room": "dolcoath.field",
+        "dir": "northwest",
+        "to": "surface.orrin.join.haul-road"
+      },
+      {
+        "place": "dolcoath",
+        "room": "dolcoath.pithead",
+        "dir": "north",
+        "to": "surface.orrin.join.north-rim"
+      },
+      {
+        "place": "zennor",
+        "room": "zennor.chandlers",
+        "dir": "west",
+        "to": "zennor.kittos"
+      }
+    ],
     "removed": []
   },
   "unplaced": [],
   "orphans": [],
-  "droppedFlags": [],
-  "unknownFields": [],
+  "droppedFlags": [
+    {
+      "name": "chandler",
+      "places": [
+        "zennor"
+      ]
+    },
+    {
+      "name": "pegs",
+      "places": [
+        "dolcoath"
+      ]
+    }
+  ],
+  "unknownFields": [
+    {
+      "name": "planet.life.origin",
+      "places": [
+        "tamsin"
+      ]
+    },
+    {
+      "name": "planet.life.reach",
+      "places": [
+        "tamsin"
+      ]
+    },
+    {
+      "name": "shelter",
+      "places": [
+        "zennor"
+      ]
+    }
+  ],
   "knownDroppedFlags": [
     "bank",
     "barber",
     "broker",
     "bunkhouse",
+    "chandler",
     "charger",
     "charts",
     "clinic",
@@ -30,6 +93,7 @@
     "freight",
     "market",
     "outfitter",
+    "pegs",
     "start",
     "storage",
     "terminal",
@@ -83,10 +147,13 @@
     "hull.sold",
     "mail",
     "noFirearms",
+    "planet.life.origin",
+    "planet.life.reach",
     "planet.number",
     "planet.reach",
     "planet.scale",
     "sells",
+    "shelter",
     "surface.site.height",
     "surface.site.setting"
   ]
