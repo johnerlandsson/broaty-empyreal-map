@@ -1,5 +1,5 @@
 // The walked land's map (docs/maps/land.md): Tamsin's land round Zennor in the bottom band, an
-// octagon each walked place on a grid near where it really is, the ways between them curving out of the faces
+// octagon each walked place where it really is, the ways between them curving out of the faces
 // their exits name (the ones out of your place lit), dotted stubs for the ways not taken, and
 // Zennor's block with its roads out. Only what you've stood in is drawn or named. The layout is lib/land-layout.js's; this draws it, rebuilding the board on draw() only
 // when the walked places have changed.

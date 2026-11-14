@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { faceMid, layoutLand, OCT, octagon, snapToGrid } from "./land-layout.js";
+import { faceMid, layoutLand, OCT, octagon } from "./land-layout.js";
 import { LandStore } from "./land-store.js";
 
 const T = "the Tinners' Track";
@@ -91,32 +91,25 @@ describe("layoutLand", () => {
     expect(out.spots.get(nid(1, 1))).toEqual({ x: 1.2, y: 1.2 });
   });
 
-  it("puts each place on the nearest cell of a 1.2 km grid, and the way out of the faces its exits name", () => {
+  it("puts each place at its true spot, off any grid, so a way leaves by the side its exit names", () => {
+    // on a 1.2 km tiling b would sit straight south of a, against a's southwest exit
     const a = place("surface.tamsin.1.1.1", "Cairn", 0, 0, { sw: { to: "surface.tamsin.1.1.2", back: "ne" } });
     const b = place("surface.tamsin.1.1.2", "Hollow", -0.8, -1.2, { ne: { to: a.id, back: "sw" } });
     const out = layoutLand([a, b], world);
     expect(out.spots.get(a.id)).toEqual({ x: 0, y: 0 });
-    expect(out.spots.get(b.id)).toEqual({ x: -1.2, y: -1.2 }); // 0.4 west of its true spot
+    expect(out.spots.get(b.id)).toEqual({ x: -0.8, y: -1.2 });
     expect(out.ways).toHaveLength(1);
     const [w] = out.ways;
     expect(w).toMatchObject({ a: a.id, b: b.id, oneWay: false });
     // out of a's southwest face and into b's northeast face, pulled square out of each
     const [f1, c1, c2, f2] = pts(w.path);
-    const h = OCT / 2 / Math.SQRT2, s = Math.max(0.12, 0.42 * dist(f1, f2)) / Math.SQRT2;
+    const h = OCT / 2 / Math.SQRT2, s = (0.42 * dist(f1, f2)) / Math.SQRT2;
     expect(f1[0]).toBeCloseTo(-h); expect(f1[1]).toBeCloseTo(h);
     expect(c1[0]).toBeCloseTo(-h - s); expect(c1[1]).toBeCloseTo(h + s);
-    expect(f2[0]).toBeCloseTo(-1.2 + h); expect(f2[1]).toBeCloseTo(1.2 - h);
-    expect(c2[0]).toBeCloseTo(-1.2 + h + s); expect(c2[1]).toBeCloseTo(1.2 - h - s);
-  });
-
-  it("gives a place whose nearest cell is taken the nearest free one, first walked first", () => {
-    const a = place("surface.tamsin.1.1.1", "Cairn", 0, 0);
-    const b = place("surface.tamsin.1.1.2", "Hollow", 1.6, 0.4); // nearest cell (1.2, 0)
-    const c = place("surface.tamsin.1.1.3", "Hollow", 1.2, -0.4); // nearest cell (1.2, 0) too
-    const spots = snapToGrid([a, b, c]);
-    expect(spots.get(b.id)).toEqual({ x: 1.2, y: 0 });
-    expect(spots.get(c.id)).toEqual({ x: 1.2, y: -1.2 });
-    expect(new Set([...spots.values()].map((p) => `${p.x},${p.y}`)).size).toBe(3);
+    expect(f2[0]).toBeCloseTo(-0.8 + h); expect(f2[1]).toBeCloseTo(1.2 - h);
+    expect(c2[0]).toBeCloseTo(-0.8 + h + s); expect(c2[1]).toBeCloseTo(1.2 - h - s);
+    expect(faceLeft(out.spots.get(a.id), out.spots.get(b.id))).toBe("sw");
+    expect(faceLeft(out.spots.get(b.id), out.spots.get(a.id))).toBe("ne");
   });
 
   it("pulls a long way's curve no further than 0.75 out of its faces", () => {
@@ -132,13 +125,13 @@ describe("layoutLand", () => {
     const a = place("surface.tamsin.1.1.1", `On ${T}`, 0, 0, { e: { to: "surface.tamsin.1.1.2", back: "w" } });
     const b = place("surface.tamsin.1.1.2", `Bare Rock on ${T}`, 1.4, 0.4, { w: { to: a.id, back: "e" } });
     const out = layoutLand([a, b], world);
-    // b's cell is (1.2, 0)
-    expect(out.ways[0]).toMatchObject({ track: T, path: "M0,0 L1.2,0", there: "L1.2,0", back: "L0,0" });
+    expect(out.ways[0]).toMatchObject({ track: T, path: "M0,0 L1.4,-0.4", there: "L1.4,-0.4", back: "L0,0" });
     const name = out.labels.find((l) => l.kind === "track");
-    expect(name).toMatchObject({ text: T, x: expect.closeTo(0.6), y: expect.closeTo(0), angle: expect.closeTo(0) });
+    expect(name).toMatchObject({ text: T, x: expect.closeTo(0.7), y: expect.closeTo(-0.2) });
+    expect(name.angle).toBeCloseTo((Math.atan2(-0.4, 1.4) * 180) / Math.PI);
   });
 
-  it("gives every way of a walk a curve out of the face its exit names", () => {
+  it("gives every way of a walk a line out of the face its exit names", () => {
     // a ring of eight round a middle place, each a little off its compass point
     const mid = place("surface.tamsin.3.3.0", "Open Ground", 10, 10);
     const ring = Object.entries(UNIT).map(([d, [dx, dy]], k) => {
@@ -151,13 +144,12 @@ describe("layoutLand", () => {
     const out = layoutLand([mid, ...ring], world);
     expect(out.ways).toHaveLength(8);
     for (const [d, e] of Object.entries(mid.exits)) {
-      expect(faceLeft({ x: mid.x, y: mid.y }, ring.find((p) => p.id === e.to))).toBe(d); // the true bearing
+      expect(faceLeft(out.spots.get(mid.id), out.spots.get(e.to))).toBe(d);
       // the curve starts at the middle of that face, heading square out of it
       const w = out.ways.find((v) => v.b === e.to);
       const [f1, c1] = pts(w.path), len = Math.hypot(...UNIT[d]);
-      const c = out.spots.get(mid.id);
-      expect(f1[0]).toBeCloseTo(c.x + (UNIT[d][0] / len) * (OCT / 2));
-      expect(-f1[1]).toBeCloseTo(c.y + (UNIT[d][1] / len) * (OCT / 2));
+      expect(f1[0]).toBeCloseTo(10 + (UNIT[d][0] / len) * (OCT / 2));
+      expect(-f1[1]).toBeCloseTo(10 + (UNIT[d][1] / len) * (OCT / 2));
       expect((c1[0] - f1[0]) * UNIT[d][1] - (f1[1] - c1[1]) * UNIT[d][0]).toBeCloseTo(0);
     }
   });

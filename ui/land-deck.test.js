@@ -100,7 +100,7 @@ describe("LandDeck.draw", () => {
     expect(lit).toHaveLength(1);
     expect(lit[0]).not.toBe(first);
     expect(first.isConnected).toBe(false);
-    expect(lit[0].getAttribute("transform")).toBe("translate(6 -1.2)"); // A's cell on the grid
+    expect(lit[0].getAttribute("transform")).toBe("translate(6.2 -1.2)");
     deck.draw(store); // drawn again where you already are: the light stays as it is
     expect(deck.svg.querySelector("[data-here]")).toBe(lit[0]);
   });
@@ -132,9 +132,9 @@ describe("LandDeck.draw", () => {
     const track = deck.svg.querySelector("[data-track]");
     const oct = deck.svg.querySelector(`[data-place="${B}"]`);
     expect(deck.svg.querySelectorAll("[data-way]")).toHaveLength(1);
-    // one-way: a curve from C's southwest face into B's middle (C's cell (8.4, 3.6), B's (7.2, 1.2))
-    expect(way.getAttribute("d")).toMatch(/^M8\.0606,-3\.2606 Q\S+ 7\.2,-1\.2$/);
-    expect(track.getAttribute("d")).toBe("M6,-1.2 L7.2,-1.2"); // the track: straight, middle to middle
+    // one-way: a curve from C's southwest face into B's middle
+    expect(way.getAttribute("d")).toMatch(/^M8\.2606,-3\.0606 Q\S+ 7\.4,-1\.6$/);
+    expect(track.getAttribute("d")).toBe("M6.2,-1.2 L7.4,-1.6"); // the track: straight, middle to middle
     expect(way.compareDocumentPosition(oct) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // the octagon's drawn after it
     expect(track.compareDocumentPosition(oct) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy(); // and before the track
     expect(deck.svg.querySelector("polygon:not([data-zennor])")).toBe(null); // no corner squares
@@ -261,9 +261,9 @@ describe("LandDeck's view", () => {
     const [x, y, w, h] = view(deck);
     expect(520 / w).toBeCloseTo(26, 5);
     expect(h / w).toBeCloseTo(400 / 520, 5);
-    // B's cell: at (7.4, 1.6), it's on the grid at x 7.2, svg y −1.2
-    expect(x + w / 2).toBeCloseTo(7.2, 5);
-    expect(y + h / 2).toBeCloseTo(-1.2, 5);
+    // B's true spot: x 7.4, svg y −1.6
+    expect(x + w / 2).toBeCloseTo(7.4, 5);
+    expect(y + h / 2).toBeCloseTo(-1.6, 5);
   });
 
   it("follow() re-centres only when you leave the middle half of the view", () => {

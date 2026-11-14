@@ -28,11 +28,11 @@ describe("routePath", () => {
   });
 
   it("follows the way's curve out of and into the faces its exits name, the same either way", () => {
-    const places = [place("a", 6, 0, { e: { to: "b", back: "sw" } }), place("b", 7.6, 0.8, { sw: { to: "a", back: "e" } })];
+    const places = [place("a", 6, 0, { e: { to: "b", back: "sw" } }), place("b", 7.6, 0.6, { sw: { to: "a", back: "e" } })];
     const L = layoutLand(places, world);
     const there = routePath(["a", "b"], L);
     expect(there).toBe(`M6,0 ${L.ways[0].there}`);
-    expect(there).toMatch(/^M6,0 L6\.48,0 C\S+ \S+ \S+ L7\.2,-1\.2$/); // a's east face, a curve, b's middle (its cell)
+    expect(there).toMatch(/^M6,0 L6\.48,0 C\S+ \S+ \S+ L7\.6,-0\.6$/); // a's east face, a curve, b's middle
     expect(points(routePath(["b", "a"], L))).toEqual([...points(there)].reverse());
   });
 });
