@@ -167,6 +167,12 @@ John picked 2: "running its engine inside our map panel."
     a one-way chevron sits in the gap between the octagons. The ways you can
     leave your place by are the same curves drawn lighter and heavier, with
     nothing laid over them. This replaces decision 18.
+20. **The land spread 1.3×** (2026-11-14; B of
+    `docs/maps/reference/land-spread-options.png`). Close places were hard to
+    read. A 1.2 km grid was tried and taken back (`land-grid-options.png`);
+    pushing only close places apart bent the tracks. Instead the whole land,
+    Zennor's block with it, is drawn 1.3× further from Zennor's point than
+    it is, octagons the same size: same shape, more room.
 
 ## Design
 

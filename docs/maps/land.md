@@ -1,11 +1,12 @@
 # The walked land
 
 *Status: built. An octagon each walked place at its true spot, routes, notes and forgetting, and
-Tamsin from above in the top band. Last updated 2026-11-13. Design:
+Tamsin from above in the top band. Last updated 2026-11-14. Design:
 `docs/superpowers/specs/2026-11-13-land-automap-design.md` (decision 17 is this layout); the picked
 looks: `reference/land-picked.png` for the octagons, grounds and tracks, and option B of
 `reference/land-ways-options.png` for where they sit, and E of
-`reference/land-curves-lit-options.png` for the ways between them (decision 19).*
+`reference/land-curves-lit-options.png` for the ways between them (decision 19), and B of
+`reference/land-spread-options.png` for the spread (decision 20).*
 
 ## What it is and when it shows
 
@@ -74,12 +75,16 @@ A missing or bad stored value loads as an empty map.
 
 `ui/land-deck.js` draws the bottom band; `ui/lib/land-layout.js` works out the layout.
 
-- **True spots.** A regular octagon, 0.96 km flat to flat with its faces to the eight compass
-  points, sits where each walked place really is (its `x`, `y`, km east and north of Zennor's
-  point). The game puts places at least 1.1 km apart, so no two touch. Nothing is snapped to a
-  grid: the first build put each place in a tile of a 1.2 km board, but off the tracks places sit
-  about 2.2 km apart, so most ways joined octagons that weren't neighbours, and one in four
-  neighbours had snapped to the wrong side of its exit (`reference/land-ways-options.png`).
+- **True spots, spread out.** A regular octagon, 0.96 km flat to flat with its faces to the eight
+  compass points, sits where each walked place really is (its `x`, `y`, km east and north of
+  Zennor's point), with the whole land, Zennor's block too, drawn 1.3× further from Zennor's point
+  than it is (`SPREAD`). The land keeps its shape, and close places (the game puts them at least
+  1.1 km apart) get room between them: at least 1.43 km on the map, so a gap of about half a km
+  between their octagons. Nothing is snapped to a grid: the first build put each place in a
+  tile of a 1.2 km board, but off the tracks places sit about 2.2 km apart, so most ways joined
+  octagons that weren't neighbours, and one in four neighbours had snapped to the wrong side of
+  its exit (`reference/land-ways-options.png`); a later try with a 1.2 km grid was taken back
+  (`reference/land-grid-options.png`).
 - **Ground.** Each octagon has its group's colour with its texture over it, in screen pixels, so
   the texture is the same size at any zoom. The colours are in the style guide's §4.2 ("On the
   land's map").

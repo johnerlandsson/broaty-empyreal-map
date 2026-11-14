@@ -2,9 +2,12 @@
 // octagons' middles, the nearest walked road end by steps, and where the "← Zennor" card sits.
 
 import { describe, expect, it } from "vitest";
-import { layoutLand } from "./land-layout.js";
+import { layoutLand as spreadLand } from "./land-layout.js";
 import { edgeCard, nearestRoadEnd, routePath } from "./land-route.js";
 import { LandStore } from "./land-store.js";
+
+// The layout's geometry at true spots; the spread itself is pinned on its own.
+const layoutLand = (places, world, opts) => spreadLand(places, world, { spread: 1, ...opts });
 
 const world = { town: [{ e: -4, n: 6 }, { e: 4, n: 6 }, { e: 4, n: -7 }, { e: -4, n: -7 }], joins: {} };
 const place = (id, x, y, exits = {}) => ({ id, name: "Open Ground", x, y, z: 0.4, exits });

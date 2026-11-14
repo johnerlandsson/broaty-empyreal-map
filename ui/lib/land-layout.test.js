@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { faceMid, layoutLand, OCT, octagon } from "./land-layout.js";
+import { faceMid, layoutLand as spreadLand, OCT, octagon, SPREAD } from "./land-layout.js";
 import { LandStore } from "./land-store.js";
+
+// The layout's geometry at true spots; the spread itself is pinned on its own.
+const layoutLand = (places, world, opts) => spreadLand(places, world, { spread: 1, ...opts });
 
 const T = "the Tinners' Track";
 const world = { town: [{ e: -4, n: 6 }, { e: 4, n: 6 }, { e: 4, n: -7 }, { e: -4, n: -7 }], joins: { downs: { at: { e: 4.8, n: 1 }, room: "zennor.port-road" } } };
@@ -152,6 +155,18 @@ describe("layoutLand", () => {
       expect(-f1[1]).toBeCloseTo(10 + (UNIT[d][1] / len) * (OCT / 2));
       expect((c1[0] - f1[0]) * UNIT[d][1] - (f1[1] - c1[1]) * UNIT[d][0]).toBeCloseTo(0);
     }
+  });
+
+  it("spreads the land 1.3× from Zennor's point, Zennor's block with it, octagons the same size", () => {
+    expect(SPREAD).toBe(1.3);
+    const a = place("surface.tamsin.1.1.1", "Cairn", 2, -1, { e: { to: "surface.tamsin.1.1.2", back: "w" } });
+    const b = place("surface.tamsin.1.1.2", "Hollow", 3.2, -1, { w: { to: a.id, back: "e" } });
+    const out = spreadLand([a, b], world);
+    expect(out.spots.get(a.id)).toEqual({ x: 2.6, y: -1.3 });
+    expect(out.spots.get(b.id)).toEqual({ x: 4.16, y: -1.3 });
+    expect(out.zennor.outline[0]).toEqual({ x: expect.closeTo(-5.2), y: expect.closeTo(-7.8) }); // (−4, 6), y flipped
+    // the way still runs face to face of 0.96 km octagons: a's east face at 2.6 + 0.48
+    expect(out.ways[0].path.startsWith("M3.08,1.3 C")).toBe(true);
   });
 
   it("lays a walk out the same after a reload", () => {

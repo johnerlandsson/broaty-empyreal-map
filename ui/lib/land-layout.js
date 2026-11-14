@@ -1,8 +1,9 @@
 // The layout of the walked land's map (docs/maps/land.md): each walked place's octagon at its true
-// spot, the ways between them (a curve square out of each exit's face; a track straight), the dotted stubs of ways not taken, Zennor's block
-// and roads, and the names of regions and tracks. Pure (no DOM).
+// spot, spread 1.3× from Zennor's point (Zennor's block with it), the ways between them (a curve
+// square out of each exit's face; a track straight), the dotted stubs of ways not taken, Zennor's
+// block and roads, and the names of regions and tracks. Pure (no DOM).
 //
-// Places sit where the game says they are, and the game picks an exit's compass point from the true
+// The spread keeps the land's shape, and the game picks an exit's compass point from the true
 // bearing, so a way's curve out of the face its exit names hardly has to turn.
 //
 // Units are km. `spots` and faceMid() are north-up (x east, y north), as the places are; every
@@ -13,6 +14,10 @@ import { regionOf, trackOf } from "./land-kinds.js";
 
 /** An octagon's width, flat to flat, km: places are at least 1.1 km apart, so none touch. */
 export const OCT = 0.96;
+
+/** How much further apart the map draws places than they are: the whole land, Zennor's block with
+ *  it, spread out from Zennor's point, so close places get room between them and nothing changes shape. */
+export const SPREAD = 1.3;
 
 const H = OCT / 2; // the apothem: centre to the middle of a face
 const SIDE = OCT / (2 * (1 + Math.SQRT2)); // half a face's length
@@ -148,9 +153,10 @@ function nearestOn(outline, p) {
 /**
  * @param {object[]} places  the walked places, in first-walked order (LandStore.places())
  * @param {{town: {e: number, n: number}[], joins: Record<string, object>}} world  the land's entry in ui/data/land.js
+ * @param {{spread?: number}} [opts]  how much further apart to draw places than they are (SPREAD)
  */
-export function layoutLand(places, world) {
-  const spots = new Map(places.map((p) => [p.id, { x: p.x, y: p.y }]));
+export function layoutLand(places, world, { spread = SPREAD } = {}) {
+  const spots = new Map(places.map((p) => [p.id, { x: +(p.x * spread).toFixed(4), y: +(p.y * spread).toFixed(4) }]));
   const walked = new Set(places.map((p) => p.id));
   const ways = layoutWays(places, spots);
 
@@ -165,7 +171,7 @@ export function layoutLand(places, world) {
     }
   }
 
-  const town = (world?.town ?? []).map(({ e, n }) => ({ x: e, y: n }));
+  const town = (world?.town ?? []).map(({ e, n }) => ({ x: e * spread, y: n * spread }));
   const roads = [];
   for (const p of places) {
     const m = /^surface\.[^.]+\.join\.([^.]+)$/.exec(p.id);
