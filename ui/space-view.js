@@ -7,7 +7,7 @@
 // low-poly facets in its star's light (lib/worlds.js), a giant by its envelope with its bands over them, and a port's
 // planet below it in the same facets, its sea far off; no controls. It fades in over the model (hiding its zoom buttons),
 // eases the stars' speed and cross-fades stars and rocks; the frame loop runs only while
-// something is on screen, and pauses while the panel is hidden or the system chart covers it.
+// something is on screen, and pauses while the panel is off screen (lib/on-screen.js) or the system chart covers it.
 // Once a scene has settled it draws only as often as what moves in it needs (frameGap), idle on a
 // timer between.
 // Docking and undocking, it turns see-through over the station model, which shrinks into the
@@ -18,6 +18,7 @@ import { daylit, orbitLit } from "./lib/orbits.js";
 import { Belt, Pit, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, groundOf, heading, litFor, rockFaces, targets, work, workLines } from "./lib/space.js";
 import { sunAlt } from "./lib/sky.js";
 import { GIANT_BANDS, RIM as GLASS_RIM, emberFacets, faceOf, facets, portFace, portFacets, rgbText, seedOf } from "./lib/worlds.js";
+import { onScreen, onScreenChange } from "./lib/on-screen.js";
 import { rng } from "./lib/svg.js";
 
 const BG = "#04060c";
@@ -119,7 +120,7 @@ export class SpaceView {
     this.onAway = null;
 
     new ResizeObserver(() => this.resize()).observe(containerEl);
-    document.addEventListener("visibilitychange", () => (document.hidden ? this.pause() : this.wake()));
+    onScreenChange(() => (onScreen() ? this.wake() : this.pause()));
   }
 
   /**
@@ -223,7 +224,7 @@ export class SpaceView {
   }
 
   wake() {
-    if (this.raf || this.timer || document.hidden || this.covered) return;
+    if (this.raf || this.timer || !onScreen() || this.covered) return;
     this.last = performance.now();
     this.raf = requestAnimationFrame((t) => this.frame(t));
   }

@@ -43,6 +43,7 @@ import { noPlanLine, pickStation, stationOfDock } from "./lib/stations.js";
 import { SpaceView } from "./space-view.js";
 import { buildPlace, buildShip } from "./place-views.js";
 import { UnknownView } from "./unknown-view.js";
+import { onScreen, onScreenChange } from "./lib/on-screen.js";
 
 const modelEl = document.getElementById("model");
 const deckEl = document.getElementById("deck");
@@ -119,7 +120,7 @@ let chartLast = 0;
 const CHART_SMOOTH = 100; // ms between redraws while she's under way
 
 /** Redraw the chart, the lanes map or the belt map once a second while it's shown and the panel
- *  visible, more often while she moves, and not at all otherwise; and keep the space scene from
+ *  on screen, more often while she moves, and not at all otherwise; and keep the space scene from
  *  drawing under it. */
 function runChart() {
   runSky();
@@ -130,7 +131,7 @@ function runChart() {
   cancelAnimationFrame(chartRaf);
   chartTimer = 0;
   chartRaf = 0;
-  if (!view || document.hidden) return;
+  if (!view || !onScreen()) return;
   view.draw(Date.now());
   if (view.moving) {
     const step = (now) => {
@@ -146,20 +147,20 @@ function runChart() {
     chartTimer = setInterval(() => view.draw(Date.now()), 1000);
   }
 }
-document.addEventListener("visibilitychange", runChart);
+onScreenChange(runChart);
 
 let scene = null; // the overview scene from the scene message: anything but "station" draws over the band
 let skyTimer = 0;
 
 /** Keep a port's sky moving (Zennor's, the Pit's), a redraw a second, while it's the band showing,
  *  there's a sky (out of doors, with charts that place the port), and nothing covers it: not the chart or the lanes
- *  map, not a space scene, not a hidden panel. Starting draws it for now at once. A model with no
+ *  map, not a space scene, not a panel off screen. Starting draws it for now at once. A model with no
  *  sky has no `live`. */
 function runSky() {
   clearInterval(skyTimer);
   skyTimer = 0;
   const sky = stations[current]?.model;
-  if (!sky?.live || chart.shown || lanes.shown || belt.shown || document.hidden || (scene && scene !== "station")) return;
+  if (!sky?.live || chart.shown || lanes.shown || belt.shown || !onScreen() || (scene && scene !== "station")) return;
   sky.draw(Date.now());
   skyTimer = setInterval(() => sky.draw(Date.now()), 1000);
 }

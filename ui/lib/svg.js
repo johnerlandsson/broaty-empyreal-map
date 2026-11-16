@@ -1,5 +1,7 @@
 // Small SVG and pointer helpers for the deck plans. DOM is only touched when these are called.
 
+import { onScreen, onScreenChange } from "./on-screen.js";
+
 const NS = "http://www.w3.org/2000/svg";
 const PICK_SLOP = 4; // px a press may move and still be a click, not a pan
 
@@ -68,7 +70,7 @@ export function pulseAt(t) {
 }
 
 function pulseTick() {
-  if (document.hidden) return;
+  if (!onScreen()) return stopPulse(); // started again from where the breath is now, once it's back
   const now = performance.now();
   for (const [node, p] of pulsing) {
     if (!node.isConnected) {
@@ -79,17 +81,23 @@ function pulseTick() {
     if (!node.getClientRects().length) continue; // in a hidden view: nothing to draw
     node.setAttribute("opacity", pulseAt(now - p.t0));
   }
-  if (!pulsing.size) {
-    clearInterval(pulseTimer);
-    pulseTimer = 0;
-  }
+  if (!pulsing.size) stopPulse();
 }
+
+function stopPulse() {
+  clearInterval(pulseTimer);
+  pulseTimer = 0;
+}
+
+onScreenChange(() => {
+  if (onScreen() && pulsing.size) pulseTimer ||= setInterval(pulseTick, 1000 / PULSE_HZ);
+});
 
 /**
  * Make node breathe (opacity 1 -> .55 -> 1 over 1.8 s) for as long as it's on the page, or start
  * its breath again from full. Every pulsing node is set by one timer, PULSE_HZ times a second
  * rather than every frame as an SVG <animate> is: each change repaints the glow's blur. A node in
- * a hidden view is left as it is.
+ * a hidden view is left as it is, and the timer stops while the panel is off screen.
  */
 export function pulse(node) {
   pulsing.set(node, { t0: performance.now(), seen: node.isConnected });
