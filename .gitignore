@@ -2,3 +2,4 @@
 node_modules/
 *.mallardx
 claude_resources/
+bench-results/
