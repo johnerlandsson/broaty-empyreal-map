@@ -124,15 +124,21 @@ work dir:
   two runs can be diffed to the message where they part.
 - `BENCH_STACKS=1` counts the rAF callbacks by the line that asked for them.
 
-One such cause is already handled. The clock is installed with `pauseAt`
-alone: installing it first and pausing after lets the real milliseconds in
-between into the page's `performance.now()`. That shifts its 16 ms frames
-against the timers, so a turn of the model could take one frame more or
-less. Playwright is taken from `~/dev/mallard/node_modules/playwright`
+Two such causes are already handled, both in Playwright's clock:
+
+- The clock is installed with `pauseAt` alone. Installing it first and
+  pausing after lets the real milliseconds in between into the page's
+  `performance.now()`.
+- A paused clock holds `Date` but lets `performance.now()` run on with real
+  time. So on the counted pass `performance.now()` and the rAF timestamps are
+  taken from the paused `Date`.
+
+Before these fixes, a turn of the model, which times itself with
+`performance.now()`, could take a frame more or less from run to run. Playwright is taken from `~/dev/mallard/node_modules/playwright`
 (`--playwright DIR` or `PLAYWRIGHT_DIR` to change it).
 
-A full run takes about 25 minutes. Most of it is the CPU pass: 7 scenarios
-× 5 runs × 30 s.
+A full run takes about 26 minutes. About 6 of them are the session replay,
+and most of the rest is the CPU pass: 7 scenarios × 5 runs × 30 s.
 
 ## A quiet machine
 

@@ -90,13 +90,18 @@ const COUNTERS = ({ defer }) => {
   B.reset = () => {
     B.c = zero();
   };
+  // Playwright's paused clock holds Date but lets performance.now() run on with real time, so on the
+  // counted pass performance.now() and the frame times are the paused Date's, from page start.
+  const t0 = Date.now();
+  const now = () => Date.now() - t0;
+  if (defer) Object.defineProperty(performance, "now", { value: now, configurable: true, writable: true });
   const raf = window.requestAnimationFrame;
   window.requestAnimationFrame = function (cb) {
     const by = defer === "stacks" ? (new Error().stack.split("\n").find((l) => l.includes("/ui/") && !l.includes("fake-panel")) ?? "?").replace(/^.*\/ui\//, "") : null;
     return raf.call(window, (t) => {
       B.c.raf++;
       if (by) (B.c.raf_by ??= {})[by] = (B.c.raf_by[by] ?? 0) + 1;
-      cb(t);
+      cb(defer ? now() : t);
     });
   };
   const st = window.setTimeout;
