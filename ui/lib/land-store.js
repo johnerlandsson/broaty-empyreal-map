@@ -39,13 +39,14 @@ function cleanStored(p) {
   if (!p || !isStr(p.id) || !isNum(p.x) || !isNum(p.y)) return null;
   const exits = cleanExits(p.exits);
   const place = { id: p.id, name: typeof p.name === "string" ? p.name : "", x: p.x, y: p.y, z: isNum(p.z) ? p.z : 0, exits };
+  if (isStr(p.terrain) && p.terrain !== "room") place.terrain = p.terrain;
   if (isStr(p.note)) place.note = p.note;
   return place;
 }
 
-/** Two places alike in all a frame brings: name, spot and exits. */
+/** Two places alike in all a frame brings: name, terrain, spot and exits. */
 function samePlace(a, b) {
-  if (a.name !== b.name || a.x !== b.x || a.y !== b.y || a.z !== b.z) return false;
+  if (a.name !== b.name || a.terrain !== b.terrain || a.x !== b.x || a.y !== b.y || a.z !== b.z) return false;
   for (const dir of DIRS) {
     const e = a.exits[dir], f = b.exits[dir];
     if (!e !== !f) return false;
@@ -89,6 +90,10 @@ export class LandStore {
       z: isNum(frame.coords.z) ? frame.coords.z : 0,
       exits: cleanExits(frame.exits, frameExit),
     };
+    // what's underfoot, as the game sends it; `room` (none yet, as for a tile not built) keeps what
+    // an earlier step brought
+    const terrain = isStr(frame.terrain) && frame.terrain !== "room" ? frame.terrain : old?.terrain;
+    if (terrain) place.terrain = terrain;
     this.here = frame.id;
     if (old && samePlace(old, place)) return false;
     if (old && old.note !== undefined) place.note = old.note;

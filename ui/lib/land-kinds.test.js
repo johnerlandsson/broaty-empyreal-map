@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import { GROUPS, TITLES, groupOf, regionOf, trackOf } from "./land-kinds.js";
+import { GROUPS, TERRAINS, TITLES, groundOf, groupOf, regionOf, trackOf } from "./land-kinds.js";
 
 const TABLE = {
   open: ["Open Ground", "On the Downs"],
@@ -22,6 +22,18 @@ const TABLE = {
 };
 
 describe("land kinds", () => {
+  it("draws a place by the terrain the game sends, else by its title", () => {
+    expect(TERRAINS).toEqual(["water", "ice", "woods", "reeds", "scrub", "cushions", "salt", "rock", "stones", "dust", "earth"]);
+    // one title, two grounds (both seen on the Downs in the game's logs)
+    expect(groundOf({ id: "x", name: "Low Pass", terrain: "stones" })).toBe("stones");
+    expect(groundOf({ id: "x", name: "Low Pass", terrain: "earth" })).toBe("earth");
+    expect(groundOf({ id: "surface.tamsin.join.downs", name: "The Open Downs", terrain: "dust" })).toBe("dust");
+    // saved before terrain, `room`, or something new: the title's group
+    expect(groundOf({ id: "x", name: "Low Pass" })).toBe("high");
+    expect(groundOf({ id: "x", name: "Cairn on the Tinners' Track", terrain: "room" })).toBe("waymark");
+    expect(groundOf({ id: "surface.tamsin.join.downs", name: "The Open Downs", terrain: "lava" })).toBe("road");
+  });
+
   it("reads group, track and region from a name", () => {
     expect(groupOf("surface.tamsin.3.4.1", "Old Workings on the Tinners' Track")).toBe("workings");
     expect(trackOf("Old Workings on the Tinners' Track")).toBe("the Tinners' Track");

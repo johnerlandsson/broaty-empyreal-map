@@ -6,6 +6,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import land from "./data/land.js";
 import { LandDeck } from "./land-deck.js";
+import { groundStyle } from "./lib/land-patterns.js";
 import { LandStore } from "./lib/land-store.js";
 
 const A = "surface.tamsin.806.856.2293775";
@@ -45,6 +46,18 @@ describe("LandDeck.draw", () => {
     deck.draw(walk());
     const ids = [...deck.svg.querySelectorAll("[data-place]")].map((n) => n.getAttribute("data-place"));
     expect(ids.sort()).toEqual([A, B].sort());
+  });
+
+  it("colours an octagon by the terrain the game sent, else by its title", () => {
+    const store = walk(); // A, B walked before the game sent terrain
+    store.ingest({ id: A, name: "On the Tinners' Track", terrain: "cushions", coords: { x: 6.2, y: 1.2, z: 0.414 }, exits: { e: { id: B, inverse: "w" } } });
+    const deck = make();
+    deck.draw(store);
+    const ground = (id) => [...deck.svg.querySelectorAll(`[data-place="${id}"] use`)].map((u) => u.getAttribute("fill"));
+    const [fillA, texA] = ground(A);
+    expect(fillA).toBe(groundStyle("cushions").fill);
+    expect(texA).toMatch(/^url\(#land-\d+-cushions\)$/);
+    expect(ground(B)[0]).toBe(groundStyle("rock").fill); // "Bare Rock": its title's group
   });
 
   it("draws one dotted stub for the way not taken", () => {

@@ -72,6 +72,34 @@ describe("LandStore", () => {
     expect(s.place("old2").note).toBe("n");
   });
 
+  it("keeps the terrain a frame brings, and saves and loads it", () => {
+    const s = new LandStore();
+    s.ingest({ ...frame("a", 0, 0), terrain: "stones" });
+    s.ingest(frame("b", 1, 0)); // walked before the game sent terrain
+    expect(s.place("a").terrain).toBe("stones");
+    expect(s.place("b")).not.toHaveProperty("terrain");
+    const t = new LandStore();
+    t.load("ada", s.record());
+    expect(t.place("a").terrain).toBe("stones");
+    expect(t.place("b")).not.toHaveProperty("terrain");
+    t.load("ada", { v: 1, places: [{ id: "c", name: "C", x: 0, y: 0, z: 0, exits: {}, terrain: 3 }, { id: "d", name: "D", x: 0, y: 0, z: 0, exits: {}, terrain: "room" }] });
+    expect(t.place("c")).not.toHaveProperty("terrain");
+    expect(t.place("d")).not.toHaveProperty("terrain");
+  });
+
+  it("changes when a place's terrain does, but a later `room` or none keeps it", () => {
+    const s = new LandStore();
+    expect(s.ingest({ ...frame("a", 0, 0), terrain: "room" })).toBe(true);
+    expect(s.place("a")).not.toHaveProperty("terrain");
+    expect(s.ingest({ ...frame("a", 0, 0), terrain: "dust" })).toBe(true); // its tile built: sent again
+    expect(s.place("a").terrain).toBe("dust");
+    expect(s.ingest({ ...frame("a", 0, 0), terrain: "room" })).toBe(false);
+    expect(s.ingest(frame("a", 0, 0))).toBe(false);
+    expect(s.place("a").terrain).toBe("dust");
+    expect(s.ingest({ ...frame("a", 0, 0), terrain: "earth" })).toBe(true);
+    expect(s.place("a").terrain).toBe("earth");
+  });
+
   it("treats junk records as empty", () => {
     const s = new LandStore();
     expect(() => s.load("ada", "junk")).not.toThrow();

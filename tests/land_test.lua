@@ -6,7 +6,7 @@ local test, eq = t.test, t.eq
 
 local function frame(over)
   local f = { id = 'surface.tamsin.1.2.3', name = 'Heath', area = 'surface.tamsin', areaName = 'Tamsin',
-    coords = { x = 1, y = 2, z = 3 },
+    coords = { x = 1, y = 2, z = 3 }, terrain = 'stones',
     exits = { N = { id = 'surface.tamsin.1.3.3', inverse = 'S' }, E = { id = 'zennor.port-road', area = 'zennor' } } }
   for k, v in pairs(over or {}) do f[k] = v end
   return f
@@ -18,6 +18,7 @@ test('a land frame passes through with coords and exits', function()
   eq(m.name, 'Heath')
   eq(m.area, 'surface.tamsin')
   eq(m.areaName, 'Tamsin')
+  eq(m.terrain, 'stones')
   eq(m.coords, { x = 1, y = 2, z = 3 })
   eq(m.exits.N, { id = 'surface.tamsin.1.3.3', inverse = 'S' })
   eq(m.exits.E, { id = 'zennor.port-road', area = 'zennor' })
@@ -30,6 +31,12 @@ test('only land frames with coords pass', function()
   eq(G.frame(frame({ coords = { x = 1 } })), nil)
   eq(G.frame(frame({ id = false })), nil)
   eq(G.frame('junk'), nil)
+end)
+
+test('a frame without a terrain string passes without one', function()
+  eq(G.frame(frame({ terrain = false })).terrain, nil)
+  eq(G.frame(frame({ terrain = 7 })).terrain, nil)
+  eq(G.frame(frame({ terrain = 'room' })).terrain, 'room')
 end)
 
 test('non-table exits are dropped', function()

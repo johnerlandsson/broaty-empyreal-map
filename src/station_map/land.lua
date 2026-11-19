@@ -27,6 +27,7 @@ function G.frame(data)
     name = data.name,
     area = area,
     areaName = data.areaName,
+    terrain = str(data.terrain), -- what's underfoot (gmcp.md §9.5.1); `room` where the game has none
     coords = { x = c.x, y = c.y, z = num(c.z) },
     exits = exits,
   }

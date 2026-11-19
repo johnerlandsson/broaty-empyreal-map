@@ -1,0 +1,161 @@
+<!doctype html>
+<!-- Throwaway, 2026-11-19: three ways to colour the walked land by the `terrain` the game now
+     sends (gmcp.md §9.5.1), over John's real Tamsin walk replayed from his game logs
+     (land-terrain-walk.json, every mudstd.room.info for surface.tamsin). Uses the real LandDeck
+     and LandStore, recolouring each octagon after it's drawn, so serve the repo root over http.
+     Places walked before the game sent terrain (`room`) keep their title's colour in all three. -->
+<html><head><meta charset="utf-8"><title>Land terrain: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:22px; width:1440px; }
+  h1 { color:#e3eaf2; font-size:17px; font-weight:600; margin:0 0 6px; }
+  p.note { margin:0 0 14px; max-width:1400px; line-height:1.45; }
+  .row { display:flex; gap:20px; }
+  figure { margin:0; width:466px; }
+  figcaption { margin:8px 0 0; font-size:12.5px; line-height:1.45; }
+  figcaption b { color:#e3eaf2; font-weight:600; }
+  .frame { border:1px solid #2b3646; border-radius:6px; overflow:hidden; width:466px; height:420px; }
+  .frame.close { height:260px; margin-top:8px; }
+  .key { display:grid; grid-template-columns:repeat(4, 1fr); gap:5px 8px; margin-top:8px; font-size:11.5px; }
+  .key span { display:flex; align-items:center; gap:5px; }
+  .key svg { flex:none; }
+</style></head><body>
+<h1>The land coloured by the ground the game sends</h1>
+<p class="note">John's own walk round Zennor, replayed from the logs: 664 places, 228 of them from Nov 14–15 with the game's terrain (stones, earth, dust, rock, ice, cushions, water; no woods, reeds, scrub or salt walked yet). The rest were walked before the game sent it, so they keep today's colour from the title (the fallback). Each panel is centred on the same place out on the Downs at the usual zoom. The game's eleven don't line up with our thirteen title groups: ours mix ground (rock, dust, water, salt, ice) with the place's shape (high, slope, low) and things on it (cairns, workings, road ends, lava). And one title can sit on different ground: "Low Pass" comes as stones 33 times and earth 16 times.</p>
+<div class="row" id="opts"></div>
+<script type="module">
+import { LandDeck } from "/ui/land-deck.js";
+import { LandStore } from "/ui/lib/land-store.js";
+import { groupOf } from "/ui/lib/land-kinds.js";
+import { groundStyle } from "/ui/lib/land-patterns.js";
+import land from "/ui/data/land.js";
+
+const NS = "http://www.w3.org/2000/svg";
+const { frames } = await (await fetch("/docs/maps/reference/land-terrain-walk.json")).json();
+const LAND = ["water", "ice", "woods", "reeds", "scrub", "cushions", "salt", "rock", "stones", "dust", "earth"];
+
+// textures for the six grounds we have no group for; the five we have keep theirs
+const T = (w, h, svg) => ({ w, h, svg });
+const TEX = {
+  water: groundStyle("water").pattern, ice: groundStyle("ice").pattern, salt: groundStyle("salt").pattern,
+  rock: groundStyle("rock").pattern, dust: groundStyle("dust").pattern,
+  woods: T(9, 9, `<circle cx="2.5" cy="2.5" r="1.5" fill="#79b07c" fill-opacity=".55"/><circle cx="7" cy="6.8" r="1.3" fill="#79b07c" fill-opacity=".45"/>`),
+  reeds: T(7, 8, `<path d="M1.5,7 V2 M3.2,7 V3.2 M5,7 V1.8" stroke="#8fd0b8" stroke-width=".7" stroke-opacity=".55"/>`),
+  scrub: T(9, 8, `<path d="M1.5,5.5 L3,3.5 L4.5,5.5 M5.5,2.5 L6.8,1 L8,2.5" fill="none" stroke="#a4bf74" stroke-width=".75" stroke-opacity=".55"/>`),
+  cushions: T(9, 7, `<path d="M1,5 a2,1.8 0 0 1 4,0 Z M5.5,2.5 a1.6,1.4 0 0 1 3.2,0 Z" fill="#c4cf8e" fill-opacity=".45"/>`),
+  stones: T(8, 8, `<circle cx="2" cy="2.2" r="1" fill="none" stroke="#cfc6b4" stroke-width=".6" stroke-opacity=".55"/><circle cx="5.8" cy="5.6" r=".8" fill="none" stroke="#cfc6b4" stroke-width=".6" stroke-opacity=".45"/>`),
+  earth: T(7, 7, `<path d="M1,2 h1.6 M4.2,5 h1.6" stroke="#c49466" stroke-width=".7" stroke-opacity=".5"/>`),
+};
+// the game's hues, brought down to the board's dark earth
+const DARK = { water: "#1f3a52", ice: "#5a6878", woods: "#1e3522", reeds: "#21443a", scrub: "#2e3a1c", cushions: "#3a4224", salt: "#4c4a42", rock: "#34363a", stones: "#403c34", dust: "#4a3a22", earth: "#4a2619" };
+// the game's own colours, as sent (§9.5.1's table)
+const WIRE = { water: "#4AA3DF", ice: "#D6E6F0", woods: "#3F7A45", reeds: "#6FB8A0", scrub: "#6E8A44", cushions: "#A0AE6C", salt: "#E8DCC4", rock: "#85807A", stones: "#B0A898", dust: "#DCC08A", earth: "#9C6B3E" };
+const INK = (svg) => svg.replace(/(fill|stroke)="#[0-9a-f]{6}"/gi, '$1="#1a1410"').replace(/-opacity="\.\d+"/g, '-opacity=".35"');
+const SHAPE = new Set(["high", "slope", "low", "waymark", "workings", "molten", "road"]);
+
+const OPTS = [
+  { k: "A", title: "A · The game's eleven, in our dark earth",
+    text: "Each walked place is its terrain alone: the game's hue darkened to the board's earth, a texture each. Cairns, workings, knolls and hollows no longer show; the name on hover still says them. Closest to the game's own rule (terrain is what's underfoot, not the kind of place).",
+    style: (t) => ({ fill: DARK[t], pattern: TEX[t] }) },
+  { k: "B", title: "B · Ground for the colour, the place for the texture",
+    text: "The terrain picks the colour; where the title says a shape or a thing on it (high ^, slope /, low v, a cairn, workings, a road end, lava) its texture stays on top, else the ground's own texture. Keeps the lie of the land that the high/slope/low backgrounds carried (land.md: no hachures).",
+    style: (t, g) => ({ fill: DARK[t], pattern: SHAPE.has(g) ? groundStyle(g).pattern : TEX[t] }) },
+  { k: "C", title: "C · The game's colours, as sent",
+    text: "The eleven colours exactly as the game sends them, textures inked dark over them. Matches what another client or the game's own map would show; much brighter than the rest of the board and the title-coloured places beside them.",
+    style: (t) => ({ fill: WIRE[t], pattern: TEX[t] && { ...TEX[t], svg: INK(TEX[t].svg) } }) },
+];
+
+// one store for all three: the walk, ending on a place out on the Downs with terrain round it
+const store = new LandStore();
+store.load("john", null);
+for (const f of frames) store.ingest(f);
+const terrainOf = new Map(frames.map((f) => [f.id, f.terrain]));
+const landPlaces = store.places().filter((p) => LAND.includes(terrainOf.get(p.id)));
+let best = null, bestN = -1;
+for (const p of landPlaces) {
+  const n = landPlaces.filter((q) => Math.hypot(q.x - p.x, q.y - p.y) < 4).length;
+  if (n > bestN) { best = p; bestN = n; }
+}
+store.ingest(frames.findLast((f) => f.id === best.id));
+
+function addPattern(deck, key, pat) {
+  if (!pat) return null;
+  if (!deck.patterns.has(key)) {
+    const p = document.createElementNS(NS, "pattern");
+    for (const [a, v] of Object.entries({ id: deck.patternPrefix + key, width: pat.w, height: pat.h, patternUnits: "userSpaceOnUse" })) p.setAttribute(a, v);
+    const doc = new DOMParser().parseFromString(`<svg xmlns="${NS}">${pat.svg}</svg>`, "image/svg+xml");
+    for (const c of [...doc.documentElement.childNodes]) p.appendChild(document.importNode(c, true));
+    deck.svg.querySelector("defs").appendChild(p);
+    deck.patterns.set(key, p);
+  }
+  return `url(#${deck.patternPrefix}${key})`;
+}
+
+function swatch(fill, pat, id) {
+  const s = document.createElementNS(NS, "svg");
+  s.setAttribute("width", 22); s.setAttribute("height", 16);
+  s.innerHTML = (pat ? `<defs><pattern id="${id}" width="${pat.w}" height="${pat.h}" patternUnits="userSpaceOnUse">${pat.svg}</pattern></defs>` : "")
+    + `<rect width="22" height="16" rx="3" fill="${fill}" stroke="#4b4338"/>` + (pat ? `<rect width="22" height="16" rx="3" fill="url(#${id})"/>` : "");
+  return s;
+}
+
+const row = document.getElementById("opts");
+for (const o of OPTS) {
+  const fig = document.createElement("figure");
+  const frame = document.createElement("div");
+  frame.className = "frame";
+  fig.appendChild(frame);
+  const cap = document.createElement("figcaption");
+  cap.innerHTML = `<b>${o.title}</b><br>${o.text}`;
+  fig.appendChild(cap);
+  const key = document.createElement("div");
+  key.className = "key";
+  key.id = "key-" + o.k;
+  fig.appendChild(key);
+  row.appendChild(fig);
+
+  const close = document.createElement("div");
+  close.className = "frame close";
+  fig.insertBefore(close, cap);
+  recolour(o, frame, (d) => d.home());
+  const deck = recolour(o, close, (d) => { const [x, y] = d.svg.querySelector(`g[data-place="${store.here}"]`).getAttribute("transform").match(/-?[\d.]+/g).map(Number); d.centre(x - 0.6, y + 2.4, 50); });
+}
+
+function recolour(o, frame, view) {
+  const deck = new LandDeck(frame, land.tamsin, "tamsin");
+  deck.show(true);
+  deck.draw(store);
+  view(deck);
+  for (const g of deck.svg.querySelectorAll("g[data-place]")) {
+    const id = g.getAttribute("data-place");
+    const t = terrainOf.get(id);
+    if (!LAND.includes(t)) continue; // walked before terrain: the title's colour stays
+    const p = store.place(id);
+    const grp = groupOf(p.id, p.name);
+    const s = o.style(t, grp);
+    const uses = g.querySelectorAll("use");
+    uses[0].setAttribute("fill", s.fill);
+    for (const u of [...uses].slice(1)) u.remove();
+    const url = addPattern(deck, `${o.k}-${t}-${SHAPE.has(grp) && o.k === "B" ? grp : ""}`, s.pattern);
+    if (url) {
+      const u = uses[0].cloneNode();
+      u.setAttribute("fill", url); u.setAttribute("stroke", "none"); u.setAttribute("pointer-events", "none");
+      g.appendChild(u);
+    }
+  }
+  deck.rescale(deck.k);
+  return deck;
+}
+
+for (const o of OPTS) {
+  const key = document.getElementById("key-" + o.k);
+  for (const t of LAND) {
+    const s = o.style(t, "open");
+    const span = document.createElement("span");
+    span.appendChild(swatch(s.fill, s.pattern, `sw-${o.k}-${t}`));
+    span.append(t);
+    key.appendChild(span);
+  }
+}
+document.body.dataset.ready = "1";
+</script>
+</body></html>

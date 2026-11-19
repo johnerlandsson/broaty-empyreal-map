@@ -1,5 +1,9 @@
-// The kind of ground, track and region of a generated land place, read from
-// the name the game gives it (surface-words.ts `placeTitle`). Pure.
+// The kind of ground, track and region of a generated land place. The ground is the terrain the
+// game sends (gmcp.md §9.5.1) where it sends one; else, for a place saved before it did or sent as
+// `room`, it's read from the name the game gives it (surface-words.ts `placeTitle`). Pure.
+
+/** The eleven land terrains the game sends, in gmcp.md §9.5.1's order. */
+export const TERRAINS = ["water", "ice", "woods", "reeds", "scrub", "cushions", "salt", "rock", "stones", "dust", "earth"];
 
 /** The groups, in the order the spec's table lists them. */
 export const GROUPS = ["open", "road", "waymark", "high", "slope", "low", "rock", "dust", "workings", "water", "salt", "ice", "molten"];
@@ -40,6 +44,11 @@ export function groupOf(id, name) {
   if (name.startsWith("On ")) return "open";
   const base = split(name)?.base ?? name;
   return TITLES.get(base) ?? "open";
+}
+
+/** The ground an octagon is drawn as: the place's terrain if it's one of TERRAINS, else its title's group. */
+export function groundOf(place) {
+  return TERRAINS.includes(place.terrain) ? place.terrain : groupOf(place.id, place.name);
 }
 
 export function trackOf(name) {

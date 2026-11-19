@@ -15,7 +15,7 @@
 // onNote() and onForget().
 
 import { DIM, label } from "./deck-view.js";
-import { groupOf } from "./lib/land-kinds.js";
+import { groundOf } from "./lib/land-kinds.js";
 import { layoutLand, num, OCT, octagon } from "./lib/land-layout.js";
 import { groundStyle } from "./lib/land-patterns.js";
 import { edgeCard, nearestRoadEnd, routePath } from "./lib/land-route.js";
@@ -355,7 +355,7 @@ export class LandDeck {
     const octs = g({});
     for (const p of places) {
       const c = L.spots.get(p.id);
-      const group = groupOf(p.id, p.name);
+      const group = groundOf(p);
       const og = el("g", { "data-place": p.id, "data-pick": p.id, transform: `translate(${num(c.x)} ${num(-c.y)})` }, octs);
       og.addEventListener("mouseenter", () => {
         this.tipFor = p.id;
