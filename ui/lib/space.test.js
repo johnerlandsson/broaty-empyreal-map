@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Belt, Pit, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, groundOf, heading, litFor, moveCard, rockFaces, makeRock, targets, work, workLines } from "./space.js";
+import { Belt, Pit, STAR_STEPS, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, groundOf, heading, litFor, moveCard, rockFaces, makeRock, starStep, streams, targets, work, workLines } from "./space.js";
 import { rng } from "./svg.js";
 
 describe("targets", () => {
@@ -170,18 +170,18 @@ function streaks(f, w, h) {
 
 describe("frameGap", () => {
   const idle = work({}, 0);
-  it("draws every frame travelling, and on the station's fade", () => {
-    expect(frameGap(targets("travelling"))).toBe(0);
+  it("draws every frame on the station's fade", () => {
     expect(frameGap(targets("station"))).toBe(0);
   });
 
-  it("draws a few frames a second parked or in high orbit, a few more over a port's blinking beacons", () => {
-    for (const s of ["parked", "orbit"]) {
-      expect(frameGap(targets(s))).toBeGreaterThanOrEqual(1000 / 15);
-      expect(frameGap(targets(s))).toBeLessThanOrEqual(1000 / 10);
-    }
-    expect(frameGap(targets("port"))).toBeLessThan(frameGap(targets("parked")));
-    expect(frameGap(targets("port"))).toBeGreaterThanOrEqual(1000 / 15);
+  it("draws 30 frames a second travelling, not every frame the display gives", () => {
+    expect(frameGap(targets("travelling"))).toBeCloseTo(1000 / 30);
+  });
+
+  it("draws 4 frames a second parked or in high orbit, 15 over a port's blinking beacons", () => {
+    expect(frameGap(targets("parked"))).toBeCloseTo(1000 / 4);
+    expect(frameGap(targets("orbit"))).toBeCloseTo(1000 / 4);
+    expect(frameGap(targets("port"))).toBeCloseTo(1000 / 15);
   });
 
   it("keeps a belt's drift and sweep smooth, and draws every frame while the laser cuts or she moves", () => {
@@ -190,6 +190,32 @@ describe("frameGap", () => {
     expect(frameGap(belt, work({ sensors: { busy: "scan", since: 0, ends: 10 } }, 5))).toBeCloseTo(1000 / 30);
     expect(frameGap(belt, work({ laser: { busy: "mine", since: 0 } }, 10))).toBe(0);
     expect(frameGap(belt, work({ nav: { busy: "rcs", since: 0, ends: 20 }, belt: { moved: 4, way: 0 } }, 5))).toBe(0);
+  });
+});
+
+describe("streams", () => {
+  it("is true only travelling, where each streak spans the whole gap between frames", () => {
+    expect(streams(targets("travelling"))).toBe(true);
+    for (const s of ["station", "parked", "belt", "port", "orbit"]) expect(streams(targets(s))).toBe(false);
+  });
+});
+
+describe("starStep", () => {
+  it("puts a star's alpha on one of STAR_STEPS steps, the nearest", () => {
+    expect(STAR_STEPS).toBe(8);
+    expect(starStep(0)).toBe(0);
+    expect(starStep(1)).toBe(STAR_STEPS - 1);
+    expect(starStep(0.5)).toBe(4); // 3.5 rounds up
+    expect(starStep(3 / 7 + 0.01)).toBe(3);
+  });
+
+  it("keeps every star's alpha within half a step", () => {
+    for (let a = 0; a <= 1; a += 0.01) expect(Math.abs(starStep(a) / (STAR_STEPS - 1) - a)).toBeLessThanOrEqual(0.5 / (STAR_STEPS - 1) + 1e-9);
+  });
+
+  it("holds out-of-range alphas to the ends", () => {
+    expect(starStep(-0.2)).toBe(0);
+    expect(starStep(1.4)).toBe(STAR_STEPS - 1);
   });
 });
 

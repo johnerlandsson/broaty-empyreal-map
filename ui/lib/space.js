@@ -38,18 +38,22 @@ export function approach(v, target, dt, rate) {
   return Math.abs(next - target) < 1e-3 ? target : next;
 }
 
+/** Travelling: the stars stream, each streak spanning the whole gap between frames. */
+export const streams = (t) => t.space > 0 && t.speed > PARKED;
+
 /**
  * Ms between frames once the view has settled on target t (every ease done, no dock or undock
  * under way), with `shown` the work() at a belt: parked or in high orbit the stars barely drift, so
  * a few frames a second do; over a port its beacons blink, so a few more; at a belt the rocks drift
  * past smoothly enough at 30 frames a second, but not while the laser cuts (its flicker) or
- * she moves (the rocks flow fast). Travelling the stars stream: 0, every frame the display gives.
+ * she moves (the rocks flow fast). Travelling the stars stream at 30, their streaks closing the gaps.
  */
 export function frameGap(t, shown = null) {
-  if (t.space === 0 || t.speed > PARKED) return 0;
+  if (t.space === 0) return 0;
+  if (streams(t)) return 1000 / 30;
   if (t.belt) return shown?.cut || shown?.moving ? 0 : 1000 / 30;
   if (t.ground) return 1000 / 15;
-  return 1000 / 10;
+  return 1000 / 4;
 }
 
 // --- docking and undocking -------------------------------------------------------------------
@@ -88,6 +92,12 @@ const NEAR = 0.02;
 const RUSH = 0.45; // depth per second at full speed
 
 /** Stars in a unit box ahead of the camera, z in (0, 1]; nearer stars are brighter. */
+/** How many alphas the stars are drawn in, so the view reuses a colour per step. */
+export const STAR_STEPS = 8;
+
+/** A star's alpha (0..1) as the nearest of STAR_STEPS steps: 0 unseen, STAR_STEPS - 1 full. */
+export const starStep = (a) => Math.max(0, Math.min(STAR_STEPS - 1, Math.round(a * (STAR_STEPS - 1))));
+
 export class Starfield {
   constructor(n, rnd) {
     this.rnd = rnd;

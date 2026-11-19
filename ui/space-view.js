@@ -15,7 +15,7 @@
 // early eases back to the scene's own picture.
 
 import { daylit, orbitLit } from "./lib/orbits.js";
-import { Belt, Pit, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, groundOf, heading, litFor, rockFaces, targets, work, workLines } from "./lib/space.js";
+import { Belt, Pit, STAR_STEPS, Starfield, Town, approach, awayAt, awayLook, clouds, frameGap, groundOf, heading, litFor, rockFaces, starStep, streams, targets, work, workLines } from "./lib/space.js";
 import { sunAlt } from "./lib/sky.js";
 import { GIANT_BANDS, RIM as GLASS_RIM, emberFacets, faceOf, facets, portFace, portFacets, rgbText, seedOf } from "./lib/worlds.js";
 import { onScreen, onScreenChange } from "./lib/on-screen.js";
@@ -25,6 +25,7 @@ const BG = "#04060c";
 const TONES = ["#3a4556", "#58667b", "#7e8da3"]; // the station model's
 const EDGE = "#0d1218";
 const STAR = "223,231,241";
+const STAR_STYLES = Array.from({ length: STAR_STEPS }, (_, k) => `rgba(${STAR},${k / (STAR_STEPS - 1)})`); // dimmed by globalAlpha
 const FADE = 2.5; // per second: space in and out, stars to rocks, the ground in and out
 const SPEED = 0.9; // per second: the stars speeding up and slowing down
 const DUSK = 1; // per second: day to night on the ground below, and back
@@ -264,9 +265,9 @@ export class SpaceView {
     const dt = Math.max(0, Math.min(STALL, (now - this.last) / 1000)); // a first frame can predate wake()
     this.last = now;
     if (!this.gap && dt > 0) this.beat += (dt - this.beat) * 0.1;
-    // put off, the stars keep a display frame's streak, not one as long as the wait
-    const trail = this.gap ? Math.min(dt, this.beat) : dt;
     const t = this.target;
+    // put off, drifting stars keep a display frame's streak, not one as long as the wait; streaming, they span it
+    const trail = this.gap && !streams(t) ? Math.min(dt, this.beat) : dt;
     this.space = approach(this.space, t.space, dt, FADE);
     this.rocks = approach(this.rocks, t.belt, dt, FADE);
     this.ground = approach(this.ground, t.ground, dt, FADE);
@@ -331,14 +332,19 @@ export class SpaceView {
     const n = this.field.segments(this.w, this.h);
     const s = this.field.streaks;
     g.lineCap = "round";
+    g.globalAlpha = dim;
+    let shade = -1;
     for (let i = 0; i < n * 6; i += 6) {
-      g.strokeStyle = `rgba(${STAR},${s[i + 4] * dim})`;
+      const k = starStep(s[i + 4]);
+      if (k === 0) continue;
+      if (k !== shade) g.strokeStyle = STAR_STYLES[(shade = k)];
       g.lineWidth = s[i + 5];
       g.beginPath();
       g.moveTo(s[i], s[i + 1]);
       g.lineTo(s[i + 2], s[i + 3]);
       g.stroke();
     }
+    g.globalAlpha = 1;
   }
 
   draw(dt, trail) {
