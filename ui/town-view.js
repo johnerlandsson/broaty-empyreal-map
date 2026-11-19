@@ -11,6 +11,7 @@
 // live, for any port; it needs `div`, `set()` and `setTurning()` as from a ModelView, and `setCharts()`.
 
 import { drawing, drawSoon } from "./lib/draw-soon.js";
+import { putIn, setAttr } from "./lib/same-draw.js";
 import { skylineOf } from "./lib/skyline.js";
 import { groundSky, skyScene } from "./lib/sky.js";
 import { attachPanZoom, el, stars, zoomButtons } from "./lib/svg.js";
@@ -45,7 +46,7 @@ export class SkyView {
     this.tips = new Map(); // data-tip key -> { title, body }: the hovered thing's name and sky.js's line
     this.tipKey = null; // what's hovered
     this.tipShown = null; // what the tooltip last showed, so a redraw doesn't re-show the same
-    this.starfields = new Map(); // star count -> its starfield, built once: they don't move, so a redraw puts it back
+    this.starfields = new Map(); // "stars-<count>" -> its starfield, built once and kept: they don't move, so a redraw puts it back
     const div = document.createElement("div");
     div.className = "model";
     Object.assign(div.style, {
@@ -71,7 +72,11 @@ export class SkyView {
     el("feGaussianBlur", { stdDeviation: 10 }, el("filter", { id: this.ids.soft, x: "-50%", y: "-50%", width: "200%", height: "200%" }, defs));
     this.back = el("g", {}, svg); // tint and stars, behind the skyline
     this.land = el("g", {}, svg); // the skyline
-    this.front = el("g", {}, svg); // the dome, its marks and the glow, over it: nothing up is hidden
+    // the dusk's or the dawn's glow on the horizon, over the skyline: one node, moved with the sun,
+    // as a new one would blur all over again
+    this.glow = el("ellipse", { cy: HORIZON, rx: 70, ry: 26, filter: `url(#${this.ids.soft})`, display: "none" }, svg);
+    this.glowAt = NaN; // its x as last placed, which dawn's paling is centred on too
+    this.front = el("g", {}, svg); // the dome and its marks, over it: nothing up is hidden
     this.zoom = attachPanZoom(div, () => this.vb, (v) => this.setView(v), { minW: VIEW[2] * 0.4, maxW: VIEW[2] * 1.6 });
     div.addEventListener("pointermove", (e) => this.hoverAt(e.target));
     div.addEventListener("pointerleave", () => this.hideTip());
@@ -112,40 +117,71 @@ export class SkyView {
   /** Draw the sky at wall-clock t (ms), or clear it to the bare skyline. */
   draw(t) {
     drawing(this, t);
-    this.back.replaceChildren();
-    this.front.replaceChildren();
-    this.tips = new Map();
     const sky = this.outdoors && this.charts ? groundSky(this.charts, this.port, t) : null;
     const drawn = `${this.frame} ${!!sky?.dark}`;
     if (drawn !== this.drawn) {
       this.drawn = drawn;
       drawSkyline(this.land, this.skyline.layers(this.frame) ?? [], { lamps: !!sky?.dark, cap: this.skyline.cap });
     }
-    if (sky) this.drawSky(sky);
+    const scene = sky ? skyScene(sky) : null;
+    // a second's tick moves things in the sky by well under a pixel: the page is left alone till
+    // one has moved half of one (lib/same-draw.js)
+    const half = this.halfPx();
+    this.drawGlow(scene?.glow ?? null, half);
+    const back = document.createDocumentFragment();
+    const front = document.createDocumentFragment();
+    if (scene) this.drawSky(scene, back, front);
+    putIn([back, front], [this.back, this.front], { within: half, keep: this.starfields });
+    this.tips = new Map();
+    if (scene) {
+      this.tips.set("sky", { title: "The sky", body: scene.hover });
+      for (const m of scene.marks) this.tips.set(m.id, { title: m.name, body: m.line });
+    }
     this.refreshTip();
   }
 
-  /** The sky's n stars, the same each time. */
-  starfield(n) {
-    let g = this.starfields.get(n);
-    if (!g) {
-      g = el("g");
-      stars(g, -DOME, HORIZON - DOME, DOME * 2, DOME, n, 11);
-      this.starfields.set(n, g);
-    }
-    return g;
+  /** Half a px in the sky's units, as the band shows it now. */
+  halfPx() {
+    const w = this.div.clientWidth;
+    const h = this.div.clientHeight;
+    return w && h ? Math.max(this.vb[2] / w, this.vb[3] / h) / 2 : 0.25;
   }
 
-  /** The tint, stars and glow behind the skyline, and the dome and its marks over it. */
-  drawSky(sky) {
-    const scene = skyScene(sky);
-    const inside = el("g", { "clip-path": `url(#${this.ids.clip})` }, this.back);
+  /** The glow's one node: placed again once the sun has moved it half a px, hidden with no glow. */
+  drawGlow(glow, half) {
+    const g = this.glow;
+    if (!glow) return setAttr(g, "display", "none");
+    const [fill, opacity] = GLOWS[glow.kind];
+    const cx = glow.x * DOME;
+    if (!(Math.abs(cx - this.glowAt) < half)) {
+      this.glowAt = cx;
+      g.setAttribute("cx", cx);
+    }
+    setAttr(g, "fill", fill);
+    setAttr(g, "opacity", opacity);
+    if (g.hasAttribute("display")) g.removeAttribute("display");
+  }
+
+  /** A stand-in for the sky's n stars, built once and kept: lib/same-draw.js's putIn() swaps them in. */
+  starfield(n) {
+    const key = `stars-${n}`;
+    if (!this.starfields.has(key)) {
+      const g = el("g", { "data-same": key });
+      stars(g, -DOME, HORIZON - DOME, DOME * 2, DOME, n, 11);
+      this.starfields.set(key, g);
+    }
+    return el("g", { "data-same": key });
+  }
+
+  /** Into fragments: the tint, stars and dawn's paling behind the skyline, and the dome and its marks over it. */
+  drawSky(scene, back, front) {
+    const inside = el("g", { "clip-path": `url(#${this.ids.clip})` }, back);
     if (scene.tint) el("path", { d: dome(), fill: scene.tint }, inside);
     if (scene.stars !== "none") inside.appendChild(this.starfield(scene.stars === "all" ? 260 : 25));
     // Dawn's paling, in the sky behind the ridge, rising from Senara's side of the horizon: the
     // glow on the horizon alone sits on the ridge's face, pale on pale, and doesn't show.
     if (scene.glow?.kind === "dawn") {
-      const cx = scene.glow.x * DOME;
+      const cx = this.glowAt; // where drawGlow() put the glow
       const g = el("radialGradient", { id: this.ids.dawn, cx, cy: HORIZON, r: 190, gradientUnits: "userSpaceOnUse" }, inside);
       el("stop", { offset: 0, "stop-color": "#8fa2bd", "stop-opacity": 0.7 }, g);
       el("stop", { offset: 0.5, "stop-color": "#4a5a74", "stop-opacity": 0.3 }, g);
@@ -153,13 +189,8 @@ export class SkyView {
       el("path", { d: dome(), fill: `url(#${this.ids.dawn})` }, inside);
     }
 
-    const f = this.front;
-    if (scene.glow) {
-      const [fill, opacity] = GLOWS[scene.glow.kind];
-      el("ellipse", { cx: scene.glow.x * DOME, cy: HORIZON, rx: 70, ry: 26, fill, opacity, filter: `url(#${this.ids.soft})` }, f);
-    }
+    const f = front;
     el("path", { d: dome(), fill: "transparent", "data-tip": "sky" }, f);
-    this.tips.set("sky", { title: "The sky", body: scene.hover });
     el("path", { d: dome(true), fill: "none", stroke: ORBIT, "stroke-dasharray": "2 3" }, f);
     const label = { fill: DIM, "font-size": 8, "font-family": "var(--font-family, sans-serif)" };
     el("text", { ...label, x: -DOME, y: HORIZON + 11, "text-anchor": "middle" }, f, "W");
@@ -168,7 +199,6 @@ export class SkyView {
       const x = DOME * m.at[0];
       const y = HORIZON - DOME * m.at[1];
       const g = el("g", { "data-tip": m.id }, f);
-      this.tips.set(m.id, { title: m.name, body: m.line });
       mark(g, m.look, x, y);
       const east = m.at[0] > 0.5;
       el("text", { ...label, x: x + (east ? -9 : 9), y: y + 3, "text-anchor": east ? "end" : "start" }, g, m.name);

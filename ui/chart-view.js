@@ -41,6 +41,7 @@ import {
 } from "./lib/orbits.js";
 import { courseCard } from "./lib/course.js";
 import { drawing, drawSoon } from "./lib/draw-soon.js";
+import { putIn, setAttr } from "./lib/same-draw.js";
 import { attachPanZoom, attachPick, brackets, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
 import { hex, starFill, starRgb } from "./lib/worlds.js";
 import { card as sweepText, chased, isDark, markText, nameOf as contactName, shipLine, shipTip, sweepOf } from "./lib/contacts.js";
@@ -445,7 +446,7 @@ export class ChartView {
     if (!this.shown) return;
     const index = this.index;
     const [w, h] = this.size();
-    this.svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    setAttr(this.svg, "viewBox", `0 0 ${w} ${h}`);
 
     let fix = { kind: "none" };
     safe(() => (fix = shipFix(index, this.ship, t)));
@@ -956,10 +957,8 @@ export class ChartView {
 
     this.drawSweepCard(t);
     marks.appendChild(labels);
-    this.marks.replaceChildren(marks);
-    this.lit.replaceChildren(lit);
-    this.picks.replaceChildren(picks);
-    this.over.replaceChildren(over);
+    // parked, a second's drift is well under a pixel: the page is left alone (lib/same-draw.js)
+    putIn([marks, lit, picks, over], [this.marks, this.lit, this.picks, this.over]);
     this.tips = tips;
     this.refreshTip();
   }

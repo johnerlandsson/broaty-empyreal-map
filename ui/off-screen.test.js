@@ -4,7 +4,7 @@
 // space scene's frames stop, and on coming back they draw at once, for the time it is then.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { pitCharts } from "../dev/charts-fixture.js";
+import { pitCharts, senaraCharts } from "../dev/charts-fixture.js";
 
 const noop = new Proxy(function () {}, {
   get: (_, k) => (k === "width" ? 0 : noop),
@@ -23,6 +23,9 @@ function runFrames(now) {
   frames = [];
   for (const fn of due) fn?.(now);
 }
+/** What a port's sky shows in it, its marks and their names, but for the dome. */
+const skyMarks = (port) =>
+  [...(document.getElementById(`sky-clip-${port}`)?.closest("svg")?.querySelectorAll('[data-tip]:not([data-tip="sky"])') ?? [])].map((n) => n.outerHTML).join("");
 const skyOf = (port) => document.getElementById(`sky-clip-${port}`)?.closest("svg")?.querySelector('[data-tip="sky"]') ?? null;
 
 beforeEach(async () => {
@@ -50,21 +53,25 @@ afterEach(() => {
 });
 
 describe("off screen", () => {
-  it("lets a port's sky stand still, and draws it for now on coming back", () => {
-    emit("charts", pitCharts(Date.now()));
+  it("lets a port's sky stand still, and draws it for now on coming back", async () => {
+    const { SkyView } = await import("./town-view.js");
+    const draws = vi.spyOn(SkyView.prototype, "draw"); // a redraw may keep its nodes (lib/same-draw.js): count them
+    emit("charts", senaraCharts(Date.now())); // Zennor by day: Senara in its sky
     emit("location", { roomId: "zennor.square", name: "The Square", district: "market-quarter", gravity: 0.8 });
     runFrames(performance.now());
-    const before = skyOf("zennor");
-    expect(before).not.toBe(null);
+    expect(skyOf("zennor")).not.toBe(null);
+    const before = draws.mock.calls.length;
+    const marks = skyMarks("zennor");
     seen(false);
-    vi.advanceTimersByTime(5000);
-    expect(skyOf("zennor")).toBe(before);
+    vi.advanceTimersByTime(20 * 60_000);
+    expect(draws.mock.calls.length).toBe(before);
+    expect(skyMarks("zennor")).toBe(marks);
     seen(true);
     runFrames(performance.now());
-    const back = skyOf("zennor");
-    expect(back).not.toBe(before); // at once (the next frame), not a second later
+    expect(draws.mock.calls.length).toBe(before + 1); // at once (the next frame), not a second later
+    expect(skyMarks("zennor")).not.toBe(marks); // where things are now, 20 minutes on
     vi.advanceTimersByTime(1100);
-    expect(skyOf("zennor")).not.toBe(back); // and each second again
+    expect(draws.mock.calls.length).toBe(before + 2); // and each second again
   });
 
   it("stops the chart's redraws, and draws it for now on coming back", async () => {

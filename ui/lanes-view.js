@@ -23,6 +23,7 @@ import {
   systemName,
 } from "./lib/lanes.js";
 import { drawing, drawSoon } from "./lib/draw-soon.js";
+import { putIn, setAttr } from "./lib/same-draw.js";
 import { attachPanZoom, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
 import { starFill } from "./lib/worlds.js";
 
@@ -251,7 +252,7 @@ export class LanesView {
     drawing(this, t);
     if (!this.shown) return;
     const [w, h] = this.size();
-    this.svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    setAttr(this.svg, "viewBox", `0 0 ${w} ${h}`);
     let vb = this.vb ?? this.fit();
     if (this.vb) {
       // the band's shape changed under a view of yours: keep its middle and scale
@@ -377,8 +378,8 @@ export class LanesView {
     marks.appendChild(ages); // over the stars, so a name never hides one
     this.drawCard(t, { tr, fix, here, open, closed, uncharted, elsewhere, contact });
 
-    this.marks.replaceChildren(marks);
-    this.lit.replaceChildren(lit);
+    // parked, a second's drift is well under a pixel: the page is left alone (lib/same-draw.js)
+    putIn([marks, lit], [this.marks, this.lit]);
   }
 
   /** The key's card, its HTML replaced only when it changes, so its scroll and its button stay put. */

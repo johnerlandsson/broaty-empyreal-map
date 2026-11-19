@@ -31,6 +31,7 @@ import {
 import { isDark } from "./lib/contacts.js";
 import { drawing, drawSoon } from "./lib/draw-soon.js";
 import { followStep, spreadOnEdge } from "./lib/orbits.js";
+import { putIn, setAttr } from "./lib/same-draw.js";
 import { attachPanZoom, brackets, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
@@ -250,7 +251,7 @@ export class BeltView {
     if (!this.shown) return;
     const w = this.band.clientWidth || 1;
     const h = this.band.clientHeight || 1;
-    this.svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    setAttr(this.svg, "viewBox", `0 0 ${w} ${h}`);
     const b = this.belt;
     // the view: yours kept as the band changes shape, carried after her until you've panned it
     if (this.vb) this.vb = reshape(this.vb, w, h);
@@ -448,9 +449,8 @@ export class BeltView {
       lines.forEach((s, i) => text(words, 12, 33 + i * 12, s, { "font-size": 10, fill: TEXT, ...halo }));
     }
 
-    this.marks.replaceChildren(marks);
-    this.lit.replaceChildren(lit);
-    this.words.replaceChildren(words);
+    // parked, a second's drift is well under a pixel: the page is left alone (lib/same-draw.js)
+    putIn([marks, lit, words], [this.marks, this.lit, this.words]);
   }
 
   /**

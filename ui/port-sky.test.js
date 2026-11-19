@@ -52,16 +52,20 @@ describe("a port's sky", () => {
     expect(domed("dolcoath")).toBe(true);
   });
 
-  it("keeps it up each second, and drops it going in", () => {
+  it("keeps it up each second, and drops it going in", async () => {
     vi.useFakeTimers();
     emit("location", { roomId: "dolcoath.pithead", name: "The Pithead", district: "pit", gravity: 1.5 });
     expect(domed("dolcoath")).toBe(false); // no charts yet: the rim alone
     emit("charts", pitCharts(Date.now()));
     expect(domed("dolcoath")).toBe(true);
-    const svg = skyOf("dolcoath");
-    const before = svg.querySelector('[data-tip="sky"]');
+    const { SkyView } = await import("./town-view.js");
+    const draw = vi.spyOn(SkyView.prototype, "draw");
+    const marks = () => [...skyOf("dolcoath").querySelectorAll('[data-tip]:not([data-tip="sky"])')].map((n) => n.outerHTML).join("");
+    const before = marks();
     vi.advanceTimersByTime(1100);
-    expect(svg.querySelector('[data-tip="sky"]')).not.toBe(before); // redrawn
+    expect(draw).toHaveBeenCalledTimes(1); // redrawn: its nodes kept while nothing in it has moved (skip-unchanged.test.js)
+    vi.advanceTimersByTime(10 * 60_000);
+    expect(marks()).not.toBe(before); // and kept up: things are where they are 10 minutes on
     emit("location", { roomId: "dolcoath.lamp-room", name: "Lamp Room", district: "pit", gravity: 1.5 });
     expect(domed("dolcoath")).toBe(false);
   });
