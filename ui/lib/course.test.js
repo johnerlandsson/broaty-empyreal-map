@@ -28,7 +28,7 @@ describe("courseCard", () => {
   it("says where to and its figures, as the game words them", () => {
     expect(courseCard(msg(), docked, AT + 4 * 60000 + 1000)).toEqual({
       label: "Course for The Cinders",
-      figures: "2,000 km · 3m 51s · 7 fuel",
+      figures: "2,000 km · 3m 51s · 7 kg of fuel",
       ragged: false,
       age: "plotted 4m ago",
     });
@@ -36,7 +36,7 @@ describe("courseCard", () => {
 
   it("words the game's own course to Orrin Station in TU, as the game does", () => {
     const { course, ship, now } = chartCase("course-orrin");
-    expect(courseCard(course, ship, now).figures).toBe("3.68 TU · 20m 8s · 589 fuel");
+    expect(courseCard(course, ship, now).figures).toBe("3.68 TU · 20m 8s · 589 kg of fuel");
   });
 
   it("says a ragged course is ragged", () => {

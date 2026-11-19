@@ -40,7 +40,7 @@ export function courseCard(msg, ship, now) {
   const figures = [
     fin(c.km) ? distanceText(c.km) : null,
     fin(c.seconds) ? duration(c.seconds) : null,
-    fin(c.fuel) ? `${Math.ceil(c.fuel)} fuel` : null,
+    fin(c.fuel) ? `${Math.ceil(c.fuel)} kg of fuel` : null,
   ].filter(Boolean).join(" · ");
   const age = fin(c.at) ? Math.max(0, now - c.at) : null;
   return {
