@@ -25,6 +25,11 @@ const GROUNDS = {
   water: { fill: "#1f3a52", pattern: { w: 12, h: 6, svg: `<path d="M0,3 q3,-2.4 6,0 t6,0" fill="none" stroke="#5b86ad" stroke-width=".9" stroke-opacity=".75"/>` } },
   salt: { fill: "#4c4a42", pattern: { w: 7, h: 7, svg: `<rect x="1.5" y="1.5" width="4" height="4" fill="none" stroke="#cfc9b9" stroke-width=".6" stroke-opacity=".45"/>` } },
   ice: { fill: "#5a6878", pattern: { w: 6, h: 6, svg: `<path d="M0,6 L6,0" stroke="#dbe9ff" stroke-width=".7" stroke-opacity=".45"/>` } },
+  // the shore of molten rock: black crust, glowing cracks (reference/molten-ground-options.png, A)
+  molten: {
+    fill: "#241816",
+    pattern: { w: 12, h: 10, svg: `<path d="M0,6 L3,4.5 L5,6.5 L8,3 L12,5 M8,3 L9,0" fill="none" stroke="#e0552b" stroke-width=".9" stroke-opacity=".8"/>` },
+  },
 };
 
 /**

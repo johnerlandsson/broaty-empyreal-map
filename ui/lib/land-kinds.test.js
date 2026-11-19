@@ -10,13 +10,14 @@ const TABLE = {
   waymark: ["Cairn", "Marker Stone"],
   high: ["Hilltop", "Summit", "Knoll", "Ice Dome", "Saddle", "Low Pass", "Saddle in the Ice"],
   slope: ["Rising Ground", "Hillside", "Steep Hillside", "Stony Slope"],
-  low: ["Hollow", "Head of a Gully", "Head of an Ice Gully"],
+  low: ["Hollow", "Head of a Hollow", "Hollow in the Ice", "Head of a Gully", "Head of an Ice Gully"],
   rock: ["Rock Outcrop", "Bare Rock", "Stony Ground", "Crater Rim"],
   dust: ["Drifted Dust", "Dust Plain"],
   workings: ["Old Workings", "Old Shaft", "Fallen Adit"],
   water: ["Pond", "River Bank", "Spring", "Beach"],
   salt: ["The Salt Pans"],
   ice: ["Ice Field", "Ice Slope", "Frozen Shore"],
+  molten: ["Edge of the Lava"],
   road: ["Road End"],
 };
 
@@ -37,10 +38,12 @@ describe("land kinds", () => {
     expect(trackOf("Hollow on the Downs")).toBe(null);
     expect(regionOf("The Salt Pans")).toBe(null);
     expect(groupOf("x", "Saddle in the Ice")).toBe("high");
+    expect(groupOf("x", "Edge of the Lava")).toBe("molten");
+    expect(groupOf("x", "Hollow in the Ice")).toBe("low");
   });
 
   it("lists the groups in the spec's order", () => {
-    expect(GROUPS).toEqual(["open", "road", "waymark", "high", "slope", "low", "rock", "dust", "workings", "water", "salt", "ice"]);
+    expect(GROUPS).toEqual(["open", "road", "waymark", "high", "slope", "low", "rock", "dust", "workings", "water", "salt", "ice", "molten"]);
   });
 
   const rows = Object.entries(TABLE).flatMap(([g, ts]) => ts.map((t) => [t, g]));

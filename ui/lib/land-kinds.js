@@ -2,7 +2,7 @@
 // the name the game gives it (surface-words.ts `placeTitle`). Pure.
 
 /** The groups, in the order the spec's table lists them. */
-export const GROUPS = ["open", "road", "waymark", "high", "slope", "low", "rock", "dust", "workings", "water", "salt", "ice"];
+export const GROUPS = ["open", "road", "waymark", "high", "slope", "low", "rock", "dust", "workings", "water", "salt", "ice", "molten"];
 
 const BY_GROUP = {
   open: ["Open Ground", "On the Downs", "Rolling Ground", "Top of a Slope"],
@@ -10,13 +10,14 @@ const BY_GROUP = {
   waymark: ["Cairn", "Marker Stone"],
   high: ["Hilltop", "Summit", "Knoll", "Ice Dome", "Saddle", "Low Pass", "Saddle in the Ice"],
   slope: ["Rising Ground", "Hillside", "Steep Hillside", "Stony Slope"],
-  low: ["Hollow", "Head of a Gully", "Head of an Ice Gully", "Channel", "Shallow Channel", "Meeting of Channels"],
+  low: ["Hollow", "Head of a Hollow", "Hollow in the Ice", "Head of a Gully", "Head of an Ice Gully", "Channel", "Shallow Channel", "Meeting of Channels"],
   rock: ["Rock Outcrop", "Bare Rock", "Stony Ground", "Crater Rim"],
   dust: ["Drifted Dust", "Dust Plain"],
   workings: ["Old Workings", "Old Shaft", "Fallen Adit"],
   water: ["Pond", "River Bank", "Spring", "Beach"],
   salt: ["The Salt Pans"],
   ice: ["Ice Field", "Ice Slope", "Frozen Shore", "Ice Shore"],
+  molten: ["Edge of the Lava"],
 };
 
 /** Every exact title the game gives, with its group. */
