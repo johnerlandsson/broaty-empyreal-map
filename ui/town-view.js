@@ -10,6 +10,7 @@
 // it's the skyline alone, with nothing in its sky. main.js redraws it each second while it's
 // live, for any port; it needs `div`, `set()` and `setTurning()` as from a ModelView, and `setCharts()`.
 
+import { drawing, drawSoon } from "./lib/draw-soon.js";
 import { skylineOf } from "./lib/skyline.js";
 import { groundSky, skyScene } from "./lib/sky.js";
 import { attachPanZoom, el, stars, zoomButtons } from "./lib/svg.js";
@@ -92,7 +93,7 @@ export class SkyView {
     this.outdoors = where?.kind === "room" && !!this.town?.byId.get(where.id)?.outdoors;
     const frame = this.skyline.frame(where, msg);
     if (frame) this.frame = frame;
-    this.draw(Date.now());
+    drawSoon(this);
   }
 
   setTurning() {}
@@ -100,7 +101,7 @@ export class SkyView {
   /** The system's charts, an indexCharts() result. */
   setCharts(index) {
     this.charts = index;
-    this.draw(Date.now());
+    drawSoon(this);
   }
 
   /** Whether there's a sky to keep up: out of doors, with charts that place the town. */
@@ -110,6 +111,7 @@ export class SkyView {
 
   /** Draw the sky at wall-clock t (ms), or clear it to the bare skyline. */
   draw(t) {
+    drawing(this, t);
     this.back.replaceChildren();
     this.front.replaceChildren();
     this.tips = new Map();

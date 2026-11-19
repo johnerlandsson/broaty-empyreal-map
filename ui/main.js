@@ -44,6 +44,9 @@ import { SpaceView } from "./space-view.js";
 import { buildPlace, buildShip } from "./place-views.js";
 import { UnknownView } from "./unknown-view.js";
 import { onScreen, onScreenChange } from "./lib/on-screen.js";
+import { deferDraws, drawEvery, drawSoon, lastDrawn } from "./lib/draw-soon.js";
+
+deferDraws(); // each view drawn once a frame, however many messages set it
 
 const modelEl = document.getElementById("model");
 const deckEl = document.getElementById("deck");
@@ -114,55 +117,63 @@ const belt = new BeltView(modelEl, {
     runChart();
   },
 });
-let chartTimer = 0;
+let chartTick = null; // stops the once-a-second redraw, while it runs
 let chartRaf = 0;
-let chartLast = 0;
+let charting = null; // the view chartTick or chartRaf keeps up, while one runs
+const TICK = 1000; // ms between the chart's and the sky's redraws, standing still
 const CHART_SMOOTH = 100; // ms between redraws while she's under way
 
 /** Redraw the chart, the lanes map or the belt map once a second while it's shown and the panel
  *  on screen, more often while she moves, and not at all otherwise; and keep the space scene from
- *  drawing under it. */
+ *  drawing under it. Each call draws it for now at the next frame (one draw however many ask); a
+ *  timer already keeping it up the same way is left running. */
 function runChart() {
   runSky();
   runShip();
   const view = chart.shown ? chart : lanes.shown ? lanes : belt.shown ? belt : null;
   space.setCovered(!!view);
-  clearInterval(chartTimer);
+  const want = view && onScreen() ? view : null;
+  if (want) drawSoon(want);
+  const smooth = !!want?.moving;
+  if (want === charting && (smooth ? chartRaf : chartTick)) return;
+  chartTick?.();
   cancelAnimationFrame(chartRaf);
-  chartTimer = 0;
+  chartTick = null;
   chartRaf = 0;
-  if (!view || !onScreen()) return;
-  view.draw(Date.now());
-  if (view.moving) {
-    const step = (now) => {
-      if (!view.moving) return runChart(); // she's stopped: back to once a second
-      if (now - chartLast >= CHART_SMOOTH) {
-        chartLast = now;
-        view.draw(Date.now());
-      }
+  charting = want;
+  if (!want) return;
+  if (smooth) {
+    const step = () => {
+      chartRaf = 0;
+      if (!want.moving) return runChart(); // she's stopped: back to once a second
+      if (Date.now() - lastDrawn(want) >= CHART_SMOOTH) want.draw(Date.now()); // a message's draw does for it
       chartRaf = requestAnimationFrame(step);
     };
     chartRaf = requestAnimationFrame(step);
   } else {
-    chartTimer = setInterval(() => view.draw(Date.now()), 1000);
+    chartTick = drawEvery(want, TICK);
   }
 }
 onScreenChange(runChart);
 
 let scene = null; // the overview scene from the scene message: anything but "station" draws over the band
-let skyTimer = 0;
+let skyTick = null; // stops the sky's once-a-second redraw, while it runs
+let skying = null; // the sky skyTick keeps up
 
 /** Keep a port's sky moving (Zennor's, the Pit's), a redraw a second, while it's the band showing,
  *  there's a sky (out of doors, with charts that place the port), and nothing covers it: not the chart or the lanes
- *  map, not a space scene, not a panel off screen. Starting draws it for now at once. A model with no
- *  sky has no `live`. */
+ *  map, not a space scene, not a panel off screen. Each call draws it for now at the next frame; a
+ *  timer already keeping it up is left running. A model with no sky has no `live`. */
 function runSky() {
-  clearInterval(skyTimer);
-  skyTimer = 0;
-  const sky = stations[current]?.model;
-  if (!sky?.live || chart.shown || lanes.shown || belt.shown || !onScreen() || (scene && scene !== "station")) return;
-  sky.draw(Date.now());
-  skyTimer = setInterval(() => sky.draw(Date.now()), 1000);
+  const model = stations[current]?.model;
+  const sky = model?.sky ?? model; // a LevelsBand's sky is its own SkyView
+  const want = sky?.live && !chart.shown && !lanes.shown && !belt.shown && onScreen() && !(scene && scene !== "station") ? sky : null;
+  if (want) drawSoon(want);
+  if (want === skying && skyTick) return;
+  skyTick?.();
+  skyTick = null;
+  skying = want;
+  if (want) skyTick = drawEvery(want, TICK);
 }
 
 const UNKNOWN_LINE = "LOCATION UNKNOWN";

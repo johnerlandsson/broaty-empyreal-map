@@ -21,15 +21,23 @@ async function mount() {
   vi.resetModules();
   await import("./main.js");
 }
-const emit = (name, msg) => (handlers[name] ?? []).forEach((fn) => fn(msg));
+let frames; // requestAnimationFrame callbacks waiting
+/** A message, and the frame after it (the panel draws what it set then: lib/draw-soon.js). */
+function emit(name, msg) {
+  (handlers[name] ?? []).forEach((fn) => fn(msg));
+  const due = frames;
+  frames = [];
+  for (const fn of due) fn(performance.now());
+}
 /** The sky's svg of a port, by its own clip's id, and whether its dome is drawn (only with a sky). */
 const skyOf = (port) => document.getElementById(`sky-clip-${port}`)?.closest("svg") ?? null;
 const domed = (port) => !!skyOf(port)?.querySelector('[data-tip="sky"]');
 
 beforeEach(async () => {
   HTMLCanvasElement.prototype.getContext = () => noop;
-  globalThis.requestAnimationFrame = () => 0;
-  globalThis.cancelAnimationFrame = () => {};
+  frames = [];
+  globalThis.requestAnimationFrame = (fn) => frames.push(fn);
+  globalThis.cancelAnimationFrame = (id) => (frames[id - 1] = () => {});
   await mount();
 });
 afterEach(() => {

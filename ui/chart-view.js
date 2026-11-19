@@ -40,6 +40,7 @@ import {
   systemRadius,
 } from "./lib/orbits.js";
 import { courseCard } from "./lib/course.js";
+import { drawing, drawSoon } from "./lib/draw-soon.js";
 import { attachPanZoom, attachPick, brackets, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
 import { hex, starFill, starRgb } from "./lib/worlds.js";
 import { card as sweepText, chased, isDark, markText, nameOf as contactName, shipLine, shipTip, sweepOf } from "./lib/contacts.js";
@@ -275,7 +276,7 @@ export class ChartView {
       // the ship's status for the new system usually follows the charts: frame again on it
       this.fresh = true;
       this.home();
-    } else this.draw(Date.now());
+    } else drawSoon(this);
   }
 
   /** The ship's chart state from the Lua side, or null for no ship. */
@@ -288,7 +289,7 @@ export class ChartView {
     const fresh = this.fresh;
     this.fresh = false;
     if (!this.touched && (fresh || (before === "moving") !== (after === "moving"))) this.home();
-    else this.draw(t);
+    else drawSoon(this);
   }
 
   /** The course message from the Lua side: { course } while one is stored, else {}. */
@@ -297,14 +298,14 @@ export class ChartView {
     this.course = msg && typeof msg === "object" ? msg : null;
     // a course plotted or cleared reframes a view you haven't touched, as a trip starting does
     if (!this.touched && (this.course?.course?.at ?? null) !== was) this.home();
-    else this.draw(Date.now());
+    else drawSoon(this);
   }
 
   /** The last sweep's picture from the Lua side (Space.Contacts, cleaned), or null for none. */
   setContacts(contacts) {
     this.contacts = contacts && typeof contacts === "object" ? contacts : null;
     this.attachSweep();
-    this.draw(Date.now());
+    drawSoon(this);
   }
 
   /** Index the sweep against the charts: only a sweep of their system is drawn, and its ships'
@@ -367,7 +368,7 @@ export class ChartView {
       const vb = fitBox(homeBox(this.index, this.ship, t, this.course?.course), w, h);
       if (vb.every(Number.isFinite)) this.vb = this.clamp(vb);
     });
-    this.draw(t);
+    drawSoon(this);
   }
 
   /** Frame a level as its chip or its planet's click does: a planet's neighbourhood, or the system
@@ -440,6 +441,7 @@ export class ChartView {
 
   /** Redraw every mark at wall-clock t (ms). */
   draw(t) {
+    drawing(this, t);
     if (!this.shown) return;
     const index = this.index;
     const [w, h] = this.size();

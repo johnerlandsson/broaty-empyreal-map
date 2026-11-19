@@ -22,6 +22,7 @@ import {
   seenOpenElsewhere,
   systemName,
 } from "./lib/lanes.js";
+import { drawing, drawSoon } from "./lib/draw-soon.js";
 import { attachPanZoom, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
 import { starFill } from "./lib/worlds.js";
 
@@ -194,7 +195,7 @@ export class LanesView {
     this.lanes = msg ? cleanLanes(msg) : null;
     this.btn.style.display = this.ready ? "" : "none";
     this.sync();
-    this.draw(Date.now());
+    drawSoon(this);
   }
 
   /** Switch the map on or off (from the Lua side's replay, the ⋈ button, or ◎ taking the band). */
@@ -204,7 +205,7 @@ export class LanesView {
     this.on = on;
     this.btn.style.borderColor = on ? "var(--fg-muted, #7d8a9a)" : ORBIT;
     this.sync();
-    this.draw(Date.now());
+    drawSoon(this);
   }
 
   sync() {
@@ -242,11 +243,12 @@ export class LanesView {
   home() {
     this.vb = null;
     this.touched = false;
-    this.draw(Date.now());
+    drawSoon(this);
   }
 
   /** Redraw at wall-clock t (ms): the ages in the key and her place in a lane change with it. */
   draw(t) {
+    drawing(this, t);
     if (!this.shown) return;
     const [w, h] = this.size();
     this.svg.setAttribute("viewBox", `0 0 ${w} ${h}`);

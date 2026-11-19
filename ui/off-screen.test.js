@@ -53,14 +53,16 @@ describe("off screen", () => {
   it("lets a port's sky stand still, and draws it for now on coming back", () => {
     emit("charts", pitCharts(Date.now()));
     emit("location", { roomId: "zennor.square", name: "The Square", district: "market-quarter", gravity: 0.8 });
+    runFrames(performance.now());
     const before = skyOf("zennor");
     expect(before).not.toBe(null);
     seen(false);
     vi.advanceTimersByTime(5000);
     expect(skyOf("zennor")).toBe(before);
     seen(true);
+    runFrames(performance.now());
     const back = skyOf("zennor");
-    expect(back).not.toBe(before); // at once, not a second later
+    expect(back).not.toBe(before); // at once (the next frame), not a second later
     vi.advanceTimersByTime(1100);
     expect(skyOf("zennor")).not.toBe(back); // and each second again
   });
@@ -75,6 +77,7 @@ describe("off screen", () => {
     };
     emit("charts", pitCharts(Date.now()));
     emit("chart", { on: true });
+    runFrames(performance.now());
     vi.advanceTimersByTime(2000);
     expect(at.length).toBeGreaterThan(0);
     seen(false);
@@ -82,6 +85,7 @@ describe("off screen", () => {
     vi.advanceTimersByTime(5000);
     expect(at).toEqual([]);
     seen(true);
+    runFrames(performance.now());
     expect(at).toEqual([Date.now()]);
     ChartView.prototype.draw = draw;
   });

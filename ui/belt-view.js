@@ -29,6 +29,7 @@ import {
   viewFrame,
 } from "./lib/belt.js";
 import { isDark } from "./lib/contacts.js";
+import { drawing, drawSoon } from "./lib/draw-soon.js";
 import { followStep, spreadOnEdge } from "./lib/orbits.js";
 import { attachPanZoom, brackets, el, glowFilter, pulse, stars, zoomButtons } from "./lib/svg.js";
 
@@ -167,25 +168,25 @@ export class BeltView {
     this.glide.set(this.belt?.id ?? null, p ? [p.x, p.y] : null, t);
     this.btn.style.display = this.ready ? "" : "none";
     this.sync();
-    this.draw(t);
+    drawSoon(this);
   }
 
   /** The last sweep's picture (Space.Contacts as charts.lua cleaned it), or null. */
   setContacts(contacts) {
     this.contacts = contacts && typeof contacts === "object" ? contacts : null;
-    this.draw(Date.now());
+    drawSoon(this);
   }
 
   /** The chart's indexed Space.Charts (orbits.js indexCharts), or null. */
   setCharts(index) {
     this.index = index ?? null;
-    this.draw(Date.now());
+    drawSoon(this);
   }
 
   /** The course message from the Lua side: { course } while one is stored, else {}. */
   setCourse(msg) {
     this.course = msg && typeof msg === "object" ? msg : null;
-    this.draw(Date.now());
+    drawSoon(this);
   }
 
   /** The view that shows the whole belt in the band now. */
@@ -222,7 +223,7 @@ export class BeltView {
     this.vb = null;
     this.panned = false;
     this.margin = null;
-    this.draw(Date.now());
+    drawSoon(this);
   }
 
   /** Switch the map on or off (from the Lua side, the button, or ◎ or ⋈ taking the band). */
@@ -236,7 +237,7 @@ export class BeltView {
     }
     this.btn.style.borderColor = on ? "var(--fg-muted, #7d8a9a)" : ORBIT;
     this.sync();
-    this.draw(Date.now());
+    drawSoon(this);
   }
 
   sync() {
@@ -245,6 +246,7 @@ export class BeltView {
 
   /** Redraw at wall-clock t (ms): her place glides between ticks, and the host's age changes. */
   draw(t) {
+    drawing(this, t);
     if (!this.shown) return;
     const w = this.band.clientWidth || 1;
     const h = this.band.clientHeight || 1;
