@@ -4,7 +4,7 @@
 // what it drew.
 
 import { zoomButton } from "./lib/svg.js";
-import { BIN, TRAY, WINDOW } from "./lib/marks.js";
+import { BIN, CHUTE, TRAY, WINDOW } from "./lib/marks.js";
 
 const DIM = "#7d8a9a";
 const LADDER = "#9fb0c3";
@@ -37,6 +37,7 @@ const SYMBOLS = [
   ["hatchway", "A way up or down", `<rect x="-5.5" y="-5.5" width="11" height="11" rx="1" fill="#030303" stroke="${STONE}" stroke-width="1.4"/><circle r="2.2" fill="none" stroke="${DIM}" stroke-width="0.9"/>`],
   ["closed", "Closed room", `<rect x="-7.5" y="-6" width="15" height="12" rx="2" fill="none" stroke="${DIM}" stroke-width="1.2" stroke-dasharray="3 2.5"/>`, (p) => [...p.g.querySelectorAll("text")].some((t) => t.textContent === "closed")],
   ["bin", "Refuse bin", line(BIN), (p) => drew(p, "[data-bin]")],
+  ["chute", "Waste chute", line(CHUTE), (p) => drew(p, "[data-chute]")],
   ["jobs", "Jobs window", line(WINDOW), (p) => drew(p, '[data-job="jobs"]')],
   ["drop", "Drop point", line(TRAY), (p) => drew(p, '[data-job="drop"]')],
   ["here", "You are here", `<rect x="-7.5" y="-6" width="15" height="12" rx="2" fill="#ffb34755" stroke="#ffb347" stroke-width="1.6"/>`, () => true],

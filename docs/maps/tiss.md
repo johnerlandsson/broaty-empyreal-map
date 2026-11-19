@@ -68,9 +68,14 @@ Four plans, one per level:
   (`reference/tiss-bays-mockup.html`, option A).
 - A room with a refuse bin (flag `bin`: the busy public rooms) has the bin's
   mark in its far corner, spinward (style guide §8.1). The Main Concourse's,
-  a corridor stop's, is on the corridor antispinward of its lift. The plan
-  draws a ladderway as its hatch, so a cleaners' dock's bin is inside the
-  hatch, widened to hold it: the bin is through the hatch, not at the stop
+  a corridor stop's, is on the corridor antispinward of its lift.
+- A room with a waste chute (flag `chute`: the Refinery Hall, the Fabricator
+  Floor, the Cantina Kitchen, the Grow Bays and the cleaners' docks) has the
+  chute's hopper mark under its bin, or in the bin's place
+  (`reference/chute-mark-options.png`, option B). The game made the docks'
+  bins chutes (Empyreal 77e714b, transfer-and-chutes.md). The plan draws a
+  ladderway as its hatch, so a cleaners' dock's chute is inside the hatch,
+  widened to hold it: the chute is through the hatch, not at the stop
   (`reference/hatch-bins-options.png`, option B). The cleaners keep one ring
   each (Empyreal fe70a72, droids.md §10.3), so the docks are Ladderway 12,
   Rim, Ladderway 6, Rim, Ladderway 9, Mid and Ladderway 3, Inner. The Docks

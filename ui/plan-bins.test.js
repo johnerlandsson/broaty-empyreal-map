@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 // Refuse bins on the plans (reference/plan-bins-options.png, option B): a mark in each room the
 // game flags `bin`, its far corner spinward on a ring, fore starboard on a ship; on the corridor
-// a corridor stop's on the corridor, a ladderway's (the cleaners' docks: Rim 12 and 6, Mid 9,
-// Inner 3) inside its widened hatch (reference/hatch-bins-options.png, option B);
-// on a town's plan, every room's in its south-east corner.
+// a corridor stop's on the corridor; on a town's plan, every room's in its south-east corner.
+// Waste chutes (reference/chute-mark-options.png, option B), the game's flag `chute`, on T.I.S.S.:
+// a room's under its bin, or where a bin would be; a ladderway's (the cleaners' docks:
+// Rim 12 and 6, Mid 9, Inner 3) inside its widened hatch (reference/hatch-bins-options.png, option B).
 
 import { describe, expect, it } from "vitest";
 import courier from "./data/plans/hull-courier.js";
@@ -19,9 +20,9 @@ import { buildPlace, buildShip } from "./place-views.js";
 
 const div = () => document.createElement("div");
 const at = (mark) => mark.getAttribute("transform").match(/translate\((\S+) (\S+)\)/).slice(1).map(Number);
-const marks = (g) => [...g.querySelectorAll("[data-bin]")];
+const marks = (g, kind = "bin") => [...g.querySelectorAll(`[data-${kind}]`)];
 // a ring draws each thing three times, a lap either side, so the middle lap's are the ones at 0
-const lap = (g) => marks(g).filter((m) => m.closest("g[transform]")?.getAttribute("transform") === "translate(0 0)");
+const lap = (g, kind) => marks(g, kind).filter((m) => m.closest("g[transform]")?.getAttribute("transform") === "translate(0 0)");
 
 describe("bins on T.I.S.S.'s rings", () => {
   const place = buildPlace(tiss, "wheel", div(), div());
@@ -48,13 +49,13 @@ describe("bins on T.I.S.S.'s rings", () => {
   const onCorridor = (plan) => lap(plan.g).map(at).filter(([, y]) => Math.abs(y) < 15).sort((a, b) => a[0] - b[0]);
   const cx = (plan, hour) => plan.layout.stops.find((s) => s.hour === hour).cx;
 
-  it("puts the docks' inside their hatches and the Concourse's on the lift's other side", () => {
-    expect(onCorridor(rim)).toEqual([[cx(rim, 0) - 23, 0], [cx(rim, 0) + 43, 0], [cx(rim, 6) + 43, 0]]);
-    expect(onCorridor(mid)).toEqual([[cx(mid, 9) + 43, 0]]);
-    expect(onCorridor(inner)).toEqual([[cx(inner, 3) + 43, 0]]);
+  it("puts the Concourse's on the lift's other side, and none in a dock's hatch", () => {
+    expect(onCorridor(rim)).toEqual([[cx(rim, 0) - 23, 0]]);
+    expect(onCorridor(mid)).toEqual([]);
+    expect(onCorridor(inner)).toEqual([]);
   });
 
-  it("widens a dock's hatch round its bin, and no other hatch", () => {
+  it("widens a dock's hatch round its chute, and no other hatch", () => {
     const hatches = (plan) => [...plan.g.querySelector('g[transform="translate(0 0)"]').querySelectorAll('rect[y="-7"][fill="none"]')];
     const wide = (plan) => hatches(plan).filter((r) => +r.getAttribute("width") === 31).map((r) => +r.getAttribute("x") - 20);
     expect(wide(rim)).toEqual([cx(rim, 0), cx(rim, 6)]);
@@ -67,6 +68,42 @@ describe("bins on T.I.S.S.'s rings", () => {
     const lit = (id, x) => highlightShape(mid.layout, { kind: "room", id, level: 1, x, y: 0 });
     expect(lit("tiss.ladderway-9-mid", 19)).toMatchObject({ x: cx(mid, 9) + 18, width: 35, height: 18 });
     expect(lit("tiss.ladderway-3-mid", 7)).toMatchObject({ x: cx(mid, 3) + 18, width: 18, height: 18 });
+  });
+});
+
+describe("chutes on T.I.S.S.'s rings", () => {
+  const place = buildPlace(tiss, "wheel", div(), div());
+  const [rim, mid, inner, docks] = place.deck.plans;
+  const chutes = (plan) => lap(plan.g, "chute").map(at);
+  const cx = (plan, hour) => plan.layout.stops.find((s) => s.hour === hour).cx;
+  const box = (plan, id) => plan.layout.rooms.find((b) => b.room.id === id);
+  const inBox = (plan, id) => chutes(plan).filter(([x, y]) => { const b = box(plan, id); return Math.abs(x - b.cx) < b.w / 2 && Math.abs(y - b.cy) < b.h / 2; });
+  const corner = (b) => (b.cy < 0 ? b.cy - b.h / 2 + 11 : b.cy + b.h / 2 - 11);
+
+  it("puts a dock's inside its widened hatch", () => {
+    const onCorridor = (plan) => chutes(plan).filter(([, y]) => Math.abs(y) < 15).sort((a, b) => a[0] - b[0]);
+    expect(onCorridor(rim)).toEqual([[cx(rim, 0) + 43, 0], [cx(rim, 6) + 43, 0]]);
+    expect(onCorridor(mid)).toEqual([[cx(mid, 9) + 43, 0]]);
+    expect(onCorridor(inner)).toEqual([[cx(inner, 3) + 43, 0]]);
+    expect(marks(docks.g, "chute")).toHaveLength(0);
+  });
+
+  it("puts a room's under its bin, or in the bin's place", () => {
+    const plans = [rim, mid, inner];
+    const planOf = (id) => plans.find((p) => box(p, id));
+    for (const id of ["tiss.refinery", "tiss.fabricator"]) {
+      const p = planOf(id), b = box(p, id);
+      expect(inBox(p, id), id).toEqual([[b.cx + b.w / 2 - 11, corner(b) + (b.cy < 0 ? 16 : -16)]]);
+    }
+    for (const id of ["tiss.kitchen", "tiss.growbays"]) {
+      const p = planOf(id), b = box(p, id);
+      expect(inBox(p, id), id).toEqual([[b.cx + b.w / 2 - 11, corner(b)]]);
+    }
+  });
+
+  it("marks every flagged room once a lap", () => {
+    const flagged = tiss.rooms.filter((r) => r.flags?.includes("chute")).length;
+    expect([rim, mid, inner].reduce((n, p) => n + chutes(p).length, 0)).toBe(flagged);
   });
 });
 

@@ -1,13 +1,21 @@
 {
-  "commit": "0132490",
+  "commit": "2b54d0e",
   "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
   "rooms": {
     "added": [
       {
-        "place": "zennor",
-        "id": "zennor.kittos"
+        "place": "tiss",
+        "id": "tiss.armourer"
+      },
+      {
+        "place": "tiss",
+        "id": "tiss.bookroom"
+      },
+      {
+        "place": "tiss",
+        "id": "tiss.chandlery"
       }
     ],
     "removed": [],
@@ -16,28 +24,22 @@
   "exits": {
     "added": [
       {
-        "place": "dolcoath",
-        "room": "dolcoath.drops",
+        "place": "tiss",
+        "room": "tiss.inner-0730",
         "dir": "south",
-        "to": "surface.orrin.join.south-rim"
+        "to": "tiss.armourer"
       },
       {
-        "place": "dolcoath",
-        "room": "dolcoath.field",
-        "dir": "northwest",
-        "to": "surface.orrin.join.haul-road"
+        "place": "tiss",
+        "room": "tiss.rim-1000",
+        "dir": "south",
+        "to": "tiss.bookroom"
       },
       {
-        "place": "dolcoath",
-        "room": "dolcoath.pithead",
-        "dir": "north",
-        "to": "surface.orrin.join.north-rim"
-      },
-      {
-        "place": "zennor",
-        "room": "zennor.chandlers",
-        "dir": "west",
-        "to": "zennor.kittos"
+        "place": "tiss",
+        "room": "tiss.rim-1100",
+        "dir": "south",
+        "to": "tiss.chandlery"
       }
     ],
     "removed": []
@@ -46,34 +48,18 @@
   "orphans": [],
   "droppedFlags": [
     {
-      "name": "chandler",
+      "name": "shop",
       "places": [
+        "tiss",
         "zennor"
-      ]
-    },
-    {
-      "name": "pegs",
-      "places": [
-        "dolcoath"
       ]
     }
   ],
   "unknownFields": [
     {
-      "name": "planet.life.origin",
+      "name": "counter",
       "places": [
-        "tamsin"
-      ]
-    },
-    {
-      "name": "planet.life.reach",
-      "places": [
-        "tamsin"
-      ]
-    },
-    {
-      "name": "shelter",
-      "places": [
+        "tiss",
         "zennor"
       ]
     }
@@ -83,7 +69,6 @@
     "barber",
     "broker",
     "bunkhouse",
-    "chandler",
     "charger",
     "charts",
     "clinic",
@@ -94,6 +79,7 @@
     "market",
     "outfitter",
     "pegs",
+    "shop",
     "start",
     "storage",
     "terminal",
@@ -107,6 +93,7 @@
     "car.load",
     "car.perStop",
     "car.stops.*.press",
+    "counter",
     "cover",
     "drop.keywords",
     "drop.signs",

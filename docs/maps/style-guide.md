@@ -276,10 +276,14 @@ follow these rules.
 - **A refuse bin** (the room flag `bin`, which the room's words already tell
   you) is a lidded can's outline in Dim, about 9 by 10, with no tile, in the
   room's far corner: spinward and away from the corridor on a ring, fore
-  starboard on a decks or ship plan. A corridor stop's is on the corridor;
-  a ladderway's is inside the hatch, widened to hold it. It zooms with the
-  plan (`reference/plan-bins-options.png`, option B;
-  `reference/hatch-bins-options.png`, option B; `binMark()` in
+  starboard on a decks or ship plan. A corridor stop's is on the corridor.
+  It zooms with the plan (`reference/plan-bins-options.png`, option B;
+  `binMark()` in `ui/deck-view.js`).
+- **A waste chute** (the room flag `chute`, T.I.S.S. only) is a hopper's
+  outline in Dim, the bin's size, under the room's bin, or in its place. A
+  ladderway's (a cleaners' dock) is inside the hatch, widened to hold it
+  (`reference/chute-mark-options.png`, option B;
+  `reference/hatch-bins-options.png`, option B; `chuteMark()` in
   `ui/deck-view.js`).
 - **Odd jobs** are in the bin's line and size, with no tile: a counter's
   window for the jobs window (flag `jobs`), an arrow going into a tray for a

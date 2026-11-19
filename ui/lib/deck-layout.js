@@ -5,7 +5,7 @@ import { STEP, ang } from "./geometry.js";
 
 // Rings: the corridor runs left to right (spinward right), fore rooms above, aft below.
 export const NODE = 150; // distance between corridor stops
-export const HATCH = { x: 20, w: 14, dockW: 31, binX: 43 }; // a ladderway's hatch from its stop's centre; widened round a dock's bin
+export const HATCH = { x: 20, w: 14, dockW: 31, chuteX: 43 }; // a ladderway's hatch from its stop's centre; widened round a dock's chute
 export const CH = 15; // corridor half-height
 export const RW = 116; // room box width
 export const RH = 58; // room box height
@@ -45,8 +45,8 @@ function boxCy(y) {
 export function ringLayout(index, z) {
   const corridor = index.corridors[z] ?? [];
   const cxOf = (x) => (x / STEP[z]) * NODE;
-  // a ladderway with a bin (a cleaners' dock), at x = hour * 2 + 1 as highlightShape has it
-  const docks = new Set([...index.byId.values()].filter((r) => r.z === z && String(r.id).includes("ladderway") && r.flags?.includes("bin")).map((r) => ((r.x - 1) / 2) % 12));
+  // a ladderway with a chute (a cleaners' dock), at x = hour * 2 + 1 as highlightShape has it
+  const docks = new Set([...index.byId.values()].filter((r) => r.z === z && String(r.id).includes("ladderway") && r.flags?.includes("chute")).map((r) => ((r.x - 1) / 2) % 12));
   const stops = corridor.map((r) => ({
     id: r.id,
     x: r.x,

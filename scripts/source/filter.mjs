@@ -1,7 +1,7 @@
 // Pure filters over the raw Empyreal YAML: keep only what the map may show.
 
 export const ROOM_FIELDS = ["id", "name", "address", "exits", "closed", "gravity", "flags", "district", "canopy", "car", "clear", "drop"];
-export const FLAGS = ["berth", "airlock", "outdoors", "listed", "bin", "jobs"];
+export const FLAGS = ["berth", "airlock", "outdoors", "listed", "bin", "chute", "jobs"];
 export const HULL_FIELDS = ["id", "name", "class", "plan", "bin", "airlock"];
 
 /**

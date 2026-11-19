@@ -27,7 +27,7 @@ import {
 } from "./lib/deck-layout.js";
 import { heavyFits, heavyRow } from "./lib/heavy.js";
 import { attachLegend } from "./legend.js";
-import { BIN, TRAY, WINDOW } from "./lib/marks.js";
+import { BIN, CHUTE, TRAY, WINDOW } from "./lib/marks.js";
 import { attachPanZoom, attachPick, el, glowFilter, pulse, rng, stars, zoomButtons } from "./lib/svg.js";
 
 const HL = "#ffb347";
@@ -138,6 +138,15 @@ export function binMark(parent, x, y) {
   return lineMark(parent, BIN, x, y, { "data-bin": "" });
 }
 
+/** Whether a room has a waste chute (its flag `chute`), which its words already tell you. */
+export const hasChute = (room) => !!room?.flags?.includes("chute");
+
+/** A waste chute's mark centred on x, y: a hopper in Dim, the bin's family
+ *  (reference/chute-mark-options.png, option B). */
+export function chuteMark(parent, x, y) {
+  return lineMark(parent, CHUTE, x, y, { "data-chute": "" });
+}
+
 function lineMark(parent, d, x, y, attrs) {
   const s = 0.85;
   return el(
@@ -224,9 +233,11 @@ function buildRingPlan(svg, index, z, pick) {
     for (const b of layout.rooms) {
       el("rect", { x: b.door.x, y: b.door.y, width: b.door.w, height: b.door.h, fill: PASSAGE }, s);
       roomBox(s, b.room, b.cx, b.cy, b.room.paint, b.w, b.h, undefined, pick);
-      // a bin in the room's far corner, spinward, and job marks in the antispinward one
+      // a bin in the room's far corner, spinward, a chute under it, clear of a long name (or in its
+      // place), and job marks in the antispinward corner
       const far = (inset) => (b.cy < 0 ? b.cy - b.h / 2 + inset : b.cy + b.h / 2 - inset);
       if (hasBin(b.room)) binMark(s, b.cx + b.w / 2 - BIN_INSET, far(BIN_INSET));
+      if (hasChute(b.room)) chuteMark(s, b.cx + b.w / 2 - BIN_INSET, far(BIN_INSET + (hasBin(b.room) ? JOB_STEP : 0)));
       jobMarks(s, b.room, b.cx - b.w / 2 + BIN_INSET, far(JOB_INSET_Y));
     }
     // stops: plain nodes, or a lift lobby with a ladder hatch beside it
@@ -249,10 +260,10 @@ function buildRingPlan(svg, index, z, pick) {
         el("circle", { cx: st.cx, cy: 0, r: 4, fill: "#aab8c8", stroke: "#aab8c8", "stroke-width": 1.5, "pointer-events": "none" }, s);
       }
       label(s, st.cx - 44, 1, hourLabel(st.hour), 10, { fill: DIM });
-      // a stop's bin is on the corridor, a cleaners' dock's (Rim 12 and 6, Mid 9, Inner 3) in its
-      // ladderway, so inside the hatch, widened for it (reference/hatch-bins-options.png, option B)
+      // a stop's bin is on the corridor, a cleaners' dock's chute (Rim 12 and 6, Mid 9, Inner 3) in
+      // its ladderway, so inside the hatch, widened for it (reference/hatch-bins-options.png, option B)
       if (hasBin(room)) binMark(s, st.cx + (lobby ? BIN_ON_STOP : BIN_INSET + 5), 0);
-      if (st.dock) binMark(s, st.cx + HATCH.binX, 0);
+      if (st.dock) chuteMark(s, st.cx + HATCH.chuteX, 0);
       // a stop's job marks, and then its ladderway's, on the corridor spinward of all that
       const [next] = jobMarks(s, room, st.cx + (lobby ? JOB_ON_LOBBY : JOB_ON_STOP), 0);
       if (room?.hatch) jobMarks(s, index.byId.get(room.hatch.to), next, 0);

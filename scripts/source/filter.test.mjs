@@ -66,7 +66,7 @@ describe("keepRoom", () => {
 
   it("exports the allow-lists", () => {
     expect(ROOM_FIELDS).toEqual(["id", "name", "address", "exits", "closed", "gravity", "flags", "district", "canopy", "car", "clear", "drop"]);
-    expect(FLAGS).toEqual(["berth", "airlock", "outdoors", "listed", "bin", "jobs"]);
+    expect(FLAGS).toEqual(["berth", "airlock", "outdoors", "listed", "bin", "chute", "jobs"]);
   });
 });
 
