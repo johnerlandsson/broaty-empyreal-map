@@ -63,6 +63,17 @@ export function groundOf(place) {
   return landTerrain(place.terrain) ?? group;
 }
 
+/** Title groups that say the place's shape or a thing on it, not its ground: under a terrain's colour
+ *  their texture still shows (reference/land-terrain-options.png, B). */
+const SHAPES = new Set(["high", "slope", "low", "waymark", "workings"]);
+
+/** The texture an octagon is drawn with: its title's shape or thing if it has one (high, slope,
+ *  low, waymark, workings), else its ground's (groundOf). */
+export function textureOf(place) {
+  const group = groupOf(place.id, place.name);
+  return SHAPES.has(group) ? group : groundOf(place);
+}
+
 export function trackOf(name) {
   const w = whereOf(name);
   return w && isTrack(w) ? w : null;

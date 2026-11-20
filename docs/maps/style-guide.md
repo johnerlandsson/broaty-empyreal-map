@@ -122,7 +122,8 @@ its own. A texture is an SVG pattern in screen pixels, so it's the same size at
 any zoom. A place drawn by the game's terrain (land.md) uses water, ice, salt,
 rock and dust below for those five, and the six terrain rows at the end for the
 rest; the other rows are for a place without one, by its title, and road and
-molten win over a terrain.
+molten win over a terrain. Over a terrain's colour, high, slope, low, waymark and
+workings keep their texture.
 
 | Name | Value | Used for |
 |---|---|---|

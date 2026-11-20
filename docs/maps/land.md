@@ -93,9 +93,11 @@ A missing or bad stored value loads as an empty map.
   (`reference/land-grid-options.png`).
 - **Ground.** Each octagon has its terrain's (else its group's) colour with its texture over it,
   in screen pixels, so the texture is the same size at any zoom. The terrains are the game's hues
-  brought down to the board's dark earth, the terrain alone: a cairn or a knoll with a terrain
-  shows only its ground (`reference/land-terrain-options.png`, A, picked 2026-11-19). The colours
-  are in the style guide's §4.2 ("On the land's map").
+  brought down to the board's dark earth. Where the title says the place's shape or a thing on it
+  (high, slope, low, waymark, workings), that texture goes over the terrain's colour; else the
+  ground's own (`reference/land-terrain-options.png`, B: A was picked 2026-11-19, then B on review
+  the next day so the lie of the land still shows). The colours are in the style guide's §4.2
+  ("On the land's map").
 - **Ways.** Every way is one thin Earth curve drawn under the octagons, from the middle of the face
   its exit names to the middle of the face of the exit back, square to both: it's pulled out of
   each face by 0.42 of the gap between them (at least 0.12 km, at most 0.75). The game names an
@@ -113,7 +115,7 @@ A missing or bad stored value loads as an empty map.
 - **Ways not taken** are short dotted Dim stubs out of the face they leave by.
 - **Your place** glows amber, as on every plan. A place with a note has a small folded corner.
 - **No hachures.** Heights come to 0.1 km, too coarse to tell a climb from level ground; the high,
-  slope and low backgrounds carry the lie of the land where a place has no terrain.
+  slope and low textures carry the lie of the land.
 - **Chrome.** `N ▲`, + − ⌂, the wheel and drag as on every plan. It starts centred on you at about
   26 px a km and re-centres only when you walk out of the middle of the view; ⌂ centres on you.
 

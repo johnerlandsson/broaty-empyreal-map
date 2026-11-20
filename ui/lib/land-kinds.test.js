@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import { GROUPS, TERRAINS, TITLES, groundOf, groupOf, landTerrain, regionOf, trackOf } from "./land-kinds.js";
+import { GROUPS, TERRAINS, TITLES, groundOf, groupOf, landTerrain, regionOf, textureOf, trackOf } from "./land-kinds.js";
 
 const TABLE = {
   open: ["Open Ground", "On the Downs"],
@@ -22,6 +22,20 @@ const TABLE = {
 };
 
 describe("land kinds", () => {
+  it("textures a place by its title's shape or thing over a terrain, else by its ground", () => {
+    expect(textureOf({ id: "x", name: "Low Pass", terrain: "stones" })).toBe("high");
+    expect(textureOf({ id: "x", name: "Rising Ground", terrain: "earth" })).toBe("slope");
+    expect(textureOf({ id: "x", name: "Hollow on the Downs", terrain: "cushions" })).toBe("low");
+    expect(textureOf({ id: "x", name: "Cairn on the Tinners' Track", terrain: "rock" })).toBe("waymark");
+    expect(textureOf({ id: "x", name: "Old Workings on the Tinners' Track", terrain: "dust" })).toBe("workings");
+    expect(textureOf({ id: "x", name: "On the Downs", terrain: "dust" })).toBe("dust");
+    expect(textureOf({ id: "x", name: "Pond on the Downs", terrain: "water" })).toBe("water");
+    expect(textureOf({ id: "x", name: "Bare Rock", terrain: "stones" })).toBe("stones"); // a ground title: the terrain's
+    expect(textureOf({ id: "x", name: "Edge of the Lava", terrain: "rock" })).toBe("molten");
+    expect(textureOf({ id: "surface.tamsin.join.downs", name: "The Open Downs", terrain: "dust" })).toBe("road");
+    expect(textureOf({ id: "x", name: "Low Pass" })).toBe("high"); // no terrain: the title's, as before
+  });
+
   it("takes only the eleven land terrains", () => {
     for (const t of TERRAINS) expect(landTerrain(t)).toBe(t);
     for (const v of ["room", "sea", "molten", "", 3, null, undefined]) expect(landTerrain(v)).toBeUndefined();

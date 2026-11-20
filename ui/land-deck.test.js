@@ -60,6 +60,16 @@ describe("LandDeck.draw", () => {
     expect(ground(B)[0]).toBe(groundStyle("rock").fill); // "Bare Rock": its title's group
   });
 
+  it("keeps a place's shape as its texture over the terrain's colour", () => {
+    const store = new LandStore();
+    store.ingest({ id: A, name: "Knoll on the Downs", terrain: "stones", coords: { x: 6.2, y: 1.2, z: 0.4 }, exits: {} });
+    const deck = make();
+    deck.draw(store);
+    const [fill, tex] = [...deck.svg.querySelectorAll(`[data-place="${A}"] use`)].map((u) => u.getAttribute("fill"));
+    expect(fill).toBe(groundStyle("stones").fill);
+    expect(tex).toMatch(/^url\(#land-\d+-high\)$/);
+  });
+
   it("draws one dotted stub for the way not taken", () => {
     const deck = make();
     deck.draw(walk());

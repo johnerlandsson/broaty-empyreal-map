@@ -15,7 +15,7 @@
 // onNote() and onForget().
 
 import { DIM, label } from "./deck-view.js";
-import { groundOf } from "./lib/land-kinds.js";
+import { groundOf, textureOf } from "./lib/land-kinds.js";
 import { layoutLand, num, OCT, octagon } from "./lib/land-layout.js";
 import { groundStyle } from "./lib/land-patterns.js";
 import { edgeCard, nearestRoadEnd, routePath } from "./lib/land-route.js";
@@ -351,19 +351,18 @@ export class LandDeck {
       }
     }
 
-    // the octagons: the ground's colour, its texture over it, a Stone edge
+    // the octagons: the ground's colour, its texture (or the place's shape's) over it, a Stone edge
     const octs = g({});
     for (const p of places) {
       const c = L.spots.get(p.id);
-      const group = groundOf(p);
       const og = el("g", { "data-place": p.id, "data-pick": p.id, transform: `translate(${num(c.x)} ${num(-c.y)})` }, octs);
       og.addEventListener("mouseenter", () => {
         this.tipFor = p.id;
         window.panel?.tooltip?.show(og.getBoundingClientRect(), { title: p.name, body: p.note ?? "" });
       });
       og.addEventListener("mouseleave", () => this.hideTip());
-      use(og, { fill: groundStyle(group).fill, stroke: STONE, "stroke-width": 1.2 });
-      const pat = this.pattern(group);
+      use(og, { fill: groundStyle(groundOf(p)).fill, stroke: STONE, "stroke-width": 1.2 });
+      const pat = this.pattern(textureOf(p));
       if (pat) use(og, { fill: pat, stroke: "none", "pointer-events": "none" });
     }
 
