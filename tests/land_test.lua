@@ -39,6 +39,20 @@ test('a frame without a terrain string passes without one', function()
   eq(G.frame(frame({ terrain = 'room' })).terrain, 'room')
 end)
 
+test("an exit's style passes through, and only a string", function()
+  local f = frame({ exits = {
+    N = { id = 'a', inverse = 'S', style = 'climb' },
+    E = { id = 'b', style = 'road' },
+    S = { id = 'c', style = 'trail' },
+    W = { id = 'd', style = 7 },
+  } })
+  local m = G.frame(f)
+  eq(m.exits.N, { id = 'a', inverse = 'S', style = 'climb' })
+  eq(m.exits.E, { id = 'b', style = 'road' })
+  eq(m.exits.S, { id = 'c', style = 'trail' })
+  eq(m.exits.W, { id = 'd' })
+end)
+
 test('non-table exits are dropped', function()
   eq(G.frame(frame({ exits = { N = 'x', S = { id = 'a' } } })).exits, { S = { id = 'a' } })
 end)

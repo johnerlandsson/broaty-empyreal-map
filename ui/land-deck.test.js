@@ -199,6 +199,66 @@ describe("LandDeck.draw", () => {
     expect(lit()[0].getAttribute("d")).toMatch(/^M\S+ Q/);
   });
 
+  it("ticks a climb across its curve and dots a game trail, both the same size at any zoom", () => {
+    const C = "surface.tamsin.806.856.2000001", D = "surface.tamsin.806.856.2000002", E = "surface.tamsin.806.856.2000003";
+    const store = new LandStore();
+    store.ingest({ id: D, name: "Hollow on the Downs", coords: { x: 0, y: 1.6, z: 0.4 }, exits: { s: { id: C, inverse: "n", style: "trail" } } });
+    store.ingest({ id: E, name: "Low Pass", coords: { x: 1.6, y: 0, z: 0.4 }, exits: { w: { id: C, inverse: "e" } } });
+    store.ingest({ id: C, name: "Saddle on the Downs", coords: { x: 0, y: 0, z: 0.4 },
+      exits: { n: { id: D, inverse: "s" }, e: { id: E, inverse: "w", style: "climb" }, s: { id: UNWALKED, style: "climb" }, w: { id: B } } });
+    const deck = make();
+    deck.draw(store); // you stand in C, so both are lit
+    const climb = deck.svg.querySelector("[data-way][data-climb]");
+    const ticks = deck.svg.querySelector("[data-ticks]");
+    const trail = deck.svg.querySelector("[data-way][data-trail]");
+    expect(deck.svg.querySelectorAll("[data-way]")).toHaveLength(2);
+    expect(ticks.getAttribute("d")).toBe(climb.getAttribute("d")); // the ticks lie along the climb's own curve
+    expect(climb.getAttribute("d")).toMatch(/ C/);
+    for (const n of [climb, ticks, trail]) expect(n.getAttribute("stroke")).toBe("#7d6b55"); // lit
+    for (const k of [10, 40]) {
+      deck.rescale(k);
+      // ticks: 1.4 px across every 6 px, standing 3.5 px either side of the lit line
+      expect(ticks.getAttribute("stroke-dasharray").split(" ").map(Number)).toEqual([1.4 / k, 4.6 / k].map((v) => +v.toFixed(4)));
+      expect(+ticks.getAttribute("stroke-width")).toBeCloseTo(0.13 + 7 / k, 4);
+      // a trail: dots 4 px apart on a 2.6 px lit line
+      const [dot, gap] = trail.getAttribute("stroke-dasharray").split(" ").map(Number);
+      expect(gap).toBeCloseTo(4 / k, 4);
+      expect(dot).toBeLessThan(gap / 10);
+      expect(+trail.getAttribute("stroke-width")).toBeCloseTo(2.6 / k, 4);
+      expect(trail.getAttribute("stroke-linecap")).toBe("round");
+    }
+    // the climb not taken: a dotted stub with ticks; the other stub has none
+    expect(deck.svg.querySelectorAll("[data-stub]")).toHaveLength(2);
+    const stubTicks = deck.svg.querySelectorAll("[data-stub-ticks]");
+    expect(stubTicks).toHaveLength(1);
+    // from D the trail is still a way out, but the climb isn't: it's in its own colour, not lit
+    store.ingest({ id: D, name: "Hollow on the Downs", coords: { x: 0, y: 1.6, z: 0.4 }, exits: { s: { id: C, inverse: "n", style: "trail" } } });
+    deck.draw(store);
+    for (const n of [climb, ticks]) expect(n.getAttribute("stroke")).toBe(null);
+    expect(climb.parentNode.getAttribute("stroke")).toBe("#5a4a38");
+    expect(ticks.parentNode.getAttribute("stroke")).toBe("#5a4a38");
+    expect(+ticks.getAttribute("stroke-width")).toBeCloseTo(0.08 + 6 / deck.k, 4);
+    expect(trail.getAttribute("stroke")).toBe("#7d6b55");
+    // from E, the other way round
+    store.ingest({ id: E, name: "Low Pass", coords: { x: 1.6, y: 0, z: 0.4 }, exits: { w: { id: C, inverse: "e" } } });
+    deck.draw(store);
+    expect(ticks.getAttribute("stroke")).toBe("#7d6b55");
+    expect(trail.getAttribute("stroke")).toBe(null);
+    expect(trail.parentNode.getAttribute("stroke")).toBe("#5a4a38");
+    expect(+trail.getAttribute("stroke-width")).toBeCloseTo(2.2 / deck.k, 4);
+  });
+
+  it("draws a way the game calls a road as a track, whatever its places are called", () => {
+    const C = "surface.tamsin.806.856.2000001";
+    const store = new LandStore();
+    store.ingest({ id: C, name: "Open Ground", coords: { x: 0, y: 0, z: 0.4 }, exits: { e: { id: A, inverse: "w", style: "road" } } });
+    store.ingest({ id: A, name: "Stony Ground", coords: { x: 1.6, y: 0, z: 0.4 }, exits: { w: { id: C, inverse: "e", style: "road" } } });
+    const deck = make();
+    deck.draw(store);
+    expect(deck.svg.querySelectorAll("[data-track]")).toHaveLength(1);
+    expect(deck.svg.querySelectorAll("[data-way]")).toHaveLength(0);
+  });
+
   it("keeps a one-way way's chevron one size, and a track's name clear of its octagons, at any zoom", () => {
     const store = walk();
     store.ingest({ id: "surface.tamsin.806.856.2000002", name: "Hollow on the Downs", coords: { x: 6.2, y: 3.4, z: 0.41 }, exits: { s: { id: A } } });

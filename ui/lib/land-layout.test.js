@@ -235,6 +235,45 @@ describe("layoutLand", () => {
     expect(label.angle).toBeLessThanOrEqual(90);
   });
 
+  it("styles a way as the game's exits do: a climb wins over a road, a road over a trail", () => {
+    const at = (n, x, exits) => place(`surface.tamsin.2.2.${n}`, "Open Ground", x, 0, exits);
+    const id = (n) => `surface.tamsin.2.2.${n}`;
+    const out = layoutLand([
+      at(1, 0, { e: { to: id(2), back: "w", style: "road" } }),
+      at(2, 1.2, { w: { to: id(1), back: "e", style: "road" }, e: { to: id(3), back: "w", style: "climb" } }),
+      at(3, 2.4, { w: { to: id(2), back: "e", style: "road" }, e: { to: id(4), back: "w" } }),
+      at(4, 3.6, { w: { to: id(3), back: "e", style: "trail" }, e: { to: id(5), style: "climb" } }),
+      at(5, 4.8, { e: { to: id(6), back: "w", style: "ledge" } }),
+      at(6, 6, { w: { to: id(5), back: "e" } }),
+    ], world);
+    const way = (m, n) => out.ways.find((w) => [w.a, w.b].sort().join() === [id(m), id(n)].sort().join());
+    // a road with no track in either name is still drawn as one, straight, and has no name to print
+    expect(way(1, 2)).toMatchObject({ style: "road", track: null, path: "M0,0 L1.2,0" });
+    expect(out.labels.filter((l) => l.kind === "track")).toEqual([]);
+    expect(way(2, 3)).toMatchObject({ style: "climb", track: null }); // one end says road, the other climb
+    expect(way(2, 3).path).toMatch(/ C/); // a climb is a way's curve
+    expect(way(3, 4).style).toBe("trail"); // said by one end only
+    expect(way(4, 5)).toMatchObject({ style: "climb", oneWay: true }); // a one-way climb, down a scree
+    expect(way(5, 6).style).toBe(null); // a style the board can't draw is a plain way
+  });
+
+  it("goes by the names for a track only where the game sent no style", () => {
+    const a = place("surface.tamsin.1.1.1", `On ${T}`, 6, 1.2, { e: { to: "surface.tamsin.1.1.2", back: "w" } });
+    const b = place("surface.tamsin.1.1.2", `Bare Rock on ${T}`, 7.2, 1.2, { w: { to: a.id, back: "e" } });
+    expect(layoutLand([a, b], world).ways[0]).toMatchObject({ style: "road", track: T }); // saved before the game sent styles
+    const climb = { ...b, exits: { w: { to: a.id, back: "e", style: "climb" } } };
+    expect(layoutLand([a, climb], world).ways[0]).toMatchObject({ style: "climb", track: null });
+    const road = { ...b, exits: { w: { to: a.id, back: "e", style: "road" } } };
+    expect(layoutLand([a, road], world).ways[0]).toMatchObject({ style: "road", track: T }); // named from its places
+  });
+
+  it("gives a stub the style of the way it leaves by", () => {
+    const p = place("surface.tamsin.1.1.1", "Saddle on the Downs", 0, 0, { se: { to: "surface.tamsin.1.1.7", style: "climb" }, n: { to: "surface.tamsin.1.1.8" } });
+    const out = layoutLand([p], world);
+    expect(out.stubs.find((s) => s.dir === "se").style).toBe("climb");
+    expect(out.stubs.find((s) => s.dir === "n").style).toBe(null);
+  });
+
   it("gives a north-south track's name the same angle whichever way it was walked", () => {
     const south = place("surface.tamsin.1.1.1", `On ${T}`, 6, 0, { n: { to: "surface.tamsin.1.1.2", back: "s" } });
     const north = place("surface.tamsin.1.1.2", `Bare Rock on ${T}`, 6, 1.2, { s: { to: south.id, back: "n" } });

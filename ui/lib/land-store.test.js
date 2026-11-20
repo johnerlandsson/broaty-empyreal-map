@@ -89,6 +89,26 @@ describe("LandStore", () => {
     expect(t.place("e").terrain).toBe("sand"); // one the board can't draw yet is kept for when it can
   });
 
+  it("keeps the style a frame's exit brings, and saves and loads it", () => {
+    const s = new LandStore();
+    s.ingest(frame("a", 0, 0, { N: { id: "b", inverse: "S", style: "climb" }, E: { id: "c", style: "road" }, S: { id: "d", style: "trail" }, W: { id: "e", style: 7 } }));
+    expect(s.place("a").exits).toEqual({ n: { to: "b", back: "s", style: "climb" }, e: { to: "c", style: "road" }, s: { to: "d", style: "trail" }, w: { to: "e" } });
+    const t = new LandStore();
+    t.load("ada", s.record());
+    expect(t.place("a").exits).toEqual(s.place("a").exits);
+    t.load("ada", { v: 1, places: [{ id: "f", name: "F", x: 0, y: 0, z: 0, exits: { n: { to: "g", style: "ledge" }, s: { to: "h", style: "" } } }] });
+    expect(t.place("f").exits).toEqual({ n: { to: "g", style: "ledge" }, s: { to: "h" } }); // one the board can't draw yet is kept
+  });
+
+  it("changes when an exit's style does", () => {
+    const s = new LandStore();
+    s.ingest(frame("a", 0, 0, { n: { id: "b" } }));
+    const v = s.version;
+    expect(s.ingest(frame("a", 0, 0, { n: { id: "b" } }))).toBe(false);
+    expect(s.ingest(frame("a", 0, 0, { n: { id: "b", style: "climb" } }))).toBe(true);
+    expect(s.version).toBe(v + 1);
+  });
+
   it("keeps a terrain the board can't draw yet as sent, and a new one replaces the old", () => {
     const s = new LandStore();
     s.ingest({ ...frame("a", 0, 0), terrain: "stones" });

@@ -1,12 +1,13 @@
 # The walked land
 
 *Status: built. An octagon each walked place at its true spot, routes, notes and forgetting, and
-Tamsin from above in the top band. Last updated 2026-11-14. Design:
+Tamsin from above in the top band. Last updated 2026-11-20. Design:
 `docs/superpowers/specs/2026-11-13-land-automap-design.md` (decision 17 is this layout); the picked
 looks: `reference/land-picked.png` for the octagons, grounds and tracks, and option B of
 `reference/land-ways-options.png` for where they sit, and E of
 `reference/land-curves-lit-options.png` for the ways between them (decision 19), and B of
-`reference/land-spread-options.png` for the spread (decision 20).*
+`reference/land-spread-options.png` for the spread (decision 20), and A of
+`reference/land-climbs-options.png` for climbs and game trails (decision 21).*
 
 ## What it is and when it shows
 
@@ -29,7 +30,8 @@ is a route's "N steps the way you know".
 - **The game.** Each `mudstd.room.info` frame in a `surface.*` area is posted by the Lua side
   (`src/station_map/land.lua`, `src/main.lua`) as a `land-room` message after `location`: `id`,
   `name`, `area`, `areaName`, `terrain`, `coords` (km east `x` and north `y` of Zennor's point, height `z`)
-  and `exits` (`{ id, area?, inverse? }` by compass point). An exit into Zennor carries
+  and `exits` (`{ id, area?, inverse?, style? }` by compass point; `style` is how the way goes,
+  `climb`, `road` or `trail`, empyreal `docs/gmcp.md` §9.5.3). An exit into Zennor carries
   `area: "zennor"`. The game sends no chart of the land and never names a place you haven't
   walked.
 - **The kind of ground** is the place's `terrain` (empyreal `docs/gmcp.md` §9.5.1), one of eleven:
@@ -56,7 +58,7 @@ is a route's "N steps the way you know".
 ## What's kept
 
 `ui/lib/land-store.js` (`LandStore`) keeps the walked places: each one's `name`, `x`, `y`, `z`,
-exits and `note`, in the order first walked. Routes run on a copy of the Mallard automapper's graph
+exits (each `{ to, area?, back?, style? }`, any style kept as sent) and `note`, in the order first walked. Routes run on a copy of the Mallard automapper's graph
 and route finder in `ui/lib/automap/` (see its README for the commit and our changes). A step into a place walked before, just as it was, only moves where you are: the store's
 `version` (which counts changes to the places, exits and notes) stays, nothing is saved, the routing
 graph is kept, and the board moves only your light, the route and the cards.
@@ -108,9 +110,18 @@ A missing or bad stored value loads as an empty map.
 - **Your exits lit.** The ways you can leave your place by are the same curves drawn lighter
   (`#7d6b55`) and at a heavier weight, so the sides you can go by show at a glance. A one-way way
   into your place isn't lit, and a track isn't either. The route follows the ways' curves.
-- **Tracks** are drawn as Zennor's roads, straight from middle to middle over the octagons they
-  run through: an Earth band with a dashed Stone edge, named in Dim italic beside the walked
-  track, clear of its octagons. Region names sit in Dim italic among their walked places.
+- **Climbs and game trails** (A of `reference/land-climbs-options.png`, decision 21). A way either
+  end's exit calls a `climb` (a scramble, scree or thick growth: it tires you) is its curve in
+  `#5a4a38` with short ticks across it, 1.4 px every 6 px, 3 px either side of the line; one
+  called a `trail` (a game trail) is a line of `#5a4a38` dots 4 px apart. A climb wins over a road
+  and a road over a trail, as the game's own order has it. Out of your place both are lit as
+  any way. A way not taken that the game calls a climb has its dotted stub ticked too. A style the
+  board doesn't know is a plain way.
+- **Tracks** are the ways either end calls a `road`; where neither end sent a style (a place
+  saved before the game sent them), the ways the names put on one track. They're drawn as
+  Zennor's roads, straight from middle to middle over the octagons they run through: an Earth
+  band with a dashed Stone edge, named in Dim italic beside the walked track (by its places'
+  names; a road none of them names goes unnamed), clear of its octagons. Region names sit in Dim italic among their walked places.
 - **Zennor** is a dark block with a dashed Stone edge and "ZENNOR", with an Earth road to each road
   end you've walked. An exit into Zennor is that road, never a stub.
 - **Ways not taken** are short dotted Dim stubs out of the face they leave by.

@@ -173,6 +173,15 @@ John picked 2: "running its engine inside our map panel."
     pushing only close places apart bent the tracks. Instead the whole land,
     Zennor's block with it, is drawn 1.3× further from Zennor's point than
     it is, octagons the same size: same shape, more room.
+21. **Climbs ticked, game trails dotted, roads as the game says** (2026-11-20;
+    A of `docs/maps/reference/land-climbs-options.png`, built as
+    `land-climbs-built.png`). The game sends each land exit's `style`
+    (empyreal `docs/gmcp.md` §9.5.3). A climb is its way's curve with short
+    ticks across it, the old map sign for a scarp, its stub ticked too; a game
+    trail is a line of small dots. Both stay a way's width and lit as one. A
+    way either end calls `road` is a track; the names decide only where neither
+    end sent a style (a place saved before the game sent them). Colour (B) and
+    a sign halfway along (C) weren't chosen.
 
 ## Design
 

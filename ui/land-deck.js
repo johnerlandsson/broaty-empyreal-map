@@ -1,11 +1,12 @@
 // The walked land's map (docs/maps/land.md): Tamsin's land round Zennor in the bottom band, an
 // octagon each walked place where it really is, the ways between them curving out of the faces
-// their exits name (the ones out of your place lit), dotted stubs for the ways not taken, and
+// their exits name (the ones out of your place lit; a climb ticked across, a game trail dotted),
+// dotted stubs for the ways not taken (a climb's ticked), and
 // Zennor's block with its roads out. Only what you've stood in is drawn or named. The layout is lib/land-layout.js's; this draws it, rebuilding the board on draw() only
 // when the walked places have changed.
 //
 // The board is in km (the viewBox); what's given in screen pixels (edges, textures, labels, the
-// track edges' and stubs' dashes) is kept that size at any zoom by rescale(), on every view change.
+// track edges', climbs' ticks, trails' and stubs' dashes) is kept that size at any zoom by rescale(), on every view change.
 //
 // Finding your way (spec, "Finding your way" and "Notes and forgetting"): click a walked place to
 // light the route there from where you are, with a card of its steps; hover one for its name and
@@ -26,6 +27,7 @@ const GROUND = "#110e0b";
 const EARTH = "#332b22";
 const STONE = "#4b4338";
 const LIT = "#7d6b55"; // the ways out of the place you stand in: Earth, lightened
+const CLIMB = "#5a4a38"; // a climb's line and ticks, and a game trail's dots: Earth, half lit
 const FIXTURE = "#cfd8e3";
 const ZENNOR = "#16120f";
 const HOME_K = 26; // px a km when centred on you
@@ -207,6 +209,19 @@ export class LandDeck {
     this.trackEdges?.setAttribute("stroke-dasharray", `${px(4)} ${px(3)}`);
     this.stubs?.setAttribute("stroke-width", px(1.6));
     this.stubs?.setAttribute("stroke-dasharray", `${px(0.1)} ${px(3.4)}`);
+    // a climb's ticks: 1.4 px across every 6 px, standing 3 px either side of its line (3.5 lit);
+    // a game trail: dots 4 px apart on a 2.2 px line (2.6 lit)
+    for (const t of this.ticks ?? []) {
+      const lit = t.hasAttribute("data-lit");
+      t.setAttribute("stroke-width", num(lit ? 0.13 + 7 / k : 0.08 + 6 / k));
+      t.setAttribute("stroke-dasharray", `${px(1.4)} ${px(4.6)}`);
+    }
+    for (const t of this.trails ?? []) {
+      t.setAttribute("stroke-width", px(t.hasAttribute("data-lit") ? 2.6 : 2.2));
+      t.setAttribute("stroke-dasharray", `${px(0.01)} ${px(4)}`);
+    }
+    this.stubTicks?.setAttribute("stroke-width", px(1.6 + 6));
+    this.stubTicks?.setAttribute("stroke-dasharray", `${px(1.4)} ${px(4.6)}`);
     // Zennor's edge is dashed, so it's all in km (no non-scaling-stroke: its dashes would be in px)
     this.edge?.setAttribute("stroke-width", px(1));
     this.edge?.setAttribute("stroke-dasharray", `${px(4)} ${px(3)}`);
@@ -337,17 +352,32 @@ export class LandDeck {
     const roads = g({ stroke: EARTH, "stroke-width": 0.24, "stroke-linecap": "round" });
     for (const r of L.zennor.roads) el("line", { x1: num(r.x1), y1: num(r.y1), x2: num(r.x2), y2: num(r.y2) }, roads);
 
-    // the plain ways, under the octagons: thin curves square out of their exits' faces (draw()
-    // lights the ones out of your place)
+    // the ways, under the octagons: thin curves square out of their exits' faces, a climb's with
+    // ticks across it and a game trail's dotted (draw() lights the ones out of your place)
     const ways = g({ stroke: EARTH, "stroke-width": 0.08, fill: "none", "stroke-linecap": "round" });
-    this.wayEls = new Map(); // place id -> the paths of the plain ways you can leave it by
+    const trails = g({ stroke: CLIMB, fill: "none" });
+    const climbs = g({ stroke: CLIMB, "stroke-width": 0.08, fill: "none", "stroke-linecap": "round" });
+    const ticks = g({ stroke: CLIMB, fill: "none", "stroke-linecap": "butt" });
+    this.wayEls = new Map(); // place id -> the paths of the ways you can leave it by (and a climb's ticks)
     this.litFor = null;
+    this.ticks = [];
+    this.trails = [];
     for (const w of L.ways) {
-      if (w.track) continue;
-      const path = el("path", { "data-way": "", d: w.path }, ways);
+      if (w.style === "road") continue;
+      const els = [];
+      if (w.style === "climb") {
+        els.push(el("path", { "data-way": "", "data-climb": "", d: w.path }, climbs));
+        const t = el("path", { "data-ticks": "", d: w.path }, ticks);
+        this.ticks.push(t);
+        els.push(t);
+      } else if (w.style === "trail") {
+        const t = el("path", { "data-way": "", "data-trail": "", d: w.path, "stroke-linecap": "round" }, trails);
+        this.trails.push(t);
+        els.push(t);
+      } else els.push(el("path", { "data-way": "", d: w.path }, ways));
       for (const id of w.oneWay ? [w.a] : [w.a, w.b]) {
         if (!this.wayEls.has(id)) this.wayEls.set(id, []);
-        this.wayEls.get(id).push(path);
+        this.wayEls.get(id).push(...els);
       }
     }
 
@@ -368,7 +398,7 @@ export class LandDeck {
     }
 
     // the tracks, over the octagons they run through: a dashed Stone edge under an Earth band
-    const tracks = L.ways.filter((w) => w.track);
+    const tracks = L.ways.filter((w) => w.style === "road");
     this.trackEdges = g({ stroke: STONE, fill: "none" });
     for (const w of tracks) el("path", { d: w.path }, this.trackEdges);
     const bands = g({ stroke: EARTH, "stroke-width": 0.22, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" });
@@ -377,6 +407,10 @@ export class LandDeck {
     // the ways not taken
     this.stubs = g({ stroke: DIM, "stroke-linecap": "round" });
     for (const s of L.stubs) el("line", { "data-stub": "", x1: num(s.x1), y1: num(s.y1), x2: num(s.x2), y2: num(s.y2) }, this.stubs);
+    this.stubTicks = g({ stroke: DIM, "stroke-linecap": "butt" });
+    for (const s of L.stubs) {
+      if (s.style === "climb") el("line", { "data-stub-ticks": "", x1: num(s.x1), y1: num(s.y1), x2: num(s.x2), y2: num(s.y2) }, this.stubTicks);
+    }
 
     // one-way ways: a chevron pointing the way you can go, the same size at any zoom
     const chevrons = g({ stroke: FIXTURE, "stroke-width": 2, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" });

@@ -129,6 +129,7 @@ terrain's colour, high, slope, low, waymark and workings keep their texture.
 |---|---|---|
 | Zennor's block | `#16120f` | Zennor's ground on the land's map, under its dashed Stone edge and "ZENNOR" |
 | lit way | `#7d6b55` | the ways out of the place you stand in: Earth, lightened; no glow |
+| climb, game trail | `#5a4a38` | a climb's line and the ticks across it, a game trail's dots: Earth, half lit (lit as a lit way out of your place) |
 | open | `#261f18` | open ground (Open Ground, On the Downs, Rolling Ground, Top of a Slope); no texture |
 | road | `#332b22` (Earth) | a road end out of Zennor; no texture |
 | waymark | `#2f2820`; ticks `#b3a58f` at .55 | a cairn or marker stone: short upright ticks |

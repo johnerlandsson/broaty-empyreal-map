@@ -18,7 +18,8 @@ function G.frame(data)
   if type(data.exits) == 'table' then
     for dir, e in pairs(data.exits) do
       if type(e) == 'table' then
-        exits[dir] = { id = e.id, area = e.area, inverse = e.inverse }
+        -- style: how the way goes, climb, road or trail (gmcp.md §9.5.3); none for a plain way
+        exits[dir] = { id = e.id, area = e.area, inverse = e.inverse, style = str(e.style) }
       end
     end
   end

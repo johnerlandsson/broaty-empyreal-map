@@ -57,6 +57,16 @@ const exitTo = (p, id) => ORDER.find((d) => p.exits?.[d]?.to === id);
 
 const isEnd = (p) => p.id.includes(".join.");
 
+/** The styles the board draws (gmcp.md §9.5.3), the first that fits winning: a climb over a road,
+ *  since what a way costs you matters more than what it follows; a road over a game trail. */
+const STYLES = ["climb", "road", "trail"];
+
+/** The style p's exit to q is sent with, if the board draws it. */
+const exitStyle = (p, q) => {
+  const s = p.exits?.[exitTo(p, q.id)]?.style;
+  return STYLES.includes(s) ? s : null;
+};
+
 function trackBetween(p, q) {
   const tp = trackOf(p.name), tq = trackOf(q.name);
   if (tp && tp === tq) return tp;
@@ -73,12 +83,26 @@ function along(p, c, q, t) {
   return { at, angle: angleOf(at, on) };
 }
 
+/** How the way between p and q goes, and the name of its track: as either end's exit says, the
+ *  first of STYLES that fits; where neither says anything (a place saved before the game sent a
+ *  style), a track if the names put both on one. A road is named from its places' names, if they
+ *  give one. */
+function styleBetween(p, q) {
+  const said = [exitStyle(p, q), exitStyle(q, p)];
+  const style = STYLES.find((s) => said.includes(s)) ?? null;
+  const named = trackBetween(p, q);
+  if (style === "road") return { style, track: named ?? trackOf(p.name) ?? trackOf(q.name) };
+  if (style) return { style, track: null };
+  return named ? { style: "road", track: named } : { style: null, track: null };
+}
+
 /**
  * One way per unordered pair of walked places with an exit between them. A plain way is one smooth
  * curve from the face its exit names to the face of the exit back, square to both, so you can see
  * which side it leaves by and nothing has a corner. A one-way way curves from its face into the
  * other place's middle, with a chevron halfway along what shows of it. A track runs straight from
- * middle to middle. `path` is what's drawn; `there` and `back` are the line a route takes along it
+ * middle to middle. `style` is how it goes (climb, road, trail or null; a road is a track, its
+ * name in `track` if the places' names give one). `path` is what's drawn; `there` and `back` are the line a route takes along it
  * from one middle to the other (path commands, to follow an M or another way's).
  */
 function layoutWays(places, spots) {
@@ -99,9 +123,9 @@ function layoutWays(places, spots) {
     const leave = exitTo(a, b.id), back = exitTo(b, a.id);
     const oneWay = !back;
     const A = spots.get(a.id), B = spots.get(b.id);
-    const track = trackBetween(a, b);
-    const way = { a: a.id, b: b.id, track, oneWay };
-    if (track) {
+    const { style, track } = styleBetween(a, b);
+    const way = { a: a.id, b: b.id, style, track, oneWay };
+    if (style === "road") {
       way.path = `M${pt(A)} L${pt(B)}`;
       way.there = `L${pt(B)}`;
       way.back = `L${pt(A)}`;
@@ -167,7 +191,8 @@ export function layoutLand(places, world, { spread = SPREAD } = {}) {
       if (!e || walked.has(e.to)) continue;
       if (e.area && !e.area.startsWith("surface.")) continue; // into Zennor: its road, never a stub
       const f = faceMid(spots.get(p.id), dir), g = out(f, dir, STUB);
-      stubs.push({ id: p.id, dir, x1: f.x, y1: fy(f.y), x2: g.x, y2: fy(g.y) });
+      const style = STYLES.includes(e.style) ? e.style : null;
+      stubs.push({ id: p.id, dir, style, x1: f.x, y1: fy(f.y), x2: g.x, y2: fy(g.y) });
     }
   }
 

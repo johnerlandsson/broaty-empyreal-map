@@ -10,12 +10,15 @@ export const DIRS = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
 const isStr = (v) => typeof v === "string" && v !== "";
 const isNum = (v) => typeof v === "number" && Number.isFinite(v);
 
-/** One exit as the store keeps it, { to, area?, back? }, or null for none. */
+/** One exit as the store keeps it, { to, area?, back?, style? }, or null for none. `style` is how
+ *  the way goes as the game sends it (gmcp.md §9.5.3: climb, road, trail), kept as sent so a style
+ *  the board can't draw yet is there once it can (land-layout.js decides what's drawn). */
 function cleanExit(e) {
   if (!e || !isStr(e.to)) return null;
   const exit = { to: e.to };
   if (isStr(e.area)) exit.area = e.area;
   if (DIRS.includes(e.back)) exit.back = e.back;
+  if (isStr(e.style)) exit.style = e.style;
   return exit;
 }
 
@@ -36,8 +39,8 @@ function cleanExits(raw, as = (e) => e) {
  *  the board can't draw yet is there once it can (land-kinds.js styleOf decides what's drawn). */
 const keptTerrain = (v) => (isStr(v) && v !== "room" ? v : undefined);
 
-/** A frame's exit (the game's `{ id, area, inverse }`, dirs in any case) as the store's. */
-const frameExit = (e) => ({ to: e.id, area: e.area, back: typeof e.inverse === "string" ? e.inverse.toLowerCase() : undefined });
+/** A frame's exit (the game's `{ id, area, inverse, style }`, dirs in any case) as the store's. */
+const frameExit = (e) => ({ to: e.id, area: e.area, back: typeof e.inverse === "string" ? e.inverse.toLowerCase() : undefined, style: e.style });
 
 function cleanStored(p) {
   if (!p || !isStr(p.id) || !isNum(p.x) || !isNum(p.y)) return null;
@@ -55,7 +58,7 @@ function samePlace(a, b) {
   for (const dir of DIRS) {
     const e = a.exits[dir], f = b.exits[dir];
     if (!e !== !f) return false;
-    if (e && (e.to !== f.to || e.area !== f.area || e.back !== f.back)) return false;
+    if (e && (e.to !== f.to || e.area !== f.area || e.back !== f.back || e.style !== f.style)) return false;
   }
   return true;
 }
