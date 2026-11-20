@@ -2,10 +2,9 @@
 // game sends (gmcp.md §9.5.1) where it sends one; else, for a place saved before it did or sent as
 // `room`, it's read from the name the game gives it (surface-words.ts `placeTitle`). Pure.
 
-import { TERRAIN_GROUNDS } from "./land-patterns.js";
-
-/** The eleven land terrains the game sends, in gmcp.md §9.5.1's order (land-patterns.js's table). */
-export const TERRAINS = Object.keys(TERRAIN_GROUNDS);
+/** The eleven land terrains the game sends, as gmcp.md §9.5.1 lists them. land-patterns.js has a
+ *  ground for each (its tests check). */
+export const TERRAINS = Object.freeze(["water", "ice", "woods", "reeds", "scrub", "cushions", "salt", "rock", "stones", "dust", "earth"]);
 const TERRAIN_SET = new Set(TERRAINS);
 
 /** v if it's one of the eleven land terrains, else undefined (`room`, junk, or one we can't draw). */
@@ -55,23 +54,23 @@ export function groupOf(id, name) {
   return TITLES.get(base) ?? "open";
 }
 
-/** The ground an octagon is drawn as: a road end or the lava's edge by its title; else the place's
- *  terrain if it's one of TERRAINS; else its title's group. */
-export function groundOf(place) {
-  const group = groupOf(place.id, place.name);
-  if (OVER_TERRAIN.has(group)) return group;
-  return landTerrain(place.terrain) ?? group;
-}
-
 /** Title groups that say the place's shape or a thing on it, not its ground: under a terrain's colour
  *  their texture still shows (reference/land-terrain-options.png, B). */
 const SHAPES = new Set(["high", "slope", "low", "waymark", "workings"]);
 
-/** The texture an octagon is drawn with: its title's shape or thing if it has one (high, slope,
- *  low, waymark, workings), else its ground's (groundOf). */
-export function textureOf(place) {
+/**
+ * How an octagon is drawn, from one reading of its title: `ground` its colour, `texture` what's
+ * over it. A road end and the lava's edge are their group whole. Else the ground is the place's
+ * terrain if it's one of TERRAINS, or its title's group; the texture is the title's shape or thing
+ * (SHAPES) if it has one, else the ground's.
+ * @param {{id: string, name: string, terrain?: string}} place
+ * @returns {{ground: string, texture: string}} keys for groundStyle()
+ */
+export function styleOf(place) {
   const group = groupOf(place.id, place.name);
-  return SHAPES.has(group) ? group : groundOf(place);
+  if (OVER_TERRAIN.has(group)) return { ground: group, texture: group };
+  const ground = landTerrain(place.terrain) ?? group;
+  return { ground, texture: SHAPES.has(group) ? group : ground };
 }
 
 export function trackOf(name) {

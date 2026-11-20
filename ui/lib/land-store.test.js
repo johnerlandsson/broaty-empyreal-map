@@ -85,17 +85,16 @@ describe("LandStore", () => {
     t.load("ada", { v: 1, places: [{ id: "c", name: "C", x: 0, y: 0, z: 0, exits: {}, terrain: 3 }, { id: "d", name: "D", x: 0, y: 0, z: 0, exits: {}, terrain: "room" }] });
     expect(t.place("c")).not.toHaveProperty("terrain");
     expect(t.place("d")).not.toHaveProperty("terrain");
-    t.load("ada", { v: 1, places: [{ id: "e", name: "E", x: 0, y: 0, z: 0, exits: {}, terrain: "sea" }] });
-    expect(t.place("e")).not.toHaveProperty("terrain");
+    t.load("ada", { v: 1, places: [{ id: "e", name: "E", x: 0, y: 0, z: 0, exits: {}, terrain: "sand" }] });
+    expect(t.place("e").terrain).toBe("sand"); // one the board can't draw yet is kept for when it can
   });
 
-  it("keeps no terrain the game doesn't send for land, and a later frame doesn't inherit one", () => {
+  it("keeps a terrain the board can't draw yet as sent, and a new one replaces the old", () => {
     const s = new LandStore();
-    s.ingest({ ...frame("a", 0, 0), terrain: "sea" });
-    expect(s.place("a")).not.toHaveProperty("terrain");
     s.ingest({ ...frame("a", 0, 0), terrain: "stones" });
-    expect(s.ingest({ ...frame("a", 0, 0), terrain: "sea" })).toBe(false);
-    expect(s.place("a").terrain).toBe("stones");
+    expect(s.ingest({ ...frame("a", 0, 0), terrain: "sand" })).toBe(true);
+    expect(s.place("a").terrain).toBe("sand");
+    expect(s.record().places[0].terrain).toBe("sand");
   });
 
   it("load keeps a saved terrain under a place walked first as `room`", () => {

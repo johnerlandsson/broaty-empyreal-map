@@ -121,9 +121,9 @@ Dim and Fixture line are as above; the octagons' grounds and their textures are
 its own. A texture is an SVG pattern in screen pixels, so it's the same size at
 any zoom. A place drawn by the game's terrain (land.md) uses water, ice, salt,
 rock and dust below for those five, and the six terrain rows at the end for the
-rest; the other rows are for a place without one, by its title, and road and
-molten win over a terrain. Over a terrain's colour, high, slope, low, waymark and
-workings keep their texture.
+rest, each at least ΔE 10 from every other ground here. The other rows are for a
+place without one, by its title; road and molten win over a terrain. Over a
+terrain's colour, high, slope, low, waymark and workings keep their texture.
 
 | Name | Value | Used for |
 |---|---|---|
@@ -142,12 +142,12 @@ workings keep their texture.
 | salt | `#4c4a42`; squares `#cfc9b9` at .45 | the Salt Pans: small squares |
 | ice | `#5a6878`; lines `#dbe9ff` at .45 | ice (Ice Field, Ice Slope, Frozen Shore, Ice Shore): fine diagonal lines |
 | molten | `#241816`; cracks `#e0552b` at .8 | the Edge of the Lava, by molten rock: glowing crack lines |
-| woods | `#1e3522`; crowns `#79b07c` at .55 and .45 | terrain `woods`: small round crowns |
+| woods | `#12321e`; crowns `#79b07c` at .55 and .45 | terrain `woods`: small round crowns |
 | reeds | `#21443a`; stems `#8fd0b8` at .55 | terrain `reeds`: short upright stems in threes |
-| scrub | `#2e3a1c`; tufts `#a4bf74` at .55 | terrain `scrub`: small open tufts |
-| cushions | `#3a4224`; mounds `#c4cf8e` at .45 | terrain `cushions`: low half-round mounds |
-| stones | `#403c34`; rings `#cfc6b4` at .55 and .45 | terrain `stones`: small outlined pebbles |
-| earth | `#4a2619`; dashes `#c49466` at .5 | terrain `earth`: short level dashes |
+| scrub | `#2e3c1c`; tufts `#a4bf74` at .55 | terrain `scrub`: small open tufts |
+| cushions | `#4d5a34`; mounds `#c4cf8e` at .45 | terrain `cushions`: low half-round mounds |
+| stones | `#68645c`; rings `#cfc6b4` at .55 and .45 | terrain `stones`: small outlined pebbles |
+| earth | `#583014`; dashes `#c49466` at .5 | terrain `earth`: short level dashes |
 
 ### 4.3 Models and scenes
 

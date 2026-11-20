@@ -4,7 +4,6 @@
 
 import { createMap, addRoom, getRoomByKey, linkExit } from "./automap/graph.js";
 import { findPath } from "./automap/pathfind.js";
-import { landTerrain } from "./land-kinds.js";
 
 export const DIRS = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
 
@@ -33,6 +32,10 @@ function cleanExits(raw, as = (e) => e) {
   return out;
 }
 
+/** A terrain worth keeping: any the game sends but `room` (no ground yet), kept as sent so a terrain
+ *  the board can't draw yet is there once it can (land-kinds.js styleOf decides what's drawn). */
+const keptTerrain = (v) => (isStr(v) && v !== "room" ? v : undefined);
+
 /** A frame's exit (the game's `{ id, area, inverse }`, dirs in any case) as the store's. */
 const frameExit = (e) => ({ to: e.id, area: e.area, back: typeof e.inverse === "string" ? e.inverse.toLowerCase() : undefined });
 
@@ -40,7 +43,7 @@ function cleanStored(p) {
   if (!p || !isStr(p.id) || !isNum(p.x) || !isNum(p.y)) return null;
   const exits = cleanExits(p.exits);
   const place = { id: p.id, name: typeof p.name === "string" ? p.name : "", x: p.x, y: p.y, z: isNum(p.z) ? p.z : 0, exits };
-  const terrain = landTerrain(p.terrain);
+  const terrain = keptTerrain(p.terrain);
   if (terrain) place.terrain = terrain;
   if (isStr(p.note)) place.note = p.note;
   return place;
@@ -92,9 +95,9 @@ export class LandStore {
       z: isNum(frame.coords.z) ? frame.coords.z : 0,
       exits: cleanExits(frame.exits, frameExit),
     };
-    // what's underfoot, as the game sends it; `room` (none yet, as for a tile not built) or anything
-    // not a land terrain keeps what an earlier step brought
-    const terrain = landTerrain(frame.terrain) ?? old?.terrain;
+    // what's underfoot, as the game sends it; `room` or none (as for a tile not built yet) keeps
+    // what an earlier step brought
+    const terrain = keptTerrain(frame.terrain) ?? old?.terrain;
     if (terrain) place.terrain = terrain;
     this.here = frame.id;
     if (old && samePlace(old, place)) return false;

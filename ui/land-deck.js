@@ -15,7 +15,7 @@
 // onNote() and onForget().
 
 import { DIM, label } from "./deck-view.js";
-import { groundOf, textureOf } from "./lib/land-kinds.js";
+import { styleOf } from "./lib/land-kinds.js";
 import { layoutLand, num, OCT, octagon } from "./lib/land-layout.js";
 import { groundStyle } from "./lib/land-patterns.js";
 import { edgeCard, nearestRoadEnd, routePath } from "./lib/land-route.js";
@@ -361,8 +361,9 @@ export class LandDeck {
         window.panel?.tooltip?.show(og.getBoundingClientRect(), { title: p.name, body: p.note ?? "" });
       });
       og.addEventListener("mouseleave", () => this.hideTip());
-      use(og, { fill: groundStyle(groundOf(p)).fill, stroke: STONE, "stroke-width": 1.2 });
-      const pat = this.pattern(textureOf(p));
+      const { ground, texture } = styleOf(p);
+      use(og, { fill: groundStyle(ground).fill, stroke: STONE, "stroke-width": 1.2 });
+      const pat = this.pattern(texture);
       if (pat) use(og, { fill: pat, stroke: "none", "pointer-events": "none" });
     }
 
