@@ -2,8 +2,17 @@
 // game sends (gmcp.md §9.5.1) where it sends one; else, for a place saved before it did or sent as
 // `room`, it's read from the name the game gives it (surface-words.ts `placeTitle`). Pure.
 
-/** The eleven land terrains the game sends, in gmcp.md §9.5.1's order. */
-export const TERRAINS = ["water", "ice", "woods", "reeds", "scrub", "cushions", "salt", "rock", "stones", "dust", "earth"];
+import { TERRAIN_GROUNDS } from "./land-patterns.js";
+
+/** The eleven land terrains the game sends, in gmcp.md §9.5.1's order (land-patterns.js's table). */
+export const TERRAINS = Object.keys(TERRAIN_GROUNDS);
+const TERRAIN_SET = new Set(TERRAINS);
+
+/** v if it's one of the eleven land terrains, else undefined (`room`, junk, or one we can't draw). */
+export const landTerrain = (v) => (TERRAIN_SET.has(v) ? v : undefined);
+
+/** Title groups the terrain can't say, so they win over it: a road end, and the lava's edge (sent as `rock`). */
+const OVER_TERRAIN = new Set(["road", "molten"]);
 
 /** The groups, in the order the spec's table lists them. */
 export const GROUPS = ["open", "road", "waymark", "high", "slope", "low", "rock", "dust", "workings", "water", "salt", "ice", "molten"];
@@ -46,9 +55,12 @@ export function groupOf(id, name) {
   return TITLES.get(base) ?? "open";
 }
 
-/** The ground an octagon is drawn as: the place's terrain if it's one of TERRAINS, else its title's group. */
+/** The ground an octagon is drawn as: a road end or the lava's edge by its title; else the place's
+ *  terrain if it's one of TERRAINS; else its title's group. */
 export function groundOf(place) {
-  return TERRAINS.includes(place.terrain) ? place.terrain : groupOf(place.id, place.name);
+  const group = groupOf(place.id, place.name);
+  if (OVER_TERRAIN.has(group)) return group;
+  return landTerrain(place.terrain) ?? group;
 }
 
 export function trackOf(name) {

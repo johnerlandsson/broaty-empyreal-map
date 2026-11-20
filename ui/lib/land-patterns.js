@@ -25,9 +25,20 @@ const GROUNDS = {
   water: { fill: "#1f3a52", pattern: { w: 12, h: 6, svg: `<path d="M0,3 q3,-2.4 6,0 t6,0" fill="none" stroke="#5b86ad" stroke-width=".9" stroke-opacity=".75"/>` } },
   salt: { fill: "#4c4a42", pattern: { w: 7, h: 7, svg: `<rect x="1.5" y="1.5" width="4" height="4" fill="none" stroke="#cfc9b9" stroke-width=".6" stroke-opacity=".45"/>` } },
   ice: { fill: "#5a6878", pattern: { w: 6, h: 6, svg: `<path d="M0,6 L6,0" stroke="#dbe9ff" stroke-width=".7" stroke-opacity=".45"/>` } },
-    // the six of the game's terrains (gmcp.md §9.5.1) with no title group: its hues brought down to
-  // the board's dark earth (reference/land-terrain-options.png, A). Water, ice, salt, rock and
-  // dust are the groups' own.
+  // the shore of molten rock: black crust, glowing cracks (reference/molten-ground-options.png, A)
+  molten: {
+    fill: "#241816",
+    pattern: { w: 12, h: 10, svg: `<path d="M0,6 L3,4.5 L5,6.5 L8,3 L12,5 M8,3 L9,0" fill="none" stroke="#e0552b" stroke-width=".9" stroke-opacity=".8"/>` },
+  },
+};
+
+// The game's eleven land terrains (gmcp.md §9.5.1), in its order: this table is the list
+// (land-kinds.js TERRAINS is its keys), so a new terrain is one entry here. Water, ice, salt, rock
+// and dust are the title groups' own; the other six are the game's hues brought down to the
+// board's dark earth (reference/land-terrain-options.png, A).
+export const TERRAIN_GROUNDS = {
+  water: GROUNDS.water,
+  ice: GROUNDS.ice,
   woods: { fill: "#1e3522", pattern: { w: 9, h: 9, svg: `<circle cx="2.5" cy="2.5" r="1.5" fill="#79b07c" fill-opacity=".55"/><circle cx="7" cy="6.8" r="1.3" fill="#79b07c" fill-opacity=".45"/>` } },
   reeds: { fill: "#21443a", pattern: { w: 7, h: 8, svg: `<path d="M1.5,7 V2 M3.2,7 V3.2 M5,7 V1.8" stroke="#8fd0b8" stroke-width=".7" stroke-opacity=".55"/>` } },
   scrub: {
@@ -35,6 +46,8 @@ const GROUNDS = {
     pattern: { w: 9, h: 8, svg: `<path d="M1.5,5.5 L3,3.5 L4.5,5.5 M5.5,2.5 L6.8,1 L8,2.5" fill="none" stroke="#a4bf74" stroke-width=".75" stroke-opacity=".55"/>` },
   },
   cushions: { fill: "#3a4224", pattern: { w: 9, h: 7, svg: `<path d="M1,5 a2,1.8 0 0 1 4,0 Z M5.5,2.5 a1.6,1.4 0 0 1 3.2,0 Z" fill="#c4cf8e" fill-opacity=".45"/>` } },
+  salt: GROUNDS.salt,
+  rock: GROUNDS.rock,
   stones: {
     fill: "#403c34",
     pattern: {
@@ -43,13 +56,10 @@ const GROUNDS = {
       svg: `<circle cx="2" cy="2.2" r="1" fill="none" stroke="#cfc6b4" stroke-width=".6" stroke-opacity=".55"/><circle cx="5.8" cy="5.6" r=".8" fill="none" stroke="#cfc6b4" stroke-width=".6" stroke-opacity=".45"/>`,
     },
   },
+  dust: GROUNDS.dust,
   earth: { fill: "#4a2619", pattern: { w: 7, h: 7, svg: `<path d="M1,2 h1.6 M4.2,5 h1.6" stroke="#c49466" stroke-width=".7" stroke-opacity=".5"/>` } },
-  // the shore of molten rock: black crust, glowing cracks (reference/molten-ground-options.png, A)
-  molten: {
-    fill: "#241816",
-    pattern: { w: 12, h: 10, svg: `<path d="M0,6 L3,4.5 L5,6.5 L8,3 L12,5 M8,3 L9,0" fill="none" stroke="#e0552b" stroke-width=".9" stroke-opacity=".8"/>` },
-  },
 };
+Object.assign(GROUNDS, TERRAIN_GROUNDS);
 
 /**
  * A kind of ground's colour, and its texture: a tile w × h screen pixels whose markup is svg.

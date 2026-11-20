@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import { GROUPS, TERRAINS, TITLES, groundOf, groupOf, regionOf, trackOf } from "./land-kinds.js";
+import { GROUPS, TERRAINS, TITLES, groundOf, groupOf, landTerrain, regionOf, trackOf } from "./land-kinds.js";
 
 const TABLE = {
   open: ["Open Ground", "On the Downs"],
@@ -22,16 +22,24 @@ const TABLE = {
 };
 
 describe("land kinds", () => {
+  it("takes only the eleven land terrains", () => {
+    for (const t of TERRAINS) expect(landTerrain(t)).toBe(t);
+    for (const v of ["room", "sea", "molten", "", 3, null, undefined]) expect(landTerrain(v)).toBeUndefined();
+  });
+
   it("draws a place by the terrain the game sends, else by its title", () => {
     expect(TERRAINS).toEqual(["water", "ice", "woods", "reeds", "scrub", "cushions", "salt", "rock", "stones", "dust", "earth"]);
     // one title, two grounds (both seen on the Downs in the game's logs)
     expect(groundOf({ id: "x", name: "Low Pass", terrain: "stones" })).toBe("stones");
     expect(groundOf({ id: "x", name: "Low Pass", terrain: "earth" })).toBe("earth");
-    expect(groundOf({ id: "surface.tamsin.join.downs", name: "The Open Downs", terrain: "dust" })).toBe("dust");
+    expect(groundOf({ id: "x", name: "Cairn on the Tinners' Track", terrain: "rock" })).toBe("rock");
+    // what the terrain can't say wins over it: a road end, and the lava's edge (sent as rock)
+    expect(groundOf({ id: "surface.tamsin.join.downs", name: "The Open Downs", terrain: "dust" })).toBe("road");
+    expect(groundOf({ id: "x", name: "Edge of the Lava", terrain: "rock" })).toBe("molten");
     // saved before terrain, `room`, or something new: the title's group
     expect(groundOf({ id: "x", name: "Low Pass" })).toBe("high");
     expect(groundOf({ id: "x", name: "Cairn on the Tinners' Track", terrain: "room" })).toBe("waymark");
-    expect(groundOf({ id: "surface.tamsin.join.downs", name: "The Open Downs", terrain: "lava" })).toBe("road");
+    expect(groundOf({ id: "x", name: "Hollow", terrain: "lava" })).toBe("low");
   });
 
   it("reads group, track and region from a name", () => {

@@ -85,6 +85,25 @@ describe("LandStore", () => {
     t.load("ada", { v: 1, places: [{ id: "c", name: "C", x: 0, y: 0, z: 0, exits: {}, terrain: 3 }, { id: "d", name: "D", x: 0, y: 0, z: 0, exits: {}, terrain: "room" }] });
     expect(t.place("c")).not.toHaveProperty("terrain");
     expect(t.place("d")).not.toHaveProperty("terrain");
+    t.load("ada", { v: 1, places: [{ id: "e", name: "E", x: 0, y: 0, z: 0, exits: {}, terrain: "sea" }] });
+    expect(t.place("e")).not.toHaveProperty("terrain");
+  });
+
+  it("keeps no terrain the game doesn't send for land, and a later frame doesn't inherit one", () => {
+    const s = new LandStore();
+    s.ingest({ ...frame("a", 0, 0), terrain: "sea" });
+    expect(s.place("a")).not.toHaveProperty("terrain");
+    s.ingest({ ...frame("a", 0, 0), terrain: "stones" });
+    expect(s.ingest({ ...frame("a", 0, 0), terrain: "sea" })).toBe(false);
+    expect(s.place("a").terrain).toBe("stones");
+  });
+
+  it("load keeps a saved terrain under a place walked first as `room`", () => {
+    const s = new LandStore();
+    s.ingest({ ...frame("a", 0, 0), terrain: "room" }); // replayed before the save came, tile not built
+    s.load("ada", { v: 1, places: [{ id: "a", name: "A", x: 0, y: 0, z: 0, exits: {}, terrain: "stones" }] });
+    expect(s.place("a").terrain).toBe("stones");
+    expect(s.record().places[0].terrain).toBe("stones");
   });
 
   it("changes when a place's terrain does, but a later `room` or none keeps it", () => {
