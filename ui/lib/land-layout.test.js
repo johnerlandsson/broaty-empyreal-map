@@ -267,6 +267,33 @@ describe("layoutLand", () => {
     expect(layoutLand([a, road], world).ways[0]).toMatchObject({ style: "road", track: T }); // named from its places
   });
 
+  it("doesn't take the names' track where either place came with styles: the game says none off a road", () => {
+    // two places on the track, a side step between them the game sends with no style
+    const a = place("surface.tamsin.1.1.1", `On ${T}`, 6, 1.2, { e: { to: "surface.tamsin.1.1.2", back: "w" }, w: { to: "surface.tamsin.1.1.0", style: "road" } });
+    const b = place("surface.tamsin.1.1.2", `Bare Rock on ${T}`, 7.2, 1.2, { w: { to: a.id, back: "e" } });
+    expect(layoutLand([a, b], world).ways[0]).toMatchObject({ style: null, track: null });
+    // one place walked again since, beside one saved before: the walked-again one has its say
+    const old = { ...a, exits: { e: { to: b.id, back: "w" } } };
+    const again = { ...b, exits: { w: { to: a.id, back: "e" }, n: { to: "surface.tamsin.1.1.9", style: "climb" } } };
+    expect(layoutLand([old, again], world).ways[0].style).toBe(null);
+  });
+
+  it("names a road only by a track its places share, or the one only one of them is on", () => {
+    const U = "the Terrace Track";
+    const road = { style: "road" };
+    const a = place("surface.tamsin.1.1.1", `On ${U}`, 6, 1.2, { e: { to: "surface.tamsin.1.1.2", back: "w", ...road } });
+    const b = place("surface.tamsin.1.1.2", `On ${T}`, 7.2, 1.2, { w: { to: a.id, back: "e", ...road } });
+    expect(layoutLand([a, b], world).ways[0]).toMatchObject({ style: "road", track: null }); // a junction: neither's
+    const c = place("surface.tamsin.1.1.2", "Stony Ground", 7.2, 1.2, { w: { to: a.id, back: "e", ...road } });
+    expect(layoutLand([a, c], world).ways[0]).toMatchObject({ style: "road", track: U });
+  });
+
+  it("reads every exit between two places: a scramble beside a road round the spur is a climb", () => {
+    const a = place("surface.tamsin.1.1.1", "Open Ground", 0, 0, { n: { to: "surface.tamsin.1.1.2", style: "road" }, ne: { to: "surface.tamsin.1.1.2", style: "climb" } });
+    const b = place("surface.tamsin.1.1.2", "Knoll", 0.6, 1.2);
+    expect(layoutLand([a, b], world).ways[0].style).toBe("climb");
+  });
+
   it("gives a stub the style of the way it leaves by", () => {
     const p = place("surface.tamsin.1.1.1", "Saddle on the Downs", 0, 0, { se: { to: "surface.tamsin.1.1.7", style: "climb" }, n: { to: "surface.tamsin.1.1.8" } });
     const out = layoutLand([p], world);

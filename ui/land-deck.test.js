@@ -225,7 +225,7 @@ describe("LandDeck.draw", () => {
       expect(gap).toBeCloseTo(4 / k, 4);
       expect(dot).toBeLessThan(gap / 10);
       expect(+trail.getAttribute("stroke-width")).toBeCloseTo(2.6 / k, 4);
-      expect(trail.getAttribute("stroke-linecap")).toBe("round");
+      expect(trail.parentNode.getAttribute("stroke-linecap")).toBe("round");
     }
     // the climb not taken: a dotted stub with ticks; the other stub has none
     expect(deck.svg.querySelectorAll("[data-stub]")).toHaveLength(2);
@@ -237,15 +237,20 @@ describe("LandDeck.draw", () => {
     for (const n of [climb, ticks]) expect(n.getAttribute("stroke")).toBe(null);
     expect(climb.parentNode.getAttribute("stroke")).toBe("#5a4a38");
     expect(ticks.parentNode.getAttribute("stroke")).toBe("#5a4a38");
-    expect(+ticks.getAttribute("stroke-width")).toBeCloseTo(0.08 + 6 / deck.k, 4);
+    for (const a of ["stroke-width", "stroke-dasharray"]) expect(ticks.getAttribute(a)).toBe(null); // the group's
+    expect(+ticks.parentNode.getAttribute("stroke-width")).toBeCloseTo(0.08 + 6 / deck.k, 4);
     expect(trail.getAttribute("stroke")).toBe("#7d6b55");
+    const after = (x, y) => !!(x.compareDocumentPosition(y) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(after(ticks, trail)).toBe(true); // a lit way is drawn over every unlit one, ticks and all
     // from E, the other way round
     store.ingest({ id: E, name: "Low Pass", coords: { x: 1.6, y: 0, z: 0.4 }, exits: { w: { id: C, inverse: "e" } } });
     deck.draw(store);
     expect(ticks.getAttribute("stroke")).toBe("#7d6b55");
     expect(trail.getAttribute("stroke")).toBe(null);
     expect(trail.parentNode.getAttribute("stroke")).toBe("#5a4a38");
-    expect(+trail.getAttribute("stroke-width")).toBeCloseTo(2.2 / deck.k, 4);
+    expect(trail.getAttribute("stroke-width")).toBe(null);
+    expect(+trail.parentNode.getAttribute("stroke-width")).toBeCloseTo(2.2 / deck.k, 4);
+    expect(after(trail, climb) && after(climb, ticks)).toBe(true); // the lit climb, its ticks over its line
   });
 
   it("draws a way the game calls a road as a track, whatever its places are called", () => {

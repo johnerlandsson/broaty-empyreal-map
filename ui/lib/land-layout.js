@@ -61,11 +61,14 @@ const isEnd = (p) => p.id.includes(".join.");
  *  since what a way costs you matters more than what it follows; a road over a game trail. */
 const STYLES = ["climb", "road", "trail"];
 
-/** The style p's exit to q is sent with, if the board draws it. */
-const exitStyle = (p, q) => {
-  const s = p.exits?.[exitTo(p, q.id)]?.style;
-  return STYLES.includes(s) ? s : null;
-};
+/** An exit's style, if it's one the board draws; else null (a plain way). */
+const drawnStyle = (e) => (STYLES.includes(e?.style) ? e.style : null);
+
+/** The styles of all p's exits to q (a place can have two ways to one neighbour). */
+const exitStyles = (p, q) => ORDER.filter((d) => p.exits?.[d]?.to === q.id).map((d) => drawnStyle(p.exits[d]));
+
+/** Whether any of p's exits came with a style: a place saved since the game sends them. */
+const styled = (p) => ORDER.some((d) => p.exits?.[d]?.style);
 
 function trackBetween(p, q) {
   const tp = trackOf(p.name), tq = trackOf(q.name);
@@ -83,17 +86,21 @@ function along(p, c, q, t) {
   return { at, angle: angleOf(at, on) };
 }
 
-/** How the way between p and q goes, and the name of its track: as either end's exit says, the
- *  first of STYLES that fits; where neither says anything (a place saved before the game sent a
- *  style), a track if the names put both on one. A road is named from its places' names, if they
- *  give one. */
+/** How the way between p and q goes, and the name of its track: as any exit either way between
+ *  them says, the first of STYLES that fits. Where nothing's said and neither place has a styled
+ *  exit at all (both saved before the game sent styles), a track if the names put both on one; a
+ *  place the game sent since says none for a way that isn't a road, so its names don't count. A
+ *  road is named from its places' names: the track they share, else the one only one of them is on. */
 function styleBetween(p, q) {
-  const said = [exitStyle(p, q), exitStyle(q, p)];
+  const said = [...exitStyles(p, q), ...exitStyles(q, p)];
   const style = STYLES.find((s) => said.includes(s)) ?? null;
   const named = trackBetween(p, q);
-  if (style === "road") return { style, track: named ?? trackOf(p.name) ?? trackOf(q.name) };
+  if (style === "road") {
+    const tp = trackOf(p.name), tq = trackOf(q.name);
+    return { style, track: named ?? (tp && !tq ? tp : tq && !tp ? tq : null) };
+  }
   if (style) return { style, track: null };
-  return named ? { style: "road", track: named } : { style: null, track: null };
+  return named && !styled(p) && !styled(q) ? { style: "road", track: named } : { style: null, track: null };
 }
 
 /**
@@ -191,8 +198,7 @@ export function layoutLand(places, world, { spread = SPREAD } = {}) {
       if (!e || walked.has(e.to)) continue;
       if (e.area && !e.area.startsWith("surface.")) continue; // into Zennor: its road, never a stub
       const f = faceMid(spots.get(p.id), dir), g = out(f, dir, STUB);
-      const style = STYLES.includes(e.style) ? e.style : null;
-      stubs.push({ id: p.id, dir, style, x1: f.x, y1: fy(f.y), x2: g.x, y2: fy(g.y) });
+      stubs.push({ id: p.id, dir, style: drawnStyle(e), x1: f.x, y1: fy(f.y), x2: g.x, y2: fy(g.y) });
     }
   }
 

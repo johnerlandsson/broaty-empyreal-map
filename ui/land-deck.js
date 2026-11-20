@@ -210,18 +210,23 @@ export class LandDeck {
     this.stubs?.setAttribute("stroke-width", px(1.6));
     this.stubs?.setAttribute("stroke-dasharray", `${px(0.1)} ${px(3.4)}`);
     // a climb's ticks: 1.4 px across every 6 px, standing 3 px either side of its line (3.5 lit);
-    // a game trail: dots 4 px apart on a 2.2 px line (2.6 lit)
-    for (const t of this.ticks ?? []) {
-      const lit = t.hasAttribute("data-lit");
-      t.setAttribute("stroke-width", num(lit ? 0.13 + 7 / k : 0.08 + 6 / k));
-      t.setAttribute("stroke-dasharray", `${px(1.4)} ${px(4.6)}`);
+    // a game trail: dots 4 px apart on a 2.2 px line (2.6 lit). On the groups, and on only the lit
+    // ones, which sit in the lit group
+    const ticks = `${px(1.4)} ${px(4.6)}`, dots = `${px(0.1)} ${px(4)}`;
+    this.ticksG?.setAttribute("stroke-width", num(0.08 + 6 / k));
+    this.ticksG?.setAttribute("stroke-dasharray", ticks);
+    this.trailsG?.setAttribute("stroke-width", px(2.2));
+    this.trailsG?.setAttribute("stroke-dasharray", dots);
+    for (const t of this.litG?.querySelectorAll("[data-ticks]") ?? []) {
+      t.setAttribute("stroke-width", num(0.13 + 7 / k));
+      t.setAttribute("stroke-dasharray", ticks);
     }
-    for (const t of this.trails ?? []) {
-      t.setAttribute("stroke-width", px(t.hasAttribute("data-lit") ? 2.6 : 2.2));
-      t.setAttribute("stroke-dasharray", `${px(0.01)} ${px(4)}`);
+    for (const t of this.litG?.querySelectorAll("[data-trail]") ?? []) {
+      t.setAttribute("stroke-width", px(2.6));
+      t.setAttribute("stroke-dasharray", dots);
     }
     this.stubTicks?.setAttribute("stroke-width", px(1.6 + 6));
-    this.stubTicks?.setAttribute("stroke-dasharray", `${px(1.4)} ${px(4.6)}`);
+    this.stubTicks?.setAttribute("stroke-dasharray", ticks);
     // Zennor's edge is dashed, so it's all in km (no non-scaling-stroke: its dashes would be in px)
     this.edge?.setAttribute("stroke-width", px(1));
     this.edge?.setAttribute("stroke-dasharray", `${px(4)} ${px(3)}`);
@@ -286,19 +291,19 @@ export class LandDeck {
       const lit = el("use", { href: `#${this.octId}`, fill: HL, "fill-opacity": 0.3, stroke: HL, "stroke-width": 3, "pointer-events": "none" }, this.hl);
       pulse(lit); // its breath starts from full
     }
-    // the ways out of your place, lit: the same curves, lighter and at a road's weight, drawn last
+    // the ways out of your place, lit: the same curves, lighter and at a road's weight, moved into
+    // the lit group over every other way (rescale() sizes a lit climb's ticks and a lit trail)
     const litFor = here ? store.here : null;
     if (litFor !== this.litFor) {
       for (const path of this.wayEls.get(this.litFor) ?? []) {
-        path.removeAttribute("stroke");
-        path.removeAttribute("stroke-width");
-        path.removeAttribute("data-lit");
+        for (const a of ["stroke", "stroke-width", "stroke-dasharray", "data-lit"]) path.removeAttribute(a);
+        this.homeOf.get(path).appendChild(path);
       }
       for (const path of this.wayEls.get(litFor) ?? []) {
         path.setAttribute("stroke", LIT);
-        path.setAttribute("stroke-width", 0.13);
+        if (!path.hasAttribute("data-ticks") && !path.hasAttribute("data-trail")) path.setAttribute("stroke-width", 0.13);
         path.setAttribute("data-lit", "");
-        path.parentNode.appendChild(path);
+        this.litG.appendChild(path);
       }
       this.litFor = litFor;
     }
@@ -355,26 +360,26 @@ export class LandDeck {
     // the ways, under the octagons: thin curves square out of their exits' faces, a climb's with
     // ticks across it and a game trail's dotted (draw() lights the ones out of your place)
     const ways = g({ stroke: EARTH, "stroke-width": 0.08, fill: "none", "stroke-linecap": "round" });
-    const trails = g({ stroke: CLIMB, fill: "none" });
+    this.trailsG = g({ stroke: CLIMB, fill: "none", "stroke-linecap": "round" });
     const climbs = g({ stroke: CLIMB, "stroke-width": 0.08, fill: "none", "stroke-linecap": "round" });
-    const ticks = g({ stroke: CLIMB, fill: "none", "stroke-linecap": "butt" });
+    this.ticksG = g({ stroke: CLIMB, fill: "none", "stroke-linecap": "butt" });
+    this.litG = g({ fill: "none", "stroke-linecap": "round" }); // the ways out of your place, over the rest
     this.wayEls = new Map(); // place id -> the paths of the ways you can leave it by (and a climb's ticks)
+    this.homeOf = new Map(); // a way's path -> its group, to go back to when it's no longer lit
     this.litFor = null;
-    this.ticks = [];
-    this.trails = [];
+    const add = (attrs, group) => {
+      const path = el("path", attrs, group);
+      this.homeOf.set(path, group);
+      return path;
+    };
     for (const w of L.ways) {
       if (w.style === "road") continue;
-      const els = [];
-      if (w.style === "climb") {
-        els.push(el("path", { "data-way": "", "data-climb": "", d: w.path }, climbs));
-        const t = el("path", { "data-ticks": "", d: w.path }, ticks);
-        this.ticks.push(t);
-        els.push(t);
-      } else if (w.style === "trail") {
-        const t = el("path", { "data-way": "", "data-trail": "", d: w.path, "stroke-linecap": "round" }, trails);
-        this.trails.push(t);
-        els.push(t);
-      } else els.push(el("path", { "data-way": "", d: w.path }, ways));
+      const els =
+        w.style === "climb"
+          ? [add({ "data-way": "", "data-climb": "", d: w.path }, climbs), add({ "data-ticks": "", d: w.path, "stroke-linecap": "butt" }, this.ticksG)]
+          : w.style === "trail"
+            ? [add({ "data-way": "", "data-trail": "", d: w.path }, this.trailsG)]
+            : [add({ "data-way": "", d: w.path }, ways)];
       for (const id of w.oneWay ? [w.a] : [w.a, w.b]) {
         if (!this.wayEls.has(id)) this.wayEls.set(id, []);
         this.wayEls.get(id).push(...els);
@@ -406,10 +411,11 @@ export class LandDeck {
 
     // the ways not taken
     this.stubs = g({ stroke: DIM, "stroke-linecap": "round" });
-    for (const s of L.stubs) el("line", { "data-stub": "", x1: num(s.x1), y1: num(s.y1), x2: num(s.x2), y2: num(s.y2) }, this.stubs);
-    this.stubTicks = g({ stroke: DIM, "stroke-linecap": "butt" });
+    this.stubTicks = g({ stroke: DIM, "stroke-linecap": "butt" }); // a climb not taken: its stub ticked
     for (const s of L.stubs) {
-      if (s.style === "climb") el("line", { "data-stub-ticks": "", x1: num(s.x1), y1: num(s.y1), x2: num(s.x2), y2: num(s.y2) }, this.stubTicks);
+      const at = { x1: num(s.x1), y1: num(s.y1), x2: num(s.x2), y2: num(s.y2) };
+      el("line", { "data-stub": "", ...at }, this.stubs);
+      if (s.style === "climb") el("line", { "data-stub-ticks": "", ...at }, this.stubTicks);
     }
 
     // one-way ways: a chevron pointing the way you can go, the same size at any zoom
