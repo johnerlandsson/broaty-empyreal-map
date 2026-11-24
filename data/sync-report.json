@@ -1,21 +1,17 @@
 {
-  "commit": "2b54d0e",
+  "commit": "cdbef43",
   "newPlaces": [],
   "removedPlaces": [],
   "noBuilder": [],
   "rooms": {
     "added": [
       {
-        "place": "tiss",
-        "id": "tiss.armourer"
+        "place": "dolcoath",
+        "id": "dolcoath.lab"
       },
       {
         "place": "tiss",
-        "id": "tiss.bookroom"
-      },
-      {
-        "place": "tiss",
-        "id": "tiss.chandlery"
+        "id": "tiss.lab"
       }
     ],
     "removed": [],
@@ -24,22 +20,16 @@
   "exits": {
     "added": [
       {
-        "place": "tiss",
-        "room": "tiss.inner-0730",
-        "dir": "south",
-        "to": "tiss.armourer"
+        "place": "dolcoath",
+        "room": "dolcoath.casting-floor",
+        "dir": "east",
+        "to": "dolcoath.lab"
       },
       {
         "place": "tiss",
-        "room": "tiss.rim-1000",
-        "dir": "south",
-        "to": "tiss.bookroom"
-      },
-      {
-        "place": "tiss",
-        "room": "tiss.rim-1100",
-        "dir": "south",
-        "to": "tiss.chandlery"
+        "room": "tiss.inner-1030",
+        "dir": "north",
+        "to": "tiss.lab"
       }
     ],
     "removed": []
@@ -48,19 +38,18 @@
   "orphans": [],
   "droppedFlags": [
     {
-      "name": "shop",
+      "name": "lab",
       "places": [
-        "tiss",
-        "zennor"
+        "dolcoath",
+        "tiss"
       ]
     }
   ],
   "unknownFields": [
     {
-      "name": "counter",
+      "name": "hull.devices.cargo.stats.holdTank",
       "places": [
-        "tiss",
-        "zennor"
+        "tug"
       ]
     }
   ],
@@ -76,6 +65,7 @@
     "droid_dock",
     "forecast",
     "freight",
+    "lab",
     "market",
     "outfitter",
     "pegs",
@@ -104,6 +94,7 @@
     "hull.devices.cargo.name",
     "hull.devices.cargo.points",
     "hull.devices.cargo.stats.holdMass",
+    "hull.devices.cargo.stats.holdTank",
     "hull.devices.cargo.stats.holdVolume",
     "hull.devices.comms.name",
     "hull.devices.comms.points",
