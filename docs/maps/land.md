@@ -86,9 +86,19 @@ the rooms with no coords (it means to send the front's, set-pieces.md decision 4
   goes with its front's land on **Forget this land…** (the room you stand in stays, its front too).
   Routes run through rooms as standing at their front, so a route from inside a hut leads out of it,
   and its steps count the rooms.
-- While you're in a room the board stays up and lights the front, with no ways lit (you can't leave
-  a room by the front's). A door into a room is never a stub. How a site's rooms themselves show is
-  waiting on a pick (`reference/land-sites-options.png`).
+- **Rooms at their doors** (A of `reference/land-sites-options.png`, picked 2026-11-25; as built,
+  `reference/land-sites-built.png`). Each room you've entered is a 0.5 km roofed square, dark with a
+  solid Stone edge as Zennor's block is, just outside the front's face its door leaves by (its middle
+  0.42 km out), joined to the face by a short Stone door. A room through another room's compass door
+  is a step on (0.62 km along each axis it names); one by up, down, in or out sits in the first free
+  spot beside the room it's reached from, clockwise from straight out from the front. Rooms never
+  overlap each other or an octagon; one with no free spot isn't drawn (`layoutLand`'s `rooms` and
+  `doors`). A door not gone through is a short Dim bar out of the face: there's a way in, never
+  where to, and the room behind it isn't named.
+- Inside, your room's square glows amber as your octagon does (the glow on the square itself:
+  WebKit draws nothing for a group that small under the glow filter), with no ways lit, since you
+  can't leave a room by the front's. Hover a room for its name; click it for the route there, which
+  runs through the rooms' squares; a room has the ground's right-click menu, with no note.
 
 ## What's kept
 

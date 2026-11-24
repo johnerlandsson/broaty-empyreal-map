@@ -110,11 +110,67 @@ describe("in a site's room", () => {
     expect(siteLand(undefined, s)).toBe(null);
   });
 
-  it("keeps the board, centred on the front you went in by", () => {
+  it("keeps the board, centred on your room by the front you went in by, lit there and not on the front", () => {
     const deck = deckFor("surface.lanyon");
     deck.draw(siteWalk());
-    expect(deck.focus).toEqual([351.1 * 1.3, -3095.3 * 1.3].map((v) => +v.toFixed(4)));
+    const hold = deck.L.rooms.get(HOLD);
+    expect(deck.focus).toEqual([hold.x, -hold.y]);
     expect(octOf(deck, FRONT)).toBeTruthy();
+    const lit = deck.svg.querySelectorAll("[data-here]");
+    expect(lit).toHaveLength(1);
+    expect(lit[0].getAttribute("data-here")).toBe(HOLD);
+    expect(lit[0].tagName.toLowerCase()).toBe("rect");
+    expect(lit[0].getAttribute("filter")).toMatch(/^url\(#glow-land-\d+\)$/);
+    expect(+lit[0].getAttribute("x") + 0.25).toBeCloseTo(hold.x, 4);
+    expect(deck.svg.querySelectorAll("[data-lit]")).toHaveLength(0); // no ways out of a room
+  });
+
+  it("draws each room entered as a roofed square, its doors, and a bar for a door not gone through", () => {
+    const s = siteWalk();
+    s.ingest(place(FRONT, 351.1, 3095.3, { E: { id: P1, inverse: "W" }, N: { id: HULL, area: "site.lark", inverse: "S" }, S: { id: "site.lark.deck", area: "site.lark" } }, "The Lark"));
+    const deck = deckFor("surface.lanyon");
+    deck.draw(s);
+    const rooms = [...deck.svg.querySelectorAll("[data-room]")];
+    expect(rooms.map((r) => r.getAttribute("data-room")).sort()).toEqual([HOLD, HULL].sort());
+    for (const r of rooms) {
+      expect(r.getAttribute("data-pick")).toBe(r.getAttribute("data-room"));
+      expect(r.getAttribute("stroke")).toBe("#4b4338");
+      expect(r.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+      expect(+r.getAttribute("width")).toBeCloseTo(0.5, 6);
+    }
+    expect(deck.svg.querySelectorAll("[data-door]")).toHaveLength(2);
+    expect(deck.svg.querySelectorAll("[data-door-bar]")).toHaveLength(1);
+    // nothing names the room not entered
+    expect(deck.div.textContent).not.toMatch(/deck/i);
+  });
+
+  it("shows a room's name on hover, and takes a click on it as a place to go to", () => {
+    const shown = [];
+    window.panel = { tooltip: { show: (_r, t) => shown.push(t), hide: () => {} } };
+    const s = siteWalk();
+    s.ingest(place(P2, 354.2, 3095.5, { W: { id: P1, inverse: "E" } }));
+    const deck = deckFor("surface.lanyon");
+    deck.draw(s);
+    const hull = deck.svg.querySelector(`[data-room="${HULL}"]`);
+    hull.dispatchEvent(new MouseEvent("mouseenter"));
+    expect(shown.at(-1)).toEqual({ title: "Inside the Hull", body: "" });
+    delete window.panel;
+    // from P2, out on the land, to the hull
+    s.ingest(place(P2, 354.2, 3095.5, { W: { id: P1, inverse: "E" } }));
+    deck.draw(s);
+    click(hull);
+    expect(deck.target).toBe(HULL);
+    expect(deck.div.querySelector(".land-card").textContent).toContain("Inside the Hull");
+    expect(deck.div.querySelector(".land-card").textContent).toContain("3 steps the way you know");
+    expect(deck.svg.querySelector("[data-target]").getAttribute("data-target")).toBe(HULL);
+  });
+
+  it("gives a room the ground's menu, with no note", () => {
+    const deck = deckFor("surface.lanyon");
+    deck.draw(siteWalk());
+    deck.svg.querySelector(`[data-room="${HULL}"]`).dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 30, clientY: 40 }));
+    const items = [...deck.div.querySelectorAll(".land-menu button")].map((b) => b.textContent);
+    expect(items).toEqual(["Forget this land…"]);
   });
 
   it("lights the way out over the land from your room to a place you click, and counts every step", () => {

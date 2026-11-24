@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { landWorld } from "./land-choose.js";
-import { layoutLand } from "./land-layout.js";
+import { faceMid, layoutLand } from "./land-layout.js";
 import { nearestRoadEnd } from "./land-route.js";
 import { LandStore } from "./land-store.js";
 import land from "../data/land.js";
@@ -159,7 +159,8 @@ describe("a walk to a site and into its rooms", () => {
     expect(s.walked(CAB)).toBe(false);
     expect(s.room(HULL)).toMatchObject({ id: HULL, name: "Inside the Hull", site: "lark", front: FRONT });
     expect(s.room(HOLD)).toMatchObject({ front: FRONT });
-    expect(s.room(HOLD).exits).toEqual({ w: { to: HULL, back: "e" } }); // u isn't a compass point
+    // up, down, in and out are kept for a room: they're how a site goes deeper (the Lark's galley)
+    expect(s.room(HOLD).exits).toEqual({ w: { to: HULL, back: "e" }, u: { to: CAB, back: "d" } });
     // never a place of the land: it has no spot of its own
     expect(s.places().map((p) => p.id)).not.toContain(HULL);
     expect(s.place(HULL)).toBeUndefined();
@@ -214,5 +215,76 @@ describe("a walk to a site and into its rooms", () => {
     expect(L.spots.has(FRONT)).toBe(true);
     expect(L.stubs.filter((x) => x.id === FRONT)).toEqual([]);
     expect(L.zennor).toEqual({ outline: [], roads: [] });
+  });
+});
+
+// A of reference/land-sites-options.png: each room you've entered a small roofed square just outside
+// the front's face its door leaves by, or a step on from the room it opens off.
+describe("a site's rooms on the board", () => {
+  const layout = (s) => layoutLand(s.places(), landWorld("surface.lanyon", land), { near: s.standing(s.here), rooms: s.rooms() });
+
+  it("puts a room through the front's door 0.42 km out from that face, the next a step on through its own", () => {
+    const s = siteWalk();
+    const L = layout(s);
+    const f = faceMid(L.spots.get(FRONT), "n");
+    expect(L.rooms.get(HULL).x).toBeCloseTo(f.x, 6);
+    expect(L.rooms.get(HULL).y).toBeCloseTo(f.y + 0.42, 6);
+    expect(L.rooms.get(HOLD).x).toBeCloseTo(f.x + 0.62, 6); // east of the hull
+    expect(L.rooms.get(HOLD).y).toBeCloseTo(f.y + 0.42, 6);
+    expect(L.rooms.has(CAB)).toBe(false); // not walked
+  });
+
+  it("draws a door for each one between walked rooms or into one, and a bar for one not gone through", () => {
+    const s = siteWalk();
+    const L = layout(s);
+    const doors = L.doors.map((d) => [d.from, d.to, d.walked]);
+    expect(doors).toContainEqual([FRONT, HULL, true]);
+    expect(doors).toContainEqual([HULL, HOLD, true]);
+    // the front's door to the hold isn't in this walk; the hold's way up isn't on a compass point
+    expect(doors).toHaveLength(2);
+    const front2 = siteWalk();
+    front2.ingest(front({ ...FRONT_EXITS, S: { id: "site.lark.deck", area: "site.lark", inverse: "N" } }));
+    const bar = layout(front2).doors.find((d) => d.to === null);
+    expect(bar).toMatchObject({ from: FRONT, dir: "s", walked: false });
+    const g = faceMid(layout(front2).spots.get(FRONT), "s");
+    expect([bar.x1, bar.y1]).toEqual([g.x, -g.y]);
+    expect(bar.y2 - bar.y1).toBeCloseTo(0.17, 6); // svg y is south
+  });
+
+  it("puts a room reached by up, down, in or out beside the room it's reached from, clear of the rest", () => {
+    const s = siteWalk();
+    s.ingest(room(CAB, "Cabin", { D: { id: HOLD, inverse: "U" } }));
+    const L = layout(s);
+    const c = L.rooms.get(CAB), h = L.rooms.get(HOLD);
+    expect(Math.max(Math.abs(c.x - h.x), Math.abs(c.y - h.y))).toBeCloseTo(0.62, 6);
+    const all = [...L.rooms.values()];
+    for (const a of all) for (const b of all) if (a !== b) expect(Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))).toBeGreaterThan(0.5);
+    // and clear of the front's octagon
+    const F = L.spots.get(FRONT);
+    for (const r of all) expect(Math.hypot(r.x - F.x, r.y - F.y)).toBeGreaterThan(0.48 + 0.25);
+    expect(L.doors.map((d) => [d.from, d.to])).toContainEqual([HOLD, CAB]);
+  });
+
+  it("places no room whose front isn't drawn", () => {
+    const s = siteWalk();
+    const L = layoutLand(s.places().filter((p) => p.id !== FRONT), landWorld("surface.lanyon", land), { rooms: s.rooms() });
+    expect(L.rooms.size).toBe(0);
+    expect(L.doors).toEqual([]);
+  });
+
+  it("lays out every site's rooms clear of each other, however its doors run (the Stamps)", () => {
+    // the Stamps: mill W of the front, huts N; count house N of the mill; the adit in from the huts
+    const s = lanyonWalk();
+    const F2 = "surface.lanyon.site.stamps";
+    s.ingest({ ...front({ W: { id: "site.stamps.mill", area: "site.stamps" }, N: { id: "site.stamps.huts", area: "site.stamps" }, E: { id: P1 } }), id: F2 });
+    s.ingest({ id: "site.stamps.mill", name: "Mill", site: "stamps", exits: { E: { id: F2 }, N: { id: "site.stamps.count-house" } } });
+    s.ingest({ id: "site.stamps.count-house", name: "Count House", site: "stamps", exits: { S: { id: "site.stamps.mill" } } });
+    s.ingest({ id: "site.stamps.huts", name: "Huts", site: "stamps", exits: { S: { id: F2 }, IN: { id: "site.stamps.adit" } } });
+    s.ingest({ id: "site.stamps.adit", name: "Adit", site: "stamps", exits: { OUT: { id: "site.stamps.huts" } } });
+    const L = layout(s);
+    expect(L.rooms.size).toBe(4);
+    const all = [...L.rooms.values()];
+    for (const a of all) for (const b of all) if (a !== b) expect(Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))).toBeGreaterThan(0.5);
+    expect(s.route("site.stamps.adit", "site.stamps.count-house")).toEqual(["site.stamps.adit", "site.stamps.huts", F2, "site.stamps.mill", "site.stamps.count-house"]);
   });
 });

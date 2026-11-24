@@ -18,7 +18,7 @@
 import { DIM, label } from "./deck-view.js";
 import { styleOf } from "./lib/land-kinds.js";
 import { townName } from "./lib/land-choose.js";
-import { layoutLand, num, OCT, octagon } from "./lib/land-layout.js";
+import { layoutLand, num, OCT, octagon, ROOM } from "./lib/land-layout.js";
 import { groundStyle } from "./lib/land-patterns.js";
 import { edgeCard, nearestRoadEnd, routePath } from "./lib/land-route.js";
 import { attachPanZoom, attachPick, el, glowFilter, pulse, zoomButtons } from "./lib/svg.js";
@@ -132,7 +132,7 @@ export class LandDeck {
       const id = e.target.closest?.("[data-pick]")?.getAttribute("data-pick");
       const r = div.getBoundingClientRect();
       const at = [e.clientX - r.left, e.clientY - r.top];
-      if (id && id !== "ground") {
+      if (id && id !== "ground" && this.store.place(id)) {
         const items = [["Note…", () => this.editNote(id)]];
         if (this.store.place(id)?.note) items.push(["Remove note", () => this.note(id, null)]);
         this.openMenu(at, items);
@@ -277,20 +277,34 @@ export class LandDeck {
       this.build(store);
     }
 
-    // your octagon, lit: in a site's room, its front's
+    // your octagon, lit; in a site's room, its square (else, one not placed, its front's octagon)
     const standing = store.here ? store.standing(store.here) : null;
-    const here = standing ? this.L.spots.get(standing) ?? null : null;
+    const inRoom = this.L.rooms.has(store.here);
+    const lightFor = inRoom ? store.here : standing;
+    const here = this.spotOf(lightFor);
     this.focus = here ? [here.x, -here.y] : null;
     if (!here) {
       this.hl?.remove();
       this.hl = null;
-    } else if (this.hl?.getAttribute("data-here") !== standing) {
+    } else if (this.hl?.getAttribute("data-here") !== lightFor) {
       // a new light for each place, never the old one moved: WebKitGTK doesn't repaint a glowing
       // group whose transform changes, so a moved light vanished until the window was redrawn
       this.hl?.remove();
-      const at = `translate(${num(here.x)} ${num(-here.y)})`;
-      this.hl = el("g", { filter: this.glow, "data-here": standing, transform: at }, this.hereG);
-      const lit = el("use", { href: `#${this.octId}`, fill: HL, "fill-opacity": 0.3, stroke: HL, "stroke-width": 3, "pointer-events": "none" }, this.hl);
+      const look = { fill: HL, "fill-opacity": 0.3, stroke: HL, "stroke-width": 3, "pointer-events": "none" };
+      let lit;
+      if (inRoom) {
+        // a room's square, glowing itself: WebKit draws nothing for a group as small as a room's
+        // square under the glow filter, but does for the square
+        lit = this.hl = el(
+          "rect",
+          { "data-here": lightFor, x: num(here.x - ROOM / 2), y: num(-here.y - ROOM / 2), width: ROOM, height: ROOM, rx: 0.05, "vector-effect": "non-scaling-stroke", filter: this.glow, ...look },
+          this.hereG,
+        );
+      } else {
+        const at = `translate(${num(here.x)} ${num(-here.y)})`;
+        this.hl = el("g", { filter: this.glow, "data-here": lightFor, transform: at }, this.hereG);
+        lit = el("use", { href: `#${this.octId}`, ...look }, this.hl);
+      }
       pulse(lit); // its breath starts from full
     }
     // the ways out of your place, lit: the same curves, lighter and at a road's weight, moved into
@@ -336,8 +350,9 @@ export class LandDeck {
     const places = store.places().filter((p) => p.id.startsWith(this.prefix));
     this.places = places;
     this.hasEnd = places.some((p) => p.id.includes(".join."));
-    const L = layoutLand(places, this.world, { near: store.here && store.standing(store.here) });
+    const L = layoutLand(places, this.world, { near: store.here && store.standing(store.here), rooms: store.rooms() });
     this.L = L;
+    this.allSpots = new Map([...L.spots, ...L.rooms]); // for a route's line, through rooms too
     this.board.replaceChildren();
     this.fixed = [];
     const g = (attrs) => el("g", attrs, this.board);
@@ -445,6 +460,28 @@ export class LandDeck {
       else this.trackNames.push(label(at, 0, -17, l.text, 10.5, { fill: DIM, "font-style": "italic", "letter-spacing": 1 }));
     }
 
+    // a site's rooms you've entered: small roofed squares by the front, dark with a Stone edge as
+    // Zennor's block is, joined by short doors; a door not gone through is a short Dim bar
+    const doors = g({ stroke: STONE, "stroke-width": 0.09, "stroke-linecap": "butt" });
+    const bars = g({ stroke: DIM, "stroke-width": 0.07, "stroke-linecap": "butt" });
+    for (const d of L.doors) {
+      el("line", { [d.walked ? "data-door" : "data-door-bar"]: "", x1: num(d.x1), y1: num(d.y1), x2: num(d.x2), y2: num(d.y2) }, d.walked ? doors : bars);
+    }
+    const roofs = g({});
+    for (const [id, c] of L.rooms) {
+      const r = store.room(id);
+      const sq = el(
+        "rect",
+        { "data-room": id, "data-pick": id, x: num(c.x - ROOM / 2), y: num(-c.y - ROOM / 2), width: ROOM, height: ROOM, rx: 0.05, fill: ZENNOR, stroke: STONE, "stroke-width": 1.4, "vector-effect": "non-scaling-stroke" },
+        roofs,
+      );
+      sq.addEventListener("mouseenter", () => {
+        this.tipFor = id;
+        window.panel?.tooltip?.show(sq.getBoundingClientRect(), { title: r?.name ?? "", body: "" });
+      });
+      sq.addEventListener("mouseleave", () => this.hideTip());
+    }
+
     // the route to the place you clicked, under your light; then your light (draw() sets it)
     this.routeG = g({ "pointer-events": "none" });
     this.hereG = g({});
@@ -495,16 +532,26 @@ export class LandDeck {
     if (!s || !t || !this.L) return;
     this.route = s.here ? s.route(s.here, t) : null;
     if (this.route) {
-      // a site's rooms stand at its front: the line starts there, the steps count them all
-      const onLand = this.route.map((id) => s.standing(id)).filter((id, i, a) => id !== a[i - 1]);
+      // a site's room on the board is its square (one not placed stands at its front)
+      const ids = this.route.map((id) => (this.L.rooms.has(id) ? id : s.standing(id))).filter((id, i, a) => id !== a[i - 1]);
       this.routeLine = el(
         "path",
-        { "data-route": "", d: routePath(onLand, this.L), fill: "none", stroke: HL, "stroke-opacity": 0.75, "stroke-linecap": "round", "stroke-linejoin": "round" },
+        { "data-route": "", d: routePath(ids, { spots: this.allSpots, ways: this.L.ways }), fill: "none", stroke: HL, "stroke-opacity": 0.75, "stroke-linecap": "round", "stroke-linejoin": "round" },
         this.routeG,
       );
     }
-    const c = this.L.spots.get(t);
-    this.targetLine = el("path", { "data-target": t, d: octagon(c.x, c.y), fill: "none", stroke: HL, "stroke-opacity": 0.75 }, this.routeG);
+    const c = this.spotOf(t);
+    if (!c) return;
+    const d = this.L.rooms.has(t)
+      ? `M${num(c.x - ROOM / 2)},${num(-c.y - ROOM / 2)} h${ROOM} v${ROOM} h${-ROOM} Z`
+      : octagon(c.x, c.y);
+    this.targetLine = el("path", { "data-target": t, d, fill: "none", stroke: HL, "stroke-opacity": 0.75 }, this.routeG);
+  }
+
+  /** Where a walked place's octagon, or a site's room's square, is drawn (north-up km); undefined
+   *  for one not on this board. */
+  spotOf(id) {
+    return id == null ? undefined : this.L?.spots.get(id) ?? this.L?.rooms.get(id);
   }
 
   /** A km point on the board, in px from the band's top left. */
@@ -532,8 +579,8 @@ export class LandDeck {
       this.card.remove();
       this.card = null;
     }
-    if (id && this.store.walked(id)) {
-      const p = this.store.place(id);
+    if (id && this.spotOf(id)) {
+      const p = this.store.place(id) ?? this.store.room(id);
       if (!this.card) {
         this.card = this.overlay(editing ? "land-card note" : "land-card");
         this.card.dataset.for = id;
@@ -548,7 +595,7 @@ export class LandDeck {
       }
       if (!editing) this.card.querySelector(".detail").textContent = this.route ? stepsText(this.route) : "No way back you know";
       // beside the octagon: to its left, else its right where the left's off the band
-      const c = this.L.spots.get(id);
+      const c = this.spotOf(id);
       const [x, y] = this.toPx(c.x, -c.y);
       const half = (OCT / 2) * (this.k ?? HOME_K);
       const w = this.card.offsetWidth || (editing ? 190 : 160); // measured: the card grows to fit its name

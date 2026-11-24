@@ -1,0 +1,101 @@
+<!doctype html>
+<!-- Throwaway, 2026-11-24: three looks for a site's rooms on the walked land. A made-up walk on
+     Pensilva (no port: coords from 0° N 0° E) up to the Claim Hut's front
+     (surface.pensilva.site.claim-hut), with the game's own doors: east into the hut, north into the
+     sample store (content/sites/claim-hut.yaml). No game log has a site in it yet, so the walk is
+     invented; the frames are shaped as the game sends them. Uses the real LandDeck and LandStore and
+     draws each option's extras over the board, so serve the repo root over http. -->
+<html><head><meta charset="utf-8"><title>Sites on the walked land: built</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:22px; width:1440px; }
+  h1 { color:#e3eaf2; font-size:17px; font-weight:600; margin:0 0 6px; }
+  p.note { margin:0 0 14px; max-width:1400px; line-height:1.45; }
+  .row { display:flex; gap:20px; }
+  figure { margin:0; width:466px; }
+  figcaption { margin:8px 0 0; font-size:12.5px; line-height:1.45; }
+  figcaption b { color:#e3eaf2; font-weight:600; }
+  .frame { border:1px solid #2b3646; border-radius:6px; overflow:hidden; width:466px; height:330px; position:relative; }
+  .frame + .frame { margin-top:8px; }
+  .tag { position:absolute; left:8px; bottom:6px; font-size:11px; color:#7d8a9a; background:#04060ccc; padding:2px 6px; border-radius:3px; z-index:5; }
+  .incard { position:absolute; right:8px; bottom:8px; z-index:6; background:#0b0f16; border:1px solid #2b3646; border-radius:5px; padding:6px 9px; font-size:11.5px; color:#cfd8e3; }
+  .incard .d { color:#7d8a9a; font-size:10.5px; margin-top:2px; }
+</style></head><body>
+<h1>A site's rooms on the walked land, as built (A)</h1>
+<p class="note">The real LandDeck on the mockup's invented Pensilva walk. Left: at the front, the hut entered once, the store's door not gone through. Middle: inside the hut. Right: inside the hut, the route lit to a place you clicked.</p>
+<div class="row" id="opts"></div>
+<script type="module">
+import { LandDeck } from "/ui/land-deck.js";
+import { LandStore } from "/ui/lib/land-store.js";
+import { faceMid, octagon, num } from "/ui/lib/land-layout.js";
+
+const NS = "http://www.w3.org/2000/svg";
+const AMBER = "#ffb347", STONE = "#4b4338", ROOF = "#16120f", DIM = "#7d8a9a", EARTH = "#332b22", FIXTURE = "#cfd8e3";
+const W0 = "surface.pensilva";
+const FRONT = `${W0}.site.claim-hut`;
+const HUT = "site.claim-hut.hut", STORE = "site.claim-hut.store";
+
+// an invented walk: a jittered lattice ~1.9 km apart round the front, at Pensilva-like coords
+const X0 = 11402.3, Y0 = -7561.8;
+const NAMES = [["Bare Rock", "rock"], ["Stony Ground", "stones"], ["Ice Field", "ice"], ["Rising Ground", "stones"], ["Hollow", "dust"], ["Knoll", "rock"], ["Stony Slope", "stones"], ["Drifted Dust", "dust"], ["Rock Outcrop", "rock"], ["Head of a Gully", "ice"]];
+const cells = [[-2, 0], [-1, 0], [0, -1], [-1, -1], [1, -1], [1, 0], [-1, 1], [0, 1], [1, 1], [-2, 1], [2, 0], [2, -1]];
+const jit = (i, k) => Math.sin(i * 12.9898 + k * 78.233) * 0.35;
+const places = cells.map(([c, r], i) => ({ id: `${W0}.3101.${2200 + c}.${4000 + r}`, name: NAMES[i % NAMES.length][0], terrain: NAMES[i % NAMES.length][1], x: X0 + c * 1.9 + jit(i, 1), y: Y0 + r * 1.9 + jit(i, 2), c, r }));
+const front = { id: FRONT, name: "Claim Hut", terrain: "stones", x: X0 + 0.1, y: Y0 + 0.05, c: 0, r: 0 };
+const all = [...places, front];
+const D = { "1,0": "e", "-1,0": "w", "0,1": "n", "0,-1": "s", "1,1": "ne", "-1,1": "nw", "1,-1": "se", "-1,-1": "sw" };
+const INV = { n: "s", s: "n", e: "w", w: "e", ne: "sw", sw: "ne", nw: "se", se: "nw" };
+function frameOf(p) {
+  const exits = {};
+  for (const q of all) {
+    const d = D[`${q.c - p.c},${q.r - p.r}`];
+    if (!d || p === q) continue;
+    if (d.length === 2 && (((p.c + q.c + p.r + q.r) % 3) + 3) % 3 !== 0) continue; // fewer diagonals, as real land has
+    if (p === front && (d === "e" || d === "n")) continue; // the doors take those faces
+    if (q === front && (INV[d] === "e" || INV[d] === "n")) continue;
+    exits[d.toUpperCase()] = { id: q.id, inverse: INV[d].toUpperCase() };
+  }
+  if (p === front) {
+    exits.E = { id: HUT, area: "site.claim-hut", inverse: "W" };
+    exits.N = { id: STORE, area: "site.claim-hut", inverse: "S" };
+  }
+  return { id: p.id, name: p.name, area: W0, terrain: p.terrain, coords: { x: p.x, y: p.y, z: 0 }, exits };
+}
+const store = new LandStore();
+store.load("john", null);
+for (const id of [0, 1, 3, 2, 4, 5, 8, 7, 6]) store.ingest(frameOf(places[id]));
+store.ingest(frameOf(front));
+const hutRoom = { id: HUT, name: "Claim Hut", area: "site.claim-hut", site: "claim-hut", exits: { W: { id: FRONT, area: W0, inverse: "E" } } };
+
+const el = (tag, attrs, parent) => {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  parent?.appendChild(e);
+  return e;
+};
+const spotOf = (deck) => deck.L.spots.get(FRONT);
+
+
+const views = [["at the front", (s) => s.ingest(frameOf(front))], ["inside the Claim Hut", (s) => s.ingest(hutRoom)], ["inside, a route lit", (s) => s.ingest(hutRoom), places[6].id]];
+store.ingest(hutRoom);
+const row = document.getElementById("opts");
+for (const [tagText, step, target] of views) {
+  step(store);
+  const fig = document.createElement("figure");
+  const frame = document.createElement("div");
+  frame.className = "frame";
+  const tag = document.createElement("div");
+  tag.className = "tag";
+  tag.textContent = tagText;
+  frame.appendChild(tag);
+  fig.appendChild(frame);
+  row.appendChild(fig);
+  const deck = new LandDeck(frame, {}, "pensilva");
+  deck.show(true);
+  deck.draw(store);
+  const s = deck.L.spots.get(FRONT);
+  deck.centre(s.x + 0.3, -s.y - 0.2, 46);
+  if (target) deck.setTarget(target);
+}
+document.body.dataset.ready = "1";
+</script>
+</body></html>

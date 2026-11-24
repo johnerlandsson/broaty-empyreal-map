@@ -6,6 +6,8 @@ import { createMap, addRoom, getRoomByKey, linkExit } from "./automap/graph.js";
 import { findPath } from "./automap/pathfind.js";
 
 export const DIRS = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
+/** A site's room keeps these too: up, down, in and out are how a site goes deeper (set-pieces.md). */
+export const ROOM_DIRS = [...DIRS, "u", "d", "in", "out"];
 
 const isStr = (v) => typeof v === "string" && v !== "";
 const isNum = (v) => typeof v === "number" && Number.isFinite(v);
@@ -21,18 +23,19 @@ function cleanExit(e) {
   if (!e || !isStr(e.to)) return null;
   const exit = { to: e.to };
   if (isStr(e.area)) exit.area = e.area;
-  if (DIRS.includes(e.back)) exit.back = e.back;
+  if (ROOM_DIRS.includes(e.back)) exit.back = e.back;
   if (isStr(e.style)) exit.style = e.style;
   return exit;
 }
 
-/** The compass exits of `raw` keyed by dir, each through cleanExit after `as` (which reads one as given). */
-function cleanExits(raw, as = (e) => e) {
+/** The exits of `raw` keyed by dir (compass points, else `dirs`), each through cleanExit after `as`
+ *  (which reads one as given). */
+function cleanExits(raw, as = (e) => e, dirs = DIRS) {
   const out = {};
   if (!raw || typeof raw !== "object") return out;
   for (const k of Object.keys(raw)) {
     const dir = String(k).toLowerCase();
-    if (!DIRS.includes(dir)) continue;
+    if (!dirs.includes(dir)) continue;
     const exit = cleanExit(raw[k] && as(raw[k]));
     if (exit) out[dir] = exit;
   }
@@ -61,7 +64,7 @@ function cleanStored(p) {
 /** A site's room as saved: its id, name, site and front, and its compass exits. */
 function cleanRoom(r) {
   if (!r || !isStr(r.id) || !isStr(r.site) || !isStr(r.front)) return null;
-  return { id: r.id, name: typeof r.name === "string" ? r.name : "", site: r.site, front: r.front, exits: cleanExits(r.exits) };
+  return { id: r.id, name: typeof r.name === "string" ? r.name : "", site: r.site, front: r.front, exits: cleanExits(r.exits, undefined, ROOM_DIRS) };
 }
 
 /** Two rooms alike in all a frame brings: name and exits. */
@@ -137,7 +140,7 @@ export class LandStore {
    *  own exit's target, else the walked front of its site; false for one with no front walked. */
   _ingestRoom(frame) {
     if (!isStr(frame.id)) return false;
-    const exits = cleanExits(frame.exits, frameExit);
+    const exits = cleanExits(frame.exits, frameExit, ROOM_DIRS);
     const old = this._rooms.get(frame.id);
     const front =
       Object.values(exits).find((e) => frontId(e.to, frame.site) && this._places.has(e.to))?.to ??
@@ -201,7 +204,7 @@ export class LandStore {
       for (const p of [...this._places.values(), ...this._rooms.values()]) {
         const from = getRoomByKey(map, p.id);
         if (!from) continue; // a room whose front was forgotten
-        for (const dir of DIRS) {
+        for (const dir of Object.keys(p.exits)) {
           const e = p.exits[dir];
           const to = e && getRoomByKey(map, e.to);
           if (to) linkExit(map, from.id, dir, to.id);
