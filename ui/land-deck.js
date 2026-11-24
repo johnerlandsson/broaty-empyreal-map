@@ -17,6 +17,7 @@
 
 import { DIM, label } from "./deck-view.js";
 import { styleOf } from "./lib/land-kinds.js";
+import { townName } from "./lib/land-choose.js";
 import { layoutLand, num, OCT, octagon } from "./lib/land-layout.js";
 import { groundStyle } from "./lib/land-patterns.js";
 import { edgeCard, nearestRoadEnd, routePath } from "./lib/land-route.js";
@@ -276,24 +277,25 @@ export class LandDeck {
       this.build(store);
     }
 
-    // your octagon, lit
-    const here = store.here ? this.L.spots.get(store.here) ?? null : null;
+    // your octagon, lit: in a site's room, its front's
+    const standing = store.here ? store.standing(store.here) : null;
+    const here = standing ? this.L.spots.get(standing) ?? null : null;
     this.focus = here ? [here.x, -here.y] : null;
     if (!here) {
       this.hl?.remove();
       this.hl = null;
-    } else if (this.hl?.getAttribute("data-here") !== store.here) {
+    } else if (this.hl?.getAttribute("data-here") !== standing) {
       // a new light for each place, never the old one moved: WebKitGTK doesn't repaint a glowing
       // group whose transform changes, so a moved light vanished until the window was redrawn
       this.hl?.remove();
       const at = `translate(${num(here.x)} ${num(-here.y)})`;
-      this.hl = el("g", { filter: this.glow, "data-here": store.here, transform: at }, this.hereG);
+      this.hl = el("g", { filter: this.glow, "data-here": standing, transform: at }, this.hereG);
       const lit = el("use", { href: `#${this.octId}`, fill: HL, "fill-opacity": 0.3, stroke: HL, "stroke-width": 3, "pointer-events": "none" }, this.hl);
       pulse(lit); // its breath starts from full
     }
     // the ways out of your place, lit: the same curves, lighter and at a road's weight, moved into
     // the lit group over every other way (rescale() sizes a lit climb's ticks and a lit trail)
-    const litFor = here ? store.here : null;
+    const litFor = here && standing === store.here ? store.here : null; // none out of a room
     if (litFor !== this.litFor) {
       for (const path of this.wayEls.get(this.litFor) ?? []) {
         for (const a of ["stroke", "stroke-width", "stroke-dasharray", "data-lit"]) path.removeAttribute(a);
@@ -309,7 +311,7 @@ export class LandDeck {
     }
 
     // a walked road end to show the way home to, unless you stand on one
-    this.ends = this.hasEnd && !!here && !store.here.includes(".join.");
+    this.ends = this.hasEnd && !!here && !standing.includes(".join.");
 
     // a target forgotten, or reached, is done with
     if (this.target && (!store.walked(this.target) || this.target === store.here)) this.setTarget(null);
@@ -334,7 +336,7 @@ export class LandDeck {
     const places = store.places().filter((p) => p.id.startsWith(this.prefix));
     this.places = places;
     this.hasEnd = places.some((p) => p.id.includes(".join."));
-    const L = layoutLand(places, this.world);
+    const L = layoutLand(places, this.world, { near: store.here && store.standing(store.here) });
     this.L = L;
     this.board.replaceChildren();
     this.fixed = [];
@@ -349,7 +351,7 @@ export class LandDeck {
       const xs = town.map((p) => p.x), ys = town.map((p) => p.y);
       this.zbox = { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
       const name = this.pinned(zg, (Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2);
-      label(name, 0, 0, "ZENNOR", 12, { fill: DIM, "letter-spacing": 1.5 });
+      label(name, 0, 0, (townName(this.world) ?? "").toUpperCase(), 12, { fill: DIM, "letter-spacing": 1.5 });
     } else {
       this.edge = null;
       this.zbox = null;
@@ -493,9 +495,11 @@ export class LandDeck {
     if (!s || !t || !this.L) return;
     this.route = s.here ? s.route(s.here, t) : null;
     if (this.route) {
+      // a site's rooms stand at its front: the line starts there, the steps count them all
+      const onLand = this.route.map((id) => s.standing(id)).filter((id, i, a) => id !== a[i - 1]);
       this.routeLine = el(
         "path",
-        { "data-route": "", d: routePath(this.route, this.L), fill: "none", stroke: HL, "stroke-opacity": 0.75, "stroke-linecap": "round", "stroke-linejoin": "round" },
+        { "data-route": "", d: routePath(onLand, this.L), fill: "none", stroke: HL, "stroke-opacity": 0.75, "stroke-linecap": "round", "stroke-linejoin": "round" },
         this.routeG,
       );
     }
@@ -574,7 +578,7 @@ export class LandDeck {
         if (end && end !== s.here) this.setTarget(end);
       });
     }
-    this.zennorCard.textContent = `${ARROW[at.side]} Zennor`;
+    this.zennorCard.textContent = `${ARROW[at.side]} ${townName(this.world) ?? ""}`;
     const [x, y] = this.toPx(at.x, at.y);
     const W = this.px || BASE[0], H = W * this.aspect;
     // kept wholly in the band: on a band too short for the clear space wanted, the band wins

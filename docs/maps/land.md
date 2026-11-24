@@ -15,8 +15,10 @@ Since empyreal b6728d0 you can walk out of Zennor onto Tamsin's generated land, 
 city. There is no plan of it in the game's data, so the map draws only the places you have walked,
 as you walk them, and keeps them per character across logouts.
 
-It shows whenever the location's area starts with `surface.` (today only `surface.tamsin`;
-`ui/lib/land-choose.js`, `landShown`). Both bands are the land's then: the station models, decks,
+It shows whenever the location's area starts with `surface.` (`ui/lib/land-choose.js`,
+`landShown`): since empyreal's all-worlds work every solid world's land is open, and you can set a
+ship down anywhere and walk. It shows too in a site's rooms (area `site.<id>`), on the land of the
+site's walked front (`siteLand`; see "Sites" below). Both bands are the land's then: the station models, decks,
 ships and cars are hidden, and the info line gives the place's name as the game sends it ("Old
 Shaft on the Terrace Track"). Stepping back into Zennor brings Zennor's skyline and plan back. The
 chart, the lanes map and the belt map still cover the top band as they do anywhere.
@@ -29,8 +31,9 @@ is a route's "N steps the way you know".
 
 - **The game.** Each `mudstd.room.info` frame in a `surface.*` area is posted by the Lua side
   (`src/station_map/land.lua`, `src/main.lua`) as a `land-room` message after `location`: `id`,
-  `name`, `area`, `areaName`, `terrain`, `coords` (km east `x` and north `y` of Zennor's point, height `z`)
-  and `exits` (`{ id, area?, inverse?, style? }` by compass point; `style` is how the way goes,
+  `name`, `area`, `areaName`, `terrain`, `coords` (km east `x` and north `y` of the land's port,
+  Zennor's point on Tamsin, or of 0° N 0° E on a world with no port; height `z`), `wrap` (the km
+  round the world at which `x` comes round, gmcp.md §9.5) and `exits` (`{ id, area?, inverse?, style? }` by compass point; `style` is how the way goes,
   `climb`, `road` or `trail`, empyreal `docs/gmcp.md` §9.5.3). An exit into Zennor carries
   `area: "zennor"`. The game sends no chart of the land and never names a place you haven't
   walked.
@@ -54,6 +57,38 @@ is a route's "N steps the way you know".
 - **The globe** is the world's face (`faceOf(<body>)`, `ui/lib/worlds.js`; plain grey for a world
   with none) turned to the latitude of its land's port (`from`) in `ui/data/sky.js`, else 0
   (`landLatitude`).
+
+## Away from Zennor
+
+- **A world with no port** (empyreal `docs/all-worlds.md` §6) has the same area `surface.<world>`
+  and ids, with coords from 0° N 0° E, so thousands of km out. It draws its walked places as
+  anywhere, with no town, no roads and no way-home card (`landWorld` gives it no `town`).
+- **The seam.** The game's `x` jumps by the `wrap` at 180° from where the land is measured, which on
+  a world with no port is 180° E/W, where sites stand (the Lighter on Carrow, at 178.8° W). The
+  layout draws each place on the side of the seam nearest where you stand (`layoutLand`'s `near`),
+  so places across it sit side by side.
+- **Orrin's town** is named for the port its land is measured from (`townName`: Dolcoath), on its
+  block and its edge card, not Zennor.
+- **The globe** moves your spot by your coords only within a port's land (100 km, the game's
+  figure); past it, and anywhere on a world with no port, it's turned to you, so your spot sits a
+  little north of the middle (its facets aren't the world's geography).
+
+## Sites
+
+A site (empyreal `docs/set-pieces.md` §3: a hut, a wreck, a camp) is a **front**, a place of the land
+like any other (`surface.<world>.site.<id>`, with coords and terrain), and up to six roofed rooms
+behind it (`site.<id>.<room>`, area `site.<id>`) through compass doors from the front. The game sends
+the rooms with no coords (it means to send the front's, set-pieces.md decision 40, not built yet).
+
+- Lua passes a site's room as a `land-room` with `site` (its id) and no `coords`.
+- The store keeps each walked room by its front (`rooms()`, `room(id)`, `standing(id)`), in the saved
+  record's `rooms`, never as a place of the land. A room is taken only once its front is walked; it
+  goes with its front's land on **Forget this land…** (the room you stand in stays, its front too).
+  Routes run through rooms as standing at their front, so a route from inside a hut leads out of it,
+  and its steps count the rooms.
+- While you're in a room the board stays up and lights the front, with no ways lit (you can't leave
+  a room by the front's). A door into a room is never a stub. How a site's rooms themselves show is
+  waiting on a pick (`reference/land-sites-options.png`).
 
 ## What's kept
 
@@ -137,8 +172,9 @@ A missing or bad stored value loads as an empty map.
   amber line with no glow, a dashed amber outline on the place, and a card with its name and "N
   steps the way you know". Click it again, click empty ground or press Esc to clear. Walking on
   keeps the target and redraws the route, until you arrive.
-- **The way home.** When Zennor is wholly off the view, a "← Zennor" card sits on the edge toward
-  it; clicking it lights the route to the nearest walked road end.
+- **The way home.** When the town (Zennor, Dolcoath) is wholly off the view, a "← Zennor" card sits
+  on the edge toward it; clicking it lights the route to the nearest walked road end. A world with no
+  port has none.
 - **Hover** a walked place for its name and note.
 
 ## Notes and forgetting

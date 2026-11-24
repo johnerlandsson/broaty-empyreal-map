@@ -57,6 +57,49 @@ test('non-table exits are dropped', function()
   eq(G.frame(frame({ exits = { N = 'x', S = { id = 'a' } } })).exits, { S = { id = 'a' } })
 end)
 
+-- A world with no port (all-worlds.md §6): the same area and ids, coords km from 0° N 0° E, and
+-- `wrap`, the km round the world at which x comes round (gmcp.md §9.5).
+test("a portless world's frame passes, with where its x comes round", function()
+  local m = G.frame({ id = 'surface.lanyon.412.977.20431', name = 'Bare Rock', area = 'surface.lanyon',
+    areaName = 'Lanyon', terrain = 'rock', coords = { x = 341.6, y = 3071.2, z = 0 },
+    wrap = { x = 23876.1 }, lat = 27.62, lon = 3.07,
+    exits = { N = { id = 'surface.lanyon.412.977.20432', inverse = 'S', style = 'climb' } } })
+  eq(m.area, 'surface.lanyon')
+  eq(m.coords, { x = 341.6, y = 3071.2, z = 0 })
+  eq(m.wrap, 23876.1)
+  eq(m.exits.N, { id = 'surface.lanyon.412.977.20432', inverse = 'S', style = 'climb' })
+end)
+
+test('a wrap that is not a positive number is left off', function()
+  eq(G.frame(frame({ wrap = 'x' })).wrap, nil)
+  eq(G.frame(frame({ wrap = { x = 'x' } })).wrap, nil)
+  eq(G.frame(frame({ wrap = { x = 0 } })).wrap, nil)
+  eq(G.frame(frame()).wrap, nil)
+end)
+
+-- A site (set-pieces.md §3): its front is a place of the land, `surface.<world>.site.<id>`, with
+-- compass doors into rooms in area `site.<id>`, which come with no coords.
+test("a site's front passes as any place, its doors with their area", function()
+  local m = G.frame({ id = 'surface.pensilva.site.claim-hut', name = 'Claim Hut', area = 'surface.pensilva',
+    areaName = 'Pensilva', terrain = 'stones', coords = { x = 11402.3, y = -7561.8, z = 0 }, wrap = { x = 19477.9 },
+    exits = { E = { id = 'site.claim-hut.hut', area = 'site.claim-hut', areaName = 'Claim Hut', inverse = 'W' },
+      S = { id = 'surface.pensilva.3101.2200.3999', inverse = 'N' } } })
+  eq(m.id, 'surface.pensilva.site.claim-hut')
+  eq(m.exits.E, { id = 'site.claim-hut.hut', area = 'site.claim-hut', inverse = 'W' })
+end)
+
+test("a site's room passes with no coords, marked as a site's", function()
+  local m = G.frame({ id = 'site.claim-hut.hut', name = 'Claim Hut', area = 'site.claim-hut', areaName = 'Claim Hut',
+    terrain = 'room', exits = { W = { id = 'surface.pensilva.site.claim-hut', area = 'surface.pensilva', inverse = 'E' } } })
+  eq(m.id, 'site.claim-hut.hut')
+  eq(m.area, 'site.claim-hut')
+  eq(m.site, 'claim-hut')
+  eq(m.coords, nil)
+  eq(m.exits.W, { id = 'surface.pensilva.site.claim-hut', area = 'surface.pensilva', inverse = 'E' })
+  eq(G.frame({ id = 'site.x.y', area = 'site.' }), nil)
+  eq(G.frame({ area = 'site.claim-hut' }), nil)
+end)
+
 test('a saved record must be a table', function()
   eq(G.record('junk'), nil)
   eq(G.record(nil), nil)

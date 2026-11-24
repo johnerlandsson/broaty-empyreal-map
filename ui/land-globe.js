@@ -3,8 +3,8 @@
 // (faceOf("tamsin"): its ground, and its sea on its share of them), lit from a fixed light at the
 // upper left with no day and night, and your spot amber with its ring and the glow. The globe is
 // turned to Zennor's latitude so your spot sits a little north of the middle; your coords (km
-// from Zennor's point, at most about 30) move it along the ground, so in practice it's Zennor's
-// spot. No text and no weather. Two layers, as the unknown view's: the stars slice to fill the band,
+// from Zennor's point) move it along the ground round the port, so in practice it's Zennor's
+// spot. Past the port's land, or on a world with no port, it's turned to you. No text and no weather. Two layers, as the unknown view's: the stars slice to fill the band,
 // the globe is met to fit.
 
 import { el, glowFilter, stars } from "./lib/svg.js";
@@ -19,6 +19,8 @@ const STAR_SEED = 3;
 
 /** Tamsin's radius in km. Not in data/worlds.js: world.yaml's planets.gm comment says "1 g at 6,400 km". */
 export const RADIUS_KM = 6400;
+/** How far round a port its land runs, km (empyreal all-worlds.md §6: "a port's land, 100 km from it"). */
+const PORT_LAND_KM = 100;
 /** The globe's radius in px, and its middle a little below the band's. */
 const R = 105;
 const CX = W / 2;
@@ -157,10 +159,14 @@ export class LandGlobe {
     this.set({ x: 0, y: 0 });
   }
 
-  /** Put your spot at `coords`, km east (x) and north (y) of Zennor's point. */
+  /** Put your spot at `coords`, km east (x) and north (y) of the land's port. Past the port's land
+   *  (PORT_LAND_KM), as anywhere on a world with no port (whose coords are from 0° N 0° E), the globe
+   *  is turned to you: its facets aren't the world's geography, so your spot just sits a little north
+   *  of the middle, never toward the limb or round the back. */
   set(coords) {
-    const lat = this.lat + (coords?.y ?? 0) / RADIUS_KM;
-    const lon = (coords?.x ?? 0) / RADIUS_KM;
+    const far = Math.hypot(coords?.x ?? 0, coords?.y ?? 0) > PORT_LAND_KM;
+    const lat = far ? this.lat : this.lat + (coords?.y ?? 0) / RADIUS_KM;
+    const lon = far ? 0 : (coords?.x ?? 0) / RADIUS_KM;
     // orthographic, the globe's middle at (lat0, 0): x east, y north
     const x = Math.cos(lat) * Math.sin(lon);
     const y = Math.cos(this.lat0) * Math.sin(lat) - Math.sin(this.lat0) * Math.cos(lat) * Math.cos(lon);

@@ -182,12 +182,25 @@ function nearestOn(outline, p) {
 }
 
 /**
+ * A place's x on the side of its world's seam nearest `ref`, the place you stand in (else the first walked):
+ * the game's x comes round at the place's `wrap` (gmcp.md §9.5), so across the seam, opposite where
+ * the land's measured from, it jumps by the wrap. A world with no port is measured from 0° E, so its
+ * seam is at 180°, where a site can stand (the Lighter on Carrow, at 178.8° W).
+ */
+function unwrapped(p, ref) {
+  if (!p.wrap) return p.x;
+  return p.x - Math.round((p.x - ref.x) / p.wrap) * p.wrap;
+}
+
+/**
  * @param {object[]} places  the walked places, in first-walked order (LandStore.places())
  * @param {{town: {e: number, n: number}[], joins: Record<string, object>}} world  the land's entry in ui/data/land.js
- * @param {{spread?: number}} [opts]  how much further apart to draw places than they are (SPREAD)
+ * @param {{spread?: number, near?: string}} [opts]  how much further apart to draw places than they
+ *   are (SPREAD); and the place you stand in, whose side of the world's seam the others are drawn on
  */
-export function layoutLand(places, world, { spread = SPREAD } = {}) {
-  const spots = new Map(places.map((p) => [p.id, { x: +(p.x * spread).toFixed(4), y: +(p.y * spread).toFixed(4) }]));
+export function layoutLand(places, world, { spread = SPREAD, near } = {}) {
+  const ref = places.find((q) => q.id === near) ?? places[0];
+  const spots = new Map(places.map((p) => [p.id, { x: +(unwrapped(p, ref) * spread).toFixed(4), y: +(p.y * spread).toFixed(4) }]));
   const walked = new Set(places.map((p) => p.id));
   const ways = layoutWays(places, spots);
 

@@ -24,3 +24,21 @@ export function landLatitude(world, sky) {
   const at = typeof port === "string" && Object.hasOwn(sky, port) ? sky[port]?.latitude : undefined;
   return typeof at === "number" && Number.isFinite(at) ? at : 0;
 }
+
+/** The name of a land's town, from the port it's measured from (`world.from`: "zennor" is Zennor,
+ *  "dolcoath" Dolcoath), or null for a land with no town (a world with no port). */
+export function townName(world) {
+  const port = world?.from;
+  if (typeof port !== "string" || port === "" || !world.town?.length) return null;
+  return port.charAt(0).toUpperCase() + port.slice(1);
+}
+
+/** The land area (`surface.<body>`) a site's room is shown on, for area `site.<id>`: the land of the
+ *  site's walked front (`surface.<body>.site.<id>`, set-pieces.md §3); null for any other area, or a
+ *  site whose front isn't walked. */
+export function siteLand(area, store) {
+  if (typeof area !== "string" || !area.startsWith("site.") || area.length === 5) return null;
+  const tail = `.site.${area.slice(5)}`;
+  const front = store.places().find((p) => p.id.startsWith("surface.") && p.id.endsWith(tail));
+  return front ? front.id.slice(0, -tail.length) : null;
+}

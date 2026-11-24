@@ -1,0 +1,157 @@
+<!doctype html>
+<!-- Throwaway, 2026-11-24: three looks for a site's rooms on the walked land. A made-up walk on
+     Pensilva (no port: coords from 0° N 0° E) up to the Claim Hut's front
+     (surface.pensilva.site.claim-hut), with the game's own doors: east into the hut, north into the
+     sample store (content/sites/claim-hut.yaml). No game log has a site in it yet, so the walk is
+     invented; the frames are shaped as the game sends them. Uses the real LandDeck and LandStore and
+     draws each option's extras over the board, so serve the repo root over http. -->
+<html><head><meta charset="utf-8"><title>Sites on the walked land: options</title>
+<style>
+  body { margin:0; background:#04060c; color:#7d8a9a; font:13px Inter, system-ui, sans-serif; padding:22px; width:1440px; }
+  h1 { color:#e3eaf2; font-size:17px; font-weight:600; margin:0 0 6px; }
+  p.note { margin:0 0 14px; max-width:1400px; line-height:1.45; }
+  .row { display:flex; gap:20px; }
+  figure { margin:0; width:466px; }
+  figcaption { margin:8px 0 0; font-size:12.5px; line-height:1.45; }
+  figcaption b { color:#e3eaf2; font-weight:600; }
+  .frame { border:1px solid #2b3646; border-radius:6px; overflow:hidden; width:466px; height:330px; position:relative; }
+  .frame + .frame { margin-top:8px; }
+  .tag { position:absolute; left:8px; bottom:6px; font-size:11px; color:#7d8a9a; background:#04060ccc; padding:2px 6px; border-radius:3px; z-index:5; }
+  .incard { position:absolute; right:8px; bottom:8px; z-index:6; background:#0b0f16; border:1px solid #2b3646; border-radius:5px; padding:6px 9px; font-size:11.5px; color:#cfd8e3; }
+  .incard .d { color:#7d8a9a; font-size:10.5px; margin-top:2px; }
+</style></head><body>
+<h1>A site's rooms on the walked land</h1>
+<p class="note">Since every solid world opened, you can set down anywhere and walk; the game's sites (huts, wrecks, camps) stand on the land as a <b>front</b>, a place like any other, with up to six roofed rooms behind it reached by compass doors. The game sends the rooms with no coords (area <code>site.claim-hut</code>), so the board has to place them itself. Today the board draws the front as a plain octagon, hides its doors, and <b>goes blank when you step inside</b>. Here: Pensilva's Claim Hut, the hut through the east door, the sample store through the north one. Top row: you've walked to the front and into the hut once, and stand at the front. Bottom row: you're inside the hut. The store hasn't been entered, so it isn't named or drawn, only its door shows (the front's own words say a store stands there).</p>
+<div class="row" id="opts"></div>
+<script type="module">
+import { LandDeck } from "/ui/land-deck.js";
+import { LandStore } from "/ui/lib/land-store.js";
+import { faceMid, octagon, num } from "/ui/lib/land-layout.js";
+
+const NS = "http://www.w3.org/2000/svg";
+const AMBER = "#ffb347", STONE = "#4b4338", ROOF = "#16120f", DIM = "#7d8a9a", EARTH = "#332b22", FIXTURE = "#cfd8e3";
+const W0 = "surface.pensilva";
+const FRONT = `${W0}.site.claim-hut`;
+const HUT = "site.claim-hut.hut", STORE = "site.claim-hut.store";
+
+// an invented walk: a jittered lattice ~1.9 km apart round the front, at Pensilva-like coords
+const X0 = 11402.3, Y0 = -7561.8;
+const NAMES = [["Bare Rock", "rock"], ["Stony Ground", "stones"], ["Ice Field", "ice"], ["Rising Ground", "stones"], ["Hollow", "dust"], ["Knoll", "rock"], ["Stony Slope", "stones"], ["Drifted Dust", "dust"], ["Rock Outcrop", "rock"], ["Head of a Gully", "ice"]];
+const cells = [[-2, 0], [-1, 0], [0, -1], [-1, -1], [1, -1], [1, 0], [-1, 1], [0, 1], [1, 1], [-2, 1], [2, 0], [2, -1]];
+const jit = (i, k) => Math.sin(i * 12.9898 + k * 78.233) * 0.35;
+const places = cells.map(([c, r], i) => ({ id: `${W0}.3101.${2200 + c}.${4000 + r}`, name: NAMES[i % NAMES.length][0], terrain: NAMES[i % NAMES.length][1], x: X0 + c * 1.9 + jit(i, 1), y: Y0 + r * 1.9 + jit(i, 2), c, r }));
+const front = { id: FRONT, name: "Claim Hut", terrain: "stones", x: X0 + 0.1, y: Y0 + 0.05, c: 0, r: 0 };
+const all = [...places, front];
+const D = { "1,0": "e", "-1,0": "w", "0,1": "n", "0,-1": "s", "1,1": "ne", "-1,1": "nw", "1,-1": "se", "-1,-1": "sw" };
+const INV = { n: "s", s: "n", e: "w", w: "e", ne: "sw", sw: "ne", nw: "se", se: "nw" };
+function frameOf(p) {
+  const exits = {};
+  for (const q of all) {
+    const d = D[`${q.c - p.c},${q.r - p.r}`];
+    if (!d || p === q) continue;
+    if (d.length === 2 && (((p.c + q.c + p.r + q.r) % 3) + 3) % 3 !== 0) continue; // fewer diagonals, as real land has
+    if (p === front && (d === "e" || d === "n")) continue; // the doors take those faces
+    if (q === front && (INV[d] === "e" || INV[d] === "n")) continue;
+    exits[d.toUpperCase()] = { id: q.id, inverse: INV[d].toUpperCase() };
+  }
+  if (p === front) {
+    exits.E = { id: HUT, area: "site.claim-hut", inverse: "W" };
+    exits.N = { id: STORE, area: "site.claim-hut", inverse: "S" };
+  }
+  return { id: p.id, name: p.name, area: W0, terrain: p.terrain, coords: { x: p.x, y: p.y, z: 0 }, exits };
+}
+const store = new LandStore();
+store.load("john", null);
+for (const id of [0, 1, 3, 2, 4, 5, 8, 7, 6]) store.ingest(frameOf(places[id]));
+store.ingest(frameOf(front));
+const hutRoom = { id: HUT, name: "Claim Hut", area: "site.claim-hut", exits: { W: { id: FRONT, area: W0, inverse: "E" } } };
+
+const el = (tag, attrs, parent) => {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  parent?.appendChild(e);
+  return e;
+};
+const spotOf = (deck) => deck.L.spots.get(FRONT);
+
+// The options: each draws the site's extras on a deck; inside = you're in the hut
+const OPTS = [
+  { k: "A", title: "A · Rooms at their doors",
+    text: "Each room you've entered is a small roofed square just outside the front's face its door leaves by, dark with a solid Stone edge as Zennor's block is, joined by a short door. A door you haven't gone through is a short solid bar on the face, not a dotted stub: you can see there's a way in, never where to. Inside, your room glows amber as your octagon does. Hover a room for its name. Costs room round the front: a close neighbour's octagon can sit near the squares.",
+    draw(deck, inside) {
+      const s = spotOf(deck), g = el("g", {}, deck.board);
+      const room = (dir, walked, lit) => {
+        const f = faceMid(s, dir), dx = dir === "e" ? 1 : 0, dy = dir === "n" ? 1 : 0;
+        const c = { x: f.x + dx * 0.42, y: f.y + dy * 0.42 }, h = 0.25;
+        el("line", { x1: f.x, y1: -f.y, x2: f.x + dx * 0.17, y2: -(f.y + dy * 0.17), stroke: walked ? STONE : DIM, "stroke-width": walked ? 0.09 : 0.07, "stroke-linecap": "butt" }, g);
+        if (!walked) return;
+        el("rect", { x: c.x - h, y: -c.y - h, width: 2 * h, height: 2 * h, rx: 0.05, fill: lit ? AMBER : ROOF, "fill-opacity": lit ? 0.3 : 1, stroke: lit ? AMBER : STONE, "stroke-width": lit ? 3 : 1.4, "vector-effect": "non-scaling-stroke", filter: lit ? deck.glow : "" }, g);
+      };
+      room("e", true, inside);
+      room("n", false, false);
+      if (inside) deck.svg.querySelector("[data-here]")?.remove();
+    } },
+  { k: "B", title: "B · A roofed front, rooms in a corner card",
+    text: "The front is drawn as a place like any other, with a small roof mark in its middle once you've stood in it, so you can tell a site from open ground. Rooms are never drawn: the game gives them no spot, and they all stand at the front. Inside, the front stays lit as where you are, and a card in the board's corner says which room you're in. Doors aren't drawn, as Zennor's rooms aren't. The quietest; the board never grows.",
+    draw(deck, inside, frameEl) {
+      const s = spotOf(deck), g = el("g", { transform: `translate(${num(s.x)} ${num(-s.y)}) scale(${1 / deck.k})` }, deck.board);
+      el("path", { d: "M-6,1.5 L0,-5 L6,1.5 M-4,0 L-4,5 L4,5 L4,0", fill: "none", stroke: FIXTURE, "stroke-width": 1.5, "stroke-linejoin": "round", opacity: 0.85 }, g);
+      if (inside) {
+        const c = document.createElement("div");
+        c.className = "incard";
+        c.innerHTML = `Inside: Claim Hut<div class="d">behind the Claim Hut's front</div>`;
+        frameEl.appendChild(c);
+      }
+    } },
+  { k: "C", title: "C · Rooms inside the front's octagon",
+    text: "The front's octagon is split toward its doors: each room you've entered fills the slice on the side its door leaves by, darker and edged as a roof, so the hut is the front's east side and the store would be its north. A door not yet taken is a thin line across the face. Inside, your room's slice glows. Nothing is added round the front, so close neighbours never crowd it; the slices are small at the home zoom, and a site of five or six rooms gets thin ones.",
+    draw(deck, inside) {
+      const s = spotOf(deck), g = el("g", {}, deck.board);
+      const R = 0.48 / Math.cos(Math.PI / 8);
+      const wedge = (dir) => {
+        const a = { e: 0, n: 90 }[dir] * Math.PI / 180, w = Math.PI / 4;
+        const pts = [[0, 0]];
+        for (let t = -1; t <= 1; t++) pts.push([Math.cos(a + (t * w) / 2 - 0) * R * (t ? 1 : 0.924), Math.sin(a + (t * w) / 2) * R * (t ? 1 : 0.924)]);
+        return pts;
+      };
+      const poly = (pts, attrs) => el("polygon", { points: pts.map(([x, y]) => `${num(s.x + x * 0.97)},${num(-(s.y + y * 0.97))}`).join(" "), ...attrs }, g);
+      // the east face's slice, the hut
+      const e = [[0, 0], [R * Math.cos(-Math.PI / 8), R * Math.sin(-Math.PI / 8)], [R * Math.cos(Math.PI / 8), R * Math.sin(Math.PI / 8)]];
+      poly(e, { fill: inside ? AMBER : ROOF, "fill-opacity": inside ? 0.45 : 1, stroke: inside ? AMBER : STONE, "stroke-width": inside ? 2.4 : 1.2, "vector-effect": "non-scaling-stroke", filter: inside ? deck.glow : "" });
+      // the north door, not taken: a line across the face
+      const f = faceMid(s, "n");
+      el("line", { x1: f.x - 0.18, y1: -f.y + 0.03, x2: f.x + 0.18, y2: -f.y + 0.03, stroke: DIM, "stroke-width": 1.6, "vector-effect": "non-scaling-stroke" }, g);
+      if (inside) deck.svg.querySelector("[data-here]")?.remove();
+    } },
+];
+
+const row = document.getElementById("opts");
+for (const o of OPTS) {
+  const fig = document.createElement("figure");
+  const cap = document.createElement("figcaption");
+  cap.innerHTML = `<b>${o.title}</b><br>${o.text}`;
+  const frames = [];
+  for (const inside of [false, true]) {
+    const frame = document.createElement("div");
+    frame.className = "frame";
+    const tag = document.createElement("div");
+    tag.className = "tag";
+    tag.textContent = inside ? "inside the Claim Hut" : "at the front";
+    frame.appendChild(tag);
+    frames.push([frame, inside]);
+    fig.appendChild(frame);
+  }
+  fig.appendChild(cap);
+  row.appendChild(fig);
+  for (const [frame, inside] of frames) {
+    const deck = new LandDeck(frame, {}, "pensilva");
+    deck.show(true);
+    deck.draw(store);
+    const s = deck.L.spots.get(FRONT);
+    deck.centre(s.x + 0.3, -s.y - 0.2, 46);
+    o.draw(deck, inside, frame);
+  }
+}
+document.body.dataset.ready = "1";
+</script>
+</body></html>

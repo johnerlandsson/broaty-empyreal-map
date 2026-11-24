@@ -491,6 +491,19 @@ test('a land frame posts land-room after location', function()
   eq(names(env), { 'location' })
 end)
 
+-- A site's room (set-pieces.md §3): area `site.<id>`, no coords; the panel keeps the land's board up.
+test("a site's room posts land-room after location, and is replayed when the panel opens", function()
+  local env = boot()
+  env.gmcp_handlers['mudstd.room.info']('mudstd.room.info', { id = 'site.lark.hull', name = 'Inside the Hull',
+    area = 'site.lark', areaName = 'The Lark',
+    exits = { S = { id = 'surface.lanyon.site.lark', area = 'surface.lanyon', inverse = 'N' } } })
+  eq(names(env), { 'location', 'land-room' })
+  eq(env.posts[2].data.site, 'lark')
+  env.posts = {}
+  env.panel_handlers.ready({})
+  eq(names(env), { 'settings', 'location', 'land-room' })
+end)
+
 -- who is the lowercased name, as the lanes' key is
 test('naming a character posts her land-load', function()
   local env = boot({ stored = { ['land:ada'] = { places = {} } } })

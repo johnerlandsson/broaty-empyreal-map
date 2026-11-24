@@ -32,7 +32,7 @@ import { LanesView } from "./lanes-view.js";
 import { carInfo, carKind, carName, stopNames } from "./lib/cars.js";
 import { isShipRoom, planFor, shipInfo } from "./lib/ships.js";
 import { infoLine, locate } from "./lib/locate.js";
-import { landBody, landLatitude, landShown, landWorld } from "./lib/land-choose.js";
+import { landBody, landLatitude, landShown, landWorld, siteLand } from "./lib/land-choose.js";
 import { LandStore } from "./lib/land-store.js";
 import land from "./data/land.js";
 import sky from "./data/sky.js";
@@ -285,15 +285,20 @@ function showLand(area) {
   on?.deck.draw(landStore); // only redrawn while shown: catch up with what's changed
 }
 
+/** The land area whose views show for the location: its own on the land, else, in a site's room
+ *  (area `site.<id>`), the land of the site's walked front; null anywhere else. */
+const landAreaOf = (msg) => (landShown(msg) ? msg.area : siteLand(msg?.area, landStore));
+
 function render() {
-  if (landShown(last)) {
+  const landArea = landAreaOf(last);
+  if (landArea) {
     show(undefined);
     showDeck(null);
     if (unknown) {
       unknown.remove();
       unknown = null;
     }
-    showLand(last.area);
+    showLand(landArea);
     runShip();
     info.textContent = last.name ?? "";
     return;
@@ -443,11 +448,12 @@ panel.on("location", (msg) => {
 panel.on("land-room", (msg) => {
   // false too for a step into a place walked before just as it is, which only moves where you are
   if (!landStore.ingest(msg) && landStore.here !== msg?.id) return;
-  const v = landViews.get(landBody(msg.area) ?? ""); // drawn from the store once its land is built
+  const area = landAreaOf(msg); // a site's room: its front's land
+  const v = landViews.get(landBody(area) ?? ""); // drawn from the store once its land is built
   if (!v) return;
   v.deck.draw(landStore);
   v.deck.follow();
-  v.globe.set(msg.coords);
+  if (msg.coords) v.globe.set(msg.coords); // a site's room has none: you're still at its front
 });
 
 // The character's saved map, when she becomes known: merged with what she's walked meanwhile. No one
