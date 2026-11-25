@@ -461,6 +461,8 @@ panel.on("land-room", (msg) => {
 panel.on("land-load", (msg) => {
   if (!landLoad(landStore, landSaver_, msg)) return;
   for (const v of landViews.values()) v.deck.draw(landStore);
+  // in a site's room, whether the land shows hangs on its front being walked: known only now
+  if (last && !landShown(last) && siteLand(last.area, landStore)) render();
 });
 
 info.textContent = UNKNOWN_LINE;

@@ -4,6 +4,7 @@
 
 import { createMap, addRoom, getRoomByKey, linkExit } from "./automap/graph.js";
 import { findPath } from "./automap/pathfind.js";
+import { frontSite } from "./land-choose.js";
 
 export const DIRS = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
 /** A site's room keeps these too: up, down, in and out are how a site goes deeper (set-pieces.md). */
@@ -13,8 +14,8 @@ const isStr = (v) => typeof v === "string" && v !== "";
 const isNum = (v) => typeof v === "number" && Number.isFinite(v);
 /** Km round the world at which a place's x comes round (gmcp.md §9.5), if it's sent; else undefined. */
 const keptWrap = (v) => (isNum(v) && v > 0 ? v : undefined);
-/** The front of site `site` among the walked places: `surface.<world>.site.<site>`. */
-const frontId = (id, site) => id.startsWith("surface.") && id.endsWith(`.site.${site}`);
+/** Whether a place id is the front of site `site`: `surface.<world>.site.<site>`. */
+const frontId = (id, site) => frontSite(id) === site;
 
 /** One exit as the store keeps it, { to, area?, back?, style? }, or null for none. `style` is how
  *  the way goes as the game sends it (gmcp.md §9.5.3: climb, road, trail), kept as sent so a style
@@ -126,7 +127,8 @@ export class LandStore {
     // what an earlier step brought
     const terrain = keptTerrain(frame.terrain) ?? old?.terrain;
     if (terrain) place.terrain = terrain;
-    const wrap = keptWrap(frame.wrap);
+    // where x comes round; a frame without it keeps what an earlier one brought, as terrain does
+    const wrap = keptWrap(frame.wrap) ?? old?.wrap;
     if (wrap) place.wrap = wrap;
     this.here = frame.id;
     if (old && samePlace(old, place)) return false;

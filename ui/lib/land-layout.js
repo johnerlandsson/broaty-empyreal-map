@@ -10,6 +10,7 @@
 // other point in a Layout, and every path, is ready for the SVG: y flipped (svg y = −north). Angles
 // are SVG degrees (clockwise from east on screen).
 
+import { frontSite } from "./land-choose.js";
 import { regionOf, trackOf } from "./land-kinds.js";
 
 /** An octagon's width, flat to flat, km: places are at least 1.1 km apart, so none touch. */
@@ -265,28 +266,34 @@ export const ROOM = 0.5;
  *  middle to the next's, along each axis. */
 const DOOR = 0.17;
 const STEP = 0.62;
-const ROOM_DIRS = ["u", "d", "in", "out"];
+/** The ways deeper into a site that aren't compass points: a room by one sits beside its room. */
+const DEEPER = ["u", "d", "in", "out"];
 const sign = (v) => (v > 1e-9 ? 1 : v < -1e-9 ? -1 : 0);
 /** A step to the next room by compass point: STEP along each axis it names. */
 const stepOut = (p, dir) => ({ x: p.x + sign(UNIT[dir][0]) * STEP, y: p.y + sign(UNIT[dir][1]) * STEP });
+/** How far a room's middle stays from an octagon's: past its corners and half the square. */
+const CLEAR = H / Math.cos(Math.PI / 8) + ROOM / 2;
 
 /**
  * The walked rooms of the sites whose fronts are drawn (set-pieces.md §3), each a small square: one
  * through a front's door just outside the face it leaves by, one through a room's compass door a STEP
  * on from that room, and one by up, down, in or out beside the room it's reached from, in the first
  * free spot clockwise from straight out from the front. `rooms` are north-up middles by id; `doors`
- * the short lines between them, ready for the SVG: one per pair walked (`walked`), and a bar out of
+ * the short lines between them, ready for the SVG: one per pair walked (`walked`), a short walked
+ * door out of a front's face into a room placed elsewhere (or with no free spot), and a bar out of
  * the face for a compass door into a room not yet entered (`to` null), so you can see there's a way
  * in, never where to.
  */
 function layoutRooms(places, spots, rooms) {
   const byId = new Map(rooms.map((r) => [r.id, r]));
+  const octs = [...spots.values()];
   const placed = new Map();
   const doors = [];
+  const paired = new Set(); // "a\nb", sorted: the doors drawn between two rooms
   const taken = [];
   const free = (c) =>
     taken.every((t) => Math.max(Math.abs(t.x - c.x), Math.abs(t.y - c.y)) > ROOM + 1e-6) &&
-    [...spots.values()].every((s) => Math.hypot(s.x - c.x, s.y - c.y) > H / Math.cos(Math.PI / 8) + ROOM / 2 - 1e-6);
+    octs.every((s) => Math.hypot(s.x - c.x, s.y - c.y) > CLEAR - 1e-6);
   const put = (id, c) => {
     placed.set(id, c);
     taken.push(c);
@@ -300,18 +307,21 @@ function layoutRooms(places, spots, rooms) {
 
   const queue = [];
   for (const p of places) {
-    if (!/\.site\.[^.]+$/.test(p.id)) continue;
+    if (frontSite(p.id) === null) continue;
     for (const dir of ORDER) {
       const e = p.exits?.[dir];
       if (!e || !e.area?.startsWith("site.")) continue;
       const f = faceMid(spots.get(p.id), dir), at = out(f, dir, DOOR);
       const r = byId.get(e.to);
-      if (!r || r.front !== p.id || placed.has(r.id)) {
-        if (!r) door(p.id, null, f, at, false, dir);
+      if (!r) {
+        door(p.id, null, f, at, false, dir); // not gone through
         continue;
       }
       const c = out(f, dir, DOOR + ROOM / 2);
-      if (!free(c)) continue;
+      if (r.front !== p.id || placed.has(r.id) || !free(c)) {
+        door(p.id, r.id, f, at, true, dir); // gone through, its room drawn elsewhere or not at all
+        continue;
+      }
       put(r.id, c);
       door(p.id, r.id, f, at, true, dir);
       queue.push({ r, from: spots.get(p.id) });
@@ -327,14 +337,17 @@ function layoutRooms(places, spots, rooms) {
       const compass = ORDER.includes(dir);
       if (placed.has(e.to)) {
         // a door between two placed rooms, once
-        if (q && !doors.some((d) => (d.from === e.to && d.to === r.id) || (d.from === r.id && d.to === e.to))) {
+        const key = [r.id, e.to].sort().join("\n");
+        if (!paired.has(key)) {
+          paired.add(key);
           const qc = placed.get(e.to), d = { x: qc.x - c.x, y: qc.y - c.y };
           door(r.id, e.to, edge(c, d), edge(qc, { x: -d.x, y: -d.y }), true, dir);
         }
         continue;
       }
       if (!q) {
-        if (compass && !e.area?.startsWith("surface.")) {
+        // a compass door into a room not entered: never the way back out onto the land
+        if (compass && !spots.has(e.to) && !e.to.startsWith("surface.") && !e.area?.startsWith("surface.")) {
           const a = edge(c, { x: UNIT[dir][0], y: UNIT[dir][1] });
           door(r.id, null, a, out(a, dir, DOOR), false, dir);
         }
@@ -342,7 +355,7 @@ function layoutRooms(places, spots, rooms) {
       }
       let at = null;
       if (compass) at = free(stepOut(c, dir)) ? stepOut(c, dir) : null;
-      else if (ROOM_DIRS.includes(dir)) {
+      else if (DEEPER.includes(dir)) {
         // clockwise from straight out from the front
         const start = (Math.round((Math.atan2(outward.x, outward.y) * 4) / Math.PI) + 8) % 8;
         for (let k = 0; k < 8 && !at; k++) {
@@ -352,6 +365,7 @@ function layoutRooms(places, spots, rooms) {
       }
       if (!at) continue;
       put(q.id, at);
+      paired.add([r.id, q.id].sort().join("\n"));
       const d = { x: at.x - c.x, y: at.y - c.y };
       door(r.id, q.id, edge(c, d), edge(at, { x: -d.x, y: -d.y }), true, dir);
       queue.push({ r: q, from: c });

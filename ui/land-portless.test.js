@@ -165,12 +165,26 @@ describe("in a site's room", () => {
     expect(deck.svg.querySelector("[data-target]").getAttribute("data-target")).toBe(HULL);
   });
 
-  it("gives a room the ground's menu, with no note", () => {
+  it("opens no menu on a room: no note, and never the ground's forgetting", () => {
     const deck = deckFor("surface.lanyon");
     deck.draw(siteWalk());
     deck.svg.querySelector(`[data-room="${HULL}"]`).dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 30, clientY: 40 }));
-    const items = [...deck.div.querySelectorAll(".land-menu button")].map((b) => b.textContent);
-    expect(items).toEqual(["Forget this land…"]);
+    expect(deck.div.querySelector(".land-menu")).toBe(null);
+  });
+
+  it("puts a room's card beside its square, as close as a place's is to its octagon", () => {
+    const s = siteWalk();
+    s.ingest(place(P2, 354.2, 3095.5, { W: { id: P1, inverse: "E" } }));
+    const deck = deckFor("surface.lanyon");
+    deck.draw(s);
+    deck.measure();
+    deck.setTarget(HULL);
+    const c = deck.L.rooms.get(HULL);
+    const [x] = deck.toPx(c.x, -c.y);
+    const left = parseFloat(deck.div.querySelector(".land-card").style.left);
+    const w = 160; // happy-dom measures nothing: the card's assumed width
+    const near = x - (0.5 / 2) * deck.k - 8 - w;
+    expect(left).toBe(Math.round(near >= 6 ? near : x + (0.5 / 2) * deck.k + 8));
   });
 
   it("lights the way out over the land from your room to a place you click, and counts every step", () => {
@@ -211,23 +225,33 @@ describe("the globe away from the port", () => {
     return new LandGlobe(host, { latitude, body: "lanyon" });
   }
 
-  it("is turned to you on a world with no port, so your spot sits a little north of the middle", () => {
+  const apart = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+  it("turns with you on a world with no port, so your spot stays a little north of the middle", () => {
     const globe = make(0);
     globe.set({ x: 0, y: 0 });
     const home = spotAt(globe);
     for (const at of [{ x: 352.6, y: 3095.3 }, { x: 11402.3, y: -7561.8 }, { x: -19791.5, y: -2120.4 }]) {
       globe.set(at);
-      expect(spotAt(globe)).toEqual(home);
+      expect(apart(spotAt(globe), home)).toBeLessThan(2); // no further than the port's land's edge puts it
     }
   });
 
-  it("is turned to you when you've landed far from the port on a world with one", () => {
+  it("turns with you when you've landed far from the port on a world with one", () => {
     const globe = make(sky.zennor.latitude);
     globe.set({ x: 0, y: 0 });
     const home = spotAt(globe);
     globe.set({ x: -19000, y: -7000 }); // Tamsin's far side, where a site stands
-    expect(spotAt(globe)).toEqual(home);
-    globe.set({ x: 30, y: 0 }); // round the port it still moves, a little
+    expect(apart(spotAt(globe), home)).toBeLessThan(2);
+    globe.set({ x: 30, y: 0 }); // round the port it moves, a little
     expect(spotAt(globe)[0]).toBeGreaterThan(home[0]);
+  });
+
+  it("never jumps as you walk out past the port's land", () => {
+    const globe = make(0);
+    globe.set({ x: 99, y: 0 });
+    const a = spotAt(globe);
+    globe.set({ x: 101, y: 0 });
+    expect(apart(spotAt(globe), a)).toBeLessThan(0.1);
   });
 });

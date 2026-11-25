@@ -33,12 +33,18 @@ export function townName(world) {
   return port.charAt(0).toUpperCase() + port.slice(1);
 }
 
+/** The site whose front a place id is (`surface.<world>.site.<id>`, set-pieces.md §3, as the game's
+ *  parseSiteId reads it), or null for any other id. */
+export function frontSite(id) {
+  const m = typeof id === "string" ? /^surface\.(.+?)\.site\.(.+)$/.exec(id) : null;
+  return m ? m[2] : null;
+}
+
 /** The land area (`surface.<body>`) a site's room is shown on, for area `site.<id>`: the land of the
- *  site's walked front (`surface.<body>.site.<id>`, set-pieces.md §3); null for any other area, or a
- *  site whose front isn't walked. */
+ *  site's walked front; null for any other area, or a site whose front isn't walked. */
 export function siteLand(area, store) {
   if (typeof area !== "string" || !area.startsWith("site.") || area.length === 5) return null;
-  const tail = `.site.${area.slice(5)}`;
-  const front = store.places().find((p) => p.id.startsWith("surface.") && p.id.endsWith(tail));
-  return front ? front.id.slice(0, -tail.length) : null;
+  const site = area.slice(5);
+  const front = store.places().find((p) => frontSite(p.id) === site);
+  return front ? front.id.slice(0, front.id.lastIndexOf(`.site.${site}`)) : null;
 }

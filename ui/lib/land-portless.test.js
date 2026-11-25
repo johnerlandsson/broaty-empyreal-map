@@ -287,4 +287,31 @@ describe("a site's rooms on the board", () => {
     for (const a of all) for (const b of all) if (a !== b) expect(Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))).toBeGreaterThan(0.5);
     expect(s.route("site.stamps.adit", "site.stamps.count-house")).toEqual(["site.stamps.adit", "site.stamps.huts", F2, "site.stamps.mill", "site.stamps.count-house"]);
   });
+
+  it("draws no bar for a room's way back to its front, with or without the front's area", () => {
+    const s = siteWalk();
+    s.ingest(room(HULL, "Inside the Hull", { S: { id: FRONT }, E: { id: HOLD, inverse: "W" } })); // no area
+    const L = layout(s);
+    expect(L.doors.filter((d) => !d.walked)).toEqual([]);
+  });
+
+  it("draws a walked door out of a front for a room drawn by another front", () => {
+    const s = siteWalk();
+    const F2 = "surface.lanyon.site.lark-aft"; // a second way in: the same room, another front's site
+    s.ingest({ ...front({ W: { id: HULL, area: "site.lark" }, E: { id: P2 } }), id: F2, coords: { x: L0.x + 5, y: L0.y, z: 0 } });
+    const L = layout(s);
+    expect(L.doors.find((d) => d.from === F2)).toMatchObject({ to: HULL, walked: true, dir: "w" });
+  });
 });
+
+describe("a place's wrap", () => {
+  it("is kept when a later frame of the place comes without it", () => {
+    const s = lanyonWalk();
+    const { wrap, ...bare } = lanyon(2, 1.6, 0.2, { W: { id: P1, inverse: "E" }, N: { id: P3, inverse: "S", style: "climb" } });
+    const v = s.version;
+    s.ingest(bare);
+    expect(s.place(P2).wrap).toBe(LANYON_WRAP);
+    expect(s.version).toBe(v); // nothing changed
+  });
+});
+

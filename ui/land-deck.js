@@ -130,9 +130,10 @@ export class LandDeck {
       if (!this.svg.contains(e.target) || !this.places.length) return;
       this.closeAll();
       const id = e.target.closest?.("[data-pick]")?.getAttribute("data-pick");
+      if (id && this.store.room(id)) return; // a site's room: no note, and not the ground's forgetting
       const r = div.getBoundingClientRect();
       const at = [e.clientX - r.left, e.clientY - r.top];
-      if (id && id !== "ground" && this.store.place(id)) {
+      if (id && id !== "ground") {
         const items = [["Note…", () => this.editNote(id)]];
         if (this.store.place(id)?.note) items.push(["Remove note", () => this.note(id, null)]);
         this.openMenu(at, items);
@@ -597,7 +598,7 @@ export class LandDeck {
       // beside the octagon: to its left, else its right where the left's off the band
       const c = this.spotOf(id);
       const [x, y] = this.toPx(c.x, -c.y);
-      const half = (OCT / 2) * (this.k ?? HOME_K);
+      const half = ((this.L.rooms.has(id) ? ROOM : OCT) / 2) * (this.k ?? HOME_K); // a room's square, else the octagon
       const w = this.card.offsetWidth || (editing ? 190 : 160); // measured: the card grows to fit its name
       const left = x - half - 8 - w >= 6 ? x - half - 8 - w : x + half + 8;
       Object.assign(this.card.style, { left: `${Math.round(left)}px`, top: `${Math.round(y - 19)}px` });

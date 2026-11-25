@@ -69,9 +69,10 @@ is a route's "N steps the way you know".
   so places across it sit side by side.
 - **Orrin's town** is named for the port its land is measured from (`townName`: Dolcoath), on its
   block and its edge card, not Zennor.
-- **The globe** moves your spot by your coords only within a port's land (100 km, the game's
-  figure); past it, and anywhere on a world with no port, it's turned to you, so your spot sits a
-  little north of the middle (its facets aren't the world's geography).
+- **The globe** moves your spot by your coords within a port's land (100 km, the game's figure);
+  past it, and anywhere on a world with no port, it turns with you, so your spot stays where the
+  land's edge would put it, toward you, a few px from a little north of the middle, never jumping
+  (its facets aren't the world's geography).
 
 ## Sites
 
@@ -98,7 +99,10 @@ the rooms with no coords (it means to send the front's, set-pieces.md decision 4
 - Inside, your room's square glows amber as your octagon does (the glow on the square itself:
   WebKit draws nothing for a group that small under the glow filter), with no ways lit, since you
   can't leave a room by the front's. Hover a room for its name; click it for the route there, which
-  runs through the rooms' squares; a room has the ground's right-click menu, with no note.
+  runs through the rooms' squares; right-clicking a room opens no menu (no note, and not the
+  ground's forgetting). A front's door into a room drawn by another front, or with no free spot,
+  is a short Stone door. Logging in inside a room, the land shows once the saved map (with its
+  front) has loaded.
 
 ## What's kept
 
